@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b8boardview01"]
 
-[ext_resource type="Script" path="res://scripts/ui/board_view.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/_legacy/ui/board_view.gd" id="1_script"]
 [ext_resource type="Resource" path="res://resources/ui/default_board_theme.tres" id="2_theme"]
 
 [node name="BoardView" type="Node2D"]

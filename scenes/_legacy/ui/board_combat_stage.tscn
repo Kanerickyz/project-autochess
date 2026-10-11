@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c83eilrxq75wi"]
 
-[ext_resource type="Script" path="res://scripts/ui/board_combat_stage.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/_legacy/ui/board_combat_stage.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/ui/default_board_combat_camera.tres" id="2"]
 
 [node name="BoardCombatStage" type="Control"]

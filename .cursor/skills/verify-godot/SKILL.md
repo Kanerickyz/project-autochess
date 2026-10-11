@@ -9,13 +9,21 @@ description: Runs existing Godot SceneTree test runners and reports exit codes p
 
 ## 入口
 
-按改动选择现有 runner，例如：
+按改动选择现有 runner。聚合入口：
+
+```bash
+bash tools/run_verify_runners.sh
+```
+
+或单独例如：
 
 ```powershell
 godot --headless --path . --script res://scripts/combat/effect_resolver_faint_test_runner.gd
 godot --headless --path . --script res://scripts/combat/effect_resolver_bomber_test_runner.gd
 godot --headless --path . --script res://scripts/combat/grid_movement_test_runner.gd
 godot --headless --path . --script res://scripts/combat/attack_range_preview_test_runner.gd
+godot --headless --path . --script res://scripts/combat/combat_bus_lifecycle_test_runner.gd
+godot --headless --path . --script res://scripts/core/board_grid_distance_test_runner.gd
 godot --headless --path . --script res://scripts/core/run/map_generator_test_runner.gd
 godot --headless --path . --script res://scripts/core/run/sacrifice_service_test_runner.gd
 godot --headless --path . --script res://scripts/core/wfc/wfc_generator_test_runner.gd

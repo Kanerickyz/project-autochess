@@ -45,11 +45,11 @@ signal shop_visit_completed()
 @onready var _combat_arena: CombatArena = $CombatArena
 @onready var _start_button: Button = %StartCombatButton
 @onready var _next_wave_button: Button = %NextWaveButton
-@onready var _finish_shop_button: Button = %FinishShopButton
 @onready var _shop_phase_screen: ShopPhaseScreen = %ShopPhaseScreen
+@onready var _finish_shop_button: Button = _shop_phase_screen.finish_button
 @onready var _status_label: Label = %StatusLabel
 @onready var _player_hud: PlayerHUD = %PlayerHUD
-@onready var _shop_panel: ShopPanel = %ShopPanel
+@onready var _shop_panel: ShopPanel = _shop_phase_screen.shop_panel
 @onready var _hand_panel: HandPanel = %HandPanel
 @onready var _deck_replace_modal: DeckReplaceModal = %DeckReplaceModal
 @onready var _buff_attach_modal: BuffAttachModal = %BuffAttachModal
@@ -60,16 +60,19 @@ signal shop_visit_completed()
 @onready var _turn_order_bar: CombatTurnOrderBar = %CombatTurnOrderBar
 @onready var _ui_layer: CanvasLayer = $UI
 
-const BOARD_DRAG_THRESHOLD := 8.0
 const COMBAT_RESULT_HOLD_SEC := 2.5
 const COMBAT_VICTORY_PRE_OVERLAY_HOLD_SEC := 1.25
 
 var board_grid: BoardGrid = BoardGrid.new()
 var match_state: MatchStateMachine = MatchStateMachine.new()
+var match_flow: MatchFlowController = MatchFlowController.new()
 var run_economy: RunEconomy = RunEconomy.new()
 var deck_state: DeckState = DeckState.new()
 var shop_service: ShopService = ShopService.new()
 var shop_effect_resolver: ShopEffectResolver = ShopEffectResolver.new()
+var shop_deck_binder: ShopDeckBinder = ShopDeckBinder.new()
+var board_ui_binder: BoardUiBinder = BoardUiBinder.new()
+var prepare_placement: PreparePlacementController = PreparePlacementController.new()
 
 var _rng := RandomNumberGenerator.new()
 var _selected_entry_id: int = -1
@@ -85,11 +88,6 @@ var _combat_layout_snapshot: Array[Dictionary] = []
 var _combat_status_base: String = ""
 var _placement_drag: PlacementDragController
 var _prepare_drag_enabled: bool = false
-var _board_drag_press_pos: Vector2 = Vector2.ZERO
-var _board_drag_unit: UnitInstance
-var _board_drag_from_cell: Vector2i = Vector2i(-1, -1)
-var _board_drag_tracking: bool = false
-var _last_valid_board_drop_cell: Vector2i = Vector2i(-1, -1)
 var _pending_defeat_reset: bool = false
 var _pending_run_reset_on_shop: bool = false
 ## 本 Run 内进入商店的次数（首店=1），用于 Tier 解锁，与 wave_index 解耦。
@@ -121,12 +119,17 @@ func _ready() -> void:
 	if deck_config.level_config == null:
 		deck_config.level_config = DEFAULT_LEVEL_CONFIG
 
+	match_flow = MatchFlowController.new(match_state)
 	_init_economy_system()
 	_sync_exports_from_level_data()
 	_camera_rig.bind(_combat_camera, _board_scene, _camera_shake_3d)
 	_setup_board()
 	_bind_combat_presentation()
 	_combat_presentation.set_skill_callout(_combat_skill_callout)
+	shop_deck_binder.configure(
+		_shop_panel, _hand_panel, shop_service, deck_state, run_economy
+	)
+	board_ui_binder.configure(_status_label, _player_hud, _unit_tooltip)
 	_board_scene.cell_clicked.connect(_on_cell_clicked)
 	_board_scene.unit_hover_changed.connect(_on_unit_hover_changed)
 	_board_scene.grid_cell_hover_changed.connect(_on_grid_cell_hover_changed)
@@ -363,7 +366,7 @@ func _enter_shop_phase(reroll_shop: bool = true, animate_ui: bool = false) -> vo
 		_shop_visit_count += 1
 	var new_max_tier := TierUnlock.get_max_unlocked_tier(_get_shop_wave())
 	var tier_just_unlocked := new_max_tier > _last_shop_max_tier and _last_shop_max_tier > 0
-	match_state.phase = MatchStateMachine.Phase.SHOP
+	match_flow.enter_shop()
 	_set_prepare_drag_enabled(false)
 	_clear_wave_preview()
 	_clear_pending_shop()
@@ -373,7 +376,7 @@ func _enter_shop_phase(reroll_shop: bool = true, animate_ui: bool = false) -> vo
 	_hovered_board_unit = null
 	_hovered_hand_entry = null
 	_hovered_shop_offer = null
-	_unit_tooltip.hide_tooltip()
+	board_ui_binder.hide_tooltip()
 
 	if animate_ui:
 		_shop_ui_animating = true
@@ -402,10 +405,10 @@ func _enter_prepare_phase_async(clear_player_units: bool = false) -> void:
 	if _board_animating or _shop_ui_animating or _shop_phase_screen.transition_active:
 		return
 	_board_animating = true
-	match_state.phase = MatchStateMachine.Phase.PREPARE
+	match_flow.enter_prepare()
 	_shop_panel.hide_tier_unlock()
 	_hovered_shop_offer = null
-	_unit_tooltip.hide_tooltip()
+	board_ui_binder.hide_tooltip()
 	if clear_player_units:
 		board_grid.clear_team(UnitInstance.Team.PLAYER)
 	_selected_entry_id = -1
@@ -559,7 +562,7 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 		return
 	if _placement_drag != null and _placement_drag.is_dragging():
 		return
-	if _board_drag_tracking:
+	if prepare_placement.drag_tracking:
 		return
 
 	if board_grid.get_unit(cell) != null:
@@ -706,9 +709,9 @@ func _resolve_board_drop_cell(
 		return cell
 	if (
 		drag_source == PlacementDragController.Source.BOARD
-		and _is_valid_board_drop_at(_last_valid_board_drop_cell, drag_source, board_unit)
+		and _is_valid_board_drop_at(prepare_placement.last_valid_drop_cell, drag_source, board_unit)
 	):
-		return _last_valid_board_drop_cell
+		return prepare_placement.last_valid_drop_cell
 	if (
 		drag_source == PlacementDragController.Source.BOARD
 		and from_cell != Vector2i(-1, -1)
@@ -760,10 +763,7 @@ func _set_prepare_drag_enabled(enabled: bool) -> void:
 
 func _cancel_active_drag() -> void:
 	_board_scene.clear_all_unit_drag_visuals()
-	_board_drag_tracking = false
-	_board_drag_unit = null
-	_board_drag_from_cell = Vector2i(-1, -1)
-	_last_valid_board_drop_cell = Vector2i(-1, -1)
+	prepare_placement.reset_gesture()
 	if _placement_drag != null:
 		_placement_drag.cancel_drag()
 	_board_scene.set_prepare_drag_mode(false)
@@ -779,13 +779,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		if _board_drag_tracking:
-			if motion.position.distance_to(_board_drag_press_pos) >= BOARD_DRAG_THRESHOLD:
-				var unit := _board_drag_unit
-				var from_cell := _board_drag_from_cell
-				_board_drag_tracking = false
-				_begin_board_drag(unit, from_cell, motion.position)
-				get_viewport().set_input_as_handled()
+		if prepare_placement.drag_tracking and prepare_placement.should_promote_to_drag(motion.position):
+			var unit := prepare_placement.drag_unit
+			var from_cell := prepare_placement.drag_from_cell
+			prepare_placement.drag_tracking = false
+			_begin_board_drag(unit, from_cell, motion.position)
+			get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -793,7 +792,7 @@ func _input(event: InputEvent) -> void:
 			return
 		if mb.pressed:
 			_try_begin_board_drag_tracking(mb.position)
-		elif _board_drag_tracking:
+		elif prepare_placement.drag_tracking:
 			_finish_board_drag_tracking(mb.position)
 			get_viewport().set_input_as_handled()
 
@@ -802,9 +801,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	if match_state.phase == MatchStateMachine.Phase.COMBAT:
 		if event.is_action_pressed("combat_pause") and _combat_arena.is_running():
 			var paused := _combat_arena.toggle_pause()
-			_set_status(_combat_status_base + ("（已暂停，空格继续）" if paused else ""))
+			var pause_hint := "（已暂停，%s 继续）" % _combat_pause_action_label()
+			_set_status(_combat_status_base + (pause_hint if paused else ""))
 			get_viewport().set_input_as_handled()
 			return
+
+
+func _combat_pause_action_label() -> String:
+	var events := InputMap.action_get_events("combat_pause")
+	for ev in events:
+		if ev is InputEventKey:
+			var key_ev := ev as InputEventKey
+			var code := key_ev.keycode if key_ev.keycode != KEY_NONE else key_ev.physical_keycode
+			if code != KEY_NONE:
+				return OS.get_keycode_string(code)
+	return "暂停键"
 
 
 func _handle_active_drag_input(event: InputEvent) -> void:
@@ -851,23 +862,23 @@ func _try_begin_board_drag_tracking(viewport_pos: Vector2) -> void:
 	var unit := _board_scene.get_player_unit_at_viewport_pos(viewport_pos)
 	if unit == null:
 		return
-	_board_drag_tracking = true
-	_board_drag_press_pos = viewport_pos
-	_board_drag_unit = unit
-	_board_drag_from_cell = board_grid.find_cell_of(unit)
+	prepare_placement.drag_tracking = true
+	prepare_placement.drag_press_pos = viewport_pos
+	prepare_placement.drag_unit = unit
+	prepare_placement.drag_from_cell = board_grid.find_cell_of(unit)
 
 
 func _finish_board_drag_tracking(viewport_pos: Vector2) -> void:
-	if not _board_drag_tracking:
+	if not prepare_placement.drag_tracking:
 		return
-	var unit := _board_drag_unit
-	var from_cell := _board_drag_from_cell
-	_board_drag_tracking = false
-	_board_drag_unit = null
-	_board_drag_from_cell = Vector2i(-1, -1)
+	var unit := prepare_placement.drag_unit
+	var from_cell := prepare_placement.drag_from_cell
+	prepare_placement.drag_tracking = false
+	prepare_placement.drag_unit = null
+	prepare_placement.drag_from_cell = Vector2i(-1, -1)
 	if unit == null:
 		return
-	if viewport_pos.distance_to(_board_drag_press_pos) >= BOARD_DRAG_THRESHOLD:
+	if prepare_placement.should_promote_to_drag(viewport_pos):
 		_begin_board_drag(unit, from_cell, viewport_pos)
 		_finish_active_drag(viewport_pos)
 		get_viewport().set_input_as_handled()
@@ -879,7 +890,7 @@ func _begin_board_drag(unit: UnitInstance, from_cell: Vector2i, viewport_pos: Ve
 	var entry := deck_state.get_entry(unit.deck_entry_id)
 	if entry == null:
 		entry = _entry_from_unit(unit)
-	_last_valid_board_drop_cell = from_cell
+	prepare_placement.last_valid_drop_cell = from_cell
 	_board_scene.set_board_unit_drag_visual(unit, true)
 	_board_scene.set_prepare_drag_mode(true)
 	_placement_drag.begin_board_drag(
@@ -913,7 +924,7 @@ func _update_active_drag(viewport_pos: Vector2) -> void:
 		_placement_drag.board_unit,
 	)
 	if valid:
-		_last_valid_board_drop_cell = cell
+		prepare_placement.last_valid_drop_cell = cell
 	_board_scene.set_drag_hover_cell(cell, valid)
 
 
@@ -1170,7 +1181,7 @@ func _on_start_combat_pressed() -> void:
 	_locked_spawn_placements = _last_preview_placements.duplicate(true)
 	_set_prepare_drag_enabled(false)
 	_board_scene.clear_enemy_preview()
-	match_state.phase = MatchStateMachine.Phase.COMBAT
+	match_flow.enter_combat()
 	_update_ui()
 	_launch_combat_async()
 
@@ -1334,8 +1345,11 @@ func _get_shop_wave() -> int:
 
 
 func _get_enemy_spawn_pool() -> Array[UnitData]:
+	if level_data != null and not level_data.enemy_pool.is_empty():
+		return level_data.enemy_pool
 	if shop_pool_config == null:
 		return []
+	# Legacy fallback: shop character pool doubled as enemy pool before LevelData.enemy_pool.
 	if not shop_pool_config.character_pool.is_empty():
 		return shop_pool_config.character_pool
 	return shop_pool_config.pool
@@ -1474,6 +1488,10 @@ func _on_combat_ended(won: bool) -> void:
 	if _combat_log_panel != null:
 		_combat_log_panel.append_system("胜利！" if won else "失败…")
 	_disconnect_combat_log_events()
+	# Tear down per-combat bus before shop/prepare so listeners cannot leak across phases.
+	if _combat_arena != null:
+		_combat_arena.stop_combat()
+	match_flow.enter_resolve()
 	_board_scene.sync_units()
 	await _resolve_combat_after_hold(won)
 
@@ -1566,14 +1584,16 @@ func _reset_player_hp() -> void:
 func _update_ui() -> void:
 	var in_shop := match_state.phase == MatchStateMachine.Phase.SHOP
 	var in_prepare := match_state.phase == MatchStateMachine.Phase.PREPARE
+	var in_resolve := match_state.phase == MatchStateMachine.Phase.RESOLVE
+	var in_combat := match_state.phase == MatchStateMachine.Phase.COMBAT
 
 	_sync_shop_visibility(in_shop)
 	if not _board_animating and not _board_scene.board_transition_active:
 		_board_world.visible = not in_shop
 	if _combat_log_panel != null:
-		_combat_log_panel.visible = match_state.phase == MatchStateMachine.Phase.COMBAT
+		_combat_log_panel.visible = in_combat
 	if _turn_order_bar != null:
-		_turn_order_bar.visible = match_state.phase == MatchStateMachine.Phase.COMBAT
+		_turn_order_bar.visible = in_combat
 	if in_shop:
 		_hovered_board_unit = null
 
@@ -1587,6 +1607,10 @@ func _update_ui() -> void:
 	_hand_panel.set_mode(
 		HandPanel.Mode.SELL if in_shop else HandPanel.Mode.DEPLOY
 	)
+	if in_resolve:
+		_start_button.visible = false
+		_finish_shop_button.visible = false
+		_hand_panel.visible = false
 	_shop_panel.set_interactive(
 		in_shop
 		and not _board_animating
@@ -1709,29 +1733,18 @@ func _is_placeable_preview_cell(cell: Vector2i) -> bool:
 func _refresh_shop_ui() -> void:
 	if not is_node_ready():
 		return
-	_shop_panel.refresh_slots(
-		shop_service.get_character_offers(),
-		shop_service.get_buff_offers(),
-		run_economy.get_refresh_cost(),
-		run_economy.gold,
-	)
+	shop_deck_binder.refresh_shop()
 
 
 func _refresh_hand_ui() -> void:
 	if not is_node_ready():
 		return
-	_hand_panel.refresh_deck(
-		deck_state,
-		_get_deployed_entry_ids(),
-		_selected_entry_id,
-		run_economy.get_sell_price,
-	)
+	shop_deck_binder.refresh_hand(_get_deployed_entry_ids(), _selected_entry_id)
 	_sync_board_cell_highlights()
 
 
 func _on_gold_changed(amount: int) -> void:
-	if _player_hud:
-		_player_hud.set_gold(amount)
+	board_ui_binder.set_gold(amount)
 	_refresh_shop_ui()
 
 
@@ -1810,7 +1823,7 @@ func _process(_delta: float) -> void:
 
 
 func _set_status(text: String) -> void:
-	_status_label.text = text
+	board_ui_binder.set_status(text)
 
 
 func _clear_all_stat_modifiers() -> void:

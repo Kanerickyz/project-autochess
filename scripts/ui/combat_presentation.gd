@@ -1718,15 +1718,11 @@ func _resolve_acting_units(
 
 
 func _pace_scale() -> float:
-	if pace_config == null:
-		return 1.0
-	return pace_config.get_pace_scale(_combat_tick)
+	return CombatPresentationFx.pace_scale(pace_config, _combat_tick)
 
 
 func _dur(base: float) -> float:
-	if pace_config == null:
-		return base
-	return pace_config.scaled_duration(base, _combat_tick)
+	return CombatPresentationFx.scaled_duration(base, pace_config, _combat_tick)
 
 
 func _skill_callout_hold_sec() -> float:

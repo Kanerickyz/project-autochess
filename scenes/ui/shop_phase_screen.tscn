@@ -1,0 +1,46 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" uid="uid://blsdn03y76c0q" path="res://scripts/ui/shop_phase_screen.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/shop_panel.tscn" id="2_shop"]
+
+[node name="ShopPhaseScreen" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ShopContent" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="CenterContainer/ShopContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "商店"
+horizontal_alignment = 1
+
+[node name="ShopPanel" parent="CenterContainer/ShopContent" instance=ExtResource("2_shop")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(720, 550)
+
+[node name="FinishShopButton" type="Button" parent="CenterContainer/ShopContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "完成购买，进入部署"

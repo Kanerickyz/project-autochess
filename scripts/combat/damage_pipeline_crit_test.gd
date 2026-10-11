@@ -62,24 +62,24 @@ static func _assert_true(value: bool, message: String) -> void:
 static func _test_roll_damage_full_crit_rate() -> void:
 	var pipeline := _pipeline(_bus(), _grid())
 	var attacker := _unit(4, 100)
-	var rolled: Dictionary = pipeline.roll_damage(attacker, attacker.get_effective_attack())
-	_assert_true(rolled["is_crit"], "100% crit rate should crit")
-	_assert_eq(rolled["amount"], 6, "crit damage 150% of 4")
+	var rolled: DamageRoll = pipeline.roll_damage(attacker, attacker.get_effective_attack())
+	_assert_true(rolled.is_crit, "100% crit rate should crit")
+	_assert_eq(rolled.amount, 6, "crit damage 150% of 4")
 
 
 static func _test_roll_damage_zero_crit_rate() -> void:
 	var pipeline := _pipeline(_bus(), _grid())
 	var attacker := _unit(4, 0)
-	var rolled: Dictionary = pipeline.roll_damage(attacker, attacker.get_effective_attack())
-	_assert_eq(rolled["is_crit"], false, "0% crit rate should not crit")
-	_assert_eq(rolled["amount"], 4, "non-crit damage unchanged")
+	var rolled: DamageRoll = pipeline.roll_damage(attacker, attacker.get_effective_attack())
+	_assert_eq(rolled.is_crit, false, "0% crit rate should not crit")
+	_assert_eq(rolled.amount, 4, "non-crit damage unchanged")
 
 
 static func _test_roll_damage_no_source() -> void:
 	var pipeline := _pipeline(_bus(), _grid())
-	var rolled: Dictionary = pipeline.roll_damage(null, 5)
-	_assert_eq(rolled["is_crit"], false, "null source should not crit")
-	_assert_eq(rolled["amount"], 5, "null source damage unchanged")
+	var rolled: DamageRoll = pipeline.roll_damage(null, 5)
+	_assert_eq(rolled.is_crit, false, "null source should not crit")
+	_assert_eq(rolled.amount, 5, "null source damage unchanged")
 
 
 static func _test_apply_rolled_damage_emits_crit_flag() -> void:

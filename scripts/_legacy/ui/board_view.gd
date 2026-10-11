@@ -1,4 +1,5 @@
 class_name BoardView
+## LEGACY — not on main gameplay path. See scripts/_legacy/README.md.
 extends Node2D
 
 signal cell_clicked(cell: Vector2i)

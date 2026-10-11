@@ -99,9 +99,9 @@ static func _walk_greedy_steps(
 
 		candidates.sort_custom(_sort_cells)
 		var best_cell := current
-		var best_dist := BoardGrid._manhattan(current, target)
+		var best_dist := BoardGrid._path_cost(current, target)
 		for cell in candidates:
-			var dist := BoardGrid._manhattan(cell, target)
+			var dist := BoardGrid._path_cost(cell, target)
 			if dist < best_dist:
 				best_dist = dist
 				best_cell = cell
@@ -167,7 +167,7 @@ static func _pick_best_path(paths: Array, target: Vector2i) -> Array[Vector2i]:
 		if candidate.is_empty():
 			continue
 		var end: Vector2i = candidate[candidate.size() - 1]
-		var dist := BoardGrid._manhattan(end, target)
+		var dist := BoardGrid._path_cost(end, target)
 		if dist < best_dist:
 			best_dist = dist
 			best_path = candidate
@@ -231,8 +231,8 @@ static func _pick_better_axis_path(
 
 	var x_end: Vector2i = x_path[x_path.size() - 1]
 	var y_end: Vector2i = y_path[y_path.size() - 1]
-	var x_dist := BoardGrid._manhattan(x_end, target)
-	var y_dist := BoardGrid._manhattan(y_end, target)
+	var x_dist := BoardGrid._path_cost(x_end, target)
+	var y_dist := BoardGrid._path_cost(y_end, target)
 
 	if x_dist < y_dist:
 		return x_path
@@ -333,9 +333,9 @@ static func _plan_knight_path(
 
 	candidates.sort_custom(_sort_cells)
 	var best_cell := candidates[0]
-	var best_dist := BoardGrid._manhattan(best_cell, target)
+	var best_dist := BoardGrid._path_cost(best_cell, target)
 	for cell in candidates:
-		var dist := BoardGrid._manhattan(cell, target)
+		var dist := BoardGrid._path_cost(cell, target)
 		if dist < best_dist:
 			best_dist = dist
 			best_cell = cell

@@ -10,6 +10,7 @@ mouse_filter = 2
 script = ExtResource("1_script")
 
 [node name="StateOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
 visible = false
 layout_mode = 0
 offset_right = 110.0
@@ -18,6 +19,7 @@ mouse_filter = 2
 color = Color(0.05, 0.06, 0.08, 0.45)
 
 [node name="LevelBadge" type="Control" parent="."]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 2.0
 offset_top = 2.0
@@ -26,6 +28,7 @@ offset_bottom = 26.0
 mouse_filter = 2
 
 [node name="TeamBadge" type="Label" parent="."]
+unique_name_in_owner = true
 visible = false
 layout_mode = 0
 offset_left = 68.0
@@ -42,6 +45,7 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="TierBadge" type="Label" parent="."]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 78.0
 offset_top = 2.0
@@ -57,6 +61,7 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="LvlLabel" type="Label" parent="LevelBadge"]
+unique_name_in_owner = true
 layout_mode = 0
 offset_right = 20.0
 offset_bottom = 14.0
@@ -67,6 +72,7 @@ theme_override_font_sizes/font_size = 9
 text = "Lvl"
 
 [node name="LevelNumber" type="Label" parent="LevelBadge"]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 20.0
 offset_right = 34.0
@@ -78,6 +84,7 @@ theme_override_font_sizes/font_size = 12
 text = "1"
 
 [node name="ExpBar" type="HBoxContainer" parent="LevelBadge"]
+unique_name_in_owner = true
 layout_mode = 0
 offset_top = 14.0
 offset_right = 36.0
@@ -85,9 +92,11 @@ offset_bottom = 22.0
 theme_override_constants/separation = 2
 
 [node name="CharacterRoot" type="Node2D" parent="."]
+unique_name_in_owner = true
 position = Vector2(44, 50)
 
 [node name="DamagePopup" type="Label" parent="."]
+unique_name_in_owner = true
 visible = false
 layout_mode = 0
 offset_left = 28.0
@@ -104,26 +113,33 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="OutlineWhite" type="Polygon2D" parent="CharacterRoot"]
+unique_name_in_owner = true
 color = Color(1, 1, 1, 1)
 
 [node name="OutlineBlack" type="Polygon2D" parent="CharacterRoot"]
+unique_name_in_owner = true
 color = Color(0.05, 0.06, 0.08, 1)
 
 [node name="Body" type="Polygon2D" parent="CharacterRoot"]
+unique_name_in_owner = true
 color = Color(0.35, 0.75, 0.95, 1)
 
 [node name="PaperBodyAnchor" type="Node2D" parent="CharacterRoot"]
+unique_name_in_owner = true
 visible = false
 
 [node name="BodySprite" type="Sprite2D" parent="CharacterRoot/PaperBodyAnchor"]
+unique_name_in_owner = true
 visible = false
 centered = true
 
 [node name="Portrait" type="Sprite2D" parent="CharacterRoot"]
+unique_name_in_owner = true
 visible = false
 centered = true
 
 [node name="StatBar" type="Control" parent="."]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 7.0
 offset_top = 90.0
@@ -132,12 +148,15 @@ offset_bottom = 108.0
 mouse_filter = 2
 
 [node name="AttackRoot" type="Node2D" parent="StatBar"]
+unique_name_in_owner = true
 position = Vector2(17, 9)
 
 [node name="AttackIcon" type="Polygon2D" parent="StatBar/AttackRoot"]
+unique_name_in_owner = true
 position = Vector2(-10, 0)
 
 [node name="AttackLabel" type="Label" parent="StatBar/AttackRoot"]
+unique_name_in_owner = true
 offset_left = 2.0
 offset_top = -6.0
 offset_right = 22.0
@@ -151,12 +170,15 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="CritRoot" type="Node2D" parent="StatBar"]
+unique_name_in_owner = true
 position = Vector2(34, 9)
 
 [node name="CritIcon" type="Polygon2D" parent="StatBar/CritRoot"]
+unique_name_in_owner = true
 position = Vector2(-10, 0)
 
 [node name="CritLabel" type="Label" parent="StatBar/CritRoot"]
+unique_name_in_owner = true
 offset_left = 2.0
 offset_top = -6.0
 offset_right = 22.0
@@ -170,12 +192,15 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="HealthRoot" type="Node2D" parent="StatBar"]
+unique_name_in_owner = true
 position = Vector2(51, 9)
 
 [node name="HealthIcon" type="Polygon2D" parent="StatBar/HealthRoot"]
+unique_name_in_owner = true
 position = Vector2(-10, 0)
 
 [node name="HealthLabel" type="Label" parent="StatBar/HealthRoot"]
+unique_name_in_owner = true
 offset_left = 2.0
 offset_top = -6.0
 offset_right = 22.0

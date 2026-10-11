@@ -90,11 +90,12 @@ DeckEntry
 └── rule_flags: Dictionary             # 可选，如 cannot_move: true
 ```
 
-### 3.4 与 AbilityData 的关系
+### 3.4 与 AbilityData 的关系（框架边界）
 
 - **不**将增益卡并入 `UnitInstance.get_all_effect_specs()` 的默认列表（除非 `COMBAT_TRIGGER` 类增益在实现时注册为隐藏监听）
 - **永久属性类**增益在 `from_deck_entry` 时合并进 `stats` / `bonus_*`
 - **无法行走** 在 `UnitBrain.decide` 或实例 flag 上短路 MOVE，仍可 ATTACK
+- **双轨约定（As-Is）**：商店/事件的非战斗永久改写走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`）。凡会进入战斗触发的效果必须挂 `EffectSpec`，禁止再长出第三套隐式 DSL。
 
 ### 3.5 属性叠加顺序（建议）
 

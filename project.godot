@@ -47,3 +47,7 @@ combat_pause={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[gui]
+
+theme/custom="res://resources/ui/project_theme.tres"

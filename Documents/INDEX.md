@@ -32,14 +32,14 @@
 
 ## 仓库文件索引（当前）
 
-含 **M1 棋盘** + **M2 战斗** + **M3.5 技能** + **M3b 商店/牌库**（角色 + 增益、Tier roll、抽 5、满库替换）。
+含 **M1 棋盘** + **M2 战斗** + **M3.5 技能** + **M3b 商店/牌库**（角色 + 增益、Tier roll、满库替换；手牌 As-Is 为整库展示，抽 5 To-Be）。
 
 ```
 Project Autochess/
 ├── Documents/
 ├── scenes/main/main.tscn
 ├── scenes/ui/board_*.tscn, hand_panel, shop_panel, *_modal
-├── scripts/core/              # deck_state, draw_service, shop_service, board_controller
+├── scripts/core/              # deck_state, shop_service, board_controller
 ├── scripts/data/              # deck_config, shop_offer, shop_pool_config
 ├── resources/deck/default_deck.tres
 ├── resources/shop/dev_shop_pool.tres
@@ -53,7 +53,8 @@ Project Autochess/
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `scenes/main/main.tscn` | 对局根场景、Camera2D | **M1 已实现** |
-| `scenes/ui/board_view.tscn` | Node2D 棋盘视图 | **M1 已实现** |
+| `scenes/_legacy/ui/board_view.tscn` | 旧 2D 棋盘（非热路径） | **Legacy** |
+| `scenes/ui/board_world.tscn` | 3D 棋盘世界（主路径） | **已实现** |
 | `scenes/ui/board_cell.tscn` | 格子 Area2D | **M1 已实现** |
 | `scenes/units/placeholder_unit.tscn` | 占位单位视觉 | **M1 已实现** |
 | `scripts/core/board_grid.gd` | 格占用、`get_empty_cells` | **M1 已实现** |
@@ -62,9 +63,9 @@ Project Autochess/
 | `scripts/core/shop_service.gd` | 双卡种商店、Tier roll、购买、刷新 | **M3b 已实现** |
 | `scripts/core/deck_state.gd` | 牌库条目、满库替换、`attach_buff` | **M3b 已实现** |
 | `scripts/core/deck_entry.gd` | 牌库单条目 | **M3b 已实现** |
-| `scripts/core/draw_service.gd` | 每波 PREPARE 无放回抽 5 | **M3b 已实现** |
+| `scripts/core/draw_service.gd` | 每波 PREPARE 无放回抽 5 | **To-Be（未实装）** |
 | `scenes/ui/shop_panel.tscn` | 双卡种商店 UI（角色 + 增益） | **M3b 已实现** |
-| `scenes/ui/hand_panel.tscn` | 本波手牌（抽 5） | **M3b 已实现** |
+| `scenes/ui/hand_panel.tscn` | 手牌 / 牌库条目（As-Is 整库） | **M3b 已实现** |
 | `scenes/ui/deck_replace_modal.tscn` | 满库替换弹窗 | **M3b 已实现** |
 | `scenes/ui/buff_attach_modal.tscn` | 增益附加弹窗 | **已实现** |
 | `scripts/data/deck_config.gd` | 牌库初始/上限/抽牌数 | **M3b 已实现** |
@@ -89,7 +90,7 @@ Project Autochess/
 | `scenes/ui/`（其余） | 商店、手牌、弹窗、HUD | **M3b 已实现** |
 | `scenes/units/`（其余） | 正式单位预制体 | 未实现 |
 | `scenes/combat/` | 战斗舞台、投射物、特效 | 已创建（骨架） |
-| `scripts/autoload/` | 全局单例（GameState、EventBus） | 已创建（骨架） |
+| `scripts/autoload/` | 仅 `GameSettings`（无全局 EventBus/GameState） | **已实现** |
 | `scripts/core/` | 棋盘、经济、牌库、商店 | **M3b 已实现** |
 | `scripts/ui/` | 棋盘 Cell/View 脚本 | **M1 已实现** |
 | `resources/levels/` | `LevelData` | **M1 已实现** |
@@ -99,12 +100,12 @@ Project Autochess/
 | `scripts/data/` | `EffectSpec`、`AbilityData`、`UnitData` | **M3.5 已实现** |
 | `resources/units/test_*.tres` | 三样本测试单位 | **M3.5 已实现** |
 | `resources/abilities/` | 单位内建技能（见 ABILITIES.md）；商店技能 `.tres` **待迁出** | **M3.5+** |
-| `resources/effects/` | 可复用效果片段（可选） | 已创建（骨架） |
+| `resources/effects/` | 可复用效果片段（可选） | 空目录（效果嵌在 ability `.tres`） |
 | `resources/traits/` | 羁绊 `.tres`（**远期**，非 v1） | 不实现 |
-| `resources/items/` | 装备（可选） | 已创建（骨架） |
+| `resources/items/` | 装备（可选） | 空目录（未使用） |
 | `assets/sprites/` | 2D 精灵与图集 | 已创建（骨架） |
 | `assets/audio/` | BGM / SFX | 已创建（骨架） |
-| `assets/fonts/` | UI 字体 | 已创建（骨架） |
+| `assets/fonts/` | UI 字体 | 见项目 Theme |
 
 ## 引擎配置摘要
 
@@ -124,7 +125,7 @@ Project Autochess/
 | Run / Map | 爬塔地图、选路、节点类型、Boss | GAME_VISION · **Run** |
 | Run / Match | 遭遇内：抽牌布阵 → 战斗 → 结算；地图商店节点 | GAME_VISION · **M2c / Run** |
 | Economy & Shop | 角色卡/增益卡、Tier、牌库、击杀掉金、波次结算 | **SHOP_SYSTEM** · **BUFF_SYSTEM** · **M3b** |
-| Board & Deck | 可变棋盘 + 牌库抽 5 放置 | SHOP_SYSTEM · **M3b** |
+| Board & Deck | 可变棋盘 + 牌库手牌放置（抽 5 To-Be） | SHOP_SYSTEM · **M3b** |
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
 | Spawn | `SpawnSystem` 空闲格刷怪 | **M2a** · ARCHITECTURE §3.3 |
 | Effect / Synergy | `EffectResolver` + `EffectSpec` + 3 样本技能 | ARCHITECTURE §3.7 · **M3.5** |

@@ -8,8 +8,8 @@ signal shop_changed
 var _pool_config: ShopPoolConfig
 var _economy: RunEconomy
 var _rng: RandomNumberGenerator
-var _character_offers: Array = []
-var _buff_offers: Array = []
+var _character_offers: Array[ShopOffer] = []
+var _buff_offers: Array[ShopOffer] = []
 var _shop_wave: int = 1
 
 
@@ -49,11 +49,11 @@ func get_buff_offer(index: int) -> ShopOffer:
 	return _buff_offers[index]
 
 
-func get_character_offers() -> Array:
+func get_character_offers() -> Array[ShopOffer]:
 	return _character_offers.duplicate()
 
 
-func get_buff_offers() -> Array:
+func get_buff_offers() -> Array[ShopOffer]:
 	return _buff_offers.duplicate()
 
 
@@ -269,9 +269,7 @@ func _get_filtered_buff_pool() -> Array[BuffCardData]:
 func _get_character_pool() -> Array[UnitData]:
 	if _pool_config == null:
 		return []
-	if not _pool_config.character_pool.is_empty():
-		return _pool_config.character_pool
-	return _pool_config.pool
+	return _pool_config.get_character_pool()
 
 
 static func _get_unit_tier(item: Variant) -> int:

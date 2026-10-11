@@ -248,24 +248,38 @@ func find_nearest_enemy(from_cell: Vector2i, team: UnitInstance.Team) -> UnitIns
 		var inst: UnitInstance = _units[cell] as UnitInstance
 		if inst == null or inst.team == team or not inst.is_alive():
 			continue
-		var dist := _manhattan(from_cell, cell)
+		var dist := combat_distance(from_cell, cell)
 		if dist < best_dist:
 			best_dist = dist
 			best = inst
 	return best
 
 
-func manhattan_distance(a: Vector2i, b: Vector2i) -> int:
-	return _manhattan(a, b)
-
-
-func chebyshev_distance(a: Vector2i, b: Vector2i) -> int:
+## Combat adjacency / attack range / nearest-enemy (8-way Chebyshev).
+func combat_distance(a: Vector2i, b: Vector2i) -> int:
 	return _chebyshev(a, b)
 
 
-static func _manhattan(a: Vector2i, b: Vector2i) -> int:
+func chebyshev_distance(a: Vector2i, b: Vector2i) -> int:
+	return combat_distance(a, b)
+
+
+## Orthogonal step count for path-cost heuristics only — not "nearest enemy".
+func path_cost(a: Vector2i, b: Vector2i) -> int:
+	return _path_cost(a, b)
+
+
+func manhattan_distance(a: Vector2i, b: Vector2i) -> int:
+	return path_cost(a, b)
+
+
+static func _path_cost(a: Vector2i, b: Vector2i) -> int:
 	return absi(a.x - b.x) + absi(a.y - b.y)
 
 
 static func _chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+
+static func _manhattan(a: Vector2i, b: Vector2i) -> int:
+	return _path_cost(a, b)

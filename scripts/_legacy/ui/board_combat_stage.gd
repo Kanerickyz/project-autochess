@@ -1,4 +1,5 @@
 class_name BoardCombatStage
+## LEGACY — not on main gameplay path. See scripts/_legacy/README.md.
 extends Control
 
 const BOARD_SCENE_SCRIPT := preload("res://scripts/ui/board_3d/board_scene_3d.gd")

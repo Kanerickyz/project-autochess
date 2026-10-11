@@ -5,4 +5,4 @@ var owner: UnitInstance
 var spec: EffectSpec
 var payload: CombatEventPayload
 var depth: int
-var entries: Array = []
+var entries: Array[QueuedEffectStep] = []

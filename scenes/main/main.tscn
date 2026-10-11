@@ -5,14 +5,13 @@
 [ext_resource type="PackedScene" uid="uid://combatarena01" path="res://scenes/combat/combat_arena.tscn" id="3_arena"]
 [ext_resource type="Resource" uid="uid://dsirmxi64l7oe" path="res://resources/deck/default_deck.tres" id="3_blune"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
-[ext_resource type="PackedScene" path="res://scenes/ui/shop_panel.tscn" id="6_shop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/shop_phase_screen.tscn" id="6_shop_phase"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hand_panel.tscn" id="7_hand"]
 [ext_resource type="PackedScene" path="res://scenes/ui/deck_replace_modal.tscn" id="8_replace"]
 [ext_resource type="PackedScene" path="res://scenes/ui/buff_attach_modal.tscn" id="9_attach"]
 [ext_resource type="PackedScene" uid="uid://bos13k2qfjdd5" path="res://scenes/ui/unit_tooltip.tscn" id="10_tooltip"]
 [ext_resource type="PackedScene" uid="uid://cg624y8d15ie0" path="res://scenes/ui/combat_skill_callout.tscn" id="12_skill_callout"]
 [ext_resource type="PackedScene" uid="uid://dxmgx4jlrotru" path="res://scenes/ui/combat_log_panel.tscn" id="13_combat_log"]
-[ext_resource type="Script" uid="uid://blsdn03y76c0q" path="res://scripts/ui/shop_phase_screen.gd" id="15_shop_screen"]
 [ext_resource type="PackedScene" path="res://scenes/ui/combat_victory_overlay.tscn" id="16_victory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/combat/combat_turn_order_bar.tscn" id="17_turn_order"]
 [ext_resource type="PackedScene" uid="uid://bvuwt0qklnuwu" path="res://scenes/ui/board_world.tscn" id="18_board_world"]
@@ -45,47 +44,8 @@ script = ExtResource("21_combat_presentation")
 [node name="BoardVfxLayer" type="Node2D" parent="UI" unique_id=1327333083]
 unique_name_in_owner = true
 
-[node name="ShopPhaseScreen" type="Control" parent="UI" unique_id=2103847291]
+[node name="ShopPhaseScreen" parent="UI" unique_id=2103847291 instance=ExtResource("6_shop_phase")]
 unique_name_in_owner = true
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("15_shop_screen")
-
-[node name="CenterContainer" type="CenterContainer" parent="UI/ShopPhaseScreen" unique_id=2103847293]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="ShopContent" type="VBoxContainer" parent="UI/ShopPhaseScreen/CenterContainer" unique_id=2103847294]
-layout_mode = 2
-theme_override_constants/separation = 24
-alignment = 1
-
-[node name="Title" type="Label" parent="UI/ShopPhaseScreen/CenterContainer/ShopContent" unique_id=2103847295]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "商店"
-horizontal_alignment = 1
-
-[node name="ShopPanel" parent="UI/ShopPhaseScreen/CenterContainer/ShopContent" unique_id=614301428 instance=ExtResource("6_shop")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(720, 550)
-
-[node name="FinishShopButton" type="Button" parent="UI/ShopPhaseScreen/CenterContainer/ShopContent" unique_id=2103847296]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 48)
-layout_mode = 2
-size_flags_horizontal = 4
-text = "完成购买，进入部署"
 
 [node name="PlayerHUD" parent="UI" unique_id=1645432727 instance=ExtResource("5_hud")]
 unique_name_in_owner = true

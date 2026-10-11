@@ -1,6 +1,6 @@
 # 商店与牌库系统
 
-> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、每波抽 5、满库替换、增益附加、Tier 解锁）。
+> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、满库替换、增益附加、Tier 解锁）。**每波抽 5（`DrawService`）为设计目标，尚未实装**——As-Is 手牌展示完整牌库。
 >
 > **已实现（2026-05）**：`buff_pool` / `BuffAttachModal` / `attached_buffs` / Tier 解锁（`TierUnlock` + `shop_wave`）。
 
@@ -225,7 +225,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | `DeckConfig` | `starting_units`、`max_size`、`draw_count` |
 | `DeckEntry` | 运行时条目：`unit` + `attached_buffs[]` + `rule_flags` |
 | `DeckState` | 牌库增删、满库替换、`attach_buff` |
-| `DrawService` | 每波 PREPARE 无放回抽 `draw_count` 张 |
+| `DrawService`（To-Be） | 每波 PREPARE 无放回抽 `draw_count` 张；**未实装** |
 | `ShopOffer` | 枚举 `CHARACTER \| BUFF` + payload |
 | `ShopService` | roll 槽位、购买、刷新；`get_max_tier(shop_wave)` |
 | `ShopPoolConfig` | 角色池、增益池、槽位数、**按 tier 分池或 tier 字段** |
@@ -269,7 +269,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 |----|------|
 | `DeckState` + `DeckConfig` | 初始 10 占位、上限 20 |
 | 双卡种 `ShopService` | 角色卡入队、**技能卡附加（Legacy，待迁移增益）** |
-| `DrawService` | 每波 PREPARE 无放回抽 5 |
+| `DrawService` | 每波 PREPARE 无放回抽 5（**To-Be，未实装**） |
 | UI | 替换弹窗、技能附加弹窗、手牌面板 |
 | 牌库升级 | `LevelConfig`、`DeckUpgradeService`、购买合并、等级/经验条 UI |
 | **下一迭代（文档先行）** | 增益商店 + Tier 1–6 解锁 + `BuffCardData` |

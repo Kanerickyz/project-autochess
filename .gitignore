@@ -2,6 +2,10 @@
 .godot/
 /android/
 
+# Editor crash / autosave leftovers
+*.tscn*.tmp
+*.tres*.tmp
+
 # Local validation artifacts
 .artifacts/
 

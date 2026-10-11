@@ -37,7 +37,7 @@ static func decide(grid: BoardGrid, unit: UnitInstance) -> CombatAction:
 	if enemy == null:
 		return action
 
-	var dist := grid.chebyshev_distance(unit_cell, grid.find_cell_of(enemy))
+	var dist := grid.combat_distance(unit_cell, grid.find_cell_of(enemy))
 	if unit.can_perform_normal_attack() and dist <= unit.get_attack_range():
 		action.type = ActionType.ATTACK
 		action.attack_target = enemy

@@ -64,10 +64,10 @@ static func _test_all_floors_connected() -> bool:
 	rng.seed = 99
 	var state := MapGenerator.generate(config, rng)
 	for node in state.nodes:
-		if node.node_type == MapNodeType.Type.BOSS:
+		if node.get_node_type() == MapNodeType.Type.BOSS:
 			continue
-		if node.outgoing_ids.is_empty() and node.node_type != MapNodeType.Type.BOSS:
-			push_error("MapGeneratorTest: node %d has no outgoing edges" % node.id)
+		if node.get_outgoing_ids().is_empty() and node.get_node_type() != MapNodeType.Type.BOSS:
+			push_error("MapGeneratorTest: node %d has no outgoing edges" % node.get_id())
 			return false
 	return true
 
@@ -80,9 +80,9 @@ static func _test_start_and_boss_unique() -> bool:
 	var start_count := 0
 	var boss_count := 0
 	for node in state.nodes:
-		if node.node_type == MapNodeType.Type.START:
+		if node.get_node_type() == MapNodeType.Type.START:
 			start_count += 1
-		if node.node_type == MapNodeType.Type.BOSS:
+		if node.get_node_type() == MapNodeType.Type.BOSS:
 			boss_count += 1
 	if start_count != 1 or boss_count != 1:
 		push_error("MapGeneratorTest: expected 1 start and 1 boss")
@@ -91,8 +91,9 @@ static func _test_start_and_boss_unique() -> bool:
 
 
 static func _test_mystery_resolves() -> bool:
-	var node := MapNodeData.new()
-	node.node_type = MapNodeType.Type.MYSTERY
+	var data := MapNodeData.new()
+	data.node_type = MapNodeType.Type.MYSTERY
+	var node := MapNodeRuntime.new(data)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	MapGenerator.resolve_mystery(node, rng)
@@ -129,7 +130,7 @@ static func _can_reach_boss(state: MapState) -> bool:
 		var node := state.get_node(current_id)
 		if node == null:
 			continue
-		for outgoing_id in node.outgoing_ids:
+		for outgoing_id in node.get_outgoing_ids():
 			if outgoing_id not in visited:
 				queue.append(outgoing_id)
 	return false

@@ -72,7 +72,7 @@ func _rebuild_map() -> void:
 
 	var max_floor := 0
 	for node in _map_state.nodes:
-		max_floor = maxi(max_floor, node.floor)
+		max_floor = maxi(max_floor, node.get_floor())
 	_content.custom_minimum_size = Vector2(
 		640,
 		maxf(800.0, (max_floor + 2) * FLOOR_SPACING + 120.0),
@@ -82,26 +82,30 @@ func _rebuild_map() -> void:
 		var pos := _node_position(node, max_floor)
 		var button := _create_node_button(node, pos)
 		_content.add_child(button)
-		_node_buttons[node.id] = button
+		_node_buttons[node.get_id()] = button
 
 	_path_drawer.queue_redraw()
 	await get_tree().process_frame
 	_scroll.scroll_vertical = int(_content.custom_minimum_size.y)
 
 
-func _node_position(node: MapNodeData, max_floor: int) -> Vector2:
-	var y := (max_floor - node.floor) * FLOOR_SPACING + 40.0
-	var x := 80.0 + node.column * COLUMN_SPACING
+func _node_position(node: MapNodeRuntime, max_floor: int) -> Vector2:
+	var y := (max_floor - node.get_floor()) * FLOOR_SPACING + 40.0
+	var x := 80.0 + node.get_column() * COLUMN_SPACING
 	return Vector2(x, y)
 
 
-func _create_node_button(node: MapNodeData, pos: Vector2) -> Button:
+func _create_node_button(node: MapNodeRuntime, pos: Vector2) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = NODE_SIZE
 	button.position = pos
 	button.toggle_mode = false
 	button.focus_mode = Control.FOCUS_NONE
-	var effective_type := node.get_effective_type() if node.node_type != MapNodeType.Type.MYSTERY else node.node_type
+	var effective_type := (
+		node.get_effective_type()
+		if node.get_node_type() != MapNodeType.Type.MYSTERY
+		else node.get_node_type()
+	)
 	var label := MapNodeType.display_name(effective_type)
 	if node.completed:
 		label = "✓"
@@ -122,7 +126,7 @@ func _create_node_button(node: MapNodeData, pos: Vector2) -> Button:
 	button.add_theme_stylebox_override("hover", style)
 	button.add_theme_stylebox_override("pressed", style)
 	button.add_theme_stylebox_override("disabled", style)
-	button.pressed.connect(_on_node_pressed.bind(node.id))
+	button.pressed.connect(_on_node_pressed.bind(node.get_id()))
 	return button
 
 
@@ -131,10 +135,10 @@ func _draw_paths() -> void:
 		return
 	var max_floor := 0
 	for node in _map_state.nodes:
-		max_floor = maxi(max_floor, node.floor)
+		max_floor = maxi(max_floor, node.get_floor())
 	for node in _map_state.nodes:
 		var from_pos := _node_position(node, max_floor) + NODE_SIZE * 0.5
-		for outgoing_id in node.outgoing_ids:
+		for outgoing_id in node.get_outgoing_ids():
 			var target := _map_state.get_node(outgoing_id)
 			if target == null:
 				continue

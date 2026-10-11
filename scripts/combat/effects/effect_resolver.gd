@@ -53,8 +53,8 @@ func process_next_step() -> bool:
 	var batch: QueuedEffectBatch = _pending_batches.pop_front()
 	var executed: Array = []
 	for entry in batch.entries:
-		var action: EffectAction = entry.get("action")
-		var target: UnitInstance = entry.get("target")
+		var action: EffectAction = entry.action
+		var target: UnitInstance = entry.target
 		if action == null:
 			continue
 		if action.action_type == EffectAction.Type.SPLIT_SELF:
@@ -87,7 +87,8 @@ func process_next_step() -> bool:
 			batch.spec,
 			false,
 		):
-			executed.append(entry)
+			# Payload / presentation still consume Dictionary entries.
+			executed.append({"action": action, "target": target})
 	if not executed.is_empty():
 		_emit_effect_batch_resolved(batch, executed)
 	return true
@@ -129,7 +130,14 @@ func _enqueue_for_event(
 				for action in spec.actions:
 					if action == null:
 						continue
-					batch.entries.append({"action": action, "target": target})
+					var step := QueuedEffectStep.new()
+					step.action = action
+					step.target = target
+					step.owner = unit
+					step.spec = spec
+					step.payload = payload
+					step.depth = depth
+					batch.entries.append(step)
 			if not batch.entries.is_empty():
 				_pending_batches.append(batch)
 
@@ -341,7 +349,7 @@ func _pick_nearest_ally_behind(owner: UnitInstance) -> UnitInstance:
 			continue
 		if unit.grid_pos.y <= owner.grid_pos.y:
 			continue
-		var dist := _grid.manhattan_distance(owner.grid_pos, unit.grid_pos)
+		var dist := _grid.combat_distance(owner.grid_pos, unit.grid_pos)
 		if dist < best_dist:
 			best_dist = dist
 			best = unit
@@ -626,8 +634,15 @@ func _emit_effect_resolved(
 	payload: CombatEventPayload,
 	spec: EffectSpec,
 ) -> void:
+	var step := QueuedEffectStep.new()
+	step.action = action
+	step.target = target
+	step.owner = owner
+	step.spec = spec
+	step.payload = payload
+	var steps: Array[QueuedEffectStep] = [step]
 	_emit_effect_batch_resolved(
-		_make_batch(owner, spec, payload, [{"action": action, "target": target}]),
+		_make_batch(owner, spec, payload, steps),
 		[{"action": action, "target": target}],
 	)
 
@@ -636,7 +651,7 @@ func _make_batch(
 	owner: UnitInstance,
 	spec: EffectSpec,
 	payload: CombatEventPayload,
-	entries: Array,
+	entries: Array[QueuedEffectStep],
 ) -> QueuedEffectBatch:
 	var batch := QueuedEffectBatch.new()
 	batch.owner = owner
@@ -832,13 +847,13 @@ func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool) -> Vector2i:
 	if candidates.is_empty():
 		return Vector2i(-1, -1)
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return _grid.manhattan_distance(origin, a) < _grid.manhattan_distance(origin, b)
+		return _grid.path_cost(origin, a) < _grid.path_cost(origin, b)
 	)
 	if _rng != null and candidates.size() > 1:
-		var best_dist := _grid.manhattan_distance(origin, candidates[0])
+		var best_dist := _grid.path_cost(origin, candidates[0])
 		var close: Array[Vector2i] = []
 		for cell in candidates:
-			if _grid.manhattan_distance(origin, cell) == best_dist:
+			if _grid.path_cost(origin, cell) == best_dist:
 				close.append(cell)
 		return close[_rng.randi_range(0, close.size() - 1)]
 	return candidates[0]

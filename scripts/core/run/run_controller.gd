@@ -4,14 +4,14 @@ extends RefCounted
 enum RunPhase { MAP, ENCOUNTER, RUN_COMPLETE, RUN_DEFEAT }
 
 signal phase_changed(new_phase: RunPhase)
-signal node_entered(node: MapNodeData)
+signal node_entered(node: MapNodeRuntime)
 signal map_updated
 
 var phase: RunPhase = RunPhase.MAP
 var run_state: RunState = RunState.new()
 var map_config: RunMapConfig
 var _rng := RandomNumberGenerator.new()
-var _pending_node: MapNodeData
+var _pending_node: MapNodeRuntime
 
 
 func configure(config: RunMapConfig, seed: int = -1) -> void:
@@ -42,7 +42,7 @@ func get_map_state() -> MapState:
 	return run_state.map_state
 
 
-func get_available_nodes() -> Array[MapNodeData]:
+func get_available_nodes() -> Array[MapNodeRuntime]:
 	if run_state.map_state == null:
 		return []
 	return run_state.map_state.get_available_nodes()
@@ -50,18 +50,18 @@ func get_available_nodes() -> Array[MapNodeData]:
 
 func can_enter_node(node_id: int) -> bool:
 	for node in get_available_nodes():
-		if node.id == node_id:
+		if node.get_id() == node_id:
 			return true
 	return false
 
 
-func enter_node(node_id: int) -> MapNodeData:
+func enter_node(node_id: int) -> MapNodeRuntime:
 	if not can_enter_node(node_id):
 		return null
 	var node := run_state.map_state.get_node(node_id)
 	if node == null:
 		return null
-	if node.node_type == MapNodeType.Type.MYSTERY:
+	if node.get_node_type() == MapNodeType.Type.MYSTERY:
 		MapGenerator.finalize_mystery_node(node, map_config, _rng)
 	_pending_node = node
 	run_state.map_state.mark_current(node_id)
@@ -71,7 +71,7 @@ func enter_node(node_id: int) -> MapNodeData:
 	return node
 
 
-func get_pending_node() -> MapNodeData:
+func get_pending_node() -> MapNodeRuntime:
 	return _pending_node
 
 
@@ -85,8 +85,8 @@ func complete_encounter() -> void:
 	if _pending_node == null:
 		return
 	var node_type := _pending_node.get_effective_type()
-	run_state.map_state.complete_node(_pending_node.id)
-	run_state.current_node_id = _pending_node.id
+	run_state.map_state.complete_node(_pending_node.get_id())
+	run_state.current_node_id = _pending_node.get_id()
 	if MapNodeType.is_combat(node_type):
 		run_state.completed_encounter_count += 1
 	if node_type != MapNodeType.Type.SHOP:

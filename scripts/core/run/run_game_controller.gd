@@ -76,18 +76,19 @@ func _on_map_node_selected(node_id: int) -> void:
 			run_controller.complete_encounter()
 			return
 		MapNodeType.Type.COMBAT, MapNodeType.Type.ELITE, MapNodeType.Type.BOSS:
-			if node.encounter == null:
+			var encounter := node.get_encounter()
+			if encounter == null:
 				push_warning("RunGameController: combat node missing encounter")
 				run_controller.complete_encounter()
 				return
-			_board.start_run_encounter(node.encounter, run_controller.get_encounter_tier_index())
+			_board.start_run_encounter(encounter, run_controller.get_encounter_tier_index())
 		MapNodeType.Type.SHOP:
 			run_controller.register_shop_visit()
 			_board.start_map_shop(run_controller.get_shop_wave())
 		MapNodeType.Type.REST:
 			_rest_screen.show_rest()
 		MapNodeType.Type.EVENT:
-			var event_data := node.event_data
+			var event_data := node.get_event_data()
 			if event_data == null and run_controller.map_config != null:
 				var pool := run_controller.map_config.event_pool
 				if not pool.is_empty():
@@ -126,8 +127,9 @@ func _on_encounter_completed(won: bool) -> void:
 		_board.initialize_for_run(run_controller)
 		return
 	var node := run_controller.get_pending_node()
-	if node != null and node.encounter != null and node.encounter.bonus_gold > 0:
-		_board.grant_bonus_gold(node.encounter.bonus_gold)
+	var encounter := node.get_encounter() if node != null else null
+	if encounter != null and encounter.bonus_gold > 0:
+		_board.grant_bonus_gold(encounter.bonus_gold)
 	run_controller.complete_encounter()
 
 
@@ -150,13 +152,14 @@ func _on_rest_choice_selected(choice: StringName) -> void:
 
 func _on_event_choice_selected(index: int) -> void:
 	var node := run_controller.get_pending_node()
-	if node == null or node.event_data == null:
+	var event_data := node.get_event_data() if node != null else null
+	if node == null or event_data == null:
 		_event_screen.hide_event()
 		run_controller.complete_encounter()
 		return
-	if index < 0 or index >= node.event_data.choices.size():
+	if index < 0 or index >= event_data.choices.size():
 		return
-	var choice := node.event_data.choices[index]
+	var choice := event_data.choices[index]
 	if choice.effect_type == EventChoice.EffectType.HEAL_ALL_UNITS:
 		_board.heal_all_player_units()
 	var pool: Array[BuffCardData] = []

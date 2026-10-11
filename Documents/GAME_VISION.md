@@ -230,7 +230,7 @@ P = 玩家单位    M = 怪物    · = 空格（可刷怪）
 | M2b | `CombatArena`、`CombatEventBus`、`DamagePipeline`、`UnitBrain` 框架 | **已实现** |
 | M2c | `PREPARE → COMBAT → RESOLVE → PREPARE` 多波循环 | **已实现**（dev 关卡 2 波） |
 | M3 | 商店 / 击杀掉金 + 波次结算金（**旧 MVP 已实现**：备战席、购买、刷新、出售、点击布阵） |
-| M3b | 牌库 + 角色/增益商店 + Tier + 每波无放回抽 5 + 满库替换 + 增益附加 UI | **已实现** |
+| M3b | 牌库 + 角色/增益商店 + Tier + 满库替换 + 增益附加 UI（手牌 As-Is 整库；抽 5 To-Be） | **已实现（抽牌除外）** |
 | M3.5 | `EffectResolver` + `EffectSpec` 框架 + 3 个样本技能 | **已实现** |
 | M4 | 增益商店 + Tier 1–6 + 更多内建技能 + 关卡 UI | **文档先行** |
 | M5 | 多关卡、多流派样板单位、技能 tooltip、平衡、美术与音效 |

@@ -8,6 +8,8 @@ extends Resource
 @export var blocked_cells: Array[Vector2i] = []
 ## 线性开发关波次表；爬塔 Run 模式请改用 EncounterData 池
 @export var waves: Array[WaveData] = []
+## Optional enemy spawn pool (decoupled from shop). Empty → fall back to ShopPoolConfig.
+@export var enemy_pool: Array[UnitData] = []
 
 @export_group("Terrain WFC")
 ## 为 true 时用 WFC 生成地形（覆盖 blocked_cells）

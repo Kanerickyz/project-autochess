@@ -31,13 +31,10 @@ func roll_damage(
 	source: UnitInstance,
 	base_amount: int,
 	allow_crit: bool = true,
-) -> Dictionary:
-	var result := {
-		"amount": base_amount,
-		"is_crit": false,
-	}
+) -> DamageRoll:
+	var result := DamageRoll.new(base_amount, false)
 	if base_amount <= 0:
-		result["amount"] = 0
+		result.amount = 0
 		return result
 	if source == null or not allow_crit or _rng == null:
 		return result
@@ -45,8 +42,8 @@ func roll_damage(
 	if crit_rate <= 0.0:
 		return result
 	if _rng.randf() < crit_rate:
-		result["is_crit"] = true
-		result["amount"] = maxi(1, int(round(float(base_amount) * CRIT_DAMAGE_MULT)))
+		result.is_crit = true
+		result.amount = maxi(1, int(round(float(base_amount) * CRIT_DAMAGE_MULT)))
 	return result
 
 
@@ -89,7 +86,7 @@ func apply_rolled_damage(
 	allow_crit: bool = true,
 ) -> void:
 	var rolled := roll_damage(source, base_amount, allow_crit)
-	apply_damage(source, target, rolled["amount"], rolled["is_crit"])
+	apply_damage(source, target, rolled.amount, rolled.is_crit)
 
 
 func apply_attack_exchange(attacker: UnitInstance, defender: UnitInstance) -> void:

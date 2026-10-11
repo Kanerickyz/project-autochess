@@ -21,11 +21,12 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	var floor_nodes: Array = []
 
 	# Floor 0: START
-	var start_node := _make_node(next_id, 0, config.column_count / 2, MapNodeType.Type.START, config, rng)
+	var start_data := _make_node(next_id, 0, config.column_count / 2, MapNodeType.Type.START, config, rng)
 	next_id += 1
+	var start_node := MapNodeRuntime.new(start_data)
 	state.nodes.append(start_node)
-	state.start_node_id = start_node.id
-	floor_nodes.append([start_node])
+	state.start_node_id = start_node.get_id()
+	floor_nodes.append([start_data])
 
 	# Middle floors
 	for floor_index in range(1, config.floor_count + 1):
@@ -34,21 +35,22 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 		var floor_list: Array[MapNodeData] = []
 		for column in columns:
 			var node_type := _pick_node_type(config, floor_index, rng)
-			var node := _make_node(next_id, floor_index, column, node_type, config, rng)
+			var node_data := _make_node(next_id, floor_index, column, node_type, config, rng)
 			next_id += 1
-			state.nodes.append(node)
-			floor_list.append(node)
+			state.nodes.append(MapNodeRuntime.new(node_data))
+			floor_list.append(node_data)
 		floor_nodes.append(floor_list)
 
 	# Boss floor (top)
 	var boss_floor := config.floor_count + 1
-	var boss_node := _make_node(next_id, boss_floor, config.column_count / 2, MapNodeType.Type.BOSS, config, rng)
+	var boss_data := _make_node(next_id, boss_floor, config.column_count / 2, MapNodeType.Type.BOSS, config, rng)
 	if config.boss_encounter != null:
-		boss_node.encounter = config.boss_encounter
+		boss_data.encounter = config.boss_encounter
 	next_id += 1
+	var boss_node := MapNodeRuntime.new(boss_data)
 	state.nodes.append(boss_node)
-	state.boss_node_id = boss_node.id
-	floor_nodes.append([boss_node])
+	state.boss_node_id = boss_node.get_id()
+	floor_nodes.append([boss_data])
 
 	_connect_floors(floor_nodes, rng)
 	_assign_encounters(floor_nodes, config, rng)
@@ -59,26 +61,26 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	return state
 
 
-static func resolve_mystery(node: MapNodeData, rng: RandomNumberGenerator) -> void:
-	if node == null or node.node_type != MapNodeType.Type.MYSTERY:
+static func resolve_mystery(node: MapNodeRuntime, rng: RandomNumberGenerator) -> void:
+	if node == null or node.data == null or node.get_node_type() != MapNodeType.Type.MYSTERY:
 		return
 	var pick := _MYSTERY_RESOLVE_TYPES[rng.randi_range(0, _MYSTERY_RESOLVE_TYPES.size() - 1)]
 	node.resolved_type = pick
 
 
 static func finalize_mystery_node(
-	node: MapNodeData,
+	node: MapNodeRuntime,
 	config: RunMapConfig,
 	rng: RandomNumberGenerator,
 ) -> void:
 	resolve_mystery(node, rng)
-	if node == null or config == null:
+	if node == null or node.data == null or config == null:
 		return
 	var effective := node.get_effective_type()
-	if effective == MapNodeType.Type.EVENT and node.event_data == null and not config.event_pool.is_empty():
-		node.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
-	if MapNodeType.is_combat(effective) and node.encounter == null:
-		node.encounter = _roll_encounter(config, effective, rng)
+	if effective == MapNodeType.Type.EVENT and node.data.event_data == null and not config.event_pool.is_empty():
+		node.data.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
+	if MapNodeType.is_combat(effective) and node.data.encounter == null:
+		node.data.encounter = _roll_encounter(config, effective, rng)
 
 
 static func _make_node(

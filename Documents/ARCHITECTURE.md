@@ -9,15 +9,17 @@
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
 - **M3.5 Effect**：`EffectSpec` / `EffectAction` / `AbilityData`、`EffectResolver`、`StatModifierStack`；样本：受伤+2攻、死亡召唤2HP、移动+1血
-- **M3b Deck/Shop**：`DeckState`、`DrawService`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
+- **M3b Deck/Shop**：`DeckState`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
+- **手牌 As-Is**：PREPARE/SHOP 阶段 `HandPanel` 展示**完整牌库**可选放置；设计目标「每波无放回抽 5」（`DrawService`）**尚未实装**
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
 - **M2 交互**：进入波次 → 准备布阵 → 开始战斗 → 空闲格刷怪 → 自动战斗 → 波次结算（发金）→ 商店构筑 → 下一波 PREPARE
-- 尚无：商店锁定、牌库内手动合并
-- **已实现 Autoload**：`GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
+- 尚无：商店锁定、牌库内手动合并、`DrawService` 抽牌
+- **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
+- **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
 - **未创建** `resources/traits/`（v1 不含羁绊）
-- 版本控制仅忽略 `.godot/` 与 `android/`
+- 版本控制忽略 `.godot/`、`android/`、本地 `.artifacts/`、编辑器 `*.tscn*.tmp`
 
-可在编辑器中 F5 验证棋盘。后续按里程碑 M2 接入波次与刷怪。文档中的 **To-Be** 部分为推荐架构，供实现时对齐。
+可在编辑器中 F5 验证棋盘。文档中的 **To-Be** 若与 As-Is 冲突，以代码与本节为准。
 
 ---
 
@@ -74,8 +76,8 @@ flowchart TB
 2. **效果描述统一**：所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。远期若加羁绊，须复用同一管线，禁止另写一套 Buff。
 3. **战斗事件单一入口**：触发类逻辑只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接修改其他单位属性。
 4. **模拟与表现分离**：战斗结果可先由纯逻辑算出，再由场景播放动画（避免帧率影响平衡）。
-5. **信号 / 事件总线**：流程与 UI 用 `EventBus` Autoload；**战斗内触发不走全局 Bus**，避免跨局泄漏。
-6. **2D 优先**：逻辑网格与像素坐标分离；战斗舞台使用 `Node2D` + `YSort`（按需）。
+5. **信号 / 事件总线**：流程与 UI 用**控制器显式信号**（`BoardController` / `RunGameController`）连接，**不**采用全局 `EventBus` Autoload；**战斗内触发不走全局 Bus**，避免跨局泄漏。
+6. **逻辑与表现分离**：逻辑网格与世界坐标分离；主路径战斗舞台为 `BoardWorld`（3D）+ `CombatPresentation`；遗留 2D `BoardView` 不在热路径。
 
 ---
 
@@ -116,8 +118,8 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 步骤 | 状态 | 要点 |
 |------|------|------|
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
-| 2 准备 | PREPARE | 每波 `DrawService` 无放回抽 5 → 选择放置；首波前商店已在关卡加载时 roll |
-| 3 战斗 | COMBAT | 击杀即时掉金；`CombatEventBus` 生命周期限于 COMBAT |
+| 2 准备 | PREPARE | 手牌展示牌库条目并选择放置（抽 5 To-Be）；首波前商店已在关卡加载时 roll |
+| 3 战斗 | COMBAT | 击杀即时掉金；`CombatEventBus` 于开战创建、战后 `stop_combat` 销毁 |
 | 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；**不得**直接开下一场战斗 |
 | 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡（文档目标；代码仍为技能卡）；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()` |
 | 6 下一波 | PREPARE → COMBAT | 玩家手动点「开始第 N 波」 |
@@ -143,7 +145,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 **Legacy（已移除）**：`BenchState` / 备战席 UI — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。  
 
-数据：`ShopPoolConfig`（角色池 + 增益池 To-Be / 技能池 As-Is）、`DeckConfig`；运行时 `ShopService` + `DeckState` + `DrawService`。
+数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState`（`DrawService` To-Be）。
 
 #### 3.2.1 Tier 解锁（To-Be）
 
@@ -157,7 +159,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 - **棋盘**：每关可配置 `width × height` 方格；玩家单位与怪物**共享同一网格**；每格最多一单位
 - **牌库（Deck）**：Run 内 `DeckEntry` 列表（默认 10 占位、上限 20）；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
-- **每波抽牌**：PREPARE 开始时 `DrawService` 无放回抽 5 → **本波手牌** → 选择放置到棋盘
+- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 开始时 `DrawService` 无放回抽 5 → **本波手牌** → 选择放置
 - **布阵规则**：仅 PREPARE 阶段可放置；战斗开始锁定布局
 
 **Legacy（已移除）**：原备战席点击上场流程 — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。
@@ -225,7 +227,7 @@ extends Resource
 - **牌库等级**：`DeckEntry.level`（1–3）+ `LevelConfig` 经验阈值；商店购买同名合并；升级永久 +1/+1；战斗技能数值 × `UnitInstance.level`
 - **牌库永久加成**：`DeckEntry.bonus_attack` / `bonus_max_hp` / `bonus_crit_rate_percent`；`UnitInstance.from_deck_entry()` 将 `bonus_crit_rate_percent` 合并进 `stats.crit_rate_percent`
 - **联动技能（Ability）**：`UnitData.ability`（**必填**）+ 可选 `passives`；`AbilityData` 持有 `Array[EffectSpec]`，战斗内由 `CombatEventBus` 驱动
-- **增益（Buff）**：`BuffCardData` 挂 `DeckEntry.attached_buffs`；永久属性 / 规则 flag / 战斗→Run 经济钩子；**不**默认并入 `get_all_effect_specs()`（见 BUFF_SYSTEM）
+- **增益（Buff） / 事件选项**：商店与事件的**非战斗永久改写**走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`），**不**默认并入 `get_all_effect_specs()`。凡会进入战斗触发的效果必须挂 `EffectSpec`（见 BUFF_SYSTEM）
 - **tags**：供 `allies_with_tag` 等目标选择使用；**v1 不做**「凑 N 个同 tag 触发团队增益」的 Trait 系统
 
 **远期 Trait（非 v1）**：若加入 `TraitData` / `TraitSystem`，按 [GAME_VISION.md](./GAME_VISION.md) 约定复用 `EffectSpec`，不在 v1 目录与里程碑中实现。
@@ -252,7 +254,7 @@ flowchart LR
 
 #### CombatEventBus（战斗域）
 
-- **生命周期**：进入 `COMBAT` 时创建，离开 `RESOLVE` 时销毁；与全局 `EventBus` 分离。
+- **生命周期**：进入 `COMBAT` 时由 `CombatArena.start_combat` 创建；战斗结束经 `CombatArena.stop_combat` 销毁（主流程与沙盒均须调用）。不注册为 Autoload。
 - **v1 战斗事件**（[`CombatEvents`](../scripts/combat/events/combat_events.gd)，`StringName`）：
 
 ```
@@ -297,7 +299,7 @@ extends Resource
 - 挂载：`BoardGrid.cell_effects`；`EffectAction.APPLY_CELL_EFFECT` 向格写入效果。
 - 时机：每 combat tick **移动阶段开始前**对格上单位结算 `damage_per_tick`，随后递减 `duration_rounds`；**不在**进入格子时重复结算。
 - 每格同时仅一种效果；`add_effect` 会**覆盖**旧效果并重置持续回合。
-- 表现：`BoardView.sync_cell_effects()` 为燃烧格着色 overlay。
+- 表现：主路径由 `BoardScene3D` 同步格子效果着色；遗留 `BoardView.sync_cell_effects()` 仅供对照。
 
 #### AbilityData（v1）
 
@@ -312,16 +314,13 @@ extends Resource
 
 ---
 
-## 4. 推荐 Autoload
+## 4. Autoload（As-Is）
 
-| 名称 | 路径（建议） | 职责 | 状态 |
-|------|----------------|------|------|
-| `GameSettings` | `scripts/autoload/game_settings.gd` | 主音量、全屏；`user://settings.cfg` 持久化 | **已实现** |
-| `EventBus` | `scripts/autoload/event_bus.gd` | 全局信号 hub | 待实现 |
-| `GameState` | `scripts/autoload/game_state.gd` | 当前关卡、波次、玩家 HP / 基地 HP | 待实现 |
-| `DataRegistry` | `scripts/autoload/data_registry.gd` | 启动时加载 `UnitData` / `AbilityData`；校验 `trigger` 已注册（v1 不加载 Trait） | 待实现 |
+| 名称 | 路径 | 职责 | 状态 |
+|------|------|------|------|
+| `GameSettings` | `scripts/autoload/game_settings.gd` | 主音量、全屏；`user://settings.cfg` 持久化 | **已实现**（唯一 Autoload） |
 
-`GameSettings` 已在 `project.godot` 的 `[autoload]` 段注册；其余实现后添加。
+**不采用**全局 `EventBus` / `GameState` / `DataRegistry` Autoload：流程状态由 `BoardController` / `RunController` / `MatchStateMachine` 持有，UI 通过显式信号连接；单位与技能数据由场景 `@export` 与 `resources/**/*.tres` 加载。这符合 Godot「少用全局单例」实践，并避免战斗事件跨局泄漏。
 
 ---
 
@@ -349,9 +348,9 @@ assets/               → 仅美术/音频
 | 主题 | 建议 |
 |------|------|
 | 语言 | GDScript 2.0（类型注解、`@export`） |
-| 2D 渲染 | `Sprite2D` + `AnimationPlayer`；大量单位考虑 `AnimatedSprite2D` 合批 |
-| 物理 | 2D 战斗若不需要刚体，可用距离检测代替 `PhysicsBody2D` 以降低开销 |
-| 配置 | `project.godot` 中 `config/features` 含 Forward Plus；纯 2D 可后续评估 Mobile / Compatibility |
+| 棋盘表现 | 主路径 `BoardScene3D` + 单位卡显示；逻辑仍为矩形网格 `BoardGrid` |
+| 物理 | 战斗用网格距离检测，不依赖刚体碰撞结算 |
+| 配置 | `project.godot` 中 `config/features` 含 Forward Plus；3D 物理引擎为 Jolt（棋盘拾取可另用） |
 | 本地化 | 早期用 `StringName` + CSV/PO；`display_name` 走 `tr()` |
 
 ---
@@ -365,7 +364,7 @@ assets/               → 仅美术/音频
 3. **M2b** `CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`（无 Effect）
 4. **M2c** `MatchStateMachine` 多波 `PREPARE → COMBAT → RESOLVE`
 5. 商店 → 备战席 → 购买（M3 Legacy，**已由 M3b 替换**）
-6. **M3b** 牌库 + 双卡种商店 + 抽牌布阵（**已实现**；技能商店 **待迁移增益 + Tier**，见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）
+6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；`DrawService` 抽 5 **To-Be**，见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）
 7. **`EffectResolver` + 样板联动技能** + 增益卡资源 + Tier roll（M4）
 8. 多关卡、多流派样板、tooltip、平衡、美术音效、存档（M5）
 

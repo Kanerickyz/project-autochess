@@ -1,10 +1,10 @@
 class_name ShopPhaseScreen
 extends Control
 
+@onready var shop_panel: ShopPanel = %ShopPanel
+@onready var finish_button: Button = %FinishShopButton
 @onready var _shop_content: VBoxContainer = $CenterContainer/ShopContent
-@onready var _title: Control = $CenterContainer/ShopContent/Title
-@onready var _shop_panel: Control = $CenterContainer/ShopContent/ShopPanel
-@onready var _finish_button: Control = $CenterContainer/ShopContent/FinishShopButton
+@onready var _title: Control = %Title
 
 var transition_active: bool = false
 
@@ -13,7 +13,7 @@ var _anim_items: Array[Control] = []
 
 
 func _ready() -> void:
-	_anim_items = [_title, _shop_panel, _finish_button]
+	_anim_items = [_title, shop_panel, finish_button]
 
 
 func show_instant() -> void:
