@@ -5,6 +5,7 @@
 - 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/SHOP_SYSTEM.md](Documents/SHOP_SYSTEM.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md)、[Documents/ABILITIES.md](Documents/ABILITIES.md)；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。
 - [Documents/ABILITY_PROPOSALS.md](Documents/ABILITY_PROPOSALS.md) 与愿景里未决的胜利条件是提案，不是实装。
 - Godot 4.6、GDScript，默认入口 `scenes/main/main_menu.tscn`。
+- Cloud Agent 环境应提供 PATH 上的 `godot`（4.6）；可用 `GODOT_BIN` 覆盖。Headless 验证：`godot --headless --path . --script res://scripts/**/*_test_runner.gd`。GUI 验收用桌面 DISPLAY（常见为 `:1`）；无声卡时引擎会回退 dummy 音频驱动，属预期。
 - 用户当前请求优先于项目默认规则；只解决当前范围，不顺带重写游戏系统。
 
 ## 游戏约束
