@@ -36,12 +36,16 @@ func is_combat_active() -> bool:
 	return _combat_active
 
 
-func layout_for_viewport(side_inset: float = 0.0) -> void:
+func layout_for_viewport(side_inset: float = -1.0) -> void:
 	var vp := get_viewport().get_visible_rect().size
-	var play_w := maxf(100.0, vp.x - side_inset)
+	## Default: CR-style side gutters so the fenced tile field is not full-bleed.
+	var inset := side_inset if side_inset >= 0.0 else BoardLayout.play_margin_h(vp.x)
+	var play_w := maxf(100.0, vp.x - inset)
 	var play_h := maxf(
 		100.0,
-		vp.y - BoardLayout.PLAY_MARGIN_TOP - BoardLayout.PLAY_MARGIN_BOTTOM,
+		vp.y
+		- BoardLayout.play_margin_top(vp.y)
+		- BoardLayout.play_margin_bottom(vp.y),
 	)
 	_layout_aspect = play_w / play_h
 	apply_prepare_pose()

@@ -6,6 +6,6 @@
 script = ExtResource("1")
 prepare_elevation_deg = 78.0
 combat_elevation_deg = 30.0
-## Tighter portrait frame so the 4×8 field fills the mid-band (CR-like).
-ortho_size_multiplier = 1.12
-ortho_padding = 1.04
+## Zoom out: playable tiles sit as an inset fenced island (CR arena), not full mid-band.
+ortho_size_multiplier = 1.55
+ortho_padding = 1.12

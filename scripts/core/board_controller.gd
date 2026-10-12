@@ -154,6 +154,8 @@ func _ready() -> void:
 	_deck_replace_modal.cancelled.connect(_on_deck_replace_cancelled)
 	_buff_attach_modal.entry_selected.connect(_on_buff_attach_selected)
 	_buff_attach_modal.cancelled.connect(_on_buff_attach_cancelled)
+	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
+		get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 	run_economy.gold_changed.connect(_on_gold_changed)
 	shop_service.shop_changed.connect(_refresh_shop_ui)
@@ -574,13 +576,24 @@ func _setup_board() -> void:
 
 func _configure_board_presentation() -> void:
 	var vp_size := get_viewport().get_visible_rect().size
+	if _hand_panel != null:
+		_hand_panel.layout_as_bottom_dock(vp_size.y)
 	var pixel_cell := BoardLayout.compute_cell_size(board_grid, vp_size)
 	_board_scene.setup(board_grid, _combat_camera, _board_vfx_layer, pixel_cell)
+	## Side gutters + bottom dock: arena frames as an inset playable box (CR-like).
 	_camera_rig.layout_for_viewport()
 
 
 func _layout_board() -> void:
 	_configure_board_presentation()
+
+
+func _on_viewport_size_changed() -> void:
+	if not is_node_ready() or _board_scene == null:
+		return
+	_layout_board()
+	if _board_world != null and _board_world.visible:
+		_board_scene.refresh()
 
 
 func _bind_combat_presentation() -> void:

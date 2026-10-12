@@ -42,6 +42,27 @@ func _store_home_offsets() -> void:
 	_home_offsets_ready = true
 
 
+## Match Clash Royale card-dock height; keep card row + header inside the reserved bottom band.
+func layout_as_bottom_dock(viewport_height: float) -> void:
+	var dock_h := BoardLayout.hand_dock_height(viewport_height)
+	var bottom_pad := 4.0
+	offset_left = 4.0
+	offset_right = -4.0
+	offset_top = -(dock_h - bottom_pad)
+	offset_bottom = -bottom_pad
+	var header_budget := 28.0
+	var card_h := clampf(dock_h - header_budget - bottom_pad, 124.0, 160.0)
+	if _scroll != null:
+		_scroll.custom_minimum_size.y = card_h
+	if _start_button_host != null:
+		_start_button_host.custom_minimum_size = Vector2(
+			_start_button_host.custom_minimum_size.x,
+			card_h,
+		)
+	_home_offsets_ready = false
+	_store_home_offsets()
+
+
 func get_withdraw_drop_rect() -> Rect2:
 	if _scroll != null and is_instance_valid(_scroll):
 		return _scroll.get_global_rect().grow(8.0)
