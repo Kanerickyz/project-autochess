@@ -1,5 +1,7 @@
 [gd_resource type="Theme" format=3]
 
+[ext_resource type="FontFile" uid="uid://d3sfjw74n3i3e" path="res://assets/fonts/DroidSansFallback.ttf" id="1_font"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
 bg_color = Color(0.22, 0.42, 0.38, 1)
 border_width_left = 2
@@ -49,11 +51,14 @@ content_margin_right = 10.0
 content_margin_bottom = 10.0
 
 [resource]
-default_font_size = 16
+default_font = ExtResource("1_font")
+default_font_size = 15
 Button/colors/font_color = Color(0.95, 0.97, 0.96, 1)
 Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/font_sizes/font_size = 15
 Button/styles/normal = SubResource("StyleBoxFlat_btn")
 Button/styles/hover = SubResource("StyleBoxFlat_btn_hover")
 Button/styles/pressed = SubResource("StyleBoxFlat_btn")
 Label/colors/font_color = Color(0.92, 0.94, 0.93, 1)
+Label/font_sizes/font_size = 15
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")

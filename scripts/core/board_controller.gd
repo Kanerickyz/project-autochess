@@ -16,8 +16,8 @@ const _BoardCameraRigScript := preload("res://scripts/ui/board_camera_rig.gd")
 
 @export_group("Board Size")
 @export var size_mode: BoardSizeMode = BoardSizeMode.USE_LEVEL_DATA
-@export_range(1, 24, 1) var board_width: int = 6
-@export_range(1, 24, 1) var board_height: int = 6
+@export_range(1, 24, 1) var board_width: int = 4
+@export_range(1, 24, 1) var board_height: int = 8
 
 @export_group("Level")
 @export var level_data: LevelData
@@ -664,6 +664,9 @@ func try_deploy_entry(entry_id: int, cell: Vector2i, clear_selection: bool = fal
 	if board_grid.is_blocked(cell):
 		_set_status("该格不可放置")
 		return false
+	if not BoardHalf.is_player_deploy_cell(cell, board_grid.get_size().y):
+		_set_status("只能放在我方半场空格")
+		return false
 	if board_grid.get_unit(cell) != null:
 		_set_status("该格已被占用")
 		return false
@@ -748,6 +751,9 @@ func try_reposition_unit(unit: UnitInstance, to_cell: Vector2i) -> bool:
 	if board_grid.is_blocked(to_cell):
 		_set_status("该格不可放置")
 		return false
+	if not BoardHalf.is_player_deploy_cell(to_cell, board_grid.get_size().y):
+		_set_status("只能放在我方半场空格")
+		return false
 
 	var occupant := board_grid.get_unit(to_cell)
 	var status_msg := "已移动单位"
@@ -816,8 +822,12 @@ func _can_drop_on_board_cell(
 		return false
 	match drag_source:
 		PlacementDragController.Source.HAND:
-			return board_grid.get_unit(cell) == null
+			if board_grid.get_unit(cell) != null:
+				return false
+			return BoardHalf.is_player_deploy_cell(cell, board_grid.get_size().y)
 		PlacementDragController.Source.BOARD:
+			if not BoardHalf.is_player_deploy_cell(cell, board_grid.get_size().y):
+				return false
 			var occupant := board_grid.get_unit(cell)
 			if occupant == null:
 				return true
@@ -1851,7 +1861,9 @@ func _find_deployed_cell_for_entry(entry_id: int) -> Vector2i:
 func _is_placeable_preview_cell(cell: Vector2i) -> bool:
 	if not board_grid.in_bounds(cell) or board_grid.is_blocked(cell):
 		return false
-	return board_grid.get_unit(cell) == null
+	if board_grid.get_unit(cell) != null:
+		return false
+	return BoardHalf.is_player_deploy_cell(cell, board_grid.get_size().y)
 
 
 func _refresh_shop_ui() -> void:

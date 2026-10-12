@@ -750,7 +750,15 @@ func _rebuild_board() -> void:
 			cell_node.position = Vector3(x * _tile_size, 0.0, y * _tile_size)
 			var has_terrain := _grid.has_terrain()
 			var terrain := _grid.get_terrain(cell) if has_terrain else TerrainType.Type.GRASS
-			cell_node.setup(cell, _grid.is_blocked(cell), _tile_size, terrain, has_terrain)
+			var board_h := _grid.get_size().y if _grid != null else -1
+			cell_node.setup(
+				cell,
+				_grid.is_blocked(cell),
+				_tile_size,
+				terrain,
+				has_terrain,
+				board_h,
+			)
 			_tile_root.add_child(cell_node)
 			_cells[cell] = cell_node
 			_cell_home_positions[cell] = cell_node.position
@@ -792,7 +800,9 @@ func _is_placeable_cell(cell: Vector2i) -> bool:
 		return false
 	if not _grid.in_bounds(cell) or _grid.is_blocked(cell):
 		return false
-	return _grid.get_unit(cell) == null
+	if _grid.get_unit(cell) != null:
+		return false
+	return BoardHalf.is_player_deploy_cell(cell, _grid.get_size().y)
 
 
 func _apply_unit_visual_states() -> void:

@@ -6,7 +6,7 @@
 
 [resource]
 script = ExtResource("1")
-board_width = 8
+board_width = 4
 board_height = 8
 generate_terrain = true
 terrain_tileset = ExtResource("2_nqghs")

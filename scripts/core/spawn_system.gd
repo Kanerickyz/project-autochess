@@ -142,9 +142,13 @@ static func _simulate_entry_placements(
 
 static func _get_available_cells(grid: BoardGrid, reserved: Dictionary) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
+	var height := grid.get_size().y
 	for cell in grid.get_empty_cells():
-		if not reserved.has(cell):
-			cells.append(cell)
+		if reserved.has(cell):
+			continue
+		if not BoardHalf.is_enemy_spawn_cell(cell, height):
+			continue
+		cells.append(cell)
 	return cells
 
 
@@ -157,7 +161,9 @@ static func _is_cell_available_for_spawn(
 		return false
 	if not grid.can_place_at(cell):
 		return false
-	return grid.get_unit(cell) == null
+	if grid.get_unit(cell) != null:
+		return false
+	return BoardHalf.is_enemy_spawn_cell(cell, grid.get_size().y)
 
 
 static func _sort_cells_deterministic(cells: Array[Vector2i]) -> void:

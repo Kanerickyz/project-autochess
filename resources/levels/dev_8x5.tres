@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_level")
-board_width = 8
-board_height = 5
+board_width = 4
+board_height = 8
 blocked_cells = []

@@ -20,6 +20,6 @@
 
 [resource]
 script = ExtResource("1_level")
-board_width = 8
+board_width = 4
 board_height = 8
 waves = Array[ExtResource("2_ghr4p")]([ExtResource("2_w1"), ExtResource("3_w2"), ExtResource("5_do48c"), ExtResource("6_p1a63"), ExtResource("7_3p5as"), ExtResource("8_w6"), ExtResource("9_w7"), ExtResource("10_w8"), ExtResource("11_w9"), ExtResource("12_w10"), ExtResource("13_w11"), ExtResource("14_w12"), ExtResource("15_w13"), ExtResource("16_w14"), ExtResource("17_w15")])

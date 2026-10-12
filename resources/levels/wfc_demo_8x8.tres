@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_level")
-board_width = 8
+board_width = 4
 board_height = 8
 waves = Array[ExtResource("3_wave")]([ExtResource("4_w1")])
 generate_terrain = true

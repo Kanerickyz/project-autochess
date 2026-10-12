@@ -48,7 +48,8 @@ func _build_layout() -> void:
 	add_child(_scroll)
 
 	_content = Control.new()
-	_content.custom_minimum_size = Vector2(640, 800)
+	var view_w := maxf(360.0, size.x)
+	_content.custom_minimum_size = Vector2(view_w, 800)
 	_scroll.add_child(_content)
 
 	_path_drawer = Control.new()
@@ -73,8 +74,9 @@ func _rebuild_map() -> void:
 	var max_floor := 0
 	for node in _map_state.nodes:
 		max_floor = maxi(max_floor, node.get_floor())
+	var view_w := maxf(360.0, size.x)
 	_content.custom_minimum_size = Vector2(
-		640,
+		view_w,
 		maxf(800.0, (max_floor + 2) * FLOOR_SPACING + 120.0),
 	)
 
@@ -91,7 +93,8 @@ func _rebuild_map() -> void:
 
 func _node_position(node: MapNodeRuntime, max_floor: int) -> Vector2:
 	var y := (max_floor - node.get_floor()) * FLOOR_SPACING + 40.0
-	var x := 80.0 + node.get_column() * COLUMN_SPACING
+	var content_w := _content.custom_minimum_size.x if _content != null else 360.0
+	var x := clampf(24.0 + node.get_column() * COLUMN_SPACING, 16.0, content_w - NODE_SIZE.x - 16.0)
 	return Vector2(x, y)
 
 

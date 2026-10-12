@@ -61,8 +61,8 @@ Project Autochess/
 | 路径 | 职责 | 状态 |
 |------|------|------|
 | `scenes/main/main.tscn` | 对局根场景、Camera2D | **M1 已实现** |
-| `scenes/_legacy/ui/board_view.tscn` | 旧 2D 棋盘（非热路径） | **Legacy** |
-| `scenes/ui/board_world.tscn` | 3D 棋盘世界（主路径） | **已实现** |
+| `scenes/_legacy/ui/board_view.tscn` | 旧 2D 棋盘（非热路径，无玩家切换入口） | **Legacy** |
+| `scenes/ui/board_world.tscn` | 3D 战场（主路径；无 2D/3D 切换） | **已实现** |
 | `scenes/ui/board_cell.tscn` | 格子 Area2D | **M1 已实现** |
 | `scenes/units/placeholder_unit.tscn` | 占位单位视觉 | **M1 已实现** |
 | `scripts/core/board_grid.gd` | 格占用、`get_empty_cells` | **M1 已实现** |

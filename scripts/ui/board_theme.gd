@@ -26,30 +26,47 @@ static func is_light_square(cell: Vector2i) -> bool:
 	return (cell.x + cell.y) % 2 == 0
 
 
-static func get_base_color(cell: Vector2i, blocked: bool) -> Color:
+static func get_base_color(cell: Vector2i, blocked: bool, board_height: int = -1) -> Color:
 	var theme := get_config()
 	if blocked:
 		return theme.color_blocked
-	return theme.color_light if is_light_square(cell) else theme.color_dark
+	var color := theme.color_light if is_light_square(cell) else theme.color_dark
+	return _tint_half_field(color, cell, board_height)
 
 
-static func get_terrain_color(cell: Vector2i, terrain: TerrainType.Type, blocked: bool) -> Color:
+static func get_terrain_color(
+	cell: Vector2i,
+	terrain: TerrainType.Type,
+	blocked: bool,
+	board_height: int = -1,
+) -> Color:
 	var theme := get_config()
+	var color: Color
 	match terrain:
 		TerrainType.Type.GRASS:
-			return theme.color_grass_light if is_light_square(cell) else theme.color_grass_dark
+			color = theme.color_grass_light if is_light_square(cell) else theme.color_grass_dark
 		TerrainType.Type.JUNGLE:
-			return theme.color_jungle
+			color = theme.color_jungle
 		TerrainType.Type.LAKE:
-			return theme.color_lake
+			color = theme.color_lake
 		TerrainType.Type.SHORE:
-			return theme.color_shore
+			color = theme.color_shore
 		TerrainType.Type.ROCK:
-			return theme.color_rock
+			color = theme.color_rock
 		TerrainType.Type.DENSE_JUNGLE:
-			return theme.color_dense_jungle
+			color = theme.color_dense_jungle
 		_:
-			return get_base_color(cell, blocked)
+			return get_base_color(cell, blocked, board_height)
+	return _tint_half_field(color, cell, board_height)
+
+
+static func _tint_half_field(color: Color, cell: Vector2i, board_height: int) -> Color:
+	if board_height <= 0:
+		return color
+	# Soft half-field read without new art: cooler enemy (top), warmer player (bottom).
+	if BoardHalf.is_enemy_spawn_cell(cell, board_height):
+		return color.lerp(Color(0.55, 0.62, 0.72, 1.0), 0.12)
+	return color.lerp(Color(0.72, 0.68, 0.48, 1.0), 0.10)
 
 
 static func get_border_color(cell: Vector2i, blocked: bool) -> Color:

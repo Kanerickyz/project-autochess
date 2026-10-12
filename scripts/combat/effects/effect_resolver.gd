@@ -841,9 +841,21 @@ func _spawn_unit(action: EffectAction, payload: CombatEventPayload, depth: int) 
 
 
 func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool) -> Vector2i:
-	if prefer_origin and _grid.can_place_at(origin):
+	var height := _grid.get_size().y
+	var prefer_player_half := BoardHalf.is_player_deploy_cell(origin, height)
+	if (
+		prefer_origin
+		and _grid.can_place_at(origin)
+		and (
+			BoardHalf.is_player_deploy_cell(origin, height)
+			if prefer_player_half
+			else BoardHalf.is_enemy_spawn_cell(origin, height)
+		)
+	):
 		return origin
-	var candidates := _grid.get_empty_cells()
+	var candidates := BoardHalf.filter_cells(_grid.get_empty_cells(), height, prefer_player_half)
+	if candidates.is_empty():
+		candidates = _grid.get_empty_cells()
 	if candidates.is_empty():
 		return Vector2i(-1, -1)
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:

@@ -1,5 +1,5 @@
 # Fonts
 
-Project UI Theme lives at `res://resources/ui/project_theme.tres` and currently uses the engine default font with project StyleBox colors.
+UI Theme: `res://resources/ui/project_theme.tres`.
 
-Drop licensed `.ttf` / `.otf` files here and assign them on the Theme (`default_font`) when art direction picks a face.
+`DroidSansFallback.ttf` — CJK-capable fallback (Apache/Android Droid Sans Fallback) assigned as Theme `default_font` so Chinese HUD text does not tofu on desktop/Web.

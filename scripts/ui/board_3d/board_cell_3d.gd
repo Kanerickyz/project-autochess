@@ -1,8 +1,9 @@
 class_name BoardCell3D
 extends Node3D
 
-const TILE_HEIGHT_RATIO := 0.30
-const TOP_INSET := 0.02
+const TILE_HEIGHT_RATIO := 0.22
+## Near-zero inset weakens checker/grid seams (COMBATLEVEL de-grid).
+const TOP_INSET := 0.002
 const HEIGHT_SCALE_LAKE := 0.72
 const HEIGHT_SCALE_ROCK := 1.18
 const HEIGHT_SCALE_DENSE := 1.22
@@ -35,6 +36,7 @@ func setup(
 	tile_size: float,
 	terrain: TerrainType.Type = TerrainType.Type.GRASS,
 	has_terrain: bool = false,
+	board_height: int = -1,
 ) -> void:
 	cell = p_cell
 	_blocked = blocked
@@ -43,9 +45,9 @@ func setup(
 	_tile_size = tile_size
 	_height_scale = _resolve_height_scale(terrain) if has_terrain else HEIGHT_SCALE_DEFAULT
 	if has_terrain:
-		_base_color = BoardTheme.get_terrain_color(cell, terrain, blocked)
+		_base_color = BoardTheme.get_terrain_color(cell, terrain, blocked, board_height)
 	else:
-		_base_color = BoardTheme.get_base_color(cell, blocked)
+		_base_color = BoardTheme.get_base_color(cell, blocked, board_height)
 	_rebuild_mesh()
 	_apply_visual()
 
@@ -135,7 +137,7 @@ func _ensure_mesh() -> void:
 	_top_mesh = MeshInstance3D.new()
 	_top_mesh.name = "TopMesh"
 	var top_box := BoxMesh.new()
-	top_box.size = Vector3(_tile_size * 0.96, tile_h * 0.12, _tile_size * 0.96)
+	top_box.size = Vector3(_tile_size * 0.995, tile_h * 0.10, _tile_size * 0.995)
 	_top_mesh.mesh = top_box
 	_top_mesh.position = center_xz + Vector3(0.0, tile_h - top_box.size.y * 0.5, 0.0)
 	_top_material = StandardMaterial3D.new()

@@ -1,14 +1,15 @@
 class_name BoardLayout
 extends RefCounted
 
-const VIEWPORT_WIDTH := 1920
-const VIEWPORT_HEIGHT := 1080
-const PLAY_MARGIN_H := 240
-const PLAY_MARGIN_TOP := 72
-const PLAY_MARGIN_BOTTOM := 216
+## Portrait-first (iPhone 14 Pro logical 393×852). Desktop expand letterboxes.
+const VIEWPORT_WIDTH := 393
+const VIEWPORT_HEIGHT := 852
+const PLAY_MARGIN_H := 16
+const PLAY_MARGIN_TOP := 96
+const PLAY_MARGIN_BOTTOM := 220
 
-const MIN_CELL_SIZE := 64
-const MAX_CELL_SIZE := 140
+const MIN_CELL_SIZE := 48
+const MAX_CELL_SIZE := 96
 
 
 static func compute_cell_size(

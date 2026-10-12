@@ -116,17 +116,20 @@ unique_name_in_owner = true
 
 [node name="UnitTooltip" parent="UI" unique_id=-1185481575 instance=ExtResource("10_tooltip")]
 unique_name_in_owner = true
-offset_left = 320.0
-offset_top = 120.0
-offset_right = 560.0
+offset_left = 16.0
+offset_top = 100.0
+offset_right = 300.0
 offset_bottom = 220.0
 
 [node name="CombatSkillCallout" parent="UI" unique_id=2103847399 instance=ExtResource("12_skill_callout")]
 unique_name_in_owner = true
-offset_left = 400.0
-offset_top = 180.0
-offset_right = 680.0
-offset_bottom = 260.0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 120.0
+offset_right = -16.0
+offset_bottom = 180.0
+grow_horizontal = 2
 
 [node name="CombatLogPanel" parent="UI" unique_id=2103847400 instance=ExtResource("13_combat_log")]
 unique_name_in_owner = true
@@ -140,9 +143,9 @@ anchor_right = 1.0
 anchor_top = 0.0
 anchor_bottom = 0.0
 offset_left = 8.0
-offset_top = 88.0
+offset_top = 72.0
 offset_right = -8.0
-offset_bottom = 184.0
+offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 0
 

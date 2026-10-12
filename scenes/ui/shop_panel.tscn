@@ -5,7 +5,7 @@
 
 [node name="ShopPanel" type="Control"]
 layout_mode = 2
-custom_minimum_size = Vector2(720, 280)
+custom_minimum_size = Vector2(360, 280)
 size_flags_horizontal = 3
 script = ExtResource("1")
 
