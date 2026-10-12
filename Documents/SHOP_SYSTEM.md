@@ -110,7 +110,7 @@ flowchart LR
 
 **与 cost 关系**：文档约定默认 **`cost == tier`**（1–6），避免与旧 1–5 费混用两套语义；单卡可覆盖。
 
-**实现状态**：当前 [`dev_shop_pool.tres`](../resources/shop/dev_shop_pool.tres) 为**静态池**，无 Tier 解锁逻辑。
+**实现状态**：`TierUnlock` 已按上表解锁最高可 roll 档；池内容见 [`dev_shop_pool.tres`](../resources/shop/dev_shop_pool.tres)，权重与条目可继续迭代。
 
 ---
 
@@ -276,11 +276,11 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | 项 | 说明 |
 |----|------|
 | `DeckState` + `DeckConfig` | 初始 10 占位、上限 20 |
-| 双卡种 `ShopService` | 角色卡入队、**技能卡附加（Legacy，待迁移增益）** |
-| `DrawService` | 每波抽牌形成 cycle 牌组（**To-Be，未实装**） |
-| UI | 替换弹窗、技能附加弹窗、手牌面板 |
+| 双卡种 `ShopService` | 角色卡入队、增益卡附加 |
+| Tier 解锁 | `TierUnlock` 已实现 |
+| `DrawService` / 战斗 cycle | 每波抽牌 + 战中补人（**To-Be，未实装**） |
+| UI | 替换弹窗、增益附加弹窗、手牌面板 |
 | 牌库升级 | `LevelConfig`、`DeckUpgradeService`、购买合并、等级/经验条 UI |
-| **下一迭代（文档先行）** | 增益商店 + Tier 1–6 解锁 + `BuffCardData` |
 | 迁移 | 已替换 `BenchState` 主流程 |
 
 与 [GAME_VISION.md](./GAME_VISION.md) 里程碑 M3b / M4 同步。

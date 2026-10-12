@@ -161,7 +161,7 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ## 关卡与棋盘
 
-- 棋盘 `width × height` 可配置；开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 为 **10×10**。
+- 棋盘 `width × height` 可配置；开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 当前为 **8×8**。
 - 每格至多一个单位；玩家与怪共享棋盘。
 - 刷怪候选 = 空闲格；实际刷怪数 = `min(配置数, 候选格数)`；候选空则本批不刷。
 - 准备与战斗中新落子均占格，影响后续刷怪空闲格。

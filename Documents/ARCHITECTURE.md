@@ -120,10 +120,10 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 步骤 | 状态 | 要点 |
 |------|------|------|
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
-| 2 准备 | PREPARE | 手牌展示牌库条目并选择放置（抽 5 To-Be）；首波前商店已在关卡加载时 roll |
-| 3 战斗 | COMBAT | 击杀即时掉金；`CombatEventBus` 于开战创建、战后 `stop_combat` 销毁 |
+| 2 准备 | PREPARE | As-Is：整库可选放置；To-Be：抽本波子集预布阵；首波前商店已在关卡加载时 roll |
+| 3 战斗 | COMBAT | 击杀掉金；自动战斗；To-Be：cycle 补人 + 人口；`CombatEventBus` 开战创建、战后销毁 |
 | 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；清波制胜负；**不得**直接开下一场战斗 |
-| 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡（文档目标；代码仍为技能卡）；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()` |
+| 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()`（线性工具环） |
 | 6 下一波 | PREPARE → COMBAT | 玩家手动点「开始第 N 波」 |
 
 建议实现：
@@ -140,29 +140,28 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 |------|------|
 | 金币 | 击杀掉金（战斗中）、波次固定收益（RESOLVE）、**商店出售**（按 `DeckEntry.level`） |
 | 波次结算金 | `WaveData.wave_gold_reward`（`-1` 用 `EconomyConfig.default_wave_gold`） |
-| 商店商品（文档目标） | **角色卡**（入牌库）、**增益卡**（附加到牌库条目） |
-| 商店商品（代码） | **角色卡** + **技能卡（Legacy）** |
-| 刷新 / 锁定 | 消耗金币刷新；锁定保留槽位（锁定：远期） |
+| 商店商品 | **角色卡**（入牌库）、**增益卡**（附加到牌库条目） |
+| 刷新 | 消耗金币刷新（商店锁定非本版范围） |
 | 购买限制 | 角色卡：牌库未满直接入队，已满 → 替换流；增益卡不占新槽 |
 
 **Legacy（已移除）**：`BenchState` / 备战席 UI — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。  
 
-数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState`（`DrawService` To-Be）。
+数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState`（`DrawService` / cycle **To-Be**）。
 
-#### 3.2.1 Tier 解锁（To-Be）
+#### 3.2.1 Tier 解锁
 
-- **职责**：`ShopService.get_max_tier(shop_wave)` 或独立 `TierUnlockService`
-- **输入**：`shop_wave = wave_index + 1`（Run 内波次序号，见 SHOP_SYSTEM §2.6）
-- **输出**：`max_unlocked_tier`（1–6）；各槽 roll 时过滤 `UnitData.tier` / `BuffCardData.tier <= max`
+- **职责**：`TierUnlock.get_max_unlocked_tier(shop_wave)`（见 `scripts/core/tier_unlock.gd`）
+- **输入**：`shop_wave`（见 SHOP_SYSTEM §2.6）
+- **输出**：`max_unlocked_tier`（1–6）；各槽 roll 时过滤 `tier <= max`
 - **默认定价**：`cost == tier`（可 per-resource 覆盖）
-- **状态**：未实现；`dev_shop_pool.tres` 为静态池
+- **状态**：**逻辑已实现**；池内容与权重仍可迭代
 
 ### 3.3 Board & Deck
 
 - **棋盘**：每关可配置 `width × height` 方格；玩家单位与怪物**共享同一网格**；每格最多一单位
 - **牌库（Deck）**：Run 内 `DeckEntry` 列表（默认 10 占位、上限 20）；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
-- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 开始时 `DrawService` 无放回抽 5 → **本波手牌** → 选择放置
-- **布阵规则**：仅 PREPARE 阶段可放置；战斗开始锁定布局
+- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 抽本波子集 → **cycle 手牌**（见愿景 / SHOP §4）
+- **布阵规则**：**As-Is** 仅 PREPARE 可放置、开战锁阵；**To-Be** 准备预布阵 + 战斗中 cycle 补人（已上场不可移动，人口上限）
 
 **Legacy（已移除）**：原备战席点击上场流程 — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。
 
@@ -339,7 +338,7 @@ scripts/
   data/               → EffectSpec, AbilityData, UnitData 等 Resource
 scenes/               → 引用 scripts，不反向被 scripts 引用
 resources/
-  units/ levels/ abilities/ buffs/ effects/  → .tres 数据（buffs/、buff_card_data.gd To-Be；traits/ 远期）
+  units/ levels/ abilities/ buffs/ effects/  → .tres 数据
 assets/               → 仅美术/音频
 ```
 
@@ -367,7 +366,7 @@ assets/               → 仅美术/音频
 4. **M2c** `MatchStateMachine` 多波 `PREPARE → COMBAT → RESOLVE`
 5. 商店 → 备战席 → 购买（M3 Legacy，**已由 M3b 替换**）
 6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；`DrawService` 抽 5 **To-Be**，见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）
-7. **`EffectResolver` + 样板联动技能** + 增益卡资源 + Tier roll（M4）
+7. **`EffectResolver` + 样板联动技能** + 增益卡 + Tier（已落地；cycle 补人属后续）
 8. 多关卡、多流派样板、tooltip、平衡、美术音效、存档（M5）
 
 ---
