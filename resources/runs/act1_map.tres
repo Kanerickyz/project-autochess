@@ -2,21 +2,14 @@
 
 [ext_resource type="Script" uid="uid://3te0818ncx6s" path="res://scripts/data/run_map_config.gd" id="1"]
 [ext_resource type="Resource" uid="uid://boardact1map" path="res://resources/levels/board_act1.tres" id="2"]
-[ext_resource type="Resource" uid="uid://encounterw01" path="res://resources/encounters/combat_w01.tres" id="3"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w02.tres" id="4"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w03.tres" id="5"]
-[ext_resource type="Resource" uid="uid://encounterw05" path="res://resources/encounters/combat_w05.tres" id="6"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w06.tres" id="7"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w07.tres" id="8"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w08.tres" id="9"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w09.tres" id="10"]
-[ext_resource type="Resource" uid="uid://encounterw10" path="res://resources/encounters/combat_w10.tres" id="11"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w11.tres" id="12"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w13.tres" id="13"]
-[ext_resource type="Resource" path="res://resources/encounters/combat_w14.tres" id="14"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_01.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_02.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_03.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_04.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_05.tres" id="7"]
 [ext_resource type="Script" uid="uid://ddpugoydied62" path="res://scripts/data/encounter_data.gd" id="15_enc"]
-[ext_resource type="Resource" uid="uid://cg6r8og6wv81c" path="res://resources/encounters/elite_w12.tres" id="16"]
-[ext_resource type="Resource" uid="uid://rwtalv463s11" path="res://resources/encounters/boss_act1.tres" id="17"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_elite_01.tres" id="16"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_boss_01.tres" id="17"]
 [ext_resource type="Script" uid="uid://ccmh5yo4jr5q4" path="res://scripts/data/event_data.gd" id="18_evt"]
 [ext_resource type="Resource" uid="uid://0yr8khiraev2" path="res://resources/events/event_merchant.tres" id="19"]
 [ext_resource type="Resource" uid="uid://eventshrine" path="res://resources/events/event_shrine.tres" id="20"]
@@ -32,7 +25,7 @@ floor_count = 12
 max_nodes_per_floor = 5
 shop_min_floor = 4
 board_defaults = ExtResource("2")
-combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13"), ExtResource("14")])
+combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
 elite_pool = Array[ExtResource("15_enc")]([ExtResource("16")])
 boss_encounter = ExtResource("17")
 event_pool = Array[ExtResource("18_evt")]([ExtResource("19"), ExtResource("20")])

@@ -3,7 +3,7 @@ extends Node2D
 
 enum Phase { EDIT, COMBAT }
 
-const BOARD_DEFAULTS := preload("res://resources/levels/board_act1.tres")
+const BOARD_DEFAULTS := preload("res://resources/levels/board_legacy_4x8.tres")
 const SANDBOX_SIDE_INSET := 352.0
 const _BoardCameraRigScript := preload("res://scripts/ui/board_camera_rig.gd")
 

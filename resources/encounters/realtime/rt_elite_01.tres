@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3]
+
+[ext_resource type="Script" uid="uid://ddpugoydied62" path="res://scripts/data/encounter_data.gd" id="1_enc"]
+[ext_resource type="Resource" path="res://resources/levels/realtime/rt_wave_elite.tres" id="2_wave"]
+
+[resource]
+script = ExtResource("1_enc")
+id = "rt_elite_01"
+display_name = "精英战·战团"
+wave = ExtResource("2_wave")
+is_elite = true
+bonus_gold = 8
+generate_terrain_override = 0

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="UnitStats_barbarian"]
+script = ExtResource("2_stats")
+max_hp = 540
+attack = 150
+crit_rate_percent = 0
+move_speed = 1.0
+attack_interval = 1.4
+attack_windup = 0.5
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.4
+mass = 1.7
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "barbarian"
+display_name = "野蛮人"
+cost = 2
+tier = 1
+stats = SubResource("UnitStats_barbarian")

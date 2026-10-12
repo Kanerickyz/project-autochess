@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="WaveData" format=3]
+
+[ext_resource type="Script" uid="uid://dgyryiko0mrak" path="res://scripts/data/wave_data.gd" id="1_wave"]
+
+[resource]
+script = ExtResource("1_wave")
+spawn_count = 5

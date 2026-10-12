@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LevelData" format=3]
+
+[ext_resource type="Script" uid="uid://26lhh14nokkx" path="res://scripts/data/level_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://dgyryiko0mrak" path="res://scripts/data/wave_data.gd" id="2_41s2q"]
+[ext_resource type="Resource" uid="uid://dw0iat8bd3ypw" path="res://resources/terrain/default_tileset.tres" id="2_nqghs"]
+
+[resource]
+script = ExtResource("1")
+board_width = 4
+board_height = 8
+generate_terrain = true
+terrain_tileset = ExtResource("2_nqghs")
+terrain_seed = 42
