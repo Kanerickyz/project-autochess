@@ -17,8 +17,9 @@ const ISOMETRIC_ELEVATION_DEG := 35.264
 @export_group("Orbit")
 ## 0 = 按棋盘尺寸自动计算
 @export var camera_distance: float = 0.0
-@export var ortho_size_multiplier: float = 1.15
-@export var ortho_padding: float = 1.08
+## >1 zooms out so the tile field reads as an inset arena (Clash Royale playable box).
+@export var ortho_size_multiplier: float = 1.55
+@export var ortho_padding: float = 1.12
 
 @export_group("Transition")
 @export var transition_duration: float = 0.65
