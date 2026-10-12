@@ -5,6 +5,8 @@ extends Resource
 @export_range(0, 64, 1) var spawn_count: int = 3
 ## 波次胜利结算金；-1 表示使用 EconomyConfig.default_wave_gold
 @export var wave_gold_reward: int = -1
+## 除随机抽取外必定刷出的敌人（如 Boss）
+@export var fixed_entries: Array[SpawnScheduleEntry] = []
 
 
 func roll_spawn_entries(
@@ -12,10 +14,14 @@ func roll_spawn_entries(
 	wave_index: int,
 	rng: RandomNumberGenerator,
 ) -> Array[SpawnScheduleEntry]:
+	var result: Array[SpawnScheduleEntry] = []
+	for fixed in fixed_entries:
+		if fixed != null and fixed.unit != null:
+			result.append(fixed.duplicate_entry())
 	if spawn_count <= 0:
-		return []
+		return result
 	if rng == null:
-		return []
+		return result
 
 	var max_tier := TierUnlock.get_max_unlocked_tier(wave_index + 1)
 	var filtered: Array = TierUnlock.filter_by_tier(
@@ -33,7 +39,7 @@ func roll_spawn_entries(
 			"WaveData: enemy pool empty after tier filter (wave_index=%d, max_tier=%d)"
 			% [wave_index, max_tier]
 		)
-		return []
+		return result
 
 	var unit_counts: Dictionary = {}
 	var unit_by_key: Dictionary = {}
@@ -43,7 +49,6 @@ func roll_spawn_entries(
 		unit_counts[key] = int(unit_counts.get(key, 0)) + 1
 		unit_by_key[key] = unit
 
-	var result: Array[SpawnScheduleEntry] = []
 	for key in unit_by_key.keys():
 		var entry := SpawnScheduleEntry.new()
 		entry.combat_tick = 0

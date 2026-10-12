@@ -4,8 +4,8 @@ extends Resource
 @export var id: String = ""
 @export var display_name: String = "遭遇战"
 @export var wave: WaveData
-@export_range(0, 24, 1) var board_width: int = 0
-@export_range(0, 24, 1) var board_height: int = 0
+@export_range(0, 32, 1) var board_width: int = 0
+@export_range(0, 32, 1) var board_height: int = 0
 @export var blocked_cells: Array[Vector2i] = []
 @export var is_elite: bool = false
 @export var is_boss: bool = false

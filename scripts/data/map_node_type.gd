@@ -12,6 +12,7 @@ enum Type {
 	MYSTERY,
 	SACRIFICE,
 	BOSS,
+	ENCHANT,
 }
 
 
@@ -41,5 +42,7 @@ static func display_name(type: Type) -> String:
 			return "献祭"
 		Type.BOSS:
 			return "Boss"
+		Type.ENCHANT:
+			return "附魔"
 		_:
 			return "未知"

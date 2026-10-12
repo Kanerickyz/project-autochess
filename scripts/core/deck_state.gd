@@ -76,6 +76,12 @@ func get_max_board_units() -> int:
 	return _config.max_board_units
 
 
+func get_draw_count() -> int:
+	if _config == null:
+		return 5
+	return _config.draw_count
+
+
 func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dictionary:
 	var result := {"ok": false, "level_up": false, "entry": null}
 	if unit_data == null:

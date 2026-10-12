@@ -2,9 +2,9 @@ class_name LevelData
 extends Resource
 
 ## 棋盘横向格子数（列）
-@export_range(1, 24, 1) var board_width: int = 6
+@export_range(1, 32, 1) var board_width: int = 6
 ## 棋盘纵向格子数（行）
-@export_range(1, 24, 1) var board_height: int = 6
+@export_range(1, 32, 1) var board_height: int = 6
 @export var blocked_cells: Array[Vector2i] = []
 ## 线性开发关波次表；爬塔 Run 模式请改用 EncounterData 池
 @export var waves: Array[WaveData] = []
