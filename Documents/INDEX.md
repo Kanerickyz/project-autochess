@@ -11,12 +11,13 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5 阶段 |
 | [GAME_VISION.md](./GAME_VISION.md) | PvE 构筑与布阵、**清波胜负**、流派联动、关卡棋盘、刷怪/Boss 节奏、里程碑 |
+| [Features/UNITS.md](./Features/UNITS.md) | **Feature：角色单位**（可购/敌/token；生命/攻击/移动功能规格；与数值分离） |
 | [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) | **商店 / 牌库 / Tier**（M3b + 增益商店已实现） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
 | [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md) | **未实现技能提案**（§3–§5 积木组合，策划稿） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **角色一览**（攻/血、技能摘要、流派索引；由脚本生成） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **角色一览**（Content；攻/血、技能摘要、流派索引；由脚本生成） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
 | [Reference/RISK_OF_RAIN_2.md](./Reference/RISK_OF_RAIN_2.md) | **Risk of Rain 2** 基础版道具 / 装备 / 技能参考（外部资料） |
@@ -133,7 +134,7 @@ Project Autochess/
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
 | Spawn | `SpawnSystem` 空闲格刷怪 | **M2a** · ARCHITECTURE §3.3 |
 | Effect / Synergy | `EffectResolver` + `EffectSpec` + 3 样本技能 | ARCHITECTURE §3.7 · **M3.5** |
-| Units & Abilities | 单位数据、星级、`AbilityData` | ARCHITECTURE §3.5 |
+| Units & Abilities | 单位数据、星级、`AbilityData` | **Features/UNITS** · ARCHITECTURE §3.5 · ABILITIES |
 | UI Layer | 与逻辑解耦的界面 | ARCHITECTURE §3.6 |
 
 ## 协作入口
