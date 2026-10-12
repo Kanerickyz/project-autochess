@@ -16,7 +16,7 @@ sight_range = 6.0
 body_radius = 0.9
 mass = 8.0
 projectile_speed = 0.0
-splash_radius = 0.0
+splash_radius = 1.2
 deploy_time = 1.0
 
 [resource]
