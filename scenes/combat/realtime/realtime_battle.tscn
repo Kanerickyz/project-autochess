@@ -1,0 +1,173 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/realtime/realtime_battle_controller.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://scripts/ui/realtime/realtime_arena_view.gd" id="2_arena"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
+bg_color = Color(0.1, 0.13, 0.16, 0.95)
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dock"]
+bg_color = Color(0.16, 0.13, 0.11, 0.97)
+border_width_top = 2
+border_color = Color(0.42, 0.33, 0.22, 1)
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 8.0
+
+[node name="RealtimeBattle" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.2, 0.28, 0.18, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Hud" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="HudRows" type="VBoxContainer" parent="Layout/Hud"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TopRow" type="HBoxContainer" parent="Layout/Hud/HudRows"]
+layout_mode = 2
+
+[node name="EncounterLabel" type="Label" parent="Layout/Hud/HudRows/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "遭遇战"
+clip_text = true
+
+[node name="GoldLabel" type="Label" parent="Layout/Hud/HudRows/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = "金币 0"
+
+[node name="BottomRow" type="HBoxContainer" parent="Layout/Hud/HudRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PhaseLabel" type="Label" parent="Layout/Hud/HudRows/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "准备"
+clip_text = true
+
+[node name="PopLabel" type="Label" parent="Layout/Hud/HudRows/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "人口 0/5"
+
+[node name="TimerLabel" type="Label" parent="Layout/Hud/HudRows/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "0:00"
+
+[node name="ArenaView" type="Control" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2_arena")
+
+[node name="Dock" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dock")
+
+[node name="DockBox" type="VBoxContainer" parent="Layout/Dock"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HandRow" type="HBoxContainer" parent="Layout/Dock/DockBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 88)
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="StartButton" type="Button" parent="Layout/Dock/DockBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "开始战斗"
+
+[node name="ResultOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="ResultBox" type="VBoxContainer" parent="ResultOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -140.0
+offset_top = -90.0
+offset_right = 140.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="ResultLabel" type="Label" parent="ResultOverlay/ResultBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "胜利"
+horizontal_alignment = 1
+
+[node name="ResultDetail" type="Label" parent="ResultOverlay/ResultBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = ""
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="ResultOverlay/ResultBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "继续"
