@@ -4,13 +4,22 @@
 >
 > **已实现（2026-05）**：`buff_pool` / `BuffAttachModal` / `attached_buffs` / Tier 解锁（`TierUnlock` + `shop_wave`）。
 
-相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md)（增益卡规格）· [GAME_VISION.md](./GAME_VISION.md)（对局循环与术语）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（Super Auto Pets 商店机制）。
+相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md)（增益卡规格）· [GAME_VISION.md](./GAME_VISION.md)（对局循环与术语）· [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)（何时进商店）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（Super Auto Pets 商店机制）。
 
 ---
 
 ## 1. 概述
 
-商店是波次循环 **步骤 5** 的核心构筑入口（结算后、下一波准备前）。玩家**仅能购买**两类商品：
+**商店在循环中的位置（先读这个）**
+
+| 模式 | 何时能进商店 |
+|------|----------------|
+| **主模式（爬塔）** | **仅地图商店节点**（战斗胜利后回地图，不强制进商店）。何时进出见 [游戏基础循环](./Features/GAME_LOOP.md) |
+| **线性开发关** | 波次结算之后、下一波准备之前（下文「步骤 5」描述的是这条工具环） |
+
+下文购买规则、牌库与品阶对两种模式共用；**不要**把「每波必商店」读成爬塔主循环。
+
+商店是线性波次循环 **步骤 5** 的核心构筑入口（结算后、下一波准备前）。玩家**仅能购买**两类商品：
 
 | 卡种 | 简述 |
 |------|------|
