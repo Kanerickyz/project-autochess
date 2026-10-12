@@ -15,7 +15,7 @@
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
-| [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md) | **战斗关卡**（竖屏半场、我下敌上、投放区与开战越线；To-Be） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、我下敌上、投放区与开战越线；To-Be） |
 | [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) | **商店 / 牌库 / Tier**（M3b + 增益商店已实现） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
@@ -136,7 +136,7 @@ Project Autochess/
 | Economy & Shop | 角色卡/增益卡、Tier、牌库、击杀掉金、波次结算 | **SHOP_SYSTEM** · **BUFF_SYSTEM** · **M3b** |
 | Board & Deck | 可变棋盘 + 本波 cycle 手牌（抽牌/战中补人 To-Be） | SHOP_SYSTEM · **M3b** |
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
-| Spawn | `SpawnSystem` 刷怪（As-Is 全盘空闲格；To-Be 敌半场） | **M2a** · ARCHITECTURE §3.3 · [BATTLEFIELD](./Features/BATTLEFIELD.md) |
+| Spawn | `SpawnSystem` 刷怪（As-Is 全盘空闲格；To-Be 敌半场） | **M2a** · ARCHITECTURE §3.3 · [COMBATLEVEL](./Features/COMBATLEVEL.md) |
 | Effect / Synergy | `EffectResolver` + `EffectSpec` + 3 样本技能 | ARCHITECTURE §3.7 · **M3.5** |
 | Units & Abilities | 单位数据、星级、`AbilityData` | **Features/UNITS** · ARCHITECTURE §3.5 · ABILITIES |
 | UI Layer | 与逻辑解耦的界面 | ARCHITECTURE §3.6 |

@@ -12,7 +12,7 @@
 - **M3b Deck/Shop**：`DeckState`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
 - **手牌 As-Is**：PREPARE/SHOP 阶段 `HandPanel` 展示**完整牌库**可选放置；设计目标「每波无放回抽 5」（`DrawService`）**尚未实装**
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
-- **M2 交互**：进入波次 → 准备布阵 → 开始战斗 → 刷怪（As-Is 全盘空闲格；To-Be 敌半场，见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)）→ 自动战斗 → 波次结算（发金）→ 商店构筑 → 下一波 PREPARE
+- **M2 交互**：进入波次 → 准备布阵 → 开始战斗 → 刷怪（As-Is 全盘空闲格；To-Be 敌半场，见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)）→ 自动战斗 → 波次结算（发金）→ 商店构筑 → 下一波 PREPARE
 - 尚无：商店锁定、牌库内手动合并、`DrawService` 抽牌
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
@@ -158,7 +158,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 ### 3.3 Board & Deck
 
-- **棋盘**：每关可配置 `width × height` 方格；每格最多一单位。**As-Is**：友方与怪物共享全盘空闲格投放/刷怪。**To-Be（战斗关卡）**：竖屏窄深、我下敌上、偶数行中线硬半场——友方预布阵/cycle 仅我半场，敌一次刷出仅敌半场；开战后天可越半场。见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)。
+- **棋盘**：每关可配置 `width × height` 方格；每格最多一单位。**As-Is**：友方与怪物共享全盘空闲格投放/刷怪。**To-Be（战斗关卡）**：竖屏窄深、我下敌上、偶数行中线硬半场——友方预布阵/cycle 仅我半场，敌一次刷出仅敌半场；开战后天可越半场。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
 - **牌库（Deck）**：Run 内 `DeckEntry` 列表（默认 10 占位、上限 20）；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
 - **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 抽本波子集 → **cycle 手牌**（见愿景 / SHOP §4）
 - **布阵规则**：**As-Is** 仅 PREPARE 可放置、开战锁阵；**To-Be** 准备预布阵 + 战斗中 cycle 补人（已上场不可移动，人口上限；落点限我半场）

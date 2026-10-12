@@ -6,7 +6,7 @@
 >
 > **【循环 To-Be】** 下文「cycle 补人」为目标规格；当前代码仍可能是「仅 PREPARE 布阵、开战锁阵」。
 >
-> **【战场 To-Be】** 竖屏窄深、我下敌上、硬半场投放见支柱 2 与 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)；现状多为全盘共享空闲格布阵与刷怪。
+> **【战场 To-Be】** 竖屏窄深、我下敌上、硬半场投放见支柱 2 与 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)；现状多为全盘共享空闲格布阵与刷怪。
 
 ## 一句话
 
@@ -35,7 +35,7 @@
    商店养成牌库；准备抽本波子集并预布阵；战斗中 cycle 补人。主乐趣仍是构筑质量与技能涌现；战中操作是节奏杠杆，不是微操主菜。
 
 2. **空间与敌压**【设计定稿】  
-   战场竖屏窄深、我下敌上、中线硬半场：敌从**敌半场**一次涌入，开战后天可越线交战；友方预布阵与 cycle 只落**我半场**。压力来自半场涌入与越线，而非全盘抢空闲格。Boss：超高单体威胁。细则见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)。
+   战场竖屏窄深、我下敌上、中线硬半场：敌从**敌半场**一次涌入，开战后天可越线交战；友方预布阵与 cycle 只落**我半场**。压力来自半场涌入与越线，而非全盘抢空闲格。Boss：超高单体威胁。细则见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
 
 3. **中世纪幻想主题**【设定定稿】  
    兵种/魔物剪影可读；特效服务技能因果。表现迁移待实现。
@@ -163,7 +163,7 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ## 关卡与棋盘
 
-- 棋盘为可配置矩形逻辑格；**目标**朝向为竖屏窄深（偶数行、列少行多），我下敌上，中线对半。见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)。  
+- 棋盘为可配置矩形逻辑格；**目标**朝向为竖屏窄深（偶数行、列少行多），我下敌上，中线对半。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。  
 - **现状**：多为全盘共享空闲格布阵与刷怪（如开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 为 **8×8**）。  
 - **目标**：每格至多一体不变；**投放**时友方只占我半场、敌只刷敌半场；**开战后天可越半场**。刷怪候选 = 敌半场空闲格；实际刷怪数 = `min(配置数, 候选格数)`。  
 - 准备预布阵与战斗中 cycle 补人只占用我半场空格；不再用「全盘占格压缩」作为主敌压叙事。
@@ -189,7 +189,7 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 | 预布阵 | 开战前放置单位 |
 | 人口 | 同时上场己方单位上限（默认 5） |
 | 空闲格 | 未占用且规则允许投放/刷怪的格 |
-| 我半场 / 敌半场 | 画面下方 / 上方半区（玩家在下、敌方在上）；投放与刷怪分区见 [战斗关卡](./Features/BATTLEFIELD.md) |
+| 我半场 / 敌半场 | 画面下方 / 上方半区（玩家在下、敌方在上）；投放与刷怪分区见 [战斗关卡](./Features/COMBATLEVEL.md) |
 | 硬半场（投放） | 预布阵与 cycle 补人只许落己方半场；开战后天可越半场交战 |
 | Tier | 商店强度档 1–6 |
 | 牌库条目 | 角色 + 等级/经验 + 增益 |
@@ -232,4 +232,4 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ---
 
-相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
+相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
