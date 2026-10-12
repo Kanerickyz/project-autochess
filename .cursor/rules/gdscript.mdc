@@ -5,5 +5,5 @@ alwaysApply: false
 ---
 
 遵守 CONTRIBUTING.md 的 GDScript/资源规范。
-数值来自 resources/ 下的 .tres；邻接与距离用现有棋盘网格。检查共享 Resource、枚举兼容和 UID。
+数值来自 resources/ 下的 .tres；投放与半场用棋盘格，实时战斗距离用连续坐标（格为单位）。检查共享 Resource、枚举兼容和 UID。
 按改动跑现有 *_test_runner.gd；视觉变更补 GUI 验收，报告未验证项。

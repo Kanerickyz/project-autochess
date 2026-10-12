@@ -15,7 +15,7 @@
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、我下敌上、投放区与开战越线；To-Be） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏 18×32、我下敌上、投放吸附与开战实时越线） |
 | [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) | **商店 / 牌库 / Tier**（M3b + 增益商店已实现） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
@@ -86,7 +86,14 @@ Project Autochess/
 | `resources/economy/` | `EconomyConfig` | **M3 已实现** |
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
 | `resources/levels/dev_6x6.tres` | **8×8** 线性开发关，**15 波**（`wave_01`–`wave_15`）；`main.tscn` 直接 F5 | **M1 已实现** |
-| `resources/levels/board_act1.tres` | Act1 默认棋盘（无波次表） | **Run 已实现** |
+| `resources/levels/board_act1.tres` | Act1 实时战场 18×32 + 敌池（无波次表） | **Run 已实现** |
+| `resources/levels/board_legacy_4x8.tres` | 沙盒用旧 4×8 格子棋盘 | **Legacy** |
+| `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
+| `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
+| `scripts/combat/realtime/` | `RealtimeCombatSim` 固定步长连续坐标模拟 | **已实现** |
+| `resources/units/realtime/` | 皇室战争式基础单兵占位角色 | **已实现** |
+| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（8 名新角色） | **已实现** |
+| `scenes/ui/placeholder/` | 地图非战斗节点占位界面 | **已实现** |
 | `resources/runs/act1_map.tres` | Act1 地图配置 + 遭遇池 | **Run 已实现** |
 | `resources/encounters/` | `EncounterData`（自 `wave_*.tres` 拆分） | **Run 已实现** |
 | `scenes/main/run_game.tscn` | 爬塔 Run 主入口（地图 + 遭遇） | **Run 已实现** |

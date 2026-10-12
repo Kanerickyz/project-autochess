@@ -6,6 +6,8 @@
 
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
+- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏 18×32，格子只用于投放吸附与半场；开战后 `RealtimeCombatSim` 以固定步长（1/30 秒）在连续坐标上推进移动、攻击、投射物、溅射与推挤（见 §3.4）。角色为 `resources/units/realtime/`（皇室战争式基础单兵占位，无主技能）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
+- **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关与沙盒，不再是 Run 主路径
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
 - **M3.5 Effect**：`EffectSpec` / `EffectAction` / `AbilityData`、`EffectResolver`、`StatModifierStack`；样本：受伤+2攻、死亡召唤2HP、移动+1血
@@ -178,7 +180,19 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 ### 3.4 Combat Sim
 
-职责拆分：
+**实时战斗（Run 主路径，`scripts/combat/realtime/`）**：
+
+| 模块 | 职责 |
+|------|------|
+| `RealtimeCombatSim` | 纯逻辑；固定步长 1/30 秒，`step(dt)` 按累计时长换算步数，结果不依赖帧率；单位按 `instance_id` 迭代 |
+| `RtUnit` / `RtProjectile` | 连续坐标（格）、状态（部署中 / 移动 / 攻击 / 阵亡）、计时器；追踪投射物 |
+| `RtUnitBrain` | 索敌范围内最近 → 否则全场最近；攻击中锁定目标；只改自身状态 |
+| `RealtimeDamagePipeline` | 唯一扣血处；经 `CombatEventBus` 发 `ON_ATTACK_HIT` / `ON_DAMAGE_TAKEN` / `ON_DEATH` 等 |
+| `RealtimeBattleController`（`scripts/ui/realtime/`） | 准备 / 战斗 / 结算；抽本场手牌、我半场投放校验、人口、敌半场刷出预览与落点；击杀金与波次金 |
+
+每步顺序：大脑决策 → 移动 → 出手 → 投射物结算 → 按质量反比推挤并钳在边界内 → 移除阵亡 → 胜负。开战前已在场的单位不走 `deploy_time`。属性读 `UnitStats` 的 Realtime 组。新角色无技能，本版未接 `EffectResolver`。
+
+**旧网格回合制（`main.tscn` / 沙盒）** 职责拆分：
 
 | 模块 | 职责 |
 |------|------|
