@@ -472,7 +472,13 @@ func _refresh_cards() -> void:
 	if _start_button != null:
 		var preparing := _phase == Phase.PREPARE
 		_start_button.disabled = not preparing or get_player_unit_count() < 1
-		_start_button.text = "开始战斗" if preparing or _phase == Phase.IDLE else "战斗中"
+		match _phase:
+			Phase.COMBAT:
+				_start_button.text = "战斗中"
+			Phase.RESULT:
+				_start_button.text = "已结束"
+			_:
+				_start_button.text = "开始战斗"
 
 
 func _refresh_hud() -> void:
