@@ -119,6 +119,7 @@ Project Autochess/
 | 特性标签 | `4.6`, `GL Compatibility`（WebGL 2 / 浏览器导出所需） |
 | 物理（3D） | Jolt Physics |
 | 渲染器 | `gl_compatibility`（含 ETC2/ASTC 导入，便于 Web） |
+| 窗口 | 1920×1080，`canvas_items` + `keep`（16:9，Web/桌面一致） |
 
 ## 核心系统对照（规划）
 
