@@ -135,6 +135,14 @@ func count_alive(team: UnitInstance.Team) -> int:
 	return count
 
 
+## 标记开战：此后 add_unit 的单位都要走部署时间。未显式调用时首个固定步会自动调用。
+func begin_combat() -> void:
+	if _started or _finished:
+		return
+	_started = true
+	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
+
+
 func has_started() -> bool:
 	return _started
 
@@ -160,10 +168,7 @@ func step(dt: float) -> void:
 func advance_fixed_step() -> void:
 	if _finished:
 		return
-	if not _started:
-		_started = true
-		var start_payload := CombatEventPayload.new()
-		_bus_emit(CombatEvents.ON_COMBAT_START, start_payload)
+	begin_combat()
 
 	var decisions: Array[RtUnitBrain.Decision] = []
 	for rt in _units:

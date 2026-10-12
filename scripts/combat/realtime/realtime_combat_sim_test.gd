@@ -12,6 +12,7 @@ static func run_all() -> bool:
 	ok = _check("melee_approach_and_interval", _test_melee_approach_and_interval()) and ok
 	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
+	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
 	ok = _check("splash_hits_cluster", _test_splash_hits_cluster()) and ok
 	ok = _check("separation_no_overlap_in_bounds", _test_separation_no_overlap_in_bounds()) and ok
 	ok = _check("separation_mass_weighted", _test_separation_mass_weighted()) and ok
@@ -202,6 +203,18 @@ static func _test_deploy_time_freezes() -> bool:
 		push_error("deploy: unit did not move after deploy_time (y=%.2f)" % deploying.position.y)
 		return false
 	return shooter.is_alive()
+
+
+static func _test_deploy_after_begin_before_first_step() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 3)
+	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 3.5))
+	sim.begin_combat()
+	var late := sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"deploy_time": 1.0}), Vector2(9.5, 28.5))
+	if not late.is_deploying():
+		push_error("deploy: unit placed after begin_combat must wait deploy_time")
+		return false
+	return true
 
 
 static func _test_splash_hits_cluster() -> bool:

@@ -208,6 +208,7 @@ func try_start_combat() -> bool:
 	for spawn in _pending_enemies:
 		_sim.add_unit(spawn["unit"], spawn["position"])
 	_pending_enemies.clear()
+	_sim.begin_combat()
 	_arena.enemy_previews = []
 	_set_selected(-1)
 	_set_phase(Phase.COMBAT)
