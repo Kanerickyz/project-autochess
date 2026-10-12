@@ -101,15 +101,14 @@
 
 ### 爬塔 Run（主模式）
 
-主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路（战斗 / 精英 / 商店 / 休息 / 事件 / 宝箱 / ? / Boss）。节点内 **准备 → 战斗 → 结算**；胜回地图；败整局重置。商店仅在地图商店节点。
+主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路。第一版节点：起点 / 战斗 / 精英 / 商店 / 事件 / **附魔** / Boss。节点内 **准备 → 战斗 → 结算**；胜回地图；败整局重置。商店仅在地图商店节点。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)。
 
 ```mermaid
 flowchart TD
     Map[MAP_选路] -->|战斗类| Prep[PREPARE] --> Combat[COMBAT] --> Resolve[RESOLVE] --> Map
     Map --> ShopNode[SHOP] --> Map
-    Map --> Rest[REST] --> Map
     Map --> Event[EVENT] --> Map
-    Map --> Treasure[TREASURE] --> Map
+    Map --> Enchant[ENCHANT_附魔] --> Map
     Resolve -->|失败| RunDefeat[RUN_DEFEAT]
     Map -->|Boss胜利| RunComplete[RUN_COMPLETE]
 ```
@@ -229,4 +228,4 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ---
 
-相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [INDEX.md](./INDEX.md)
+相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)

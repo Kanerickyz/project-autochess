@@ -4,13 +4,20 @@
 >
 > **已实现（2026-05）**：`buff_pool` / `BuffAttachModal` / `attached_buffs` / Tier 解锁（`TierUnlock` + `shop_wave`）。
 
-相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [GAME_VISION.md](./GAME_VISION.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)
+相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [GAME_VISION.md](./GAME_VISION.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)（何时进商店）· [ARCHITECTURE.md](./ARCHITECTURE.md) · [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)
 
 ---
 
 ## 1. 概述
 
-商店是构筑入口（线性关：结算后步骤 5；Run：地图商店节点）。玩家**仅能购买**：
+**商店在循环中的位置（先读这个）**
+
+| 模式 | 何时能进商店 |
+|------|----------------|
+| **主模式（爬塔）** | **仅地图商店节点**（战斗胜利后回地图，不强制进商店）。何时进出见 [游戏基础循环](./Features/GAME_LOOP.md) |
+| **线性开发关** | 波次结算之后、下一波准备之前（下文「步骤 5」描述的是这条工具环） |
+
+下文购买规则、牌库与品阶对两种模式共用；**不要**把「每波必商店」读成爬塔主循环。玩家**仅能购买**：
 
 | 卡种 | 简述 |
 |------|------|

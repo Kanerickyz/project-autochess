@@ -66,5 +66,8 @@ func apply_master_volume() -> void:
 
 
 func apply_fullscreen() -> void:
+	# Browsers only allow fullscreen from a user gesture; skip silent apply on web boot.
+	if OS.has_feature("web") and not Input.is_anything_pressed():
+		return
 	var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if _fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
 	DisplayServer.window_set_mode(mode)

@@ -89,7 +89,7 @@ flowchart TB
 
 **微观 Match**（`MatchStateMachine`）：单次遭遇内 `SHOP | PREPARE → COMBAT → RESOLVE`；`current_encounter: EncounterData` 替代线性 `LevelData.waves`。
 
-胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽本波子集并预布阵；战斗中 cycle 补人 + 人口上限，已上场不可移动。**As-Is**：手牌常为整库展示，仅 PREPARE 可放置。
+胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽本波子集并预布阵；战斗中 cycle 补人 + 人口上限，已上场不可移动。**As-Is**：手牌常为整库展示，仅 PREPARE 可放置。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)。
 
 ```mermaid
 flowchart TD
@@ -122,7 +122,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
 | 2 准备 | PREPARE | 手牌展示牌库条目并选择放置（抽 5 To-Be）；首波前商店已在关卡加载时 roll |
 | 3 战斗 | COMBAT | 击杀即时掉金；`CombatEventBus` 于开战创建、战后 `stop_combat` 销毁 |
-| 4 结算 | RESOLVE | 发放波次金；清敌人；清波制胜负；**不得**直接开下一场战斗 |
+| 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；清波制胜负；**不得**直接开下一场战斗 |
 | 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡（文档目标；代码仍为技能卡）；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()` |
 | 6 下一波 | PREPARE → COMBAT | 玩家手动点「开始第 N 波」 |
 
@@ -352,7 +352,7 @@ assets/               → 仅美术/音频
 | 语言 | GDScript 2.0（类型注解、`@export`） |
 | 棋盘表现 | 主路径 `BoardScene3D` + 单位卡显示；逻辑仍为矩形网格 `BoardGrid` |
 | 物理 | 战斗用网格距离检测，不依赖刚体碰撞结算 |
-| 配置 | `project.godot` 中 `config/features` 含 Forward Plus；3D 物理引擎为 Jolt（棋盘拾取可另用） |
+| 配置 | `project.godot` 使用 **GL Compatibility**（Web / GitHub Pages）；3D 物理引擎为 Jolt（棋盘拾取可另用） |
 | 本地化 | 早期用 `StringName` + CSV/PO；`display_name` 走 `tr()` |
 
 ---

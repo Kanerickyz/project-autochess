@@ -23,7 +23,7 @@
 - 修改枚举须检查序列化整数及 `.tres`，不重排现有成员。
 - 场景尽量用编辑器修改；文本修改保持资源 ID/UID 与引用。提交前确认没有丢失 `.uid` 或 `.import`。
 - 共享 `Resource` 进入运行时实例前判断是否需 `duplicate()`，避免商店、牌库、战斗单位串数值。
-- 视觉效果保持 Forward Plus 兼容。2D 精灵与图标放 `assets/`；生成脚本会覆盖同名文件时，执行前核对范围并保留原资产。
+- 视觉效果保持 **GL Compatibility**（WebGL 2）可用；不要依赖仅 Forward Plus 的特性。2D 精灵与图标放 `assets/`；生成脚本会覆盖同名文件时，执行前核对范围并保留原资产。浏览器试玩见 [Documents/WEB_DEPLOY.md](Documents/WEB_DEPLOY.md)。
 - 策划改单位数据优先用 `addons/unit_catalog_editor/`；改波次时间表用 `addons/wave_spawn_editor/`。改完 `resources/units/*.tres` 后运行 `py tools/generate_units_roster.py`。
 - Python 工具沿用 stdlib 风格，路径相对脚本根目录。
 

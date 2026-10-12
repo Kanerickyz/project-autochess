@@ -227,6 +227,7 @@ def _render(units: list[UnitInfo]) -> str:
         "# 角色汇总（UNITS_ROSTER）",
         "",
         "> 由 `tools/generate_units_roster.py` 生成；流派按技能主触发/机制自动推断，可在脚本 `ARCHETYPE_OVERRIDES` 手工覆盖。",
+        "> **功能规格**（友方角色 / 敌方角色 / 生成的代理角色；生命、攻击、移动）见 [Features/UNITS.md](./Features/UNITS.md)；本文是角色内容一览。",
         "",
         "## 说明",
         "",

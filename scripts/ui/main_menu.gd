@@ -16,6 +16,8 @@ func _ready() -> void:
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_exit_button.pressed.connect(_on_exit_pressed)
 	_settings_panel.closed.connect(_on_settings_closed)
+	if OS.has_feature("web"):
+		_exit_button.visible = false
 	_start_button.grab_focus()
 
 
@@ -36,4 +38,6 @@ func _on_settings_closed() -> void:
 
 
 func _on_exit_pressed() -> void:
+	if OS.has_feature("web"):
+		return
 	get_tree().quit()
