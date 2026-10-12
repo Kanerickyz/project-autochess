@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/ui/hand_slot.gd" id="1"]
 
 [node name="HandSlot" type="Button"]
-custom_minimum_size = Vector2(110, 170)
+custom_minimum_size = Vector2(96, 150)
 flat = true
 script = ExtResource("1")
 
@@ -17,6 +17,25 @@ offset_bottom = -24.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="StatusBadge" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -52.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 24.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(1, 0.95, 0.75, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.08, 0.1, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 12
+text = "在场"
+horizontal_alignment = 2
 
 [node name="SellButton" type="Button" parent="."]
 unique_name_in_owner = true

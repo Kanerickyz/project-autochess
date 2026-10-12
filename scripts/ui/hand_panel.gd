@@ -15,13 +15,15 @@ signal entry_drag_started(entry_id: int, viewport_pos: Vector2)
 const SLOT_SCENE := preload("res://scenes/ui/hand_slot.tscn")
 
 @onready var _title: Label = %Title
+@onready var _population_label: Label = %PopulationLabel
 @onready var _slots_row: HBoxContainer = %SlotsRow
 @onready var _scroll: ScrollContainer = %Scroll
+@onready var _start_button_host: Control = %StartButtonHost
 
 var _slot_widgets: Array[HandSlot] = []
 var _entry_ids: Array[int] = []
 var _mode: Mode = Mode.DEPLOY
-var _deploy_title: String = "牌库（拖拽或选中后点击棋盘空格上场，最多 5 个）"
+var _deploy_title: String = "本波手牌 · 点选后点空格上场"
 var _home_offset_top: float
 var _home_offset_bottom: float
 var _home_offsets_ready: bool = false
@@ -46,10 +48,21 @@ func get_withdraw_drop_rect() -> Rect2:
 	return get_global_rect().grow(8.0)
 
 
+func get_start_button_host() -> Control:
+	return _start_button_host
+
+
 func set_title(text: String) -> void:
 	_deploy_title = text
 	if _mode == Mode.DEPLOY and _title != null:
 		_title.text = text
+
+
+func set_population(current: int, maximum: int) -> void:
+	if _population_label == null:
+		return
+	_population_label.visible = _mode == Mode.DEPLOY
+	_population_label.text = "人口 %d/%d" % [current, maximum]
 
 
 func set_mode(mode: Mode) -> void:
@@ -58,8 +71,21 @@ func set_mode(mode: Mode) -> void:
 		return
 	if mode == Mode.SELL:
 		_title.text = "牌库 — 点击「出售」换金"
+		if _population_label != null:
+			_population_label.visible = false
+		if _start_button_host != null:
+			_start_button_host.visible = false
 	else:
 		_title.text = _deploy_title
+		if _population_label != null:
+			_population_label.visible = true
+		if _start_button_host != null:
+			_start_button_host.visible = true
+
+
+func set_start_button_host_visible(visible_flag: bool) -> void:
+	if _start_button_host != null:
+		_start_button_host.visible = visible_flag and _mode == Mode.DEPLOY
 
 
 func set_scroll_interactive(enabled: bool) -> void:
@@ -140,8 +166,32 @@ func refresh_deck(
 	if deck == null:
 		_rebuild_slots([])
 		return
+	_apply_entries(
+		deck.get_entries(),
+		deck,
+		deployed_ids,
+		selected_entry_id,
+		get_sell_price,
+	)
 
-	var entries := deck.get_entries()
+
+func refresh_entries(
+	entries: Array[DeckEntry],
+	deck: DeckState,
+	deployed_ids: Dictionary,
+	selected_entry_id: int,
+	get_sell_price: Callable = Callable(),
+) -> void:
+	_apply_entries(entries, deck, deployed_ids, selected_entry_id, get_sell_price)
+
+
+func _apply_entries(
+	entries: Array[DeckEntry],
+	deck: DeckState,
+	deployed_ids: Dictionary,
+	selected_entry_id: int,
+	get_sell_price: Callable,
+) -> void:
 	if entries.size() != _entry_ids.size():
 		_rebuild_slots(entries)
 	elif not _entries_match(entries):
@@ -149,14 +199,18 @@ func refresh_deck(
 
 	for i in _slot_widgets.size():
 		var entry_id := _entry_ids[i]
-		var entry := deck.get_entry(entry_id)
+		var entry: DeckEntry = null
+		if deck != null:
+			entry = deck.get_entry(entry_id)
+		if entry == null and i < entries.size():
+			entry = entries[i]
 		var deployed := deployed_ids.has(entry_id)
 		var selected := entry_id == selected_entry_id and not deployed
 		_slot_widgets[i].set_entry(
 			entry,
 			selected,
 			deployed,
-			deck.get_level_config(),
+			deck.get_level_config() if deck != null else null,
 		)
 
 		if _mode == Mode.SELL and entry != null and entry.unit != null:

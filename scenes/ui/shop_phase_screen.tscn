@@ -24,19 +24,20 @@ mouse_filter = 2
 
 [node name="ShopContent" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 24
+custom_minimum_size = Vector2(360, 0)
+theme_override_constants/separation = 16
 alignment = 1
 
 [node name="Title" type="Label" parent="CenterContainer/ShopContent"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 text = "商店"
 horizontal_alignment = 1
 
 [node name="ShopPanel" parent="CenterContainer/ShopContent" instance=ExtResource("2_shop")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(720, 550)
+custom_minimum_size = Vector2(360, 480)
 
 [node name="FinishShopButton" type="Button" parent="CenterContainer/ShopContent"]
 unique_name_in_owner = true

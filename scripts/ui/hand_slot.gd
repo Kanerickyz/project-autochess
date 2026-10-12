@@ -11,6 +11,7 @@ signal entry_drag_started(entry_id: int, viewport_pos: Vector2)
 
 @onready var _card_host: Control = %CardHost
 @onready var _sell_button: Button = %SellButton
+@onready var _status_badge: Label = %StatusBadge
 
 var _card: UnitCardDisplay
 var _interactive: bool = true
@@ -44,6 +45,7 @@ func set_sell_mode(enabled: bool, sell_price: int) -> void:
 			_sell_button.text = "出售 (%d)" % sell_price
 			_sell_button.disabled = not _interactive
 	_apply_interactive_state()
+	_update_status_badge()
 
 
 func set_entry(
@@ -66,6 +68,7 @@ func set_entry(
 		modulate = Color(0.6, 0.6, 0.6)
 		if _sell_button != null:
 			_sell_button.disabled = true
+		_update_status_badge()
 		return
 
 	text = ""
@@ -73,6 +76,7 @@ func set_entry(
 	_card.bind_deck_entry(entry, level_config)
 	_card.set_state(_selected, _deployed)
 	_apply_interactive_state()
+	_update_status_badge()
 
 
 func get_entry_id() -> int:
@@ -135,6 +139,22 @@ func _apply_interactive_state() -> void:
 		disabled = true
 	else:
 		disabled = not _interactive
+
+
+func _update_status_badge() -> void:
+	if _status_badge == null:
+		return
+	if _sell_mode or _entry == null or _entry.unit == null:
+		_status_badge.visible = false
+		return
+	if _deployed:
+		_status_badge.visible = true
+		_status_badge.text = "在场"
+	elif _selected:
+		_status_badge.visible = true
+		_status_badge.text = "选中"
+	else:
+		_status_badge.visible = false
 
 
 func _ensure_card() -> void:

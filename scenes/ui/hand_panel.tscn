@@ -5,30 +5,60 @@
 [node name="HandPanel" type="Control"]
 layout_mode = 3
 anchors_preset = 0
-offset_top = 208.0
-offset_right = 900.0
-offset_bottom = 296.0
+offset_right = 393.0
+offset_bottom = 200.0
 script = ExtResource("1")
 
 [node name="VBox" type="VBoxContainer" parent="."]
-layout_mode = 0
-offset_right = 884.0
-offset_bottom = 136.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="VBox"]
+[node name="HeaderRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="VBox/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "牌库（拖拽或选中后点击棋盘空格上场，最多 5 个）"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "本波手牌 · 点选后点空格上场"
+autowrap_mode = 2
 
-[node name="Scroll" type="ScrollContainer" parent="VBox"]
+[node name="PopulationLabel" type="Label" parent="VBox/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(880, 175)
+theme_override_font_sizes/font_size = 13
+text = "人口 0/5"
+horizontal_alignment = 2
+
+[node name="BottomRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Scroll" type="ScrollContainer" parent="VBox/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
 horizontal_scroll_mode = 2
 vertical_scroll_mode = 0
 
-[node name="SlotsRow" type="HBoxContainer" parent="VBox/Scroll"]
+[node name="SlotsRow" type="HBoxContainer" parent="VBox/BottomRow/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
+
+[node name="StartButtonHost" type="Control" parent="VBox/BottomRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 160)
+layout_mode = 2
+size_flags_vertical = 3

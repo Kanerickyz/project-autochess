@@ -37,12 +37,23 @@ func refresh_shop() -> void:
 func refresh_hand(
 	deployed_entry_ids: Dictionary,
 	selected_entry_id: int,
+	wave_hand_entries: Array[DeckEntry] = [],
+	use_wave_hand: bool = false,
 ) -> void:
 	if hand_panel == null or deck_state == null or run_economy == null:
 		return
-	hand_panel.refresh_deck(
-		deck_state,
-		deployed_entry_ids,
-		selected_entry_id,
-		run_economy.get_sell_price,
-	)
+	if use_wave_hand:
+		hand_panel.refresh_entries(
+			wave_hand_entries,
+			deck_state,
+			deployed_entry_ids,
+			selected_entry_id,
+			run_economy.get_sell_price,
+		)
+	else:
+		hand_panel.refresh_deck(
+			deck_state,
+			deployed_entry_ids,
+			selected_entry_id,
+			run_economy.get_sell_price,
+		)

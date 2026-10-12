@@ -21,12 +21,13 @@ GameSettings="*res://scripts/autoload/game_settings.gd"
 
 [display]
 
-window/size/viewport_width=1920
-window/size/viewport_height=1080
-window/size/window_width_override=1920
-window/size/window_height_override=1080
+; iPhone 14 Pro logical points (portrait); desktop letterboxes via expand.
+window/size/viewport_width=393
+window/size/viewport_height=852
+window/size/window_width_override=393
+window/size/window_height_override=852
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
+window/stretch/aspect="expand"
 
 [editor_plugins]
 

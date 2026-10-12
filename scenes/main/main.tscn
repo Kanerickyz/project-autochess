@@ -54,23 +54,33 @@ offset_top = 16.0
 
 [node name="StatusLabel" type="Label" parent="UI" unique_id=1111669335]
 unique_name_in_owner = true
-offset_left = 140.0
-offset_top = 16.0
-offset_right = 720.0
-offset_bottom = 48.0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 48.0
+offset_right = -8.0
+offset_bottom = 88.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 13
 text = "准备阶段"
+autowrap_mode = 2
 
 [node name="StartCombatButton" type="Button" parent="UI" unique_id=1555564024]
 unique_name_in_owner = true
-anchors_preset = 2
+custom_minimum_size = Vector2(100, 150)
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -52.0
-offset_right = 160.0
-offset_bottom = -12.0
+offset_left = -116.0
+offset_top = -188.0
+offset_right = -8.0
+offset_bottom = -20.0
+grow_horizontal = 0
 grow_vertical = 0
-text = "开始第 1 波"
+text = "开战"
+autowrap_mode = 2
 
 [node name="NextWaveButton" type="Button" parent="UI" unique_id=394245727]
 unique_name_in_owner = true
@@ -78,9 +88,9 @@ visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
+offset_left = 8.0
 offset_top = -52.0
-offset_right = 160.0
+offset_right = 140.0
 offset_bottom = -12.0
 grow_vertical = 0
 text = "进入商店"
@@ -91,10 +101,10 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 180.0
-offset_top = -204.0
-offset_right = -180.0
-offset_bottom = -12.0
+offset_left = 8.0
+offset_top = -208.0
+offset_right = -8.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -125,6 +135,16 @@ visible = false
 [node name="CombatTurnOrderBar" parent="UI" unique_id=1075951973 instance=ExtResource("17_turn_order")]
 unique_name_in_owner = true
 visible = false
+anchors_preset = 10
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = 8.0
+offset_top = 88.0
+offset_right = -8.0
+offset_bottom = 184.0
+grow_horizontal = 2
+grow_vertical = 0
 
 [node name="CombatVictoryOverlay" parent="UI" unique_id=279987725 instance=ExtResource("16_victory")]
 unique_name_in_owner = true

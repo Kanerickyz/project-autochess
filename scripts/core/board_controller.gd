@@ -76,6 +76,7 @@ var prepare_placement: PreparePlacementController = PreparePlacementController.n
 
 var _rng := RandomNumberGenerator.new()
 var _selected_entry_id: int = -1
+var _wave_hand_entry_ids: Array[int] = []
 var _pending_replace_slot: int = -1
 var _pending_buff_slot: int = -1
 var _pending_buff_card: BuffCardData
@@ -87,7 +88,10 @@ var _hovered_shop_offer: ShopOffer
 var _combat_layout_snapshot: Array[Dictionary] = []
 var _combat_status_base: String = ""
 var _placement_drag: PlacementDragController
+## PREPARE-only: drag board units to move / withdraw.
 var _prepare_drag_enabled: bool = false
+## PREPARE + COMBAT: drag / click hand cards onto empty cells.
+var _hand_deploy_drag_enabled: bool = false
 var _pending_defeat_reset: bool = false
 var _pending_run_reset_on_shop: bool = false
 ## 本 Run 内进入商店的次数（首店=1），用于 Tier 解锁，与 wave_index 解耦。
@@ -152,6 +156,7 @@ func _ready() -> void:
 	_hand_panel.entry_unhovered.connect(_on_hand_entry_unhovered)
 	_hand_panel.entry_drag_started.connect(_on_hand_entry_drag_started)
 	_setup_placement_drag()
+	_mount_start_combat_button()
 	_deck_replace_modal.entry_selected.connect(_on_deck_replace_selected)
 	_deck_replace_modal.cancelled.connect(_on_deck_replace_cancelled)
 	_buff_attach_modal.entry_selected.connect(_on_buff_attach_selected)
@@ -350,6 +355,7 @@ func _reset_run() -> void:
 	_shop_visit_count = 0
 	_last_shop_max_tier = 0
 	_selected_entry_id = -1
+	clear_wave_hand()
 	_clear_pending_shop()
 	_on_gold_changed(run_economy.gold)
 
@@ -362,12 +368,14 @@ func _enter_shop_phase(reroll_shop: bool = true, animate_ui: bool = false) -> vo
 		_linear_wave_index = 0
 		_pending_run_reset_on_shop = false
 
+	clear_wave_hand()
 	if not _awaiting_run_shop_finish:
 		_shop_visit_count += 1
 	var new_max_tier := TierUnlock.get_max_unlocked_tier(_get_shop_wave())
 	var tier_just_unlocked := new_max_tier > _last_shop_max_tier and _last_shop_max_tier > 0
 	match_flow.enter_shop()
 	_set_prepare_drag_enabled(false)
+	_set_hand_deploy_drag_enabled(false)
 	_clear_wave_preview()
 	_clear_pending_shop()
 	if reroll_shop:
@@ -412,6 +420,7 @@ func _enter_prepare_phase_async(clear_player_units: bool = false) -> void:
 	if clear_player_units:
 		board_grid.clear_team(UnitInstance.Team.PLAYER)
 	_selected_entry_id = -1
+	_draw_wave_hand()
 	_refresh_hand_ui()
 	_shop_ui_animating = true
 	_set_board_transition_locked(true)
@@ -427,10 +436,48 @@ func _enter_prepare_phase_async(clear_player_units: bool = false) -> void:
 	_board_scene.refresh()
 	_log_empty_cells()
 	_set_prepare_drag_enabled(true)
+	_set_hand_deploy_drag_enabled(true)
 	_roll_wave_preview()
 	_set_board_transition_locked(false)
 	_board_animating = false
 	_update_ui()
+
+
+func _draw_wave_hand() -> void:
+	var count := 5
+	if deck_config != null:
+		count = deck_config.draw_count
+	var drawn := DrawService.draw_wave_hand(deck_state, count, _rng)
+	_wave_hand_entry_ids.clear()
+	for entry in drawn:
+		if entry != null:
+			_wave_hand_entry_ids.append(entry.entry_id)
+
+
+func clear_wave_hand() -> void:
+	_wave_hand_entry_ids.clear()
+	_selected_entry_id = -1
+
+
+func _get_wave_hand_entries() -> Array[DeckEntry]:
+	var entries: Array[DeckEntry] = []
+	for entry_id in _wave_hand_entry_ids:
+		var entry := deck_state.get_entry(entry_id)
+		if entry != null:
+			entries.append(entry)
+	return entries
+
+
+func _is_in_wave_hand(entry_id: int) -> bool:
+	return _wave_hand_entry_ids.has(entry_id)
+
+
+func _is_deploy_phase() -> bool:
+	var phase := match_state.phase
+	return (
+		phase == MatchStateMachine.Phase.PREPARE
+		or phase == MatchStateMachine.Phase.COMBAT
+	)
 
 
 func _set_board_transition_locked(locked: bool) -> void:
@@ -543,7 +590,22 @@ func _configure_board_presentation() -> void:
 func _layout_turn_order_bar() -> void:
 	if _turn_order_bar == null or _board_scene == null:
 		return
-	_turn_order_bar.layout_under_board(_board_scene.get_board_screen_rect())
+	# Place above the board so the bottom cycle hand bar keeps the lower band.
+	var board_rect := _board_scene.get_board_screen_rect()
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x <= 0.0 or board_rect.size.x <= 0.0:
+		return
+	const BAR_HEIGHT := 96.0
+	const BAR_TOP_MARGIN := 8.0
+	_turn_order_bar.anchor_left = board_rect.position.x / vp.x
+	_turn_order_bar.anchor_right = (board_rect.position.x + board_rect.size.x) / vp.x
+	_turn_order_bar.anchor_top = 0.0
+	_turn_order_bar.anchor_bottom = 0.0
+	_turn_order_bar.offset_left = 0.0
+	_turn_order_bar.offset_right = 0.0
+	var top_y := maxf(BAR_TOP_MARGIN, board_rect.position.y - BAR_HEIGHT - BAR_TOP_MARGIN)
+	_turn_order_bar.offset_top = top_y
+	_turn_order_bar.offset_bottom = top_y + BAR_HEIGHT
 
 
 func _layout_board() -> void:
@@ -555,8 +617,26 @@ func _bind_combat_presentation() -> void:
 	_combat_presentation.set_camera_shake_3d(_camera_shake_3d)
 
 
+func _mount_start_combat_button() -> void:
+	if _hand_panel == null or _start_button == null:
+		return
+	var host := _hand_panel.get_start_button_host()
+	if host == null:
+		return
+	if _start_button.get_parent() == host:
+		return
+	_start_button.reparent(host)
+	_start_button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_start_button.offset_left = 0.0
+	_start_button.offset_top = 0.0
+	_start_button.offset_right = 0.0
+	_start_button.offset_bottom = 0.0
+	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_start_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+
 func _on_cell_clicked(cell: Vector2i) -> void:
-	if match_state.phase != MatchStateMachine.Phase.PREPARE:
+	if not _is_deploy_phase():
 		return
 	if _board_animating or _board_scene.board_transition_active:
 		return
@@ -569,14 +649,17 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 		return
 
 	if _selected_entry_id < 0:
-		_set_status("请先在牌库中选中一个单位，或拖拽至棋盘空格")
+		_set_status("请先点选手牌，或拖拽至棋盘空格")
 		return
 
 	try_deploy_entry(_selected_entry_id, cell, true)
 
 
 func try_deploy_entry(entry_id: int, cell: Vector2i, clear_selection: bool = false) -> bool:
-	if match_state.phase != MatchStateMachine.Phase.PREPARE:
+	if not _is_deploy_phase():
+		return false
+	if not _is_in_wave_hand(entry_id):
+		_set_status("该单位不在本波手牌中")
 		return false
 	if board_grid.is_blocked(cell):
 		_set_status("该格不可放置")
@@ -616,9 +699,12 @@ func try_deploy_entry(entry_id: int, cell: Vector2i, clear_selection: bool = fal
 	if clear_selection:
 		_selected_entry_id = -1
 	_board_scene.refresh()
+	if match_state.phase == MatchStateMachine.Phase.COMBAT:
+		_get_active_board_presentation().sync_units()
 	_refresh_hand_ui()
 	_log_empty_cells()
-	_stabilize_enemy_preview()
+	if match_state.phase == MatchStateMachine.Phase.PREPARE:
+		_stabilize_enemy_preview()
 	_set_status("已上场 %s" % entry.get_display_name())
 	return true
 
@@ -755,10 +841,34 @@ func _setup_placement_drag() -> void:
 
 func _set_prepare_drag_enabled(enabled: bool) -> void:
 	_prepare_drag_enabled = enabled
-	if _placement_drag != null:
-		_placement_drag.set_enabled(enabled)
+	_sync_placement_drag_enabled()
 	if not enabled:
-		_cancel_active_drag()
+		_cancel_board_unit_drag_only()
+
+
+func _set_hand_deploy_drag_enabled(enabled: bool) -> void:
+	_hand_deploy_drag_enabled = enabled
+	_sync_placement_drag_enabled()
+	if not enabled and _placement_drag != null and _placement_drag.is_dragging():
+		if _placement_drag.source == PlacementDragController.Source.HAND:
+			_cancel_active_drag()
+
+
+func _sync_placement_drag_enabled() -> void:
+	if _placement_drag == null:
+		return
+	_placement_drag.set_enabled(_prepare_drag_enabled or _hand_deploy_drag_enabled)
+
+
+func _cancel_board_unit_drag_only() -> void:
+	if _placement_drag != null and _placement_drag.is_dragging():
+		if _placement_drag.source == PlacementDragController.Source.BOARD:
+			_cancel_active_drag()
+			return
+	prepare_placement.reset_gesture()
+	_board_scene.clear_all_unit_drag_visuals()
+	_board_scene.set_prepare_drag_mode(false)
+	_board_scene.set_drag_hover_cell(Vector2i(-1, -1), false)
 
 
 func _cancel_active_drag() -> void:
@@ -772,10 +882,10 @@ func _cancel_active_drag() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not _prepare_drag_enabled:
-		return
 	if _placement_drag != null and _placement_drag.is_dragging():
 		_handle_active_drag_input(event)
+		return
+	if not _prepare_drag_enabled:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
@@ -831,7 +941,9 @@ func _handle_active_drag_input(event: InputEvent) -> void:
 
 
 func _on_hand_entry_drag_started(entry_id: int, viewport_pos: Vector2) -> void:
-	if not _prepare_drag_enabled:
+	if not _hand_deploy_drag_enabled:
+		return
+	if not _is_in_wave_hand(entry_id):
 		return
 	var entry := deck_state.get_entry(entry_id)
 	if entry == null or _is_entry_deployed(entry_id):
@@ -986,7 +1098,10 @@ func _on_deck_entry_sell_pressed(entry_id: int) -> void:
 
 
 func _on_deck_entry_pressed(entry_id: int) -> void:
-	if match_state.phase != MatchStateMachine.Phase.PREPARE:
+	if not _is_deploy_phase():
+		return
+	if not _is_in_wave_hand(entry_id):
+		_set_status("该单位不在本波手牌中")
 		return
 	if _is_entry_deployed(entry_id):
 		_set_status("该单位已在场上")
@@ -1180,6 +1295,7 @@ func _on_start_combat_pressed() -> void:
 	_stabilize_enemy_preview()
 	_locked_spawn_placements = _last_preview_placements.duplicate(true)
 	_set_prepare_drag_enabled(false)
+	_set_hand_deploy_drag_enabled(true)
 	_board_scene.clear_enemy_preview()
 	match_flow.enter_combat()
 	_update_ui()
@@ -1217,7 +1333,7 @@ func _apply_defeat_reset() -> void:
 	_shop_visit_count = 0
 	_last_shop_max_tier = 0
 	deck_state.reset_from_config()
-	_selected_entry_id = -1
+	clear_wave_hand()
 	_clear_wave_preview()
 	_board_scene.refresh()
 
@@ -1458,6 +1574,8 @@ func _get_shop_status_text(base: String) -> String:
 
 func _on_combat_tick_processed() -> void:
 	_refresh_turn_order_bar()
+	# Deaths free population / “在场” badges — refresh cycle hand UI each tick.
+	_refresh_hand_ui()
 	if not _combat_arena.is_running():
 		_get_active_board_presentation().sync_units()
 
@@ -1491,6 +1609,8 @@ func _on_combat_ended(won: bool) -> void:
 	# Tear down per-combat bus before shop/prepare so listeners cannot leak across phases.
 	if _combat_arena != null:
 		_combat_arena.stop_combat()
+	_set_hand_deploy_drag_enabled(false)
+	clear_wave_hand()
 	match_flow.enter_resolve()
 	_board_scene.sync_units()
 	await _resolve_combat_after_hold(won)
@@ -1603,10 +1723,11 @@ func _update_ui() -> void:
 	_next_wave_button.visible = false
 	_finish_shop_button.visible = in_shop
 
-	_hand_panel.visible = in_shop or in_prepare
+	_hand_panel.visible = in_shop or in_prepare or in_combat
 	_hand_panel.set_mode(
 		HandPanel.Mode.SELL if in_shop else HandPanel.Mode.DEPLOY
 	)
+	_hand_panel.set_start_button_host_visible(in_prepare)
 	if in_resolve:
 		_start_button.visible = false
 		_finish_shop_button.visible = false
@@ -1618,17 +1739,16 @@ func _update_ui() -> void:
 		and not _shop_phase_screen.transition_active
 	)
 	_hand_panel.set_interactive(
-		(in_shop or in_prepare)
+		(in_shop or in_prepare or in_combat)
 		and not _board_animating
 		and not _shop_ui_animating
 		and not _shop_phase_screen.transition_active
 	)
 
 	if in_prepare:
-		var max_units := deck_state.get_max_board_units()
-		_hand_panel.set_title(
-			"牌库（拖拽或选中后点击棋盘空格上场，最多 %d 个）" % max_units
-		)
+		_hand_panel.set_title("本波手牌 · 点选后点空格上场")
+	elif in_combat:
+		_hand_panel.set_title("补人 · 点选手牌后点空格")
 
 	if in_prepare and match_state.has_active_encounter():
 		var label := _current_encounter_label
@@ -1656,8 +1776,10 @@ func _sync_board_cell_highlights() -> void:
 	if not is_node_ready() or _board_scene == null:
 		return
 	var active := (
-		match_state.phase == MatchStateMachine.Phase.PREPARE
+		_is_deploy_phase()
 		and _selected_entry_id >= 0
+		and _is_in_wave_hand(_selected_entry_id)
+		and not _is_entry_deployed(_selected_entry_id)
 		and _can_deploy_more()
 	)
 	_board_scene.set_placement_mode(active, board_grid)
@@ -1700,7 +1822,7 @@ func _resolve_range_preview_source() -> Dictionary:
 			if hand_unit != null:
 				return { "origin": hand_cell, "unit": hand_unit }
 
-	if phase == MatchStateMachine.Phase.PREPARE and _selected_entry_id >= 0:
+	if _is_deploy_phase() and _selected_entry_id >= 0:
 		if _find_deployed_cell_for_entry(_selected_entry_id) == Vector2i(-1, -1):
 			var hover_cell := _board_scene.get_hovered_grid_cell()
 			if _is_placeable_preview_cell(hover_cell):
@@ -1739,7 +1861,19 @@ func _refresh_shop_ui() -> void:
 func _refresh_hand_ui() -> void:
 	if not is_node_ready():
 		return
-	shop_deck_binder.refresh_hand(_get_deployed_entry_ids(), _selected_entry_id)
+	var in_shop := match_state.phase == MatchStateMachine.Phase.SHOP
+	var use_wave_hand := not in_shop and _is_deploy_phase()
+	shop_deck_binder.refresh_hand(
+		_get_deployed_entry_ids(),
+		_selected_entry_id,
+		_get_wave_hand_entries() if use_wave_hand else ([] as Array[DeckEntry]),
+		use_wave_hand,
+	)
+	if use_wave_hand:
+		_hand_panel.set_population(
+			_count_player_units_on_board(),
+			deck_state.get_max_board_units(),
+		)
 	_sync_board_cell_highlights()
 
 
