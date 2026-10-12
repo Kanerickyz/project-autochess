@@ -4,14 +4,14 @@
 
 [resource]
 script = ExtResource("1")
-# Soft field (de-grid): low checker contrast, weak seams.
-color_light = Color(0.34, 0.42, 0.32, 1)
-color_dark = Color(0.30, 0.38, 0.29, 1)
+# Soft field (de-grid): low checker contrast, weak seams; half-field via BoardTheme tint.
+color_light = Color(0.33, 0.40, 0.31, 1)
+color_dark = Color(0.30, 0.37, 0.29, 1)
 color_blocked = Color(0.22, 0.24, 0.22, 1)
-color_grass_light = Color(0.36, 0.48, 0.28, 1)
-color_grass_dark = Color(0.32, 0.44, 0.26, 1)
+color_grass_light = Color(0.35, 0.47, 0.28, 1)
+color_grass_dark = Color(0.31, 0.43, 0.26, 1)
 color_frame = Color(0.35, 0.4, 0.36, 1)
-border_darken_amount = 0.02
+border_darken_amount = 0.015
 blocked_border_darken_amount = 0.06
-color_placeable_tint = Color(0.55, 0.85, 0.55, 0.28)
+color_placeable_tint = Color(0.55, 0.85, 0.55, 0.30)
 color_invalid_tint = Color(0.95, 0.45, 0.45, 0.2)

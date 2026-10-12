@@ -1,6 +1,6 @@
 [gd_resource type="Theme" format=3]
 
-[ext_resource type="FontFile" uid="uid://d3sfjw74n3i3e" path="res://assets/fonts/DroidSansFallback.ttf" id="1_font"]
+[ext_resource type="FontVariation" uid="uid://90ddf96238901c67" path="res://resources/ui/ui_font.tres" id="1_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
 bg_color = Color(0.22, 0.42, 0.38, 1)

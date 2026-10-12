@@ -29,14 +29,14 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 13
-text = "本波手牌 · 点选后点空格上场"
+theme_override_font_sizes/font_size = 12
+text = "手牌"
 autowrap_mode = 2
 
 [node name="PopulationLabel" type="Label" parent="VBox/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = "人口 0/5"
 horizontal_alignment = 2
 
@@ -44,14 +44,14 @@ horizontal_alignment = 2
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Scroll" type="ScrollContainer" parent="VBox/BottomRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 160)
+custom_minimum_size = Vector2(0, 148)
 horizontal_scroll_mode = 2
 vertical_scroll_mode = 0
 
@@ -63,6 +63,6 @@ theme_override_constants/separation = 6
 
 [node name="StartButtonHost" type="Control" parent="VBox/BottomRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 160)
+custom_minimum_size = Vector2(96, 148)
 layout_mode = 2
 size_flags_vertical = 3

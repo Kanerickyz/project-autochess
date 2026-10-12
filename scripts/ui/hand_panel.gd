@@ -23,7 +23,7 @@ const SLOT_SCENE := preload("res://scenes/ui/hand_slot.tscn")
 var _slot_widgets: Array[HandSlot] = []
 var _entry_ids: Array[int] = []
 var _mode: Mode = Mode.DEPLOY
-var _deploy_title: String = "本波手牌 · 点选后点空格上场"
+var _deploy_title: String = "手牌 · 拖到己方半场"
 var _home_offset_top: float
 var _home_offset_bottom: float
 var _home_offsets_ready: bool = false

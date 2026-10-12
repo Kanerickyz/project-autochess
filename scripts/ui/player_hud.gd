@@ -6,4 +6,4 @@ extends Control
 
 func set_gold(amount: int) -> void:
 	if _gold_label:
-		_gold_label.text = "金币: %d" % amount
+		_gold_label.text = "金 %d" % amount

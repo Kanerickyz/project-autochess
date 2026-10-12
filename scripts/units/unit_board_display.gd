@@ -2,6 +2,7 @@ class_name UnitBoardDisplay
 extends Node2D
 
 const CARD_SCENE := preload("res://scenes/ui/unit_card_display.tscn")
+const PROJECT_THEME := preload("res://resources/ui/project_theme.tres")
 
 var _card: UnitCardDisplay
 var _unit: UnitInstance
@@ -480,6 +481,7 @@ func _ensure_card() -> void:
 		return
 	_card = CARD_SCENE.instantiate() as UnitCardDisplay
 	_card.name = "UnitCardDisplay"
+	_card.theme = PROJECT_THEME
 	_card.set_board_paper_mode(true)
 	add_child(_card)
 
