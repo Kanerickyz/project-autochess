@@ -5,6 +5,8 @@ description: Collects L4 presentable GUI evidence for menus, shop, hand, board, 
 
 # gui-acceptance
 
+仅在合同为**完全验收**且目标含 L4/画面门禁时使用。**轻量验收**不跑本技能（效果由用户自验）。
+
 Headless 通过不够。UI、图标、相机或音频改动必须留下 GUI 证据。
 
 ## 记录
