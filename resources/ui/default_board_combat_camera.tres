@@ -4,5 +4,8 @@
 
 [resource]
 script = ExtResource("1")
+prepare_elevation_deg = 78.0
 combat_elevation_deg = 30.0
-ortho_size_multiplier = 2.5
+## Tighter portrait frame so the 4×8 field fills the mid-band (CR-like).
+ortho_size_multiplier = 1.12
+ortho_padding = 1.04

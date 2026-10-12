@@ -14,5 +14,5 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_right = 120.0
 offset_bottom = 28.0
-theme_override_font_sizes/font_size = 18
-text = "金币: 0"
+theme_override_font_sizes/font_size = 16
+text = "金 0"

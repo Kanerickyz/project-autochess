@@ -54,7 +54,6 @@ signal shop_visit_completed()
 @onready var _deck_replace_modal: DeckReplaceModal = %DeckReplaceModal
 @onready var _buff_attach_modal: BuffAttachModal = %BuffAttachModal
 @onready var _unit_tooltip: UnitTooltip = %UnitTooltip
-@onready var _combat_skill_callout: CombatSkillCallout = %CombatSkillCallout
 @onready var _combat_victory_overlay: CombatVictoryOverlay = %CombatVictoryOverlay
 @onready var _ui_layer: CanvasLayer = $UI
 
@@ -126,7 +125,6 @@ func _ready() -> void:
 	_camera_rig.bind(_combat_camera, _board_scene, _camera_shake_3d)
 	_setup_board()
 	_bind_combat_presentation()
-	_combat_presentation.set_skill_callout(_combat_skill_callout)
 	shop_deck_binder.configure(
 		_shop_panel, _hand_panel, shop_service, deck_state, run_economy
 	)
@@ -1679,9 +1677,9 @@ func _update_ui() -> void:
 	)
 
 	if in_prepare:
-		_hand_panel.set_title("本波手牌 · 点选后点空格上场")
+		_hand_panel.set_title("手牌 · 拖到己方半场")
 	elif in_combat:
-		_hand_panel.set_title("补人 · 点选手牌后点空格")
+		_hand_panel.set_title("补人")
 
 	if in_prepare and match_state.has_active_encounter():
 		var label := _current_encounter_label

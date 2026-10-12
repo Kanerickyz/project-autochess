@@ -2,6 +2,7 @@ class_name UnitDisplay3D
 extends Node3D
 
 const DISPLAY_SCENE := preload("res://scenes/units/unit_board_display.tscn")
+const UI_FONT := preload("res://resources/ui/ui_font.tres")
 const CARD_WIDTH_RATIO := 0.98
 const CARD_HEIGHT_RATIO := 1.12
 ## 视口边距，避免头像描边/角标贴边被 SubViewport 裁切
@@ -283,6 +284,7 @@ func _spawn_screen_damage_popup(amount: int, duration: float, is_crit: bool) -> 
 	if is_crit:
 		font_size = int(font_size * CombatAnimationConfig.CRIT_POPUP_FONT_MULT)
 		start_scale_val *= CombatAnimationConfig.CRIT_POPUP_OVERSHOOT_MULT
+	label.add_theme_font_override("font", UI_FONT)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_constant_override("outline_size", maxi(6, int(font_size * 0.24)))
 	if is_crit:

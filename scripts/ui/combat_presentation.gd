@@ -1726,6 +1726,9 @@ func _dur(base: float) -> float:
 
 
 func _skill_callout_hold_sec() -> float:
+	## No in-combat skill callout UI: skip hold so pacing is not gated on a hidden panel.
+	if _skill_callout == null:
+		return 0.0
 	if pace_config == null:
 		return 1.2
 	return pace_config.skill_callout_hold_sec

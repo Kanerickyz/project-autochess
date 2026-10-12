@@ -63,10 +63,13 @@ static func get_terrain_color(
 static func _tint_half_field(color: Color, cell: Vector2i, board_height: int) -> Color:
 	if board_height <= 0:
 		return color
-	# Soft half-field read without new art: cooler enemy (top), warmer player (bottom).
+	# Clash Royale–style read: red-leaning enemy (top), green player (bottom), soft midline band.
+	var mid := BoardHalf.midline_row(board_height)
+	if cell.y == mid - 1 or cell.y == mid:
+		return color.lerp(Color(0.22, 0.42, 0.72, 1.0), 0.28)
 	if BoardHalf.is_enemy_spawn_cell(cell, board_height):
-		return color.lerp(Color(0.55, 0.62, 0.72, 1.0), 0.12)
-	return color.lerp(Color(0.72, 0.68, 0.48, 1.0), 0.10)
+		return color.lerp(Color(0.72, 0.42, 0.36, 1.0), 0.20)
+	return color.lerp(Color(0.42, 0.68, 0.36, 1.0), 0.18)
 
 
 static func get_border_color(cell: Vector2i, blocked: bool) -> Color:

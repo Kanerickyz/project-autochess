@@ -18,8 +18,6 @@ const _BoardCameraRigScript := preload("res://scripts/ui/board_camera_rig.gd")
 @onready var _palette: SandboxUnitPalette = %SandboxUnitPalette
 @onready var _status_label: Label = %StatusLabel
 @onready var _unit_tooltip: UnitTooltip = %UnitTooltip
-@onready var _combat_skill_callout: CombatSkillCallout = %CombatSkillCallout
-
 var board_grid: BoardGrid = BoardGrid.new()
 var phase: Phase = Phase.EDIT
 var _hovered_board_unit: UnitInstance
@@ -30,7 +28,6 @@ func _ready() -> void:
 	_camera_rig.bind(_combat_camera, _board_scene, _camera_shake_3d)
 	_setup_board()
 	_bind_combat_presentation()
-	_combat_presentation.set_skill_callout(_combat_skill_callout)
 	_board_scene.cell_clicked.connect(_on_cell_clicked)
 	_board_scene.cell_right_clicked.connect(_on_cell_right_clicked)
 	_board_scene.unit_hover_changed.connect(_on_unit_hover_changed)
