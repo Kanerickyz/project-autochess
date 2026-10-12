@@ -9,6 +9,10 @@
 # Local validation artifacts
 .artifacts/
 
+# Export output (CI / local web builds)
+/build/
+/Exported/
+
 # Python
 __pycache__/
 *.pyc

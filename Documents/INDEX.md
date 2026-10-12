@@ -13,6 +13,7 @@
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
 | [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md) | **未实现技能提案**（§3–§5 积木组合，策划稿） |
+| [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **角色一览**（攻/血、技能摘要、流派索引；由脚本生成） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
@@ -113,9 +114,9 @@ Project Autochess/
 |----|-----|
 | 引擎 | Godot **4.6** |
 | 项目名 | Project Autochess |
-| 特性标签 | `4.6`, `Forward Plus`（渲染器；2D 玩法仍可用） |
+| 特性标签 | `4.6`, `GL Compatibility`（WebGL 2 / 浏览器导出所需） |
 | 物理（3D） | Jolt Physics |
-| Windows 图形驱动 | D3D12 |
+| 渲染器 | `gl_compatibility`（含 ETC2/ASTC 导入，便于 Web） |
 
 ## 核心系统对照（规划）
 

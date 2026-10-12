@@ -350,7 +350,7 @@ assets/               → 仅美术/音频
 | 语言 | GDScript 2.0（类型注解、`@export`） |
 | 棋盘表现 | 主路径 `BoardScene3D` + 单位卡显示；逻辑仍为矩形网格 `BoardGrid` |
 | 物理 | 战斗用网格距离检测，不依赖刚体碰撞结算 |
-| 配置 | `project.godot` 中 `config/features` 含 Forward Plus；3D 物理引擎为 Jolt（棋盘拾取可另用） |
+| 配置 | `project.godot` 使用 **GL Compatibility**（Web / GitHub Pages）；3D 物理引擎为 Jolt（棋盘拾取可另用） |
 | 本地化 | 早期用 `StringName` + CSV/PO；`display_name` 走 `tr()` |
 
 ---
