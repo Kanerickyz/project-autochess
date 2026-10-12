@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://40c56e41eeefd4e6"
-path="res://.godot/imported/NotoSans-Regular.ttf-d36dcb78f876e306e0dd9e7b4c2f7628.fontdata"
+uid="uid://dboxd8errgmhf"
+path="res://.godot/imported/NotoSans-Regular.ttf-674bcff8e78e1ac2b0101362155b4faa.fontdata"
 
 [deps]
 
 source_file="res://assets/fonts/NotoSans-Regular.ttf"
-dest_files=["res://.godot/imported/NotoSans-Regular.ttf-d36dcb78f876e306e0dd9e7b4c2f7628.fontdata"]
+dest_files=["res://.godot/imported/NotoSans-Regular.ttf-674bcff8e78e1ac2b0101362155b4faa.fontdata"]
 
 [params]
 
