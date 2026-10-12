@@ -11,7 +11,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5 阶段 |
 | [GAME_VISION.md](./GAME_VISION.md) | PvE 构筑与布阵、**清波胜负**、流派联动、关卡棋盘、刷怪/Boss 节奏、里程碑 |
-| [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；生命、攻击、移动；功能与数值分离） |
+| [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；角色等级与生命、攻击、移动；功能与数值分离） |
 | [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) | **商店 / 牌库 / Tier**（M3b + 增益商店已实现） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
