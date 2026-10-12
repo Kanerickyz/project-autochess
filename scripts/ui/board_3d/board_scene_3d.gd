@@ -840,7 +840,9 @@ func _update_unit_depth(unit_node: UnitDisplay3D, cell: Vector2i) -> void:
 	if unit_node == null:
 		return
 	var surface_y := BoardCell3D.get_tile_height(_tile_size)
-	unit_node.position.y = surface_y + float(cell.x + cell.y) * 0.001
+	var depth_y := surface_y + float(cell.x + cell.y) * 0.001
+	unit_node.position.y = depth_y
+	unit_node.sync_home_y(depth_y)
 
 
 func _has_valid_unit_node(instance_id: int) -> bool:

@@ -11,9 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/buff_attach_modal.tscn" id="9_attach"]
 [ext_resource type="PackedScene" uid="uid://bos13k2qfjdd5" path="res://scenes/ui/unit_tooltip.tscn" id="10_tooltip"]
 [ext_resource type="PackedScene" uid="uid://cg624y8d15ie0" path="res://scenes/ui/combat_skill_callout.tscn" id="12_skill_callout"]
-[ext_resource type="PackedScene" uid="uid://dxmgx4jlrotru" path="res://scenes/ui/combat_log_panel.tscn" id="13_combat_log"]
 [ext_resource type="PackedScene" path="res://scenes/ui/combat_victory_overlay.tscn" id="16_victory"]
-[ext_resource type="PackedScene" path="res://scenes/ui/combat/combat_turn_order_bar.tscn" id="17_turn_order"]
 [ext_resource type="PackedScene" uid="uid://bvuwt0qklnuwu" path="res://scenes/ui/board_world.tscn" id="18_board_world"]
 [ext_resource type="Script" uid="uid://s4acc783dn4o" path="res://scripts/ui/board_camera_rig.gd" id="19_camera_rig"]
 [ext_resource type="Script" uid="uid://3yie4uwdkp26" path="res://scripts/ui/camera_shake_3d.gd" id="20_camera_shake_3d"]
@@ -130,24 +128,6 @@ offset_top = 120.0
 offset_right = -16.0
 offset_bottom = 180.0
 grow_horizontal = 2
-
-[node name="CombatLogPanel" parent="UI" unique_id=2103847400 instance=ExtResource("13_combat_log")]
-unique_name_in_owner = true
-visible = false
-
-[node name="CombatTurnOrderBar" parent="UI" unique_id=1075951973 instance=ExtResource("17_turn_order")]
-unique_name_in_owner = true
-visible = false
-anchors_preset = 10
-anchor_right = 1.0
-anchor_top = 0.0
-anchor_bottom = 0.0
-offset_left = 8.0
-offset_top = 72.0
-offset_right = -8.0
-offset_bottom = 120.0
-grow_horizontal = 2
-grow_vertical = 0
 
 [node name="CombatVictoryOverlay" parent="UI" unique_id=279987725 instance=ExtResource("16_victory")]
 unique_name_in_owner = true

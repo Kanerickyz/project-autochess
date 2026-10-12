@@ -55,9 +55,7 @@ signal shop_visit_completed()
 @onready var _buff_attach_modal: BuffAttachModal = %BuffAttachModal
 @onready var _unit_tooltip: UnitTooltip = %UnitTooltip
 @onready var _combat_skill_callout: CombatSkillCallout = %CombatSkillCallout
-@onready var _combat_log_panel: CombatLogPanel = %CombatLogPanel
 @onready var _combat_victory_overlay: CombatVictoryOverlay = %CombatVictoryOverlay
-@onready var _turn_order_bar: CombatTurnOrderBar = %CombatTurnOrderBar
 @onready var _ui_layer: CanvasLayer = $UI
 
 const COMBAT_RESULT_HOLD_SEC := 2.5
@@ -81,7 +79,6 @@ var _pending_replace_slot: int = -1
 var _pending_buff_slot: int = -1
 var _pending_buff_card: BuffCardData
 var _economy_bus_connected: bool = false
-var _combat_log_bus_connected: bool = false
 var _hovered_board_unit: UnitInstance
 var _hovered_hand_entry: DeckEntry
 var _hovered_shop_offer: ShopOffer
@@ -141,9 +138,7 @@ func _ready() -> void:
 	_next_wave_button.pressed.connect(_on_next_wave_pressed)
 	_finish_shop_button.pressed.connect(_on_finish_shop_pressed)
 	_combat_arena.combat_ended.connect(_on_combat_ended)
-	_combat_arena.combat_started.connect(_on_combat_started)
 	_combat_arena.combat_tick_processed.connect(_on_combat_tick_processed)
-	_combat_arena.turn_order_changed.connect(_on_turn_order_changed)
 
 	_shop_panel.character_buy_pressed.connect(_on_shop_character_buy_pressed)
 	_shop_panel.buff_buy_pressed.connect(_on_shop_buff_buy_pressed)
@@ -584,28 +579,6 @@ func _configure_board_presentation() -> void:
 	var pixel_cell := BoardLayout.compute_cell_size(board_grid, vp_size)
 	_board_scene.setup(board_grid, _combat_camera, _board_vfx_layer, pixel_cell)
 	_camera_rig.layout_for_viewport()
-	_layout_turn_order_bar()
-
-
-func _layout_turn_order_bar() -> void:
-	if _turn_order_bar == null or _board_scene == null:
-		return
-	# Place above the board so the bottom cycle hand bar keeps the lower band.
-	var board_rect := _board_scene.get_board_screen_rect()
-	var vp := get_viewport().get_visible_rect().size
-	if vp.x <= 0.0 or board_rect.size.x <= 0.0:
-		return
-	const BAR_HEIGHT := 96.0
-	const BAR_TOP_MARGIN := 8.0
-	_turn_order_bar.anchor_left = board_rect.position.x / vp.x
-	_turn_order_bar.anchor_right = (board_rect.position.x + board_rect.size.x) / vp.x
-	_turn_order_bar.anchor_top = 0.0
-	_turn_order_bar.anchor_bottom = 0.0
-	_turn_order_bar.offset_left = 0.0
-	_turn_order_bar.offset_right = 0.0
-	var top_y := maxf(BAR_TOP_MARGIN, board_rect.position.y - BAR_HEIGHT - BAR_TOP_MARGIN)
-	_turn_order_bar.offset_top = top_y
-	_turn_order_bar.offset_bottom = top_y + BAR_HEIGHT
 
 
 func _layout_board() -> void:
@@ -1319,7 +1292,6 @@ func _launch_combat_async() -> void:
 	_board_scene.play_body_reveal(dur)
 	await _camera_rig.play_enter_combat()
 	_board_scene.set_combat_view_active(true)
-	_layout_turn_order_bar()
 	_board_animating = false
 	_set_board_transition_locked(false)
 	_begin_combat_wave()
@@ -1383,11 +1355,6 @@ func _begin_combat_wave() -> void:
 		encounter_label = "遭遇战"
 	_combat_status_base = "%s 战斗中…" % encounter_label
 	_set_status(_combat_status_base)
-	if _combat_log_panel != null:
-		_combat_log_panel.begin_combat(
-			_encounter_tier_index,
-			_format_enemy_preview_summary(),
-		)
 	_combat_arena.set_presentation(_combat_presentation)
 	_bind_combat_presentation()
 	_combat_arena.start_combat(
@@ -1400,7 +1367,6 @@ func _begin_combat_wave() -> void:
 		deck_state,
 	)
 	_connect_economy_combat_events()
-	_connect_combat_log_events()
 	_get_active_board_presentation().sync_units()
 
 
@@ -1423,22 +1389,6 @@ func _disconnect_economy_combat_events() -> void:
 		if _combat_arena.event_bus.combat_event.is_connected(_on_combat_event_for_economy):
 			_combat_arena.event_bus.combat_event.disconnect(_on_combat_event_for_economy)
 	_economy_bus_connected = false
-
-
-func _connect_combat_log_events() -> void:
-	_disconnect_combat_log_events()
-	if _combat_log_panel == null or _combat_arena.event_bus == null:
-		return
-	_combat_log_panel.bind_event_bus(_combat_arena.event_bus)
-	_combat_log_bus_connected = true
-
-
-func _disconnect_combat_log_events() -> void:
-	if not _combat_log_bus_connected:
-		return
-	if _combat_log_panel != null:
-		_combat_log_panel.bind_event_bus(null)
-	_combat_log_bus_connected = false
 
 
 func _on_combat_event_for_economy(
@@ -1583,39 +1533,16 @@ func _get_shop_status_text(base: String) -> String:
 
 
 func _on_combat_tick_processed() -> void:
-	_refresh_turn_order_bar()
 	# Deaths free population / “在场” badges — refresh cycle hand UI each tick.
 	_refresh_hand_ui()
 	if not _combat_arena.is_running():
 		_get_active_board_presentation().sync_units()
 
 
-func _on_combat_started() -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.begin_combat()
-	_refresh_turn_order_bar()
-
-
-func _on_turn_order_changed(snapshot: Dictionary) -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.apply_snapshot(snapshot)
-
-
-func _refresh_turn_order_bar() -> void:
-	if _turn_order_bar == null or _combat_arena == null:
-		return
-	_turn_order_bar.apply_snapshot(_combat_arena.get_turn_order_snapshot())
-
-
 func _on_combat_ended(won: bool) -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.end_combat()
 	if _camera_shake_3d != null:
 		_camera_shake_3d.reset()
 	_disconnect_economy_combat_events()
-	if _combat_log_panel != null:
-		_combat_log_panel.append_system("胜利！" if won else "失败…")
-	_disconnect_combat_log_events()
 	# Tear down per-combat bus before shop/prepare so listeners cannot leak across phases.
 	if _combat_arena != null:
 		_combat_arena.stop_combat()
@@ -1720,12 +1647,6 @@ func _update_ui() -> void:
 	_sync_shop_visibility(in_shop)
 	if not _board_animating and not _board_scene.board_transition_active:
 		_board_world.visible = not in_shop
-	if _combat_log_panel != null:
-		# Portrait (iPhone 14 Pro class): keep board clear for cycle deploy; log is desktop-only.
-		var vp_w := get_viewport().get_visible_rect().size.x
-		_combat_log_panel.visible = in_combat and vp_w > 500.0
-	if _turn_order_bar != null:
-		_turn_order_bar.visible = in_combat
 	if in_shop:
 		_hovered_board_unit = null
 

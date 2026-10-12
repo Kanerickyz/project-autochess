@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://sandboxpalette" path="res://scenes/ui/sandbox/sandbox_unit_palette.tscn" id="4"]
 [ext_resource type="PackedScene" uid="uid://bos13k2qfjdd5" path="res://scenes/ui/unit_tooltip.tscn" id="5"]
 [ext_resource type="PackedScene" uid="uid://cg624y8d15ie0" path="res://scenes/ui/combat_skill_callout.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/ui/combat/combat_turn_order_bar.tscn" id="7_turn_order"]
 [ext_resource type="PackedScene" uid="uid://boardworld3d01" path="res://scenes/ui/board_world.tscn" id="8"]
 [ext_resource type="Script" path="res://scripts/ui/board_camera_rig.gd" id="9"]
 [ext_resource type="Script" path="res://scripts/ui/camera_shake_3d.gd" id="10"]
@@ -52,7 +51,3 @@ unique_name_in_owner = true
 
 [node name="CombatSkillCallout" parent="UI" instance=ExtResource("6")]
 unique_name_in_owner = true
-
-[node name="CombatTurnOrderBar" parent="UI" instance=ExtResource("7_turn_order")]
-unique_name_in_owner = true
-visible = false

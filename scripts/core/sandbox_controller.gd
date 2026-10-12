@@ -19,7 +19,6 @@ const _BoardCameraRigScript := preload("res://scripts/ui/board_camera_rig.gd")
 @onready var _status_label: Label = %StatusLabel
 @onready var _unit_tooltip: UnitTooltip = %UnitTooltip
 @onready var _combat_skill_callout: CombatSkillCallout = %CombatSkillCallout
-@onready var _turn_order_bar: CombatTurnOrderBar = %CombatTurnOrderBar
 
 var board_grid: BoardGrid = BoardGrid.new()
 var phase: Phase = Phase.EDIT
@@ -36,9 +35,7 @@ func _ready() -> void:
 	_board_scene.cell_right_clicked.connect(_on_cell_right_clicked)
 	_board_scene.unit_hover_changed.connect(_on_unit_hover_changed)
 	_combat_arena.combat_ended.connect(_on_combat_ended)
-	_combat_arena.combat_started.connect(_on_combat_started)
 	_combat_arena.combat_tick_processed.connect(_on_combat_tick_processed)
-	_combat_arena.turn_order_changed.connect(_on_turn_order_changed)
 
 	_palette.clear_pressed.connect(_on_clear_pressed)
 	_palette.start_combat_pressed.connect(_on_start_combat_pressed)
@@ -94,13 +91,6 @@ func _configure_board_presentation() -> void:
 	var pixel_cell := BoardLayout.compute_cell_size(board_grid, vp_size)
 	_board_scene.setup(board_grid, _combat_camera, _board_vfx_layer, pixel_cell)
 	_camera_rig.layout_for_viewport(SANDBOX_SIDE_INSET)
-	_layout_turn_order_bar()
-
-
-func _layout_turn_order_bar() -> void:
-	if _turn_order_bar == null or _board_scene == null:
-		return
-	_turn_order_bar.layout_under_board(_board_scene.get_board_screen_rect())
 
 
 func _deferred_board_layout() -> void:
@@ -183,15 +173,12 @@ func _on_start_combat_pressed() -> void:
 	_unit_tooltip.hide_tooltip()
 	phase = Phase.COMBAT
 	_palette.set_edit_mode(false)
-	if _turn_order_bar != null:
-		_turn_order_bar.visible = true
 	_set_status("战斗中…")
 
 	var dur := _get_combat_transition_duration()
 	_board_scene.play_body_reveal(dur)
 	await _camera_rig.play_enter_combat()
 	_board_scene.set_combat_view_active(true)
-	_layout_turn_order_bar()
 	_bind_combat_presentation()
 	_combat_arena.set_presentation(_combat_presentation)
 	_combat_arena.start_combat(
@@ -207,9 +194,6 @@ func _on_start_combat_pressed() -> void:
 
 
 func _on_combat_ended(_won: bool) -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.end_combat()
-		_turn_order_bar.visible = false
 	_combat_arena.stop_combat()
 	if _camera_rig.is_combat_active():
 		_board_scene.set_combat_view_active(false)
@@ -231,26 +215,8 @@ func _on_combat_ended(_won: bool) -> void:
 
 
 func _on_combat_tick_processed() -> void:
-	_refresh_turn_order_bar()
 	if not _combat_arena.is_running():
 		_board_scene.sync_units()
-
-
-func _on_combat_started() -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.begin_combat()
-	_refresh_turn_order_bar()
-
-
-func _on_turn_order_changed(snapshot: Dictionary) -> void:
-	if _turn_order_bar != null:
-		_turn_order_bar.apply_snapshot(snapshot)
-
-
-func _refresh_turn_order_bar() -> void:
-	if _turn_order_bar == null or _combat_arena == null:
-		return
-	_turn_order_bar.apply_snapshot(_combat_arena.get_turn_order_snapshot())
 
 
 func _on_back_pressed() -> void:

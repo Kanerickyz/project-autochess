@@ -7,6 +7,8 @@ const CARD_HEIGHT_RATIO := 1.12
 ## 视口边距，避免头像描边/角标贴边被 SubViewport 裁切
 const VIEWPORT_PAD_PX := 6
 const VIEWPORT_PAD_BOTTOM_PX := 62
+## Under top-down camera: lean card so it still reads like isometric (not flat/edge-on).
+const SPRITE_LEAN_DEG := -56.0
 
 var _unit: UnitInstance
 var _tile_size: float = 1.0
@@ -122,6 +124,11 @@ func update_home_position(world_pos: Vector2) -> void:
 func update_home_position_3d(world_pos: Vector3) -> void:
 	_home_position = world_pos
 	position = world_pos
+
+
+func sync_home_y(y: float) -> void:
+	_home_position.y = y
+	position.y = y
 
 
 func play_move_to(world_pos: Vector2, duration: float) -> Tween:
@@ -474,8 +481,11 @@ func _ensure_sprite() -> void:
 		return
 	_sprite = Sprite3D.new()
 	_sprite.name = "CardSprite3D"
-	_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	# Fixed lean (not camera billboard): keep isometric character read under top-down cam.
+	_sprite.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	_sprite.centered = true
+	_sprite.shaded = false
+	_sprite.double_sided = true
 	add_child(_sprite)
 
 
@@ -496,8 +506,11 @@ func _update_sprite_layout() -> void:
 	var world_h := _tile_size * CARD_HEIGHT_RATIO
 	if card_w > 0:
 		_sprite.pixel_size = world_w / float(card_w)
-	# 卡面内容居中于格子：Sprite 中心 = 卡面中心，底边落在格子顶面
-	_sprite.position = Vector3(0.0, world_h * 0.5, 0.0)
+	_sprite.rotation_degrees = Vector3(SPRITE_LEAN_DEG, 0.0, 0.0)
+	# Feet on board (y≈0); z=0 centers the leaned footprint on the cell (avoids -Z spill).
+	var half_h := world_h * 0.5
+	var lean_abs := absf(deg_to_rad(SPRITE_LEAN_DEG))
+	_sprite.position = Vector3(0.0, half_h * cos(lean_abs), 0.0)
 	_sprite.offset = Vector2.ZERO
 
 
@@ -508,7 +521,8 @@ func _get_card_world_height() -> float:
 func _get_sprite_center_y() -> float:
 	if _sprite != null:
 		return _sprite.position.y
-	return _get_card_world_height() * 0.5
+	var half_h := _get_card_world_height() * 0.5
+	return half_h * cos(absf(deg_to_rad(SPRITE_LEAN_DEG)))
 
 
 func _restore_opacity_modulate() -> void:

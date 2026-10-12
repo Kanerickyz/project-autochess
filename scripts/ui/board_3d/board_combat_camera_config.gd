@@ -5,10 +5,12 @@ extends Resource
 const ISOMETRIC_ELEVATION_DEG := 35.264
 
 @export_group("Prepare")
-@export_range(60.0, 89.9, 0.1) var prepare_elevation_deg: float = 89.0
+## Top-down battlefield view (no combat camera switch).
+@export_range(60.0, 89.9, 0.1) var prepare_elevation_deg: float = 78.0
 @export_range(-180.0, 180.0, 0.1) var prepare_yaw_deg: float = 0.0
 
 @export_group("Combat")
+## Unused for camera pose (kept for resource compat); view stays prepare/top-down.
 @export_range(30.0, 75.0, 0.1) var combat_elevation_deg: float = ISOMETRIC_ELEVATION_DEG
 @export_range(-180.0, 180.0, 0.1) var combat_yaw_deg: float = 45.0
 

@@ -58,60 +58,20 @@ func apply_prepare_pose() -> void:
 
 
 func play_enter_combat() -> void:
+	## No prepare↔combat camera switch: stay in top-down pose.
 	_kill_transition_tween()
 	if _board_scene != null:
 		_board_scene.sync_units()
-
-	var cfg := _resolve_camera_config()
-	_active_camera_cfg = cfg
 	apply_prepare_pose()
-
-	var duration := cfg.transition_duration
-	if duration <= 0.0:
-		duration = CombatAnimationConfig.COMBAT_VIEW_TRANSITION_DUR
-
-	var from_pose := Vector2(cfg.prepare_elevation_deg, cfg.prepare_yaw_deg)
-	var to_pose := Vector2(cfg.combat_elevation_deg, cfg.combat_yaw_deg)
-
-	_transition_tween = create_tween()
-	_transition_tween.tween_method(
-		_apply_camera_pose_from_vector,
-		from_pose,
-		to_pose,
-		duration,
-	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	await _transition_tween.finished
-	_transition_tween = null
 	_combat_active = true
 
 
 func play_exit_combat() -> void:
-	if not _combat_active:
-		return
-
+	## No prepare↔combat camera switch: stay in top-down pose.
 	_kill_transition_tween()
 	if _board_scene != null:
 		_board_scene.sync_units()
 		_board_scene.refresh()
-
-	var cfg := _resolve_camera_config()
-	_active_camera_cfg = cfg
-	var duration := cfg.transition_duration
-	if duration <= 0.0:
-		duration = CombatAnimationConfig.COMBAT_VIEW_TRANSITION_DUR
-
-	var from_pose := Vector2(cfg.combat_elevation_deg, cfg.combat_yaw_deg)
-	var to_pose := Vector2(cfg.prepare_elevation_deg, cfg.prepare_yaw_deg)
-
-	_transition_tween = create_tween()
-	_transition_tween.tween_method(
-		_apply_camera_pose_from_vector,
-		from_pose,
-		to_pose,
-		duration,
-	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	await _transition_tween.finished
-	_transition_tween = null
 	_combat_active = false
 	if _camera_shake != null:
 		_camera_shake.reset()
