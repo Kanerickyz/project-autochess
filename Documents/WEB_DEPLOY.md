@@ -51,4 +51,5 @@ godot --headless --path . --export-release "Web" build/web/index.html
 - 主菜单 **退出** 在 Web 上隐藏（浏览器无法可靠关标签）。
 - 全屏依赖用户手势；启动时不会自动全屏。
 - 无声卡 / 浏览器自动播放策略下音频可能需先点一下页面。
-- 画布仍用 Adaptive 铺满浏览器；项目 `stretch/aspect=keep` 锁定 **1920×1080（16:9）**，与桌面一致；非 16:9 窗口时游戏区内留黑边。
+- 画布仍用 Adaptive 铺满浏览器；项目默认 viewport 为 **竖屏 393×852**（iPhone 14 Pro 逻辑点），`stretch/aspect=expand`；宽屏浏览器会按 expand 铺满，布局以手机优先。
+- 试玩地址（public 库 Pages 已开）：`https://kanerickyz.github.io/project-autochess/`（推 `main` 或手动跑 Deploy Web 后更新）。

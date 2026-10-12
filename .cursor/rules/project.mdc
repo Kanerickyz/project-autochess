@@ -5,4 +5,5 @@ alwaysApply: true
 
 阅读并遵守根 AGENTS.md，它是项目规则的统一来源。
 项目介绍见 Documents/INDEX.md，开发规范见 CONTRIBUTING.md，交接流程见 Documents/DEVELOPMENT_WORKFLOW.md。
+用户提出需求时先问验收方式：轻量（`tools/run_light_verify.sh`，效果用户自验）或完全（现行 runner + QA/GUI）；细则见 DEVELOPMENT_WORKFLOW「验收方式」。
 不要把 ABILITY_PROPOSALS 当成实装；胜负、主题与主循环以 GAME_VISION 定稿为准。写设计文档时：当前不做的默认不写进规格（见 DEVELOPMENT_WORKFLOW 养成规范）。单位动物名可能仍是 As-Is 占位；v1 不做羁绊。

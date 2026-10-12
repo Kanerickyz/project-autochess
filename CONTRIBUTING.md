@@ -33,8 +33,14 @@
 - 跨模块功能按 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md) 派发；小型串行修改由主代理完成。
 - Customize 里看不见的角色文件不算已加载；手读 `.cursor/agents/<role>.md` 再传合同。
 - 可重复步骤用 `.cursor/skills/`：`vertical-slice`、`verify-godot`、`gui-acceptance`。
+- 开需求先确认验收方式（轻量 / 完全），见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)。
 - 不把 Plan 草稿、提案文档或未跑过的测试写成已完成。
 
 ## 完成条件
 
-验收可复现，受影响的 test runner 通过，无新增解析错误，UI/图标有 GUI 验收，文档符合实装，独立审查无未处理阻断问题。数值修改说明金币、强度、商店节奏与站位压力的影响。
+按合同中的**验收方式**：
+
+- **轻量**：`bash tools/run_light_verify.sh` 通过（关键场景可加载、无 SCRIPT/Parse Error）；效果与画面由用户自验；交付注明未代验项。
+- **完全**：验收可复现，受影响的 test runner 通过，无新增解析错误，UI/图标有 GUI 验收，文档符合实装，独立审查无未处理阻断问题。
+
+数值修改说明金币、强度、商店节奏与站位压力的影响。
