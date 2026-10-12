@@ -240,7 +240,7 @@ extends Resource
 - To-Be 弹窗：`DeckReplaceModal`、`BuffAttachModal`（由 `SkillAttachModal` 迁移，见 SHOP_SYSTEM）
 - UI 只调用 **Service / Facade**（如 `MatchFacade.buy_unit(slot)`），不直接改棋盘数组
 - 单位 tooltip：展示联动技能说明（`EffectSpec` 的 `@export_multiline` 描述或自动生成）
-- 主题：`Theme` 资源统一字体与颜色（小动物风格偏明亮、圆角）
+- 主题：`Theme` 资源统一字体与颜色（中世纪幻想：偏石材/羊皮纸/金属色；可读优先。【设定定稿 / UI Theme 待迁移】）
 
 ### 3.7 战斗事件与效果系统
 

@@ -1,6 +1,8 @@
 # Project Autochess — 文档索引
 
-> 小动物 2D PvE 自走棋（构筑 + 布阵开战看联动 + 清波制）· Godot 4.6 · 最后更新：2026-10-12
+> 中世纪幻想 2D PvE 自走棋（构筑 + 布阵开战看联动 + 清波制）· Godot 4.6 · 最后更新：2026-10-12
+>
+> 主题以 [GAME_VISION.md](./GAME_VISION.md) 定稿为准；单位美术/命名仍可能为旧动物占位（【表现待迁移】）。
 
 ## 快速导航
 
@@ -140,5 +142,5 @@ Project Autochess/
 
 - 新增场景或 Autoload 后：更新 **仓库文件索引** 与 **推荐结构** 状态列。
 - 新增/修改 `resources/units/*.tres` 后：运行 `py tools/generate_units_roster.py` 更新 [UNITS_ROSTER.md](./UNITS_ROSTER.md)，并同步 [ABILITIES.md](./ABILITIES.md) §1.2。
-- 重大设计变更：同步修改 `ARCHITECTURE.md` / `SHOP_SYSTEM.md`，并在本页「快速导航」保持链接有效。胜负与乐趣支柱以 [GAME_VISION.md](./GAME_VISION.md) 清波制定稿为准。
+- 重大设计变更：同步修改 `ARCHITECTURE.md` / `SHOP_SYSTEM.md`，并在本页「快速导航」保持链接有效。胜负、乐趣支柱与主题（中世纪幻想）以 [GAME_VISION.md](./GAME_VISION.md) 定稿为准。
 - 外部游戏参考资料（如 SAP 数值对照、RoR2 道具、Master of Piece 机制）放在 `Documents/Reference/`，与架构 / 策划文档分离；**勿**与 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) / [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) 等自研规格混淆。SAP **单位/食物数据**与**商店机制**分列 `SUPER_AUTO_PETS.md` 与 `SAP_SHOP_SYSTEM.md`；对冲战棋 Roguelike 参考见 `MASTER_OF_PIECE.md`。

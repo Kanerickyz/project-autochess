@@ -15,7 +15,7 @@
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 逻辑网格是矩形棋盘，邻接与距离用现有 `BoardGrid` / 战斗网格接口，不用六边形或曼哈顿距离替代。
 - 数值优先改 `resources/` 下的 `.tres`（单位、技能、波次、经济、增益、牌库、商店池），避免新增重复硬编码。
-- 主题是小动物 2D；表现与逻辑分离，战斗结果不依赖帧率。
+- 主题是中世纪幻想 2D（设定定稿；单位命名/美术可能仍为旧动物占位）；表现与逻辑分离，战斗结果不依赖帧率。
 
 ## 实现与验证
 - 规范见 [CONTRIBUTING.md](CONTRIBUTING.md)。保留 `.uid` 和导入侧车，不提交 `.godot/`、`.artifacts/`、导出凭据、日志与缓存。
