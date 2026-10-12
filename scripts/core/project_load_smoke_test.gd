@@ -7,6 +7,7 @@ const SCENES: PackedStringArray = [
 	"res://scenes/main/main_menu.tscn",
 	"res://scenes/main/main.tscn",
 	"res://scenes/main/run_game.tscn",
+	"res://scenes/main/sandbox.tscn",
 	"res://scenes/combat/realtime/realtime_battle.tscn",
 	"res://scenes/combat/realtime/realtime_battle_demo.tscn",
 ]

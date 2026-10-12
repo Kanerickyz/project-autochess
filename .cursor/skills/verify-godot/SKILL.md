@@ -34,6 +34,7 @@ godot --headless --path . --script res://scripts/combat/grid_movement_test_runne
 godot --headless --path . --script res://scripts/combat/attack_range_preview_test_runner.gd
 godot --headless --path . --script res://scripts/combat/combat_bus_lifecycle_test_runner.gd
 godot --headless --path . --script res://scripts/combat/realtime/realtime_combat_sim_test_runner.gd
+godot --headless --path . --script res://scripts/ui/realtime/realtime_battle_flow_test_runner.gd
 godot --headless --path . --script res://scripts/core/board_grid_distance_test_runner.gd
 godot --headless --path . --script res://scripts/core/run/map_generator_test_runner.gd
 godot --headless --path . --script res://scripts/core/run/sacrifice_service_test_runner.gd
