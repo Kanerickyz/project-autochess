@@ -9,6 +9,7 @@ static func run_all() -> bool:
 	passed = _test_start_and_boss_unique() and passed
 	passed = _test_mystery_resolves() and passed
 	passed = _test_batch_generation() and passed
+	passed = _test_only_v1_node_types() and passed
 	if passed:
 		print("MapGeneratorTest: all passed")
 	else:
@@ -112,6 +113,37 @@ static func _test_batch_generation() -> bool:
 		if not _can_reach_boss(state):
 			push_error("MapGeneratorTest: seed %d boss unreachable" % seed)
 			return false
+	return true
+
+
+static func _test_only_v1_node_types() -> bool:
+	var allowed: Array[MapNodeType.Type] = [
+		MapNodeType.Type.START,
+		MapNodeType.Type.COMBAT,
+		MapNodeType.Type.ELITE,
+		MapNodeType.Type.BOSS,
+		MapNodeType.Type.SHOP,
+		MapNodeType.Type.EVENT,
+		MapNodeType.Type.ENCHANT,
+	]
+	var config := _make_test_config()
+	var seen: Dictionary = {}
+	for seed in 100:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		var state := MapGenerator.generate(config, rng)
+		for node in state.nodes:
+			var node_type := node.get_node_type()
+			if node_type not in allowed:
+				push_error(
+					"MapGeneratorTest: seed %d produced non-v1 node type %s"
+					% [seed, MapNodeType.display_name(node_type)]
+				)
+				return false
+			seen[node_type] = true
+	if not seen.has(MapNodeType.Type.ENCHANT):
+		push_error("MapGeneratorTest: enchant node never generated in 100 seeds")
+		return false
 	return true
 
 

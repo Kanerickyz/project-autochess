@@ -19,6 +19,7 @@ const _TYPE_COLORS := {
 	MapNodeType.Type.MYSTERY: Color(0.7, 0.7, 0.85),
 	MapNodeType.Type.SACRIFICE: Color(0.75, 0.25, 0.35),
 	MapNodeType.Type.BOSS: Color(0.95, 0.35, 0.35),
+	MapNodeType.Type.ENCHANT: Color(0.45, 0.75, 0.95),
 }
 
 var _map_state: MapState

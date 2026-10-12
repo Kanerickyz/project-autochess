@@ -124,16 +124,10 @@ static func _pick_node_type(config: RunMapConfig, floor_index: int, rng: RandomN
 		return MapNodeType.Type.ELITE if rng.randf() < 0.35 else MapNodeType.Type.COMBAT
 	if floor_index >= config.shop_min_floor and rng.randf() < 0.12:
 		return MapNodeType.Type.SHOP
-	if rng.randf() < 0.10:
-		return MapNodeType.Type.REST
-	if rng.randf() < 0.12:
+	if rng.randf() < 0.14:
 		return MapNodeType.Type.EVENT
-	if rng.randf() < 0.08:
-		return MapNodeType.Type.TREASURE
-	if rng.randf() < 0.06:
-		return MapNodeType.Type.SACRIFICE
-	if rng.randf() < 0.06:
-		return MapNodeType.Type.MYSTERY
+	if rng.randf() < 0.10:
+		return MapNodeType.Type.ENCHANT
 	return MapNodeType.Type.COMBAT
 
 

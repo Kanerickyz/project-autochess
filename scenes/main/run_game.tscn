@@ -2,32 +2,32 @@
 
 [ext_resource type="Script" path="res://scripts/core/run/run_game_controller.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://mapscreen001" path="res://scenes/ui/map/map_screen.tscn" id="2"]
-[ext_resource type="PackedScene" uid="uid://restscreen01" path="res://scenes/ui/rest/rest_screen.tscn" id="3"]
-[ext_resource type="PackedScene" uid="uid://eventscreen1" path="res://scenes/ui/event/event_screen.tscn" id="4"]
-[ext_resource type="PackedScene" uid="uid://treasurescr1" path="res://scenes/ui/treasure/treasure_screen.tscn" id="5"]
 [ext_resource type="PackedScene" uid="uid://runendoverlay" path="res://scenes/ui/run/run_end_overlay.tscn" id="6"]
-[ext_resource type="PackedScene" uid="uid://sacrificescr1" path="res://scenes/ui/sacrifice/sacrifice_screen.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/placeholder/placeholder_node_screen.tscn" id="8"]
 
 [node name="RunGame" type="Node"]
 script = ExtResource("1")
 
-[node name="BoardRoot" type="Node2D" parent="."]
+[node name="BattleLayer" type="CanvasLayer" parent="."]
+
+[node name="BattleRoot" type="Control" parent="BattleLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="UI" type="CanvasLayer" parent="."]
+layer = 2
 
 [node name="MapScreen" parent="UI" instance=ExtResource("2")]
 unique_name_in_owner = true
 
-[node name="RestScreen" parent="UI" instance=ExtResource("3")]
-unique_name_in_owner = true
-
-[node name="EventScreen" parent="UI" instance=ExtResource("4")]
-unique_name_in_owner = true
-
-[node name="TreasureScreen" parent="UI" instance=ExtResource("5")]
-unique_name_in_owner = true
-
-[node name="SacrificeScreen" parent="UI" instance=ExtResource("7")]
+[node name="PlaceholderNodeScreen" parent="UI" instance=ExtResource("8")]
 unique_name_in_owner = true
 
 [node name="RunEndOverlay" parent="UI" instance=ExtResource("6")]
