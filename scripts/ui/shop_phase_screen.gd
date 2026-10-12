@@ -3,7 +3,7 @@ extends Control
 
 @onready var shop_panel: ShopPanel = %ShopPanel
 @onready var finish_button: Button = %FinishShopButton
-@onready var _shop_content: VBoxContainer = $CenterContainer/ShopContent
+@onready var _shop_content: VBoxContainer = %ShopContent
 @onready var _title: Control = %Title
 
 var transition_active: bool = false
