@@ -10,10 +10,10 @@
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
 - **M3.5 Effect**：`EffectSpec` / `EffectAction` / `AbilityData`、`EffectResolver`、`StatModifierStack`；样本：受伤+2攻、死亡召唤2HP、移动+1血
 - **M3b Deck/Shop**：`DeckState`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
-- **手牌 As-Is**：PREPARE/SHOP 阶段 `HandPanel` 展示**完整牌库**可选放置；设计目标「每波无放回抽 5」（`DrawService`）**尚未实装**
+- **手牌 As-Is**：SHOP 展示整库出售；PREPARE/COMBAT 为本波手牌（`DrawService` 抽 `draw_count`）并可战中补人；冷却队列 / 可见窗 4 **To-Be**
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
 - **M2 交互**：进入波次 → 准备布阵 → 开始战斗 → 刷怪（As-Is 全盘空闲格；To-Be 敌半场，见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)）→ 自动战斗 → 波次结算（发金）→ 商店构筑 → 下一波 PREPARE
-- 尚无：商店锁定、牌库内手动合并、`DrawService` 抽牌
+- 尚无：商店锁定、牌库内手动合并；冷却队列 / 可见窗 4（cycle 节奏层）
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
 - **未创建** `resources/traits/`（v1 不含羁绊）
@@ -146,7 +146,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 **Legacy（已移除）**：`BenchState` / 备战席 UI — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。  
 
-数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState`（`DrawService` / cycle **To-Be**）。
+数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState` + `DrawService`（冷却窗仍 **To-Be**）。
 
 #### 3.2.1 Tier 解锁
 
@@ -365,7 +365,7 @@ assets/               → 仅美术/音频
 3. **M2b** `CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`（无 Effect）
 4. **M2c** `MatchStateMachine` 多波 `PREPARE → COMBAT → RESOLVE`
 5. 商店 → 备战席 → 购买（M3 Legacy，**已由 M3b 替换**）
-6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；`DrawService` 抽 5 **To-Be**，见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）
+6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）；本波抽牌 + 战中补人已接 `DrawService`
 7. **`EffectResolver` + 样板联动技能** + 增益卡 + Tier（已落地；cycle 补人属后续）
 8. 多关卡、多流派样板、tooltip、平衡、美术音效、存档（M5）
 

@@ -1711,7 +1711,9 @@ func _update_ui() -> void:
 	if not _board_animating and not _board_scene.board_transition_active:
 		_board_world.visible = not in_shop
 	if _combat_log_panel != null:
-		_combat_log_panel.visible = in_combat
+		# Portrait (iPhone 14 Pro class): keep board clear for cycle deploy; log is desktop-only.
+		var vp_w := get_viewport().get_visible_rect().size.x
+		_combat_log_panel.visible = in_combat and vp_w > 500.0
 	if _turn_order_bar != null:
 		_turn_order_bar.visible = in_combat
 	if in_shop:

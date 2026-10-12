@@ -249,7 +249,7 @@ flowchart TD
 | 阶段：准备 / 战斗 / 结算 | 功能已存在 | `scripts/core/match_state_machine.gd` |
 | 主模式进遭遇 → 准备 | 功能已存在 | `board_controller.start_run_encounter` 等 |
 | 布阵 + 开战门槛 | 功能已存在 | `board_controller` 开战校验 |
-| 抽牌形成 cycle 牌组 + 战中补人 | 仅愿景 / 待做 | 愿景主循环 / 商店 §4；未实装 |
+| 抽牌形成 cycle 牌组 + 战中补人 | 功能已存在 | 冷却队列 / 可见窗 4 仍 To-Be |
 | 敌人落点预览与锁定 | 功能已存在 | 波次预览 / 锁定刷怪落点 |
 | 战斗舞台、事件总线、伤害管线、单位大脑 | 功能已存在 | `scripts/combat/` |
 | 行动顺序：友方优先 + 格子坐标 | 功能已存在 | 战斗回合调度排序 |

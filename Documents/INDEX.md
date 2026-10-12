@@ -71,7 +71,7 @@ Project Autochess/
 | `scripts/core/shop_service.gd` | 双卡种商店、Tier roll、购买、刷新 | **M3b 已实现** |
 | `scripts/core/deck_state.gd` | 牌库条目、满库替换、`attach_buff` | **M3b 已实现** |
 | `scripts/core/deck_entry.gd` | 牌库单条目 | **M3b 已实现** |
-| `scripts/core/draw_service.gd` | 每波 PREPARE 无放回抽 5 | **To-Be（未实装）** |
+| `scripts/core/draw_service.gd` | 每波 PREPARE 无放回抽 `draw_count` | **已实现**（冷却队列 / 可见窗 4 仍为 To-Be） |
 | `scenes/ui/shop_panel.tscn` | 双卡种商店 UI（角色 + 增益） | **M3b 已实现** |
 | `scenes/ui/hand_panel.tscn` | 手牌 / 牌库条目（As-Is 整库） | **M3b 已实现** |
 | `scenes/ui/deck_replace_modal.tscn` | 满库替换弹窗 | **M3b 已实现** |

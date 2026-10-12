@@ -4,7 +4,7 @@
 >
 > **【设定定稿 / 表现待迁移】** 主题为中世纪幻想；`resources/units` 与 roster 中的动物名/占位图为 As-Is，换皮另开切片。
 >
-> **【循环 To-Be】** 下文「cycle 补人」为目标规格；当前代码仍可能是「仅 PREPARE 布阵、开战锁阵」。
+> **【循环 As-Is】** 本波抽牌 + 战斗 cycle 补人（无冷却队列）已实装；冷却队列 / 可见窗 4 仍为 To-Be。
 >
 > **【战场 To-Be】** 竖屏窄深、我下敌上、硬半场投放见支柱 2 与 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)；现状多为全盘共享空闲格布阵与刷怪。
 
@@ -213,9 +213,10 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 |------|------|------|
 | M1 | 可变棋盘 + 布阵 + 占格 | 已实现 |
 | M2a–c | 刷怪、战斗框架、多波循环 | 已实现 |
-| M3b | 牌库 + 角色/增益商店 + Tier | 已实现（抽牌/cycle 除外） |
+| M3b | 牌库 + 角色/增益商店 + Tier | 已实现 |
+| M4a | 本波抽牌 + 战斗 cycle 补人 | 已实现（冷却窗仍 To-Be） |
 | M3.5 | EffectResolver + 样本技能 | 已实现 |
-| M4 | 增益商店完善、更多技能、关卡 UI；**cycle 补人 / 抽牌** | 文档先行 |
+| M4 | 增益商店完善、更多技能、关卡 UI；冷却窗 / 半场 | 部分先行 |
 | M5 | 多遭遇节奏、tooltip、平衡、美术音效 | — |
 
 技术拆解见 [ARCHITECTURE.md](./ARCHITECTURE.md)。

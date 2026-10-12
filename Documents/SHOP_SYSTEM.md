@@ -1,6 +1,6 @@
 # 商店与牌库系统
 
-> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、满库替换、增益附加、Tier 解锁）。**每波抽牌 + 战斗 cycle 补人** 为 [GAME_VISION.md](./GAME_VISION.md) 定稿目标，**尚未实装**——As-Is 手牌仍展示完整牌库，且仅 PREPARE 可放置。
+> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、满库替换、增益附加、Tier 解锁）。**每波抽牌 + 战斗 cycle 补人（无冷却队列）已实装**；冷却队列 / 可见窗默认 4 仍为 To-Be。商店阶段手牌仍展示整库（出售）；准备/战斗为底部本波手牌。
 >
 > **已实现（2026-05）**：`buff_pool` / `BuffAttachModal` / `attached_buffs` / Tier 解锁（`TierUnlock` + `shop_wave`）。
 
@@ -238,7 +238,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | `DeckConfig` | `starting_units`、`max_size`、`draw_count` |
 | `DeckEntry` | 运行时条目：`unit` + `attached_buffs[]` + `rule_flags` |
 | `DeckState` | 牌库增删、满库替换、`attach_buff` |
-| `DrawService`（To-Be） | 每波 PREPARE 无放回抽 `draw_count` 张，形成 cycle 牌组；**未实装** |
+| `DrawService` | 每波 PREPARE 无放回抽 `draw_count` 张，形成 cycle 牌组；**已实装** |
 | `ShopOffer` | 枚举 `CHARACTER \| BUFF` + payload |
 | `ShopService` | roll 槽位、购买、刷新；`get_max_tier(shop_wave)` |
 | `ShopPoolConfig` | 角色池、增益池、槽位数、**按 tier 分池或 tier 字段** |
@@ -278,7 +278,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | `DeckState` + `DeckConfig` | 初始 10 占位、上限 20 |
 | 双卡种 `ShopService` | 角色卡入队、增益卡附加 |
 | Tier 解锁 | `TierUnlock` 已实现 |
-| `DrawService` / 战斗 cycle | 每波抽牌 + 战中补人（**To-Be，未实装**） |
+| `DrawService` / 战斗 cycle | 每波抽牌 + 战中补人（**已实装**；冷却窗 To-Be） |
 | UI | 替换弹窗、增益附加弹窗、手牌面板 |
 | 牌库升级 | `LevelConfig`、`DeckUpgradeService`、购买合并、等级/经验条 UI |
 | 迁移 | 已替换 `BenchState` 主流程 |
