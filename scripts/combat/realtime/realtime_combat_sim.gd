@@ -256,9 +256,16 @@ func _resolve_separation() -> void:
 				else:
 					normal = Vector2.RIGHT.rotated(_rng.randf() * TAU)
 				var overlap := min_dist - dist
-				var total_mass := a.get_mass() + b.get_mass()
-				a.position -= normal * overlap * (b.get_mass() / total_mass)
-				b.position += normal * overlap * (a.get_mass() / total_mass)
+				# 部署中的单位视为不可推动：重叠全由对方让开
+				var a_share := b.get_mass() / (a.get_mass() + b.get_mass())
+				if a.is_deploying() and b.is_deploying():
+					continue
+				elif a.is_deploying():
+					a_share = 0.0
+				elif b.is_deploying():
+					a_share = 1.0
+				a.position -= normal * overlap * a_share
+				b.position += normal * overlap * (1.0 - a_share)
 				moved = true
 		for rt in _units:
 			rt.position = _clamp_to_arena(rt.position, rt.get_radius())

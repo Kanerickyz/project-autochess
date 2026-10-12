@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
+	ok = _check("deploying_unit_not_pushed", _test_deploying_unit_not_pushed()) and ok
 	ok = _check("splash_hits_cluster", _test_splash_hits_cluster()) and ok
 	ok = _check("separation_no_overlap_in_bounds", _test_separation_no_overlap_in_bounds()) and ok
 	ok = _check("separation_mass_weighted", _test_separation_mass_weighted()) and ok
@@ -203,6 +204,27 @@ static func _test_deploy_time_freezes() -> bool:
 		push_error("deploy: unit did not move after deploy_time (y=%.2f)" % deploying.position.y)
 		return false
 	return shooter.is_alive()
+
+
+static func _test_deploying_unit_not_pushed() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 3)
+	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 3.5))
+	var heavy := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {"mass": 20.0, "move_speed": 0.0, "attack_reach": 0.0}),
+		Vector2(9.5, 28.5),
+	)
+	sim.begin_combat()
+	var start := Vector2(9.7, 28.5)
+	var deploying := sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"deploy_time": 1.0, "mass": 1.0}), start)
+	sim.advance_fixed_step()
+	if deploying.position != start:
+		push_error("deploy: deploying unit was pushed to %s" % deploying.position)
+		return false
+	if heavy.position.distance_to(deploying.position) < heavy.get_radius() + deploying.get_radius() - 0.01:
+		push_error("deploy: non-deploying unit did not yield")
+		return false
+	return true
 
 
 static func _test_deploy_after_begin_before_first_step() -> bool:
