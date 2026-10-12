@@ -5,4 +5,4 @@ alwaysApply: true
 
 阅读并遵守根 AGENTS.md，它是项目规则的统一来源。
 项目介绍见 Documents/INDEX.md，开发规范见 CONTRIBUTING.md，交接流程见 Documents/DEVELOPMENT_WORKFLOW.md。
-不要把 ABILITY_PROPOSALS 或愿景中的远期/未决条款当成实装；胜负与主题（中世纪幻想）以 GAME_VISION 定稿为准；单位动物名可能仍是 As-Is 占位；v1 不做羁绊。
+不要把 ABILITY_PROPOSALS 当成实装；胜负、主题与主循环以 GAME_VISION 定稿为准。写设计文档时：当前不做的默认不写进规格（见 DEVELOPMENT_WORKFLOW 养成规范）。单位动物名可能仍是 As-Is 占位；v1 不做羁绊。

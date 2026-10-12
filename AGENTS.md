@@ -3,14 +3,14 @@
 ## 开始工作
 - 用中文沟通；先读 [Documents/INDEX.md](Documents/INDEX.md)、相关设计文档和目标模块；检查 `git status`，保留用户修改。
 - 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/SHOP_SYSTEM.md](Documents/SHOP_SYSTEM.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md)、[Documents/ABILITIES.md](Documents/ABILITIES.md)；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。
-- [Documents/ABILITY_PROPOSALS.md](Documents/ABILITY_PROPOSALS.md) 与愿景中的远期/未决条款是提案，不是实装；胜负以 [Documents/GAME_VISION.md](Documents/GAME_VISION.md) 清波制定稿为准（文档定稿 ≠ 代码已对齐时须对照实现）。
+- [Documents/ABILITY_PROPOSALS.md](Documents/ABILITY_PROPOSALS.md) 是提案，不是实装。胜负与主循环以 [Documents/GAME_VISION.md](Documents/GAME_VISION.md) 定稿为准（文档定稿 ≠ 代码已对齐时须对照实现）。写文档时遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。
 - Godot 4.6、GDScript，默认入口 `scenes/main/main_menu.tscn`。
 - Cloud Agent 环境应提供 PATH 上的 `godot`（4.6）；可用 `GODOT_BIN` 覆盖。Headless 验证：`godot --headless --path . --script res://scripts/**/*_test_runner.gd`。GUI 验收用桌面 DISPLAY（常见为 `:1`）；无声卡时引擎会回退 dummy 音频驱动，属预期。
 - 用户当前请求优先于项目默认规则；只解决当前范围，不顺带重写游戏系统。
 
 ## 游戏约束
-- 关卡制 / 爬塔 PvE 自走棋：商店构筑、手牌布阵、自动战斗。新增 PVP、羁绊或实时微操需明确设计需求。
-- v1 不含种族/职业羁绊。流派来自单位内建技能、增益卡与站位。远期羁绊必须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
+- 关卡制 / 爬塔 PvE 自走棋：商店构筑牌库、准备预布阵、战斗中 **cycle 补人**（人口上限；已上场不可移动）、上场单位自动战斗。新增 PVP、羁绊或单位微操走位需明确设计需求。
+- v1 不含种族/职业羁绊。流派来自单位内建技能、增益卡与站位。若将来加羁绊必须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 逻辑网格是矩形棋盘，邻接与距离用现有 `BoardGrid` / 战斗网格接口，不用六边形或曼哈顿距离替代。

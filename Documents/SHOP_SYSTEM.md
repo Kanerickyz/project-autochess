@@ -1,34 +1,30 @@
 # 商店与牌库系统
 
-> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、满库替换、增益附加、Tier 解锁）。**每波抽 5（`DrawService`）为设计目标，尚未实装**——As-Is 手牌展示完整牌库。
+> 策划与程序对齐文档。**M3b 已实现**（牌库、角色卡 + 增益卡、满库替换、增益附加、Tier 解锁）。**每波抽牌 + 战斗 cycle 补人** 为 [GAME_VISION.md](./GAME_VISION.md) 定稿目标，**尚未实装**——As-Is 手牌仍展示完整牌库，且仅 PREPARE 可放置。
 >
 > **已实现（2026-05）**：`buff_pool` / `BuffAttachModal` / `attached_buffs` / Tier 解锁（`TierUnlock` + `shop_wave`）。
 
-相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md)（增益卡规格）· [GAME_VISION.md](./GAME_VISION.md)（对局循环与术语）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（Super Auto Pets 商店机制）。
+相关文档：[BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [GAME_VISION.md](./GAME_VISION.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)
 
 ---
 
 ## 1. 概述
 
-商店是波次循环 **步骤 5** 的核心构筑入口（结算后、下一波准备前）。玩家**仅能购买**两类商品：
+商店是构筑入口（线性关：结算后步骤 5；Run：地图商店节点）。玩家**仅能购买**：
 
 | 卡种 | 简述 |
 |------|------|
-| **角色卡** | 购买后加入**牌库**；每只单位**内建技能**（见 [ABILITIES.md](./ABILITIES.md)） |
-| **增益卡** | 购买后附加到牌库内某一**角色条目**（见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)） |
+| **角色卡** | 加入**构筑牌库**；单位内建技能（见 [ABILITIES.md](./ABILITIES.md)） |
+| **增益卡** | 附加到牌库内某一角色条目（见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)） |
 
-牌库在 **步骤 2（准备阶段）** 发挥作用：每波从牌库**无放回**随机抽取 5 张，供玩家选择放置到棋盘。
+牌库在准备阶段抽样为 **本波 cycle 手牌**；战斗中可滚动补人（见 §4、愿景主循环）。
 
 ```mermaid
 flowchart LR
-    resolve[4_结算] --> shopBuy[5_商店购买]
-    shopBuy --> charBuy[角色卡区]
-    shopBuy --> buffBuy[增益卡区]
-    charBuy --> deckMutate[牌库变更]
-    buffBuy --> attachUI[增益附加]
-    attachUI --> deckMutate
-    deckMutate --> prepareDraw[2_准备_抽5张布阵]
-    prepareDraw --> combat[3_战斗]
+    resolve[4_结算] --> shopBuy[5_商店]
+    shopBuy --> deckMutate[构筑牌库变更]
+    deckMutate --> prepareDraw[2_准备_抽本波子集]
+    prepareDraw --> combat[3_战斗_cycle补人]
 ```
 
 ---
@@ -150,33 +146,43 @@ DeckEntry
 
 ---
 
-## 4. 每波抽牌与布阵
+## 4. 每波抽牌、预布阵与战斗 cycle【设计定稿 / To-Be】
 
-### 4.1 时机与规则
+> As-Is：`HandPanel` 展示整库，仅 PREPARE 可放置，开战锁阵。下列为目标规格。
 
-- **时机**：每个波次进入 **PREPARE** 时执行（含首波）
-- **规则**：从当前**完整牌库**中 **无放回** 随机抽取 **5** 个 `DeckEntry`（`draw_count` 可配置）
-- **语义**：每波重新从完整牌库抽样；**手牌不跨波保留**
+### 4.1 两层模型
 
-### 4.2 玩家布阵
+| 层 | 何时变 | 职责 |
+|----|--------|------|
+| **构筑牌库** | 商店买/替/升级/挂增益 | Run 长期资产 |
+| **本波 cycle 手牌** | PREPARE 从牌库无放回抽子集；COMBAT 内滚动 | 本波谁能上、何时补 |
 
-- 抽到的 5 张显示为**本波手牌**（`HandPanel`）
-- 玩家从手牌中选择角色，放置到棋盘空格
-- 仅棋盘上的单位在 **COMBAT** 中实例化参战
-- 本波**未放置**的手牌作废，不回到牌库以外的区域；下一波重新从完整牌库抽 5 张
+战斗中**不**从构筑牌库新抽；波末 cycle 解散。
 
-### 4.3 牌库规模与抽牌数量
+### 4.2 准备抽牌
 
-| 情况 | 行为 |
-|------|------|
-| 牌库 ≥ 5 | 无放回抽 5 张 |
-| 牌库 < 5 | **未决**：抽 `min(5, deck.size)`，或先洗牌弃牌堆再抽 — 实现期二选一 |
+- **时机**：进入 PREPARE（含首波）
+- **规则**：从完整牌库无放回抽 **`draw_count`（默认 5）** 条 `DeckEntry`
+- 牌库小于 `draw_count` 时：抽 `min(draw_count, deck.size)`（推荐默认）
+- **不跨波保留**
 
-### 4.4 与棋盘的关系
+### 4.3 预布阵与战斗补人
 
-- 布阵仍仅在 **PREPARE** 阶段；战斗开始锁定布局
-- 抽牌发生在布阵之前（或布阵 UI 打开时自动抽牌）
-- 首波：关卡加载 → 初始化牌库（10 条）→ 进入 PREPARE → 抽 5 → 布阵；首波前是否开放商店见 [GAME_VISION.md](./GAME_VISION.md) 循环约定
+- **PREPARE**：可从本波手牌预布阵到空格；受 **人口上限**（默认 5）约束
+- **COMBAT**：
+  - 已上场单位 **不可移动/换位**
+  - 剩余/滚回的手牌可向空格 **即时补人**（仍受人口与空格约束）
+  - 打出后进入本波冷却队列，再滚入可见窗（可见张数默认 4）
+  - **死亡腾人口**，可即时再补
+  - 同一 `DeckEntry` 同时仅一体在场
+- 波末未使用的 cycle 手牌清空（对构筑牌库无副作用）
+
+人口、时长与借鉴边界见 [GAME_VISION.md](./GAME_VISION.md)「主循环骨架」。
+
+### 4.4 与棋盘
+
+- 预布阵与战中落子均占格，影响刷怪空闲格
+- 首波：初始化牌库 → PREPARE 抽牌 → 预布阵 → COMBAT
 
 ---
 
@@ -208,7 +214,7 @@ sequenceDiagram
 | 旧 MVP / 当前代码 | 新设计（本文档） |
 |-------------------|----------------|
 | 购买 → `BenchState` 备战席 | 购买角色卡 → `DeckState` 牌库 |
-| 备战席选中 → 点击棋盘上场 | 每波 PREPARE 无放回抽 5 → 选择放置 |
+| 备战席选中 → 点击棋盘上场 | 每波抽本波子集 → 预布阵 + 战斗 cycle 补人 |
 | 商店 `UnitData` + `AbilityData` 技能卡 | 角色卡 + **增益卡** |
 | `skill_pool` / `attached_skills` | `buff_pool` / `attached_buffs` |
 | 备战席容量 8 | 牌库上限 20（可配置） |
@@ -225,7 +231,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | `DeckConfig` | `starting_units`、`max_size`、`draw_count` |
 | `DeckEntry` | 运行时条目：`unit` + `attached_buffs[]` + `rule_flags` |
 | `DeckState` | 牌库增删、满库替换、`attach_buff` |
-| `DrawService`（To-Be） | 每波 PREPARE 无放回抽 `draw_count` 张；**未实装** |
+| `DrawService`（To-Be） | 每波 PREPARE 无放回抽 `draw_count` 张，形成 cycle 牌组；**未实装** |
 | `ShopOffer` | 枚举 `CHARACTER \| BUFF` + payload |
 | `ShopService` | roll 槽位、购买、刷新；`get_max_tier(shop_wave)` |
 | `ShopPoolConfig` | 角色池、增益池、槽位数、**按 tier 分池或 tier 字段** |
@@ -239,8 +245,8 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 | `ShopPanel` | 角色卡区 / 增益卡区分区槽位、购买、刷新 |
 | `DeckReplaceModal` | 满库时选择被替换条目 |
 | `BuffAttachModal` | 购买增益卡后选择牌库目标（由 `SkillAttachModal` 迁移） |
-| `HandPanel` | 本波抽到的 5 张手牌 |
-| `DeckView`（可选） | 浏览当前牌库（非手牌） |
+| `HandPanel` | As-Is 整库；To-Be 为本波 cycle 可见窗 + 战中可打出 |
+| `DeckView`（可选） | 浏览构筑牌库 |
 
 实现细节与依赖关系见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.2、§3.3。
 
@@ -250,16 +256,11 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 
 | 议题 | 说明 |
 |------|------|
-| 牌库 < 5 张 | 抽牌数量与是否引入弃牌堆洗牌 |
-| 手牌放置 | 是否必须全部放置；棋盘空格不足时的优先级 |
 | 满库替换 | 被替换条目是否返还金币 |
-| 增益卸载 | 是否允许不出售角色时移除单张增益（见 BUFF_SYSTEM） |
-| 同 id 增益叠加 | 重复购买同一增益卡的上限 |
-| Tier 与波次计数 | `shop_wave` 是否在非战斗商店访问时单独递增 |
+| 增益卸载 | 是否可单独移除增益（见 BUFF_SYSTEM） |
+| 同 id 增益叠加 | 重复购买上限 |
+| Tier 与波次计数 | Run 商店节点的 `shop_wave` 递增规则 |
 | 商店配比 | 角色槽 vs 增益槽权重 |
-| 牌库内手动合并 | 双条目拖放合并；**远期** |
-| 食物加经验 | Chocolate 等；**远期** |
-| 首波经济 | 10 张初始牌库与首波购物顺序 |
 
 ---
 
@@ -269,7 +270,7 @@ Legacy 模块：`BenchState`、`BenchPanel` — **已移除**（M3b）。Legacy 
 |----|------|
 | `DeckState` + `DeckConfig` | 初始 10 占位、上限 20 |
 | 双卡种 `ShopService` | 角色卡入队、**技能卡附加（Legacy，待迁移增益）** |
-| `DrawService` | 每波 PREPARE 无放回抽 5（**To-Be，未实装**） |
+| `DrawService` | 每波抽牌形成 cycle 牌组（**To-Be，未实装**） |
 | UI | 替换弹窗、技能附加弹窗、手牌面板 |
 | 牌库升级 | `LevelConfig`、`DeckUpgradeService`、购买合并、等级/经验条 UI |
 | **下一迭代（文档先行）** | 增益商店 + Tier 1–6 解锁 + `BuffCardData` |
