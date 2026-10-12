@@ -5,6 +5,8 @@
 > **【设定定稿 / 表现待迁移】** 主题为中世纪幻想；`resources/units` 与 roster 中的动物名/占位图为 As-Is，换皮另开切片。
 >
 > **【循环 To-Be】** 下文「cycle 补人」为目标规格；当前代码仍可能是「仅 PREPARE 布阵、开战锁阵」。
+>
+> **【战场 To-Be】** 竖屏窄深、我下敌上、硬半场投放见支柱 2 与 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)；现状多为全盘共享空闲格布阵与刷怪。
 
 ## 一句话
 
@@ -33,7 +35,7 @@
    商店养成牌库；准备抽本波子集并预布阵；战斗中 cycle 补人。主乐趣仍是构筑质量与技能涌现；战中操作是节奏杠杆，不是微操主菜。
 
 2. **空间与敌压**【设计定稿】  
-   小怪：空闲格刷怪占格压缩。Boss：超高单体威胁（打爆前排）。
+   战场竖屏窄深、我下敌上、中线硬半场：敌从**敌半场**一次涌入，开战后天可越线交战；友方预布阵与 cycle 只落**我半场**。压力来自半场涌入与越线，而非全盘抢空闲格。Boss：超高单体威胁。细则见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)。
 
 3. **中世纪幻想主题**【设定定稿】  
    兵种/魔物剪影可读；特效服务技能因果。表现迁移待实现。
@@ -57,13 +59,13 @@
 ### 准备
 
 - 抽本波子集（默认 **5**，可配置）。
-- 可 **预布阵** 到空格（占人口、占格，影响刷怪空闲格）。
+- 可 **预布阵** 到**我半场**空格（占人口、占格；见战斗关卡）。
 - 点「开始战斗」进入 COMBAT。
 
 ### 战斗
 
 - 上场单位 **自动战斗**；玩家 **不可** 移动/换位已上场单位，不可点技能。
-- 从 **cycle 手牌** 向空格补人；受 **人口上限** 约束（默认 **5**，与 `max_board_units` 语义对齐）。
+- 从 **cycle 手牌** 向**我半场**空格补人；受 **人口上限** 约束（默认 **5**，与 `max_board_units` 语义对齐）。
 - 打出后牌进入本波冷却队列再滚回可见窗（可见张数默认 **4**）。
 - **死亡腾人口**，可即时再补（须有空格且人口未满）。
 - 同一 `DeckEntry` 同时仅可一体在场；死后才可再从手牌打出。
@@ -161,16 +163,16 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ## 关卡与棋盘
 
-- 棋盘 `width × height` 可配置；开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 当前为 **8×8**。
-- 每格至多一个单位；玩家与怪共享棋盘。
-- 刷怪候选 = 空闲格；实际刷怪数 = `min(配置数, 候选格数)`；候选空则本批不刷。
-- 准备与战斗中新落子均占格，影响后续刷怪空闲格。
+- 棋盘为可配置矩形逻辑格；**目标**朝向为竖屏窄深（偶数行、列少行多），我下敌上，中线对半。见 [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md)。  
+- **现状**：多为全盘共享空闲格布阵与刷怪（如开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 为 **8×8**）。  
+- **目标**：每格至多一体不变；**投放**时友方只占我半场、敌只刷敌半场；**开战后天可越半场**。刷怪候选 = 敌半场空闲格；实际刷怪数 = `min(配置数, 候选格数)`。  
+- 准备预布阵与战斗中 cycle 补人只占用我半场空格；不再用「全盘占格压缩」作为主敌压叙事。
 
 ### 敌情节奏【设计定稿】
 
 | 类型 | 体验 | 压力 |
 |------|------|------|
-| 小怪 | 清杂 + 验证构筑/补人节奏 | 数量与占格 |
+| 小怪 | 清杂 + 验证构筑/补人节奏 | 敌半场涌入数量与越线压迫 |
 | Boss / 精英 | 攻坚 | 超高单体威胁 |
 
 胜负只看敌方是否清空 / 己方是否全灭。
@@ -186,7 +188,9 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 | 本波 cycle 手牌 | 本波从牌库抽得的可滚动子集 |
 | 预布阵 | 开战前放置单位 |
 | 人口 | 同时上场己方单位上限（默认 5） |
-| 空闲格 | 可刷怪的未占用格 |
+| 空闲格 | 未占用且规则允许投放/刷怪的格 |
+| 我半场 / 敌半场 | 画面下方 / 上方半区（玩家在下、敌方在上）；投放与刷怪分区见 [战斗关卡](./Features/BATTLEFIELD.md) |
+| 硬半场（投放） | 预布阵与 cycle 补人只许落己方半场；开战后天可越半场交战 |
 | Tier | 商店强度档 1–6 |
 | 牌库条目 | 角色 + 等级/经验 + 增益 |
 | 联动技能 | Trigger + 目标 + Effect |
@@ -224,8 +228,8 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 - **牌库小于抽牌数**：抽 `min(N, deck.size)`（推荐默认）
 - **满库替换是否退款**；增益是否可单独卸载（见 SHOP / BUFF）
-- **刷怪采样**（均匀 / 权重区）与怪物寻路邻接
+- 敌半场内刷怪采样（均匀 / 权重）与越线后寻路邻接细节（半场划分见战斗关卡）
 
 ---
 
-相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
+相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/BATTLEFIELD.md](./Features/BATTLEFIELD.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
