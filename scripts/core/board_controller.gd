@@ -675,7 +675,7 @@ func try_deploy_entry(entry_id: int, cell: Vector2i, clear_selection: bool = fal
 		return false
 	if not _can_deploy_more():
 		var max_units := deck_state.get_max_board_units()
-		_set_status("场上已满（%d/%d）" % [max_units, max_units])
+		_set_status("人口已满（%d/%d）" % [_count_player_units_on_board(), max_units])
 		return false
 
 	var entry := deck_state.get_entry(entry_id)
