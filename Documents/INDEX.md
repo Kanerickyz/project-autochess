@@ -1,6 +1,6 @@
 # Project Autochess — 文档索引
 
-> 小动物 2D PvE 自走棋（构筑 + 流派联动 + 波次刷怪）· Godot 4.6 · 最后更新：2026-10-11
+> 小动物 2D PvE 自走棋（构筑 + 布阵开战看联动 + 清波制）· Godot 4.6 · 最后更新：2026-10-12
 
 ## 快速导航
 
@@ -8,7 +8,7 @@
 |------|------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5 阶段 |
-| [GAME_VISION.md](./GAME_VISION.md) | PvE 构筑、**流派 / 联动技能**、关卡棋盘、刷怪、里程碑 |
+| [GAME_VISION.md](./GAME_VISION.md) | PvE 构筑与布阵、**清波胜负**、流派联动、关卡棋盘、刷怪/Boss 节奏、里程碑 |
 | [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) | **商店 / 牌库 / Tier**（M3b + 增益商店已实现） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
@@ -140,5 +140,5 @@ Project Autochess/
 
 - 新增场景或 Autoload 后：更新 **仓库文件索引** 与 **推荐结构** 状态列。
 - 新增/修改 `resources/units/*.tres` 后：运行 `py tools/generate_units_roster.py` 更新 [UNITS_ROSTER.md](./UNITS_ROSTER.md)，并同步 [ABILITIES.md](./ABILITIES.md) §1.2。
-- 重大设计变更：同步修改 `ARCHITECTURE.md` / `SHOP_SYSTEM.md`，并在本页「快速导航」保持链接有效。
+- 重大设计变更：同步修改 `ARCHITECTURE.md` / `SHOP_SYSTEM.md`，并在本页「快速导航」保持链接有效。胜负与乐趣支柱以 [GAME_VISION.md](./GAME_VISION.md) 清波制定稿为准。
 - 外部游戏参考资料（如 SAP 数值对照、RoR2 道具、Master of Piece 机制）放在 `Documents/Reference/`，与架构 / 策划文档分离；**勿**与 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) / [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) 等自研规格混淆。SAP **单位/食物数据**与**商店机制**分列 `SUPER_AUTO_PETS.md` 与 `SAP_SHOP_SYSTEM.md`；对冲战棋 Roguelike 参考见 `MASTER_OF_PIECE.md`。
