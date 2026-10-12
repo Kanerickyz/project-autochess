@@ -91,16 +91,14 @@
 
 ### 爬塔 Run（主模式）
 
-主菜单进入 [`run_game.tscn`](../scenes/main/run_game.tscn)：玩家在 **Act 地图** 上选路，节点类型含战斗 / 精英 / 商店 / 休息 / 事件 / 宝箱 / 献祭 / ? / Boss。单次节点内仍为 **部署 → 战斗 → 结算**；**战斗胜利后回地图**，商店仅出现在地图商店节点。失败则 **整局重置**（牌库、金币、地图）。生命周期与主/线性模式分界见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)。
+主菜单进入 [`run_game.tscn`](../scenes/main/run_game.tscn)：玩家在 **Act 地图** 上选路，节点类型（第一版定稿）含起点 / 战斗 / 精英 / 商店 / 事件 / **附魔** / Boss。单次战斗节点内仍为 **部署 → 战斗 → 结算**；**战斗胜利后回地图**，商店仅出现在地图商店节点。失败则 **整局重置**（牌库、金币、地图）。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)。
 
 ```mermaid
 flowchart TD
     Map[MAP 选路] -->|战斗类| Prep[PREPARE] --> Combat[COMBAT] --> Resolve[RESOLVE] --> Map
     Map --> ShopNode[SHOP 节点] --> Map
-    Map --> Rest[REST] --> Map
     Map --> Event[EVENT] --> Map
-    Map --> Treasure[TREASURE] --> Map
-    Map --> Sacrifice[SACRIFICE] --> Map
+    Map --> Enchant[ENCHANT 附魔] --> Map
     Resolve -->|失败| RunDefeat[RUN_DEFEAT]
     Map -->|Boss 胜利| RunComplete[RUN_COMPLETE]
 ```
