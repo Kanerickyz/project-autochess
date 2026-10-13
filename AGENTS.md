@@ -2,7 +2,7 @@
 
 ## 开始工作
 - 用中文沟通；先读 [Documents/INDEX.md](Documents/INDEX.md)、相关设计文档和目标模块；检查 `git status`，保留用户修改。
-- 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/SHOP_SYSTEM.md](Documents/SHOP_SYSTEM.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md)、[Documents/ABILITIES.md](Documents/ABILITIES.md)；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。
+- 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md)、[Documents/ABILITIES.md](Documents/ABILITIES.md) 与 `Documents/Features/`；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。商店/牌库细则以愿景、架构摘要与实现为准（已删除旧 `SHOP_SYSTEM.md`）。
 - [Documents/ABILITY_PROPOSALS.md](Documents/ABILITY_PROPOSALS.md) 是提案，不是实装。胜负与主循环以 [Documents/GAME_VISION.md](Documents/GAME_VISION.md) 定稿为准（文档定稿 ≠ 代码已对齐时须对照实现）。写文档时遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。
 - Godot 4.6、GDScript，默认入口 `scenes/main/main_menu.tscn`。
 - Cloud Agent 环境应提供 PATH 上的 `godot`（4.6）；可用 `GODOT_BIN` 覆盖。Headless 验证：`godot --headless --path . --script res://scripts/**/*_test_runner.gd`。GUI 验收用桌面 DISPLAY（常见为 `:1`）；无声卡时引擎会回退 dummy 音频驱动，属预期。

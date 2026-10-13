@@ -1,7 +1,7 @@
 # 角色单位
 
 > 功能规格 · 只谈规则与结构，不写具体数值 · 2026-10-12（实时战斗版）  
-> 相关文档：[游戏愿景](../GAME_VISION.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [技能目录](../ABILITIES.md) · [商店](../SHOP_SYSTEM.md) · [增益](../BUFF_SYSTEM.md)  
+> 相关文档：[游戏愿景](../GAME_VISION.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [技能目录](../ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
 > **本版不写**：具体生命、攻击、速度、距离、时间等数字（由数值策划填进 `resources/units/realtime/*.tres`）；伤害公式系数；每一级加多少。  
 > **【现状】** 实时属性字段在单位属性脚本（`scripts/data/unit_stats.gd` 的「Realtime」组）；新角色名单资源在 `resources/units/realtime/`，由 Run 主路径的实时战斗（`scripts/combat/realtime/`）读取。旧动物占位角色只留在旧网格工具环。
 

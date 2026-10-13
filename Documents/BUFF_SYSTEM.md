@@ -2,7 +2,7 @@
 
 > 策划与程序对齐文档。**已实现**（2026-05）：增益商店、`BuffAttachModal`、`attached_buffs`、Tier roll。
 
-相关文档：[SHOP_SYSTEM.md](./SHOP_SYSTEM.md)（商店槽位、Tier、牌库）· [ABILITIES.md](./ABILITIES.md)（单位内建联动技能）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（SAP Food 对照）
+相关文档：[GAME_VISION.md](./GAME_VISION.md) · [ABILITIES.md](./ABILITIES.md)（单位内建联动技能）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界 · 商店摘要）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（SAP Food 对照）
 
 ---
 
@@ -142,7 +142,7 @@ DeckEntry
 
 ## 5. 商店与 Tier
 
-增益卡与角色卡共用 **Tier 解锁** 规则（见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §2.6）：
+增益卡与角色卡共用 **Tier 解锁** 规则（见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.2.1 / `TierUnlock`）：
 
 - 每个增益槽从 `tier <= max_unlocked_tier` 的 `buff_pool` 中等权重 roll
 - `BuffCardData.tier` 与 `UnitData.tier` 使用同一套 1–6 档位语义
@@ -199,5 +199,5 @@ DeckEntry
 ## 10. 维护说明
 
 - 新增增益 `.tres` 后更新 §4 目录表
-- 平衡调 `shop_cost` / `tier` 时同步 SHOP_SYSTEM Tier 表
+- 平衡调 `shop_cost` / `tier` 时同步商店池资源与 `TierUnlock`
 - SAP 食物效果对照见 [SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) §4（外部参考，非 1:1）

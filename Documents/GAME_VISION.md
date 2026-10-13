@@ -43,7 +43,7 @@
    兵种/魔物剪影可读；特效服务技能因果。表现迁移待实现。
 
 **深度公式**：联动技能 + 站位 + 增益卡。  
-商店与牌库见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)、[BUFF_SYSTEM.md](./BUFF_SYSTEM.md)。
+商店与牌库见本篇主循环与经济约定；增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)；实现摘要见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ---
 
@@ -154,7 +154,7 @@ flowchart TD
 |------|------|
 | 战斗内 | 击杀掉金 |
 | 波次结算 | `WaveData.wave_gold_reward`（或默认波次金） |
-| 商店出售 | 按 `DeckEntry.level` 退金（见 SHOP_SYSTEM） |
+| 商店出售 | 按 `DeckEntry.level` 退金（见实现 / 架构摘要） |
 
 ```
 LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
@@ -234,4 +234,4 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ---
 
-相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
+相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)

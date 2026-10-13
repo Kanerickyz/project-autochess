@@ -1,7 +1,7 @@
 # 技能目录与设计指导
 
 > **技能** = 单位**内建**联动能力（`UnitData.ability` / `passives`）。**增益卡**见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)，不再从商店购买技能卡。  
-> 技术管线见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.7 · 商店流程见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)。
+> 技术管线见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.7 · 商店/牌库见愿景与架构摘要。
 
 相关文档：[INDEX.md](./INDEX.md) · [Features/UNITS.md](./Features/UNITS.md)（角色单位：技能与攻击方式是两套系统） · [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md)（未实现提案） · [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md)（外部参考，非实现规格）
 

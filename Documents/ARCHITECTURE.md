@@ -2,7 +2,7 @@
 
 ## 1. 当前状态（As-Is）
 
-> **已实现（2026-05）**：商店为 **角色卡 + 增益卡** + Tier 解锁，见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)、[BUFF_SYSTEM.md](./BUFF_SYSTEM.md)。
+> **已实现（2026-05）**：商店为 **角色卡 + 增益卡** + Tier 解锁，见本节摘要与 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)（旧 `SHOP_SYSTEM.md` 已删除）。
 
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
@@ -136,7 +136,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 ### 3.2 Economy & Shop
 
-完整策划规格见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)、增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)。摘要：
+商店流程以本节与实现为准；增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)。摘要：
 
 | 概念 | 说明 |
 |------|------|
@@ -146,14 +146,14 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 刷新 | 消耗金币刷新（商店锁定非本版范围） |
 | 购买限制 | 角色卡：牌库未满直接入队，已满 → 替换流；增益卡不占新槽 |
 
-**Legacy（已移除）**：`BenchState` / 备战席 UI — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。  
+**Legacy（已移除）**：`BenchState` / 备战席 UI。  
 
 数据：`ShopPoolConfig`（角色池 + 增益池）、`DeckConfig`；运行时 `ShopService` + `DeckState` + `DrawService`（冷却窗仍 **To-Be**）。
 
 #### 3.2.1 Tier 解锁
 
 - **职责**：`TierUnlock.get_max_unlocked_tier(shop_wave)`（见 `scripts/core/tier_unlock.gd`）
-- **输入**：`shop_wave`（见 SHOP_SYSTEM §2.6）
+- **输入**：`shop_wave`（Run 内进入商店的波次序号；见 `TierUnlock` / 实现）
 - **输出**：`max_unlocked_tier`（1–6）；各槽 roll 时过滤 `tier <= max`
 - **默认定价**：`cost == tier`（可 per-resource 覆盖）
 - **状态**：**逻辑已实现**；池内容与权重仍可迭代
@@ -162,10 +162,10 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 - **棋盘**：每关可配置 `width × height` 方格；每格最多一单位。**As-Is**：友方与怪物共享全盘空闲格投放/刷怪。**To-Be（战斗关卡）**：竖屏窄深、我下敌上、偶数行中线硬半场——友方预布阵/cycle 仅我半场，敌一次刷出仅敌半场；开战后天可越半场。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
 - **牌库（Deck）**：Run 内 `DeckEntry` 列表（默认 10 占位、上限 20）；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
-- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 抽本波子集 → **cycle 手牌**（见愿景 / SHOP §4）
+- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 抽本波子集 → **cycle 手牌**（见愿景）
 - **布阵规则**：**As-Is** 仅 PREPARE 可放置、开战锁阵；**To-Be** 准备预布阵 + 战斗中 cycle 补人（已上场不可移动，人口上限；落点限我半场）
 
-**Legacy（已移除）**：原备战席点击上场流程 — 见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md) §6。
+**Legacy（已移除）**：原备战席点击上场流程。
 
 **SpawnSystem（刷怪）**：
 
@@ -252,7 +252,7 @@ extends Resource
 ### 3.6 UI Layer
 
 - 场景：`scenes/ui/` 下分 ShopPanel、HandPanel、BoardView、PlayerHUD（v1 无羁绊面板）
-- To-Be 弹窗：`DeckReplaceModal`、`BuffAttachModal`（由 `SkillAttachModal` 迁移，见 SHOP_SYSTEM）
+- To-Be 弹窗：`DeckReplaceModal`、`BuffAttachModal`（由 `SkillAttachModal` 迁移）
 - UI 只调用 **Service / Facade**（如 `MatchFacade.buy_unit(slot)`），不直接改棋盘数组
 - 单位 tooltip：展示联动技能说明（`EffectSpec` 的 `@export_multiline` 描述或自动生成）
 - 主题：`Theme` 资源统一字体与颜色（中世纪幻想：偏石材/羊皮纸/金属色；可读优先。【设定定稿 / UI Theme 待迁移】）
@@ -381,7 +381,7 @@ assets/               → 仅美术/音频
 3. **M2b** `CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`（无 Effect）
 4. **M2c** `MatchStateMachine` 多波 `PREPARE → COMBAT → RESOLVE`
 5. 商店 → 备战席 → 购买（M3 Legacy，**已由 M3b 替换**）
-6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；见 [SHOP_SYSTEM.md](./SHOP_SYSTEM.md)）；本波抽牌 + 战中补人已接 `DrawService`
+6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；见本节摘要）；本波抽牌 + 战中补人已接 `DrawService`
 7. **`EffectResolver` + 样板联动技能** + 增益卡 + Tier（已落地；cycle 补人属后续）
 8. 多关卡、多流派样板、tooltip、平衡、美术音效、存档（M5）
 

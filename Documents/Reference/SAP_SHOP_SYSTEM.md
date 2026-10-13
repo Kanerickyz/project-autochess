@@ -3,7 +3,7 @@
 > 外部游戏资料汇总，供策划对照；**非**本项目实现规格。
 > 数据来源：[SAP Wiki](https://superautopets.wiki.gg/) · [Roll Chances](https://superautopets.fandom.com/wiki/Roll_Chances) · 收录范围：**Turtle Pack** · 数据快照：**2026-05-29**
 
-相关文档：[INDEX.md](../INDEX.md) · [SHOP_SYSTEM.md](../SHOP_SYSTEM.md) · [SUPER_AUTO_PETS.md](./SUPER_AUTO_PETS.md) · [GAME_VISION.md](../GAME_VISION.md)
+相关文档：[INDEX.md](../INDEX.md) · [SUPER_AUTO_PETS.md](./SUPER_AUTO_PETS.md) · [GAME_VISION.md](../GAME_VISION.md) · [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 单位/食物数据表见 [SUPER_AUTO_PETS.md](./SUPER_AUTO_PETS.md)；本文档专注 **商店阶段机制**。
 
@@ -260,7 +260,7 @@ Turtle Pack 共 **18** 种商店食物（T1–T5），完整表见 [SUPER_AUTO_P
 
 对照表仅供设计参考，**不**暗示必须对齐 SAP。
 
-| 维度 | SAP | 本项目（文档目标，见 [SHOP_SYSTEM.md](../SHOP_SYSTEM.md)） |
+| 维度 | SAP | 本项目（见愿景 / 架构摘要与实现） |
 |------|-----|--------------------------------------------------------|
 | 商店食物 / 强化 | **Food**（食物） | **增益卡**（[BUFF_SYSTEM.md](../BUFF_SYSTEM.md)）— 非宠物技能 |
 | 宠物技能 | 宠物 **Lv1/2/3 技能**（随等级） | 单位**内建** `UnitData.ability`（[ABILITIES.md](../ABILITIES.md)） |
@@ -268,9 +268,9 @@ Turtle Pack 共 **18** 种商店食物（T1–T5），完整表见 [SUPER_AUTO_P
 | 构筑载体 | 5 格队伍（即时上场） | 牌库 Deck（上限 20）+ 每波抽 5 |
 | 金币来源 | 固定 10 金/回合 | 击杀掉金 + 波次结算 + 增益亡者遗金等 |
 | 刷新 | 1 金；回合初免费 Roll | `EconomyConfig.refresh_cost` |
-| 锁定 | Freeze | **远期**（SHOP_SYSTEM §2.3） |
-| Tier 解锁 | 回合 `2X-1` 解锁 Tier X | **To-Be**：`shop_wave = wave_index + 1`，表见 SHOP_SYSTEM §2.6 |
-| 3 合 1 / 升星 | 核心机制 | **已实现**牌库 Lv1–3 购买合并（SHOP_SYSTEM §2.4） |
+| 锁定 | Freeze | **远期** |
+| Tier 解锁 | 回合 `2X-1` 解锁 Tier X | **To-Be**：`shop_wave = wave_index + 1`（见 `TierUnlock`） |
+| 3 合 1 / 升星 | 核心机制 | **已实现**牌库 Lv1–3 购买合并（见架构摘要） |
 | 满员处理 | 不可再买 | 牌库满 → **替换流**；增益不占槽 |
 | 部署 | 队伍即上场 | PREPARE 抽 5 张选放棋盘 |
 

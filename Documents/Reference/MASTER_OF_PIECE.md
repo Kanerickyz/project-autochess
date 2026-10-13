@@ -440,4 +440,4 @@ EA 约 **14** 种（itch.io）；后续区域或有未公开节点。
 
 - 新增圣物/佣兵条目：优先从游戏内简体中文确认译名，更新 §5.5、§6.1
 - 正式版（1.0）发布后：核对 §8 数量表，补充 Serila 与完整 roster
-- 本文档与 [SHOP_SYSTEM.md](../SHOP_SYSTEM.md)、[BUFF_SYSTEM.md](../BUFF_SYSTEM.md) 等 **自研规格** 分离存放，勿混为项目实现需求
+- 本文档与 [BUFF_SYSTEM.md](../BUFF_SYSTEM.md)、[GAME_VISION.md](../GAME_VISION.md) 等 **自研规格** 分离存放，勿混为项目实现需求

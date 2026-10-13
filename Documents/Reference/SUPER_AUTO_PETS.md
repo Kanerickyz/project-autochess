@@ -3,7 +3,7 @@
 > 外部游戏资料汇总，供策划对照；**非**本项目实现规格。
 > 数据来源：[SAP Wiki](https://superautopets.wiki.gg/) · 收录范围：**Turtle Pack** · 数据快照：**2026-05-29**
 
-相关文档：[INDEX.md](../INDEX.md) · [GAME_VISION.md](../GAME_VISION.md) · [SHOP_SYSTEM.md](../SHOP_SYSTEM.md) · [SAP_SHOP_SYSTEM.md](./SAP_SHOP_SYSTEM.md)（商店机制）
+相关文档：[INDEX.md](../INDEX.md) · [GAME_VISION.md](../GAME_VISION.md) · [SAP_SHOP_SYSTEM.md](./SAP_SHOP_SYSTEM.md)（商店机制）
 
 ---
 
@@ -15,7 +15,7 @@
 | Food | 食物 | 暂无直接对应（远期可类比消耗型强化） |
 | Food Perk | 食物增益 | 宠物身上持久 Buff 槽（可被覆盖） |
 | Tier | 费用档 | `UnitData.cost` |
-| Level 1/2/3 | 等级（3 合 1 升级） | 远期升星（见 SHOP_SYSTEM §8） |
+| Level 1/2/3 | 等级（3 合 1 升级） | 本项目牌库等级见架构摘要 / 实现 |
 
 ## 2. 核心机制摘要
 
