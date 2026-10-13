@@ -1,8 +1,8 @@
 # 技能提案（ABILITY_PROPOSALS）
 
 > 策划草案 · **未创建 `.tres` / 未挂载单位** · **不是**功能规格  
-> 技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) · 角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) · 已挂载样本见 `resources/abilities/`  
-> 具体技能内容落地后应写入 Content，勿把本页当作规格正文。
+> 技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) · 技能内容池见 [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) · 角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)  
+> 已挂载样本见 `resources/abilities/`；勿把本页当作规格正文。
 
 ---
 

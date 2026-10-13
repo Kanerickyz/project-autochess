@@ -15,6 +15,7 @@
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
 | [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（十人基础兵种：定位、数值草案） |
+| [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池与相对强度；挂载另定） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
@@ -155,6 +156,6 @@ Project Autochess/
 ## 维护说明
 
 - 新增场景或 Autoload 后：更新 **仓库文件索引** 与 **推荐结构** 状态列。
-- 新增/修改实时主路径单位后：更新 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)；技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md)，具体技能内容写 Content。
+- 新增/修改实时主路径单位后：更新 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)。技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md)；技能内容池见 [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md)。
 - 重大设计变更：同步 `ARCHITECTURE.md` / `Features/` 与本页导航。当前规格以 [GAME_VISION.md](./GAME_VISION.md) 为准；**不做的内容默认不写进文档**（见 [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) 养成规范）。
 - 外部游戏参考资料（如 SAP 数值对照、RoR2 道具、Master of Piece 机制）放在 `Documents/Reference/`，与架构 / 策划文档分离；**勿**与 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) 等自研规格混淆。SAP **单位/食物数据**与**商店机制**分列 `SUPER_AUTO_PETS.md` 与 `SAP_SHOP_SYSTEM.md`；对冲战棋 Roguelike 参考见 `MASTER_OF_PIECE.md`。
