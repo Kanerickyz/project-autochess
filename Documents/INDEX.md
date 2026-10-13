@@ -21,7 +21,6 @@
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏 18×32、我下敌上、投放吸附与开战实时越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
-| [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md) | **未实现技能提案**（策划稿，非规格） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
