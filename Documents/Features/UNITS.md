@@ -1,9 +1,9 @@
 # 角色单位
 
-> 功能规格 · 只谈规则与结构，不写具体数值 · 2026-10-12（实时战斗版）  
-> 相关文档：[游戏愿景](../GAME_VISION.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [技能目录](../ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
-> **本版不写**：具体生命、攻击、速度、距离、时间等数字（由数值策划填进 `resources/units/realtime/*.tres`）；伤害公式系数；每一级加多少。  
-> **【现状】** 实时属性字段在单位属性脚本（`scripts/data/unit_stats.gd` 的「Realtime」组）；新角色名单资源在 `resources/units/realtime/`，由 Run 主路径的实时战斗（`scripts/combat/realtime/`）读取。旧动物占位角色只留在旧网格工具环。
+> 功能规格 · 只谈规则与结构，不写具体数值 · 2026-10-13（实时战斗版）  
+> 相关文档：[游戏愿景](../GAME_VISION.md) · [Content 角色库](../Content/UNITS_ROSTER.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [技能目录](../ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
+> **本版不写**：兵种花名册与具体数字（见 Content）；伤害公式系数；每一级加多少。  
+> **【现状】** 实时属性字段在单位属性脚本（`scripts/data/unit_stats.gd` 的「Realtime」组）；资源在 `resources/units/realtime/`，由 Run 主路径实时战斗读取。旧动物占位只留在旧网格工具环。
 
 ## 1. 这是什么
 
@@ -173,7 +173,7 @@
 
 - 敌方遭遇复用友方模板（敌方阵营）；Boss / 高威胁位**另册**，不在 Content 友方总表。  
 - 准备抽牌数与人口上限见牌库配置（默认抽五、人口五）。起始带哪几名友方：**另定**（见 Content）。  
-- **【As-Is】** 资源 id / 显示名可能仍是旧占位，以 Content 正式名为准做迁移。
+- 显示名与数值以 Content / `resources/units/realtime/` 为准；资源文件 id 可仍为旧英文名。
 
 ---
 

@@ -3,7 +3,7 @@
 > Content · 实时主路径 · 2026-10-13  
 > 功能规则见 [Features/UNITS.md](../Features/UNITS.md)；本篇写**兵种名、角色定位与数值草案**。  
 > **本版不写**：主技能 / 被动（槽位允许为空）；敌方 Boss 高威胁位（另册）。  
-> **【As-Is】** `resources/units/realtime/` 仍可能是旧占位 id / 显示名；本文定稿 ≠ 资源已改名或已写入。
+> **【资源已对齐】** 显示名与数值已写入 `resources/units/realtime/`；资源文件 id 仍沿用旧英文名（如 `knight`=`盾兵`），新骑士为 `rider.tres`。
 
 ## 1. 范围与共识
 
@@ -36,7 +36,7 @@
 ## 3. 数值草案
 
 长度单位：格；时间单位：秒。字段含义见 Features/UNITS。  
-下列为策划草案，**待写入** `resources/units/realtime/`。
+下列与 `resources/units/realtime/` **已对齐**（以资源为准回写本文时保持同步）。
 
 | 兵种名 | 生命 | 攻击 | 移速 | 攻间隔 | 前摇 | 攻击距离 | 索敌 | 碰撞半径 | 质量 | 弹速 | 溅射 | 部署 | 花费 | 品阶 |
 |--------|------|------|------|--------|------|----------|------|----------|------|------|------|------|------|------|
@@ -69,27 +69,27 @@
 - **品阶**：商店解锁档；高品阶需更多商店进度才会出现。  
 - 民兵为消耗兵种：**花费 1、品阶 1**。
 
-## 4. 与资源的对应（实现前）
+## 4. 与资源的对应
 
-| 兵种名 | 现状资源（可能仍为旧名） | 备注 |
-|--------|--------------------------|------|
-| 盾兵 | `knight.tres` | 显示名 / 数值待改 |
-| 弓箭手 | `archer.tres` | |
-| 斧兵 | `barbarian.tres` | |
-| 轻步兵 | `goblin.tres` | |
-| 投矛兵 | `spear_goblin.tres` | |
-| 火枪手 | `musketeer.tres` | |
-| 双手剑士 | `mini_pekka.tres` | |
-| 链枷兵 | `valkyrie.tres` | |
-| 民兵 | `skeleton.tres` | |
-| 骑士 | （尚无） | 需新建资源 |
+| 兵种名 | 资源文件 | 资源 id |
+|--------|----------|---------|
+| 盾兵 | `knight.tres` | `knight` |
+| 弓箭手 | `archer.tres` | `archer` |
+| 斧兵 | `barbarian.tres` | `barbarian` |
+| 轻步兵 | `goblin.tres` | `goblin` |
+| 投矛兵 | `spear_goblin.tres` | `spear_goblin` |
+| 火枪手 | `musketeer.tres` | `musketeer` |
+| 双手剑士 | `mini_pekka.tres` | `mini_pekka` |
+| 链枷兵 | `valkyrie.tres` | `valkyrie` |
+| 民兵 | `skeleton.tres` | `skeleton` |
+| 骑士 | `rider.tres` | `rider` |
 
-敌方遭遇可复用上表模板（敌方阵营）。Boss 不在本表。
+敌方遭遇可复用上表模板（敌方阵营）。Boss（`giant_knight.tres`）不在本表。
 
 ## 5. 起始牌库与人口
 
 - 准备阶段抽牌数、人口上限仍以牌库 / 关卡配置为准（默认抽 5、人口 5，见愿景）。  
-- 十人中起始带哪些：**另定**（原「九人抽八」需重开）。
+- **【As-Is 起始】** `realtime_starter_deck.tres`：九人（含骑士，不含民兵）；民兵进敌池 / 后续商店。
 
 ## 6. 维护
 

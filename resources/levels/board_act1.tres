@@ -12,12 +12,13 @@
 [ext_resource type="Resource" path="res://resources/units/realtime/mini_pekka.tres" id="u_mini_pekka"]
 [ext_resource type="Resource" path="res://resources/units/realtime/valkyrie.tres" id="u_valkyrie"]
 [ext_resource type="Resource" path="res://resources/units/realtime/skeleton.tres" id="u_skeleton"]
+[ext_resource type="Resource" path="res://resources/units/realtime/rider.tres" id="u_rider"]
 
 [resource]
 script = ExtResource("1")
 board_width = 18
 board_height = 32
-enemy_pool = Array[ExtResource("1_unit")]([ExtResource("u_knight"), ExtResource("u_archer"), ExtResource("u_barbarian"), ExtResource("u_goblin"), ExtResource("u_spear_goblin"), ExtResource("u_musketeer"), ExtResource("u_mini_pekka"), ExtResource("u_valkyrie"), ExtResource("u_skeleton")])
+enemy_pool = Array[ExtResource("1_unit")]([ExtResource("u_knight"), ExtResource("u_archer"), ExtResource("u_barbarian"), ExtResource("u_goblin"), ExtResource("u_spear_goblin"), ExtResource("u_musketeer"), ExtResource("u_mini_pekka"), ExtResource("u_valkyrie"), ExtResource("u_skeleton"), ExtResource("u_rider")])
 generate_terrain = false
 terrain_tileset = ExtResource("2_nqghs")
 terrain_seed = 42

@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="UnitStats_knight"]
 script = ExtResource("2_stats")
-max_hp = 1400
+max_hp = 1600
 attack = 160
 crit_rate_percent = 0
 move_speed = 1.0
@@ -14,15 +14,15 @@ attack_windup = 0.5
 attack_reach = 0.8
 sight_range = 5.5
 body_radius = 0.45
-mass = 2.0
+mass = 2.5
 projectile_speed = 0.0
 splash_radius = 0.0
-deploy_time = 1.0
+deploy_time = 1.2
 
 [resource]
 script = ExtResource("1_unit")
 id = "knight"
-display_name = "骑士"
+display_name = "盾兵"
 cost = 3
 tier = 2
 stats = SubResource("UnitStats_knight")

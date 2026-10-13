@@ -91,8 +91,8 @@ Project Autochess/
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
 | `scripts/combat/realtime/` | `RealtimeCombatSim` 固定步长连续坐标模拟 | **已实现** |
-| `resources/units/realtime/` | 实时基础单兵（显示名可能仍为旧占位；名单见 Content） | **已实现** |
-| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（人选待按 Content 十人另定） | **已实现** |
+| `resources/units/realtime/` | 实时十人基础兵种（显示名/数值对齐 Content；含 `rider`） | **已实现** |
+| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（九人，不含民兵） | **已实现** |
 | `scenes/ui/placeholder/` | 地图非战斗节点占位界面 | **已实现** |
 | `resources/runs/act1_map.tres` | Act1 地图配置 + 遭遇池 | **Run 已实现** |
 | `resources/encounters/` | `EncounterData`（自 `wave_*.tres` 拆分） | **Run 已实现** |

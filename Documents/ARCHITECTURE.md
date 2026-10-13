@@ -6,7 +6,7 @@
 
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
-- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏 18×32，格子只用于投放吸附与半场；开战后 `RealtimeCombatSim` 以固定步长（1/30 秒）在连续坐标上推进移动、攻击、投射物、溅射与推挤（见 §3.4）。角色为 `resources/units/realtime/`（皇室战争式基础单兵占位，无主技能）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
+- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏 18×32，格子只用于投放吸附与半场；开战后 `RealtimeCombatSim` 以固定步长（1/30 秒）在连续坐标上推进移动、攻击、投射物、溅射与推挤（见 §3.4）。角色为 `resources/units/realtime/`（Content 十人基础兵种，无主技能；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
 - **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关与沙盒，不再是 Run 主路径
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）

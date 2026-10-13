@@ -17,12 +17,12 @@ body_radius = 0.45
 mass = 1.5
 projectile_speed = 0.0
 splash_radius = 0.0
-deploy_time = 1.0
+deploy_time = 1.2
 
 [resource]
 script = ExtResource("1_unit")
 id = "mini_pekka"
-display_name = "迷你皮卡"
+display_name = "双手剑士"
 cost = 4
 tier = 3
 stats = SubResource("UnitStats_mini_pekka")

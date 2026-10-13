@@ -17,12 +17,12 @@ body_radius = 0.3
 mass = 1.0
 projectile_speed = 0.0
 splash_radius = 0.0
-deploy_time = 1.0
+deploy_time = 0.8
 
 [resource]
 script = ExtResource("1_unit")
 id = "goblin"
-display_name = "哥布林"
+display_name = "轻步兵"
 cost = 2
 tier = 1
 stats = SubResource("UnitStats_goblin")
