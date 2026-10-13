@@ -95,6 +95,6 @@
 
 ## 7. 维护
 
-- 新技能先入本篇（或提案页），再资源化；规则冲突以 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) 为准。  
+- 新技能先入本篇草案，再资源化；规则冲突以 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) 为准。  
 - 定点数由数值在资源中填写后，可回写本篇「效果草案」为可读摘要，但**综合档**仍可保留作相对标签。  
 - 挂载表另开小节或另文档时，链到本篇 `id`，勿在兵种库双写完整效果正文。
