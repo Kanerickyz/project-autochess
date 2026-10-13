@@ -1,26 +1,27 @@
 # 技能提案（ABILITY_PROPOSALS）
 
-> 策划草案 · 均可由 [ABILITIES.md](./ABILITIES.md) §3–§5 现有积木实现 · **未创建 `.tres` / 未挂载单位**  
-> 已实现技能见 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录) · 角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)
+> 策划草案 · **未创建 `.tres` / 未挂载单位** · **不是**功能规格  
+> 技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) · 角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) · 已挂载样本见 `resources/abilities/`  
+> 具体技能内容落地后应写入 Content，勿把本页当作规格正文。
 
 ---
 
 ## 1. 使用说明
 
-- 本文档仅收录**未实现**的内建技能提案；落地后迁入 ABILITIES §1.2，并在本文标记「已实现」或删除条目。
-- 每条提案的 `trigger` / `target_selector` / `actions` 必须能在 §3–§5 找到对应枚举，**不**要求扩展引擎。
-- `display_name` 风格与现网单位一致：「触发时机 + 目标 + 效果」。
-- 每条提案含 **效果说明**：用自然语言描述引擎层实际发生什么（持续域、目标、数值），便于策划快速浏览；细节见 §3–§5 各条表格。
-- 多 `EffectAction` 按顺序占多个战斗 interval；`+1/+1` 类建议拆成 `MODIFY_STAT attack` → `MODIFY_STAT max_hp` → `HEAL`（见 ABILITIES §5 非永久 Buff 约定）。
-- 标注 **Legacy** 者概念来自 ABILITIES §1.3 废弃商店技能样本，可挂载到新单位复用。
+- 本文档仅收录**未实现**的内建技能提案；落地后写入 Content / 资源，并在本文标记「已实现」或删除条目。
+- 提案须符合 [角色技能](./Features/UNIT_ABILITIES.md) 的触发大类与实时路径边界；效果走统一效果管线。
+- `display_name` 风格建议：「触发时机 + 目标 + 效果」。
+- 每条提案含 **效果说明**：用自然语言描述引擎层实际发生什么（持续域、目标、数值），便于策划快速浏览。
+- 多段效果按顺序占多个战斗 interval；战斗临时加成与永久牌库加成须按角色技能「持续范围」维度区分。
+- 标注 **Legacy** 者概念来自已废弃的商店技能样本，可挂载到新单位复用。
 
 ---
 
 ## 2. 覆盖缺口速查
 
-相对 [§1.2 已实现目录](./ABILITIES.md#12-单位内建技能目录) 与 `resources/abilities/*.tres`：
+相对当前 `resources/abilities/*.tres` 与 Content 角色库（本版主技能多为空）：
 
-| 触发器 | §1.2 覆盖 | 本提案条数 | 代表 id |
+| 触发器 | 资源侧覆盖（参考） | 本提案条数 | 代表 id |
 |--------|-----------|------------|---------|
 | `OnDealDamage` | **无** | 5 | `deal_damage_buff_self_atk` |
 | `OnRoundStart` | 仅 Legacy 样本 | 4 | `round_start_heal_self` |
@@ -660,7 +661,7 @@
 
 ## 6. 维护约定
 
-1. 新技能策划**先入本文档**，评审通过后再建 `resources/abilities/<id>.tres` 并挂载单位。
-2. 实现后：更新 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录)、必要时同步 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)，并在本文对应条目标注 **已实现** 或删除。
-3. 若提案需新触发器 / 目标 / 效果，先扩展引擎并更新 ABILITIES §3–§5，**不得**仅在本文档假设已支持。
+1. 新技能策划**先入本文档**，评审通过后再建 `resources/abilities/<id>.tres` 并挂载单位；规则须符合 [角色技能](./Features/UNIT_ABILITIES.md)。
+2. 实现后：更新 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（或后续技能 Content 页），并在本文对应条目标注 **已实现** 或删除。
+3. 若提案需新触发器 / 目标 / 效果，先扩展引擎与架构说明，**不得**仅在本文档假设已支持。
 4. SAP 灵感对照见 [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md)，数值以本项目为准。

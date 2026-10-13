@@ -3,7 +3,7 @@
 > 外部游戏资料汇总，供策划对照；**非**本项目实现规格。
 > 数据来源：[RoR2 Wiki (wiki.gg)](https://riskofrain2.wiki.gg/) · 收录范围：**基础版**（不含 SoTV / SoS / Alloyed Collective）· 数据快照：**2026-06-02**
 
-相关文档：[INDEX.md](../INDEX.md) · [GAME_VISION.md](../GAME_VISION.md) · [BUFF_SYSTEM.md](../BUFF_SYSTEM.md) · [ABILITIES.md](../ABILITIES.md) · [SUPER_AUTO_PETS.md](./SUPER_AUTO_PETS.md)
+相关文档：[INDEX.md](../INDEX.md) · [GAME_VISION.md](../GAME_VISION.md) · [BUFF_SYSTEM.md](../BUFF_SYSTEM.md) · [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) · [SUPER_AUTO_PETS.md](./SUPER_AUTO_PETS.md)
 
 ---
 

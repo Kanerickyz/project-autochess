@@ -2,7 +2,7 @@
 
 > 策划与程序对齐文档。**已实现**（2026-05）：增益商店、`BuffAttachModal`、`attached_buffs`、Tier roll。
 
-相关文档：[GAME_VISION.md](./GAME_VISION.md) · [ABILITIES.md](./ABILITIES.md)（单位内建联动技能）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界 · 商店摘要）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（SAP Food 对照）
+相关文档：[GAME_VISION.md](./GAME_VISION.md) · [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md)（角色技能规则）· [ARCHITECTURE.md](./ARCHITECTURE.md)（模块边界 · 商店摘要）· [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md)（SAP Food 对照）
 
 ---
 
@@ -156,7 +156,7 @@ DeckEntry
 | 商店增益槽 | 增益名、费用、Tier（可选角标） |
 | 增益附加弹窗 | 条目名、Lv、已有增益列表 |
 | 手牌 / 牌库列表 | `get_buff_summary()` 取代原技能摘要 |
-| Tooltip | 内建技能 + 已附加增益分开展示 |
+| Tooltip | 角色主技能 + 已附加增益分开展示 |
 
 ---
 
