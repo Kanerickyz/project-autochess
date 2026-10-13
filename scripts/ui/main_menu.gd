@@ -1,6 +1,7 @@
 extends Control
 
-const GAME_SCENE_PATH := "res://scenes/main/run_game.tscn"
+## preload 以便 Web「按场景导出」能收依赖；沙盒仅桌面入口使用。
+const GAME_SCENE: PackedScene = preload("res://scenes/main/run_game.tscn")
 const SANDBOX_SCENE_PATH := "res://scenes/main/sandbox.tscn"
 
 @onready var _start_button: Button = %StartButton
@@ -17,12 +18,14 @@ func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
 	_settings_panel.closed.connect(_on_settings_closed)
 	if OS.has_feature("web"):
+		# Web 试玩只走 Run 主路径，避免把沙盒/旧 3D 棋盘与动物池打进 Pages 包。
 		_exit_button.visible = false
+		_sandbox_button.visible = false
 	_start_button.grab_focus()
 
 
 func _on_start_pressed() -> void:
-	get_tree().change_scene_to_file(GAME_SCENE_PATH)
+	get_tree().change_scene_to_packed(GAME_SCENE)
 
 
 func _on_sandbox_pressed() -> void:

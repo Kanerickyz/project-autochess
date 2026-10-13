@@ -48,7 +48,9 @@ godot --headless --path . --export-release "Web" build/web/index.html
 
 ## 已知 Web 差异
 
-- 主菜单 **退出** 在 Web 上隐藏（浏览器无法可靠关标签）。
+- 主菜单 **退出 / 沙盒** 在 Web 上隐藏（退出无法关标签；沙盒非 Pages 试玩入口）。
+- 启动页进度条主要反映 **引擎 `index.wasm`（约 36MB，Pages gzip 后约 9MB）+ `index.pck`** 下载；与单位比例微调无关。PCK 已靠 CJK 字体子集与导出排除项缩小；二次访问靠 PWA Service Worker 缓存会快很多。
+- Web 导出排除 `*test*.gd` / `addons/`，并关闭 desktop VRAM 双格式（仅 mobile 压缩）。
 - 全屏依赖用户手势；启动时不会自动全屏。
 - 无声卡 / 浏览器自动播放策略下音频可能需先点一下页面。
 - 画布仍用 Adaptive 铺满浏览器；项目默认 viewport 为 **竖屏 393×852**（iPhone 14 Pro 逻辑点），`stretch/aspect=expand`；宽屏浏览器会按 expand 铺满，布局以手机优先。
