@@ -14,7 +14,7 @@
 
 | 类型 | 来源 | 作用 |
 |------|------|------|
-| **技能（Ability）** | 每只 `UnitData` **内建**（`ability` / `passives`） | 战斗内事件联动（受伤、死亡、移动等） |
+| **技能（Ability）** | 单位主技能 / 被动（可空；见 [角色技能](./Features/UNIT_ABILITIES.md)） | 战斗内事件联动（受伤、死亡等） |
 | **增益卡（Buff）** | 商店购买，挂到 `DeckEntry` | 永久属性、规则标签、或战斗触发的 Run 级效果 |
 
 **商店不再出售技能卡**；原 `skill_pool` / `SkillAttachModal` / `attached_skills` 在文档与后续实现中由增益体系替代。

@@ -8,7 +8,7 @@
 | 目录 | 负责 |
 |------|------|
 | [Features/UNITS.md](../Features/UNITS.md) | 友方 / 敌方 / 生成的代理角色；属性大类；攻击方式；索敌与生命周期 |
-| [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、签名/白板、事件联动与强度维度（规则） |
+| [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、自带技能/白板、事件联动与强度维度（规则） |
 | **本目录** | 本版角色库：兵种名、角色定位、数值草案；将来具体技能内容也归此 |
 | [Reference/](../Reference/) | 外部游戏摘录；非正式名单 |
 
