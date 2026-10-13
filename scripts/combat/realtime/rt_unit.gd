@@ -63,6 +63,14 @@ func get_radius() -> float:
 	return maxf(0.05, get_stats().body_radius)
 
 
+func get_visual_half_width() -> float:
+	return get_stats().get_visual_half_width()
+
+
+func get_visual_half_height() -> float:
+	return get_stats().get_visual_half_height()
+
+
 func get_mass() -> float:
 	return maxf(0.01, get_stats().mass)
 

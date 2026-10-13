@@ -1,7 +1,7 @@
 class_name RealtimeArenaView
 extends Control
-## 实时战场占位绘制：棋盘格、半场色调、中线、投放高亮/虚影、单位圆、血条、部署弧、投射物与溅射圈。
-## 只读 RealtimeCombatSim 状态，不参与逻辑。
+## 实时战场占位绘制：棋盘格、半场色调、中线、投放高亮/虚影、单位剪影、血条、部署弧、投射物与溅射圈。
+## 只读 RealtimeCombatSim 状态，不参与逻辑。剪影可大于碰撞圆（脚小身大）。
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
@@ -21,19 +21,24 @@ const BORDER := Color(0.12, 0.18, 0.10, 0.9)
 const ATTACK_FLASH_SECONDS := 0.12
 const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
+const ELLIPSE_SEGMENTS := 28
 
 var board_size: Vector2i = Vector2i(18, 32)
 var sim: RealtimeCombatSim
-## Array[Dictionary]：{position: Vector2, radius: float, label: String}
+## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label}
 var enemy_previews: Array = []
 ## 已选中手牌时为 true：高亮我方半场并显示悬停虚影
 var placement_active: bool = false
-var ghost_radius: float = 0.4
+var ghost_radius: float = 0.7
+var ghost_visual_half_width: float = 0.0
+var ghost_visual_half_height: float = 0.0
 var ghost_label: String = ""
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
-var _drag_radius: float = 0.4
+var _drag_radius: float = 0.7
+var _drag_visual_half_width: float = 0.0
+var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _fx: Array = []
 var _fx_clock: float = 0.0
@@ -125,7 +130,9 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		return false
 	var dict := data as Dictionary
 	_drag_active = true
-	_drag_radius = float(dict.get("radius", 0.4))
+	_drag_radius = float(dict.get("radius", 0.7))
+	_drag_visual_half_width = float(dict.get("visual_half_width", 0.0))
+	_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
 	_drag_label = String(dict.get("label", ""))
 	_hover_cell = tile_to_cell(local_to_tile(at_position))
 	return true
@@ -171,8 +178,11 @@ func _draw() -> void:
 	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
 
 	for preview in enemy_previews:
+		var body_r := float(preview["radius"])
+		var vwx := float(preview.get("visual_half_width", 0.0))
+		var vhy := float(preview.get("visual_half_height", 0.0))
 		_draw_body(
-			preview["position"], float(preview["radius"]), ENEMY_COLOR, 0.35, String(preview["label"]), px,
+			preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.35, String(preview["label"]), px, false,
 		)
 
 	if sim != null:
@@ -196,31 +206,69 @@ func _draw_units(px: float) -> void:
 			base = base.lightened(0.45)
 		if now - rt.last_hit_time < HIT_FLASH_SECONDS:
 			base = base.lerp(Color.WHITE, 0.5)
-		_draw_body(rt.position, rt.get_radius(), base, alpha, rt.get_display_name(), px)
+		var vwx := rt.get_visual_half_width()
+		var vhy := rt.get_visual_half_height()
+		_draw_body(rt.position, rt.get_radius(), vwx, vhy, base, alpha, rt.get_display_name(), px, true)
 		var center := tile_to_local(rt.position)
-		var r_px := rt.get_radius() * px
+		var silhouette_r_px := maxf(vwx, vhy) * px
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
-			draw_arc(center, r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
-		_draw_hp_bar(center, r_px, rt.get_hp_ratio(), rt.is_player())
+			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
+		_draw_hp_bar(center, silhouette_r_px, rt.get_hp_ratio(), rt.is_player())
 
 
-func _draw_body(tile_pos: Vector2, radius: float, color: Color, alpha: float, label: String, px: float) -> void:
+func _draw_body(
+	tile_pos: Vector2,
+	body_radius: float,
+	visual_half_width: float,
+	visual_half_height: float,
+	color: Color,
+	alpha: float,
+	label: String,
+	px: float,
+	show_foot: bool,
+) -> void:
 	var center := tile_to_local(tile_pos)
-	var r_px := maxf(3.0, radius * px)
+	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
+	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
 	var fill := Color(color, alpha)
-	draw_circle(center, r_px, fill)
-	draw_arc(center, r_px, 0.0, TAU, 24, Color(0, 0, 0, 0.45 * alpha), 1.5)
+	_draw_ellipse_filled(center, rx, ry, fill)
+	_draw_ellipse_outline(center, rx, ry, Color(0, 0, 0, 0.45 * alpha), 1.5)
+	if show_foot:
+		var foot_r := maxf(2.0, body_radius * px)
+		draw_arc(center, foot_r, 0.0, TAU, 20, Color(0, 0, 0, 0.35 * alpha), 1.25)
 	if label.is_empty():
 		return
 	var font := get_theme_default_font()
-	## 圆上标最多两字，便于认出「盾兵 / 链枷」等 Content 兵种名（避免只露一字难辨）。
-	var max_chars := 2 if r_px >= 10.0 else 1
-	var font_size := clampi(int(r_px * (0.85 if max_chars > 1 else 1.1)), 8, 20)
+	## 剪影上标最多两字，便于认出「盾兵 / 链枷」等 Content 兵种名。
+	var max_chars := 2 if minf(rx, ry) >= 10.0 else 1
+	var font_size := clampi(int(minf(rx, ry) * (0.85 if max_chars > 1 else 1.1)), 8, 22)
 	var glyph := label.substr(0, mini(max_chars, label.length()))
 	var text_size := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var baseline := center + Vector2(-text_size.x * 0.5, font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25)
 	draw_string(font, baseline, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, alpha))
+
+
+func _resolve_visual_half(explicit: float, body_radius: float, fallback_mul: float) -> float:
+	if explicit > 0.0:
+		return explicit
+	return maxf(0.05, body_radius * fallback_mul)
+
+
+func _draw_ellipse_filled(center: Vector2, rx: float, ry: float, color: Color) -> void:
+	var points := PackedVector2Array()
+	for i in ELLIPSE_SEGMENTS:
+		var a := TAU * float(i) / float(ELLIPSE_SEGMENTS)
+		points.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_colored_polygon(points, color)
+
+
+func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, width: float) -> void:
+	var points := PackedVector2Array()
+	for i in ELLIPSE_SEGMENTS + 1:
+		var a := TAU * float(i) / float(ELLIPSE_SEGMENTS)
+		points.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_polyline(points, color, width, true)
 
 
 func _draw_hp_bar(center: Vector2, r_px: float, ratio: float, is_player: bool) -> void:
@@ -255,6 +303,8 @@ func _draw_ghost(px: float, mid: int) -> void:
 	var cell := _hover_cell
 	var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 	var radius := _drag_radius if _drag_active else ghost_radius
+	var vwx := _drag_visual_half_width if _drag_active else ghost_visual_half_width
+	var vhy := _drag_visual_half_height if _drag_active else ghost_visual_half_height
 	var label := _drag_label if _drag_active else ghost_label
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
 	if cell.y < mid:
@@ -265,4 +315,4 @@ func _draw_ghost(px: float, mid: int) -> void:
 		draw_line(center + Vector2(-d, d), center + Vector2(d, -d), Color(1, 1, 1, 0.9), 2.0)
 		return
 	draw_rect(cell_rect, Color(1, 1, 1, 0.25))
-	_draw_body(center_tile, radius, PLAYER_COLOR, 0.45, label, px)
+	_draw_body(center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true)

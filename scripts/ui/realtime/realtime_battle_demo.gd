@@ -174,17 +174,18 @@ func _load_encounters() -> Array[EncounterData]:
 static func _fallback_units() -> Array[UnitData]:
 	## 仅在牌库/关卡资源缺失时使用；命名对齐 Content 基础兵种。
 	var units: Array[UnitData] = []
-	units.append(_make_unit("demo_shield", "盾兵", 600, 70, 1.0, 0.5, 0.0, 0.0, 0.45))
-	units.append(_make_unit("demo_archer", "弓箭手", 250, 60, 1.0, 5.0, 10.0, 0.0, 0.35))
-	units.append(_make_unit("demo_flail", "链枷兵", 800, 90, 1.0, 0.5, 0.0, 1.0, 0.45))
-	units.append(_make_unit("demo_light", "轻步兵", 160, 50, 2.0, 0.5, 0.0, 0.0, 0.3))
-	units.append(_make_unit("demo_rider", "骑士", 320, 155, 2.2, 0.6, 0.0, 0.0, 0.4))
+	units.append(_make_unit("demo_shield", "盾兵", 600, 70, 1.0, 0.5, 0.0, 0.0, 0.7, 0.9, 1.15))
+	units.append(_make_unit("demo_archer", "弓箭手", 250, 60, 1.0, 5.0, 10.0, 0.0, 0.5, 0.55, 0.7))
+	units.append(_make_unit("demo_flail", "链枷兵", 800, 90, 1.0, 0.5, 0.0, 1.0, 0.7, 0.9, 1.15))
+	units.append(_make_unit("demo_light", "轻步兵", 160, 50, 2.0, 0.5, 0.0, 0.0, 0.5, 0.55, 0.68))
+	units.append(_make_unit("demo_rider", "骑士", 320, 155, 2.2, 0.6, 0.0, 0.0, 0.72, 0.95, 1.2))
 	return units
 
 
 static func _make_unit(
 	id: String, display_name: String, hp: int, attack: int, speed: float,
 	reach: float, projectile_speed: float, splash: float, radius: float,
+	visual_half_width: float = 0.0, visual_half_height: float = 0.0,
 ) -> UnitData:
 	var stats := UnitStats.new()
 	stats.max_hp = hp
@@ -195,6 +196,8 @@ static func _make_unit(
 	stats.projectile_speed = projectile_speed
 	stats.splash_radius = splash
 	stats.body_radius = radius
+	stats.visual_half_width = visual_half_width
+	stats.visual_half_height = visual_half_height
 	var data := UnitData.new()
 	data.id = id
 	data.display_name = display_name

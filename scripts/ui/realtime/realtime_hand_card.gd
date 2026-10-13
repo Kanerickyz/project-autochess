@@ -77,13 +77,21 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	if entry == null or not available:
 		return null
 	var stats := entry.unit.stats if entry.unit != null else null
-	var radius := stats.body_radius if stats != null else 0.4
+	var radius := stats.body_radius if stats != null else 0.7
+	var vwx := stats.get_visual_half_width() if stats != null else radius * 1.3
+	var vhy := stats.get_visual_half_height() if stats != null else radius * 1.6
 	var ghost := DragGhost.new()
-	ghost.radius_px = maxf(10.0, radius * 22.0)
+	ghost.radius_px = maxf(10.0, maxf(vwx, vhy) * 22.0)
 	var full_name := entry.get_display_name()
 	ghost.glyph = full_name.substr(0, mini(2, full_name.length()))
 	set_drag_preview(ghost)
-	return {ARENA_DRAG_KEY: entry.entry_id, "radius": radius, "label": entry.get_display_name()}
+	return {
+		ARENA_DRAG_KEY: entry.entry_id,
+		"radius": radius,
+		"visual_half_width": vwx,
+		"visual_half_height": vhy,
+		"label": entry.get_display_name(),
+	}
 
 
 func _draw() -> void:

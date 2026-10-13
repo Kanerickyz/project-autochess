@@ -287,9 +287,13 @@ func _build_enemy_previews() -> Array:
 	for spawn in _pending_enemies:
 		var unit := spawn["unit"] as UnitInstance
 		var label := unit.unit_data.display_name if unit.unit_data != null else unit.id
+		var stats := unit.stats
+		var body_r := stats.body_radius if stats != null else 0.7
 		previews.append({
 			"position": spawn["position"],
-			"radius": unit.stats.body_radius if unit.stats != null else 0.4,
+			"radius": body_r,
+			"visual_half_width": stats.get_visual_half_width() if stats != null else body_r * 1.3,
+			"visual_half_height": stats.get_visual_half_height() if stats != null else body_r * 1.6,
 			"label": label,
 		})
 	return previews
@@ -398,7 +402,7 @@ func _on_continue_pressed() -> void:
 
 
 func _on_unit_died(rt: RtUnit) -> void:
-	_arena.add_death_fx(rt.position, rt.get_radius(), rt.is_player())
+	_arena.add_death_fx(rt.position, maxf(rt.get_visual_half_width(), rt.get_visual_half_height()), rt.is_player())
 
 
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:
@@ -443,7 +447,10 @@ func _set_selected(entry_id: int) -> void:
 	_arena.placement_active = entry != null
 	if entry != null and entry.unit != null:
 		_arena.ghost_label = entry.get_display_name()
-		_arena.ghost_radius = entry.unit.stats.body_radius if entry.unit.stats != null else 0.4
+		var stats := entry.unit.stats
+		_arena.ghost_radius = stats.body_radius if stats != null else 0.7
+		_arena.ghost_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+		_arena.ghost_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	for card in _cards:
 		card.selected = card.get_entry_id() == entry_id
 

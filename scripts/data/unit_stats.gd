@@ -32,7 +32,11 @@ enum MovementPattern {
 ## 索敌半径（格）；范围内无敌人时向全场最近敌人前进
 @export_range(0.0, 32.0, 0.1) var sight_range: float = 5.5
 ## 碰撞圆半径（格）
-@export_range(0.1, 2.0, 0.05) var body_radius: float = 0.4
+@export_range(0.1, 2.0, 0.05) var body_radius: float = 0.7
+## 视觉剪影半宽（格）；0 = 按碰撞半径 ×1.3 推算
+@export_range(0.0, 4.0, 0.05) var visual_half_width: float = 0.0
+## 视觉剪影半高（格）；0 = 按碰撞半径 ×1.6 推算（脚小身大）
+@export_range(0.0, 4.0, 0.05) var visual_half_height: float = 0.0
 ## 推挤质量；越大越难被推开
 @export_range(0.1, 20.0, 0.1) var mass: float = 1.0
 ## 投射物速度（格/秒）；0 = 近战即时命中
@@ -57,8 +61,22 @@ func duplicate_stats() -> UnitStats:
 	copy.attack_reach = attack_reach
 	copy.sight_range = sight_range
 	copy.body_radius = body_radius
+	copy.visual_half_width = visual_half_width
+	copy.visual_half_height = visual_half_height
 	copy.mass = mass
 	copy.projectile_speed = projectile_speed
 	copy.splash_radius = splash_radius
 	copy.deploy_time = deploy_time
 	return copy
+
+
+func get_visual_half_width() -> float:
+	if visual_half_width > 0.0:
+		return visual_half_width
+	return maxf(0.05, body_radius * 1.3)
+
+
+func get_visual_half_height() -> float:
+	if visual_half_height > 0.0:
+		return visual_half_height
+	return maxf(0.05, body_radius * 1.6)
