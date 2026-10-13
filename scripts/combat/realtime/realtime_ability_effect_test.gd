@@ -28,8 +28,13 @@ static func run_all() -> bool:
 	_check("combat_start_charge_atk", _test_combat_start_charge_atk())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
+	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
+	_check("kill_gain_atk_mid", _test_kill_gain_atk_mid())
+	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
+	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_aoe_deal_damage", _test_death_aoe_deal_damage())
+	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -146,7 +151,6 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 	while hits[0] < 2 and guard < 300:
 		sim.advance_fixed_step()
 		guard += 1
-	bus.free()
 	if hits[0] < 2:
 		push_error("hurt: expected >=2 hits, got %d" % hits[0])
 		return false
@@ -181,6 +185,150 @@ static func _test_deal_damage_gain_atk() -> bool:
 	var after := flail.unit.get_effective_attack()
 	if after < base_atk + 16:
 		push_error("deal: atk %d -> %d, expected at least +16 (2x8)" % [base_atk, after])
+		return false
+	return true
+
+
+static func _test_musketeer_has_nonzero_crit() -> bool:
+	var data := _load_unit("res://resources/units/realtime/musketeer.tres")
+	if data == null or data.stats == null:
+		push_error("crit_rate: musketeer missing")
+		return false
+	if data.stats.crit_rate_percent <= 0:
+		push_error("crit_rate: musketeer crit_rate_percent=%d, expected >0 for OnCrit skill" % data.stats.crit_rate_percent)
+		return false
+	return true
+
+
+static func _test_crit_extra_damage_mid() -> bool:
+	var data := _load_unit("res://resources/units/realtime/musketeer.tres")
+	if data == null or data.ability == null or data.ability.id != "crit_extra_damage_mid":
+		push_error("crit: musketeer ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 99)
+	var gun := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 500, {"move_speed": 0.0, "sight_range": 0.0, "attack_reach": 0.0}),
+		Vector2(9.5, 18.5),
+	)
+	# 强制必暴，验证 OnCrit → DEAL_DAMAGE 55
+	gun.unit.stats.crit_rate_percent = 100
+	gun.unit.stats.projectile_speed = 0.0
+	gun.unit.stats.attack_windup = 0.0
+	gun.unit.stats.attack_interval = 0.3
+	gun.unit.stats.attack_reach = 3.0
+	gun.unit.stats.move_speed = 0.0
+	var hp_before := enemy.unit.current_hp
+	var guard := 0
+	while enemy.unit.current_hp > hp_before - 55 and guard < 200:
+		sim.advance_fixed_step()
+		guard += 1
+	var dealt := hp_before - enemy.unit.current_hp
+	# 普攻 + 暴击额外伤；至少应包含 +55
+	if dealt < 55:
+		push_error("crit: dealt %d, expected at least 55 bonus path" % dealt)
+		return false
+	return true
+
+
+static func _test_kill_gain_atk_mid() -> bool:
+	var data := _load_unit("res://resources/units/realtime/mini_pekka.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_gain_atk_mid":
+		push_error("kill: mini_pekka ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 13)
+	var sword := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 50, {"move_speed": 0.0, "body_radius": 0.3}),
+		Vector2(9.5, 20.0),
+	)
+	# 远处再挂一个敌方，避免杀光立刻结束
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"move_speed": 0.0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sword.unit.stats.attack_windup = 0.0
+	sword.unit.stats.attack_interval = 0.3
+	sword.unit.stats.move_speed = 0.0
+	sword.unit.stats.attack_reach = 2.0
+	var base_atk := sword.unit.get_effective_attack()
+	var guard := 0
+	while sword.unit.get_effective_attack() <= base_atk and guard < 300:
+		sim.advance_fixed_step()
+		guard += 1
+	var after := sword.unit.get_effective_attack()
+	if after <= base_atk:
+		push_error("kill: atk unchanged %d (expected OnKill buff)" % after)
+		return false
+	return true
+
+
+static func _test_ally_death_self_atk_mid() -> bool:
+	var data := _load_unit("res://resources/units/realtime/barbarian.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_death_self_atk_mid":
+		push_error("ally_death: barbarian ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 17)
+	var axe := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
+	var fodder := sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.PLAYER,
+			{"max_hp": 20, "attack": 1, "move_speed": 0.0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 20.5),
+	)
+	sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.ENEMY,
+			{
+				"attack": 500,
+				"max_hp": 100000,
+				"move_speed": 0.0,
+				"attack_windup": 0.0,
+				"attack_interval": 0.2,
+				"attack_reach": 2.0,
+				"sight_range": 10.0,
+			},
+		),
+		Vector2(9.5, 20.0),
+	)
+	var base_atk := axe.unit.get_effective_attack()
+	var guard := 0
+	while fodder.is_alive() and guard < 300:
+		sim.advance_fixed_step()
+		guard += 1
+	sim._drain_effects()
+	var after := axe.unit.get_effective_attack()
+	if after <= base_atk:
+		push_error("ally_death: axe atk %d -> %d, expected buff on friend death" % [base_atk, after])
+		return false
+	return true
+
+
+static func _test_ally_deploy_self_atk_small() -> bool:
+	var data := _load_unit("res://resources/units/realtime/archer.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_deploy_self_atk_small":
+		push_error("ally_deploy: archer ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 19)
+	var archer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"move_speed": 0.0, "sight_range": 0.0}), Vector2(9.5, 4.5))
+	sim.begin_combat()
+	var base_atk := archer.unit.get_effective_attack()
+	# 战中补人：走 deploy，结束时发 ON_FRIEND_SUMMONED
+	var reinforce := RealtimeCombatSimTest.make_unit(
+		UnitInstance.Team.PLAYER,
+		{"max_hp": 100, "attack": 1, "deploy_time": 0.1, "move_speed": 0.0, "sight_range": 0.0},
+	)
+	sim.add_unit(reinforce, Vector2(8.5, 24.5))
+	var guard := 0
+	while archer.unit.get_effective_attack() <= base_atk and guard < 100:
+		sim.advance_fixed_step()
+		guard += 1
+	var after := archer.unit.get_effective_attack()
+	if after <= base_atk:
+		push_error("ally_deploy: archer atk %d -> %d, expected buff on friend summon" % [base_atk, after])
 		return false
 	return true
 
