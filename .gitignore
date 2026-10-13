@@ -13,6 +13,9 @@
 /build/
 /Exported/
 
+# Local Godot editor/template cache used by agents / CI helpers
+.github/.godot-cache/
+
 # Python
 __pycache__/
 *.pyc
