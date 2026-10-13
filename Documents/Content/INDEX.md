@@ -9,7 +9,7 @@
 |------|------|
 | [Features/UNITS.md](../Features/UNITS.md) | 友方 / 敌方 / 生成的代理角色；属性大类；攻击方式；索敌与生命周期 |
 | [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、自带技能/白板、事件联动与强度维度（规则） |
-| **本目录** | 角色库与**独立技能内容池**；挂载表可另定 |
+| **本目录** | 角色库、**独立技能内容池**与兵种主技能挂载表 |
 | [Reference/](../Reference/) | 外部游戏摘录；非正式名单 |
 
 旧网格工具环里的动物占位单位**不是**本目录内容；勿与实时主路径角色库混读。
@@ -18,7 +18,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（十人基础兵种：定位、攻击方式、数值草案） |
-| [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池、相对强度；不绑兵种；资源未挂） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（十人：定位、数值、§6 主技能挂载；资源技能槽尚未绑定） |
+| [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池、相对强度；挂载见角色库 §6；技能 `.tres` 已建、单位槽未绑） |
 
 敌方 Boss / 高威胁位另册，不进本版友方总表。

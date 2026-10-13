@@ -3,8 +3,8 @@
 > Content · 实时主路径 · 2026-10-13  
 > 功能规则见 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md)；友方兵种见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)。  
 > **本篇写**：独立技能内容池——名称、触发、效果草案、相对强度标注。  
-> **本篇不写**：定点数 / 百分比；挂载到哪只兵种（另表未定时可空）；玩家可见流派标签。  
-> **【As-Is】** 技能池 `.tres` 已建（见 §6；`掩护射击` 待管线未建）；**未**挂到 realtime 单位；主路径仍表现为无主技能。
+> **本篇不写**：定点数 / 百分比；玩家可见流派标签。挂载到哪只兵种见 [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6。  
+> **【As-Is】** 技能池 `.tres` 已建（见 §6；`掩护射击` 待管线未建）；Content 挂载表已定，realtime 单位**尚未**绑定；主路径仍表现为无主技能。
 
 ## 1. 范围与共识
 
@@ -91,11 +91,12 @@
 | 技能内容池（文档） | 本篇 §3 |
 | 技能 `.tres` | **已建** 16 条于 `resources/abilities/`（id 与 §3 对齐）；`ally_hurt_damage_attacker_small` 待管线 |
 | 生成用 token | `resources/units/tokens/token_{weak,weak_copy,thick_copy,ember}.tres`（无主技能） |
-| 兵种自带挂载表 | **未定**；realtime 单位**未挂** |
+| 兵种自带挂载表 | **已定（测试用）** → [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6；九人各一条，民兵白板 |
+| realtime 单位 `ability` 槽 | **未绑**（Content 挂载 ≠ 资源已挂） |
 | 附魔池收录表 | **未定** |
 
 ## 7. 维护
 
 - 新技能先入本篇草案，再资源化；规则冲突以 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) 为准。  
 - 定点数由数值在资源中填写后，可回写本篇「效果草案」为可读摘要，但**综合档**仍可保留作相对标签。  
-- 挂载表另开小节或另文档时，链到本篇 `id`，勿在兵种库双写完整效果正文。
+- 改挂载只改 [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6 并同步本表状态；勿在兵种库双写完整技能效果正文。
