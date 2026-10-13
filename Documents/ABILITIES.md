@@ -245,7 +245,7 @@ AbilityData
 
 ## 8. 维护说明
 
-- 新增或修改单位内建 `.tres` 后，**必须**同步更新 §1.2 目录表，并运行 `py tools/generate_units_roster.py` 更新 [UNITS_ROSTER.md](./UNITS_ROSTER.md)。
+- 新增或修改单位内建 `.tres` 后，**必须**同步更新 §1.2 目录表；实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)。
 - 新技能策划先入 [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md)；实现后迁入 §1.2，并在提案文档标记已实现或删除条目。
 - SAP 对照技能见 [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md)；SAP 宠物 Lv1/2/3 技能 → 本项目内建于 `UnitData.ability`。
 - 增益策划见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)。

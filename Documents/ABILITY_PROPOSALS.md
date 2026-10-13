@@ -1,7 +1,7 @@
 # 技能提案（ABILITY_PROPOSALS）
 
 > 策划草案 · 均可由 [ABILITIES.md](./ABILITIES.md) §3–§5 现有积木实现 · **未创建 `.tres` / 未挂载单位**  
-> 已实现技能见 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录) · 角色一览见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)
+> 已实现技能见 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录) · 角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)
 
 ---
 
@@ -661,6 +661,6 @@
 ## 6. 维护约定
 
 1. 新技能策划**先入本文档**，评审通过后再建 `resources/abilities/<id>.tres` 并挂载单位。
-2. 实现后：更新 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录)、[UNITS_ROSTER.md](./UNITS_ROSTER.md)（`py tools/generate_units_roster.py`），并在本文对应条目标注 **已实现** 或删除。
+2. 实现后：更新 [ABILITIES.md §1.2](./ABILITIES.md#12-单位内建技能目录)、必要时同步 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)，并在本文对应条目标注 **已实现** 或删除。
 3. 若提案需新触发器 / 目标 / 效果，先扩展引擎并更新 ABILITIES §3–§5，**不得**仅在本文档假设已支持。
 4. SAP 灵感对照见 [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md)，数值以本项目为准。

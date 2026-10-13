@@ -1,8 +1,8 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（构筑 + 预布阵 + 战斗 cycle 补人 + 清波制）· Godot 4.6 · 最后更新：2026-10-12
+> 中世纪幻想 2D PvE 自走棋（构筑 + 预布阵 + 战斗 cycle 补人 + 清波制）· Godot 4.6 · 最后更新：2026-10-13
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 定稿为准（cycle/人口/单局约 1–3 分钟为 To-Be）；单位美术/命名可能仍为旧占位。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 定稿为准（cycle/人口/单局约 1–3 分钟为 To-Be）；实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 
@@ -11,7 +11,9 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环（cycle/人口）、**清波胜负**、单局时长、流派联动、棋盘与敌压 |
-| [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；角色等级与生命、攻击、移动；功能与数值分离） |
+| [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
+| [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
+| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（十人基础兵种：定位、数值草案） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
@@ -20,7 +22,6 @@
 | [ABILITIES.md](./ABILITIES.md) | **单位内建技能**目录与策划模板 |
 | [ABILITY_PROPOSALS.md](./ABILITY_PROPOSALS.md) | **未实现技能提案**（§3–§5 积木组合，策划稿） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **角色一览**（Content；攻/血、技能摘要、流派索引；由脚本生成） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
 | [Reference/RISK_OF_RAIN_2.md](./Reference/RISK_OF_RAIN_2.md) | **Risk of Rain 2** 基础版道具 / 装备 / 技能参考（外部资料） |
@@ -90,8 +91,8 @@ Project Autochess/
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
 | `scripts/combat/realtime/` | `RealtimeCombatSim` 固定步长连续坐标模拟 | **已实现** |
-| `resources/units/realtime/` | 皇室战争式基础单兵占位角色 | **已实现** |
-| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（8 名新角色） | **已实现** |
+| `resources/units/realtime/` | 实时基础单兵（显示名可能仍为旧占位；名单见 Content） | **已实现** |
+| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（人选待按 Content 十人另定） | **已实现** |
 | `scenes/ui/placeholder/` | 地图非战斗节点占位界面 | **已实现** |
 | `resources/runs/act1_map.tres` | Act1 地图配置 + 遭遇池 | **Run 已实现** |
 | `resources/encounters/` | `EncounterData`（自 `wave_*.tres` 拆分） | **Run 已实现** |
@@ -154,6 +155,6 @@ Project Autochess/
 ## 维护说明
 
 - 新增场景或 Autoload 后：更新 **仓库文件索引** 与 **推荐结构** 状态列。
-- 新增/修改 `resources/units/*.tres` 后：运行 `py tools/generate_units_roster.py` 更新 [UNITS_ROSTER.md](./UNITS_ROSTER.md)，并同步 [ABILITIES.md](./ABILITIES.md) §1.2。
+- 新增/修改实时主路径单位后：更新 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)，并视需要同步 [ABILITIES.md](./ABILITIES.md) §1.2。
 - 重大设计变更：同步 `ARCHITECTURE.md` / `Features/` 与本页导航。当前规格以 [GAME_VISION.md](./GAME_VISION.md) 为准；**不做的内容默认不写进文档**（见 [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) 养成规范）。
 - 外部游戏参考资料（如 SAP 数值对照、RoR2 道具、Master of Piece 机制）放在 `Documents/Reference/`，与架构 / 策划文档分离；**勿**与 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) 等自研规格混淆。SAP **单位/食物数据**与**商店机制**分列 `SUPER_AUTO_PETS.md` 与 `SAP_SHOP_SYSTEM.md`；对冲战棋 Roguelike 参考见 `MASTER_OF_PIECE.md`。
