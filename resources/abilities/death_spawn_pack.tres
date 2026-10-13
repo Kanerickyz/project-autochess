@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3 uid="uid://dcw5g8btb599i"]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+[ext_resource type="Resource" uid="uid://btokenember0001" path="res://resources/units/tokens/token_ember.tres" id="4_token"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 2
+spawn_unit = ExtResource("4_token")
+spawn_count = 3
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnDeath"
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "death_spawn_pack"
+display_name = "死亡时 生成散兵×3"
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

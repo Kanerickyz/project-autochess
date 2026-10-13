@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3 uid="uid://53lg2ketvoocj"]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 3
+value = 55
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnCrit"
+target_selector = 1
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "crit_extra_damage_mid"
+display_name = "暴击时 对目标造成55伤害"
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

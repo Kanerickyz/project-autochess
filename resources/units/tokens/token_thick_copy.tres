@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://btokenthickcpy"]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="UnitStats_token_thick_copy"]
+script = ExtResource("2_stats")
+max_hp = 110
+attack = 45
+crit_rate_percent = 0
+move_speed = 1.5
+attack_interval = 1.0
+attack_windup = 0.3
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.3
+mass = 0.5
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 0.7
+
+[resource]
+script = ExtResource("1_unit")
+id = "token_thick_copy"
+display_name = "分身"
+cost = 1
+tier = 1
+stats = SubResource("UnitStats_token_thick_copy")
