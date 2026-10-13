@@ -80,7 +80,8 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	var radius := stats.body_radius if stats != null else 0.4
 	var ghost := DragGhost.new()
 	ghost.radius_px = maxf(10.0, radius * 22.0)
-	ghost.glyph = entry.get_display_name().substr(0, 1)
+	var full_name := entry.get_display_name()
+	ghost.glyph = full_name.substr(0, mini(2, full_name.length()))
 	set_drag_preview(ghost)
 	return {ARENA_DRAG_KEY: entry.entry_id, "radius": radius, "label": entry.get_display_name()}
 

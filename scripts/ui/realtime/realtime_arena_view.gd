@@ -214,8 +214,10 @@ func _draw_body(tile_pos: Vector2, radius: float, color: Color, alpha: float, la
 	if label.is_empty():
 		return
 	var font := get_theme_default_font()
-	var font_size := clampi(int(r_px * 1.1), 8, 22)
-	var glyph := label.substr(0, 1)
+	## 圆上标最多两字，便于认出「盾兵 / 链枷」等 Content 兵种名（避免只露一字难辨）。
+	var max_chars := 2 if r_px >= 10.0 else 1
+	var font_size := clampi(int(r_px * (0.85 if max_chars > 1 else 1.1)), 8, 20)
+	var glyph := label.substr(0, mini(max_chars, label.length()))
 	var text_size := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var baseline := center + Vector2(-text_size.x * 0.5, font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25)
 	draw_string(font, baseline, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, alpha))

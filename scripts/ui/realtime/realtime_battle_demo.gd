@@ -172,12 +172,13 @@ func _load_encounters() -> Array[EncounterData]:
 
 
 static func _fallback_units() -> Array[UnitData]:
+	## 仅在牌库/关卡资源缺失时使用；命名对齐 Content 基础兵种。
 	var units: Array[UnitData] = []
-	units.append(_make_unit("demo_knight", "骑士", 600, 70, 1.0, 0.5, 0.0, 0.0, 0.45))
-	units.append(_make_unit("demo_archer", "弓手", 250, 60, 1.0, 5.0, 10.0, 0.0, 0.35))
-	units.append(_make_unit("demo_valkyrie", "女武神", 800, 90, 1.0, 0.5, 0.0, 1.0, 0.45))
-	units.append(_make_unit("demo_goblin", "哥布林", 160, 50, 2.0, 0.5, 0.0, 0.0, 0.3))
-	units.append(_make_unit("demo_mage", "法师", 300, 80, 1.0, 5.0, 8.0, 1.0, 0.35))
+	units.append(_make_unit("demo_shield", "盾兵", 600, 70, 1.0, 0.5, 0.0, 0.0, 0.45))
+	units.append(_make_unit("demo_archer", "弓箭手", 250, 60, 1.0, 5.0, 10.0, 0.0, 0.35))
+	units.append(_make_unit("demo_flail", "链枷兵", 800, 90, 1.0, 0.5, 0.0, 1.0, 0.45))
+	units.append(_make_unit("demo_light", "轻步兵", 160, 50, 2.0, 0.5, 0.0, 0.0, 0.3))
+	units.append(_make_unit("demo_rider", "骑士", 320, 155, 2.2, 0.6, 0.0, 0.0, 0.4))
 	return units
 
 

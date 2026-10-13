@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_enc")
 id = "rt_boss_01"
-display_name = "Boss 战·巨型骑士"
+display_name = "Boss 战·铁甲统领"
 wave = ExtResource("2_wave")
 is_boss = true
 bonus_gold = 20

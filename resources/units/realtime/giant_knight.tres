@@ -22,7 +22,7 @@ deploy_time = 1.0
 [resource]
 script = ExtResource("1_unit")
 id = "giant_knight"
-display_name = "巨型骑士"
+display_name = "铁甲统领"
 cost = 6
 tier = 3
 stats = SubResource("UnitStats_giant_knight")

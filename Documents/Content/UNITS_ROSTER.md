@@ -84,7 +84,7 @@
 | 民兵 | `skeleton.tres` | `skeleton` |
 | 骑士 | `rider.tres` | `rider` |
 
-敌方遭遇可复用上表模板（敌方阵营）。Boss（`giant_knight.tres`）不在本表。
+敌方遭遇可复用上表模板（敌方阵营）。Boss 占位为 `giant_knight.tres`（显示名 **铁甲统领**），细则另册。
 
 ## 5. 起始牌库与人口
 
