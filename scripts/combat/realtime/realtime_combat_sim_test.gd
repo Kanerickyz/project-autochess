@@ -10,6 +10,7 @@ static var _created: Array[RealtimeCombatSim] = []
 static func run_all() -> bool:
 	var ok := true
 	ok = _check("melee_approach_and_interval", _test_melee_approach_and_interval()) and ok
+	ok = _check("ally_blocker_melee_reach", _test_ally_blocker_melee_reach()) and ok
 	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
@@ -128,6 +129,56 @@ static func _test_melee_approach_and_interval() -> bool:
 			return false
 	if dummy.unit.current_hp != 100000 - 10 * hit_times.size():
 		push_error("melee: hp mismatch %d" % dummy.unit.current_hp)
+		return false
+	return true
+
+
+## 友军堵在近战单位与敌人之间时，攻击者应绕行并最终进入 attack_reach。
+static func _test_ally_blocker_melee_reach() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 11)
+	var attack_reach := 0.5
+	var attacker := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"move_speed": 2.5,
+			"attack_reach": attack_reach,
+			"attack_windup": 5.0,
+			"attack_interval": 10.0,
+			"attack": 1,
+			"body_radius": 0.4,
+			"mass": 1.0,
+			"sight_range": 20.0,
+		}),
+		Vector2(9.5, 28.5),
+	)
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"body_radius": 0.55,
+			"mass": 50.0,
+			"id": "ally_blocker",
+		}),
+		Vector2(9.5, 24.5),
+	)
+	var enemy := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100000, {
+			"body_radius": 0.4,
+			"mass": 50.0,
+			"id": "enemy_dummy",
+		}),
+		Vector2(9.5, 20.5),
+	)
+	var timeout := 20.0
+	var reached := false
+	while sim.elapsed_seconds < timeout - 0.0001 and not sim.is_finished():
+		sim.advance_fixed_step()
+		if attacker.edge_distance_to(enemy) <= attack_reach + RtUnitBrain.REACH_EPSILON:
+			reached = true
+			break
+	if not reached:
+		push_error(
+			"ally_blocker: attacker never entered attack_reach (edge=%.3f pos=%s t=%.2f)"
+			% [attacker.edge_distance_to(enemy), attacker.position, sim.elapsed_seconds]
+		)
 		return false
 	return true
 
