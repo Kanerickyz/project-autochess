@@ -2,6 +2,7 @@ class_name RealtimeCombatSim
 extends RefCounted
 ## 皇室战争式实时战斗的纯逻辑模拟。固定步长推进，结果与调用方帧率无关。
 ## 坐标单位为格（arena 左上角为原点），时间单位为秒。
+## 技能效果：镜像 BoardGrid + EffectResolver 订阅 CombatEventBus，固定步内排空 pending。
 
 signal unit_added(unit: RtUnit)
 signal unit_attacked(attacker: RtUnit, target: RtUnit)
@@ -15,6 +16,7 @@ const FIXED_STEPS_PER_SECOND := 30
 const FIXED_DT := 1.0 / FIXED_STEPS_PER_SECOND
 const SEPARATION_ITERATIONS := 4
 const STEP_EPSILON := 0.000001
+const EFFECT_DRAIN_GUARD := 64
 
 var elapsed_seconds: float = 0.0
 var fixed_step_count: int = 0
@@ -24,12 +26,16 @@ var _rng := RandomNumberGenerator.new()
 var _bus: CombatEventBus
 var _owns_bus: bool = false
 var _pipeline: RealtimeDamagePipeline
+var _effect_grid: BoardGrid
+var _effect_pipeline: DamagePipeline
+var _effect_resolver: EffectResolver
 var _units: Array[RtUnit] = []
 var _projectiles: Array[RtProjectile] = []
 var _input_seconds: float = 0.0
 var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
+var _adding_effect_spawn: bool = false
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -39,7 +45,8 @@ func _init(bus: CombatEventBus = null) -> void:
 		_owns_bus = true
 	_bus = bus
 	_bus.combat_event.connect(_on_bus_event)
-	_pipeline = RealtimeDamagePipeline.new(_bus)
+	_pipeline = RealtimeDamagePipeline.new(_bus, _rng)
+	_setup_effect_resolver()
 
 
 func _notification(what: int) -> void:
@@ -50,6 +57,8 @@ func _notification(what: int) -> void:
 func configure(arena_size: Vector2i, rng_seed: int) -> void:
 	_arena_size = Vector2(maxi(1, arena_size.x), maxi(1, arena_size.y))
 	_rng.seed = rng_seed
+	_pipeline.set_rng(_rng)
+	_setup_effect_resolver()
 
 
 ## 战斗结束后调用：断开 bus 与所有观察者、打断单位间的目标引用环，并释放自建的 bus。
@@ -61,17 +70,22 @@ func dispose() -> void:
 	_break_reference_cycles()
 	_units.clear()
 	_projectiles.clear()
+	_teardown_effect_resolver()
 	if _bus != null and is_instance_valid(_bus):
 		if _bus.combat_event.is_connected(_on_bus_event):
 			_bus.combat_event.disconnect(_on_bus_event)
 		if _owns_bus:
 			_bus.free()
 	_bus = null
-	_pipeline = RealtimeDamagePipeline.new(null)
+	_pipeline = RealtimeDamagePipeline.new(null, _rng)
 
 
 func get_event_bus() -> CombatEventBus:
 	return _bus
+
+
+func get_effect_resolver() -> EffectResolver:
+	return _effect_resolver
 
 
 func get_arena_size() -> Vector2:
@@ -85,6 +99,9 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	if _finished:
 		push_warning("RealtimeCombatSim.add_unit: combat already finished")
 		return null
+	var existing := _find_rt_for_unit(unit)
+	if existing != null:
+		return existing
 	var rt := RtUnit.new(unit, position)
 	rt.position = _clamp_to_arena(position, rt.get_radius())
 	rt.spawn_time = elapsed_seconds
@@ -95,7 +112,11 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	while index < _units.size() and _units[index].get_id() < rt.get_id():
 		index += 1
 	_units.insert(index, rt)
+	_register_on_effect_grid(unit, rt.get_cell())
 	unit_added.emit(rt)
+	if _started and not _adding_effect_spawn:
+		_emit_mid_combat_summon(unit, rt.get_cell())
+		_drain_effects()
 	return rt
 
 
@@ -108,6 +129,8 @@ func remove_unit(rt: RtUnit) -> bool:
 		return false
 	_units.remove_at(index)
 	rt.target = null
+	if _effect_grid != null:
+		_effect_grid.remove_unit(rt.unit)
 	return true
 
 
@@ -141,6 +164,7 @@ func begin_combat() -> void:
 		return
 	_started = true
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
+	_drain_effects()
 
 
 func has_started() -> bool:
@@ -186,6 +210,7 @@ func advance_fixed_step() -> void:
 
 	_advance_projectiles()
 	_resolve_separation()
+	_drain_effects()
 	_remove_dead()
 
 	fixed_step_count += 1
@@ -230,6 +255,7 @@ func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: fl
 	var killed := _pipeline.resolve_hit(source, target, damage, splash_radius, _units)
 	for rt in killed:
 		unit_died.emit(rt)
+	_drain_effects()
 
 
 func _resolve_separation() -> void:
@@ -282,6 +308,8 @@ func _remove_dead() -> void:
 			alive.append(rt)
 		else:
 			rt.state = RtUnit.State.DEAD
+			if _effect_grid != null:
+				_effect_grid.remove_unit(rt.unit)
 	_units = alive
 
 
@@ -328,3 +356,119 @@ func _on_bus_event(event_type: StringName, payload: CombatEventPayload) -> void:
 			rt.last_hit_time = elapsed_seconds
 			unit_damaged.emit(rt, payload.amount)
 			return
+
+
+func _setup_effect_resolver() -> void:
+	_teardown_effect_resolver()
+	if _bus == null or not is_instance_valid(_bus):
+		return
+	_effect_grid = BoardGrid.new()
+	_effect_grid.configure(Vector2i(int(_arena_size.x), int(_arena_size.y)))
+	_effect_pipeline = DamagePipeline.new(_bus, _effect_grid)
+	_effect_pipeline.set_rng(_rng)
+	_effect_pipeline.defer_death_removal = true
+	_effect_resolver = EffectResolver.new(_effect_grid, _bus, _effect_pipeline, _rng)
+	_bus.combat_event.connect(_effect_resolver.on_event)
+	for rt in _units:
+		if rt != null and rt.unit != null and rt.is_alive():
+			_register_on_effect_grid(rt.unit, rt.get_cell())
+
+
+func _teardown_effect_resolver() -> void:
+	if (
+		_bus != null
+		and is_instance_valid(_bus)
+		and _effect_resolver != null
+		and _bus.combat_event.is_connected(_effect_resolver.on_event)
+	):
+		_bus.combat_event.disconnect(_effect_resolver.on_event)
+	if _effect_resolver != null:
+		_effect_resolver.clear_pending()
+	_effect_resolver = null
+	_effect_pipeline = null
+	_effect_grid = null
+
+
+func _register_on_effect_grid(unit: UnitInstance, preferred_cell: Vector2i) -> void:
+	if _effect_grid == null or unit == null:
+		return
+	if _effect_grid.find_cell_of(unit) != Vector2i(-1, -1):
+		return
+	var cell := preferred_cell
+	if not _effect_grid.can_place_at(cell):
+		cell = _find_free_effect_cell(preferred_cell)
+	if cell == Vector2i(-1, -1):
+		push_warning("RealtimeCombatSim: effect grid full, unit %s not registered" % unit.id)
+		return
+	_effect_grid.place(unit, cell)
+
+
+func _find_free_effect_cell(origin: Vector2i) -> Vector2i:
+	if _effect_grid == null:
+		return Vector2i(-1, -1)
+	if _effect_grid.can_place_at(origin):
+		return origin
+	var empty := _effect_grid.get_empty_cells()
+	if empty.is_empty():
+		return Vector2i(-1, -1)
+	empty.sort_custom(
+		func(a: Vector2i, b: Vector2i) -> bool:
+			return _effect_grid.path_cost(origin, a) < _effect_grid.path_cost(origin, b)
+	)
+	return empty[0]
+
+
+func _emit_mid_combat_summon(unit: UnitInstance, cell: Vector2i) -> void:
+	var payload := CombatEventPayload.new()
+	payload.target = unit
+	payload.to_cell = cell
+	_bus_emit(CombatEvents.ON_FRIEND_SUMMONED, payload)
+	_bus_emit(CombatEvents.ON_SUMMONED, payload)
+
+
+func _drain_effects() -> void:
+	if _effect_resolver == null:
+		return
+	var guard := EFFECT_DRAIN_GUARD
+	while _effect_resolver.has_pending_steps() and guard > 0:
+		_effect_resolver.process_next_step()
+		_sync_effect_spawns_from_grid()
+		_sync_deaths_from_hp()
+		guard -= 1
+
+
+func _sync_effect_spawns_from_grid() -> void:
+	if _effect_grid == null:
+		return
+	for item in _effect_grid.get_all_units():
+		var unit := item as UnitInstance
+		if unit == null or not unit.is_alive():
+			continue
+		if _find_rt_for_unit(unit) != null:
+			continue
+		_adding_effect_spawn = true
+		var spawn_pos := Vector2(unit.grid_pos) + Vector2(0.5, 0.5)
+		add_unit(unit, spawn_pos)
+		_adding_effect_spawn = false
+
+
+func _sync_deaths_from_hp() -> void:
+	for rt in _units:
+		if rt == null or rt.unit == null:
+			continue
+		if rt.state == RtUnit.State.DEAD:
+			continue
+		if rt.unit.is_alive():
+			continue
+		rt.state = RtUnit.State.DEAD
+		rt.target = null
+		unit_died.emit(rt)
+
+
+func _find_rt_for_unit(unit: UnitInstance) -> RtUnit:
+	if unit == null:
+		return null
+	for rt in _units:
+		if rt.unit == unit:
+			return rt
+	return null

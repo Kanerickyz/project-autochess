@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://01yj5h19andmn" path="res://resources/abilities/ally_deploy_self_atk_small.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_archer"]
 script = ExtResource("2_stats")
@@ -27,3 +28,4 @@ display_name = "弓箭手"
 cost = 2
 tier = 1
 stats = SubResource("UnitStats_archer")
+ability = ExtResource("3_ability")

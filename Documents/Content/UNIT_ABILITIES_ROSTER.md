@@ -4,7 +4,7 @@
 > 功能规则见 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md)；友方兵种见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)。  
 > **本篇写**：独立技能内容池——名称、触发、效果草案、相对强度标注。  
 > **本篇不写**：定点数 / 百分比；玩家可见流派标签。挂载到哪只兵种见 [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6。  
-> **【As-Is】** 技能池 `.tres` 已建（见 §6；`掩护射击` 待管线未建）；Content 挂载表已定，realtime 单位**尚未**绑定；主路径仍表现为无主技能。
+> **【As-Is】** 技能池 `.tres` 已建（见 §6；`掩护射击` 待管线未建）；Content §6 九人已绑到 realtime 单位 `ability`（民兵空）；主路径 EffectResolver 已接线。
 
 ## 1. 范围与共识
 
@@ -92,7 +92,7 @@
 | 技能 `.tres` | **已建** 16 条于 `resources/abilities/`（id 与 §3 对齐）；`ally_hurt_damage_attacker_small` 待管线 |
 | 生成用 token | `resources/units/tokens/token_{weak,weak_copy,thick_copy,ember}.tres`（无主技能） |
 | 兵种自带挂载表 | **已定（测试用）** → [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6；九人各一条，民兵白板 |
-| realtime 单位 `ability` 槽 | **未绑**（Content 挂载 ≠ 资源已挂） |
+| realtime 单位 `ability` 槽 | **已绑**（§6 九人 → 对应 `.tres`；民兵 / skeleton 空） |
 | 附魔池收录表 | **未定** |
 
 ## 7. 维护
