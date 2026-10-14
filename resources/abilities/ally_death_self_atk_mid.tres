@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
-value = 30
+value = 2
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -16,5 +16,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "ally_death_self_atk_mid"
-display_name = "友方死亡时 自身攻击+30"
+display_name = "友方死亡时 自身攻击+2"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

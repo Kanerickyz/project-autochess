@@ -6,12 +6,12 @@
 
 [sub_resource type="Resource" id="UnitStats_musketeer"]
 script = ExtResource("2_stats")
-max_hp = 580
-attack = 175
+max_hp = 3
+attack = 5
 attack_range = 6
 crit_rate_percent = 25
 move_speed = 1.0
-attack_interval = 1.0
+attack_interval = 1.15
 attack_windup = 0.5
 attack_reach = 6.0
 sight_range = 6.0

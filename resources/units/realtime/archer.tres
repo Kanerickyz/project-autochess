@@ -6,13 +6,13 @@
 
 [sub_resource type="Resource" id="UnitStats_archer"]
 script = ExtResource("2_stats")
-max_hp = 245
-attack = 86
+max_hp = 2
+attack = 2
 attack_range = 5
 crit_rate_percent = 0
 move_speed = 1.0
-attack_interval = 0.9
-attack_windup = 0.4
+attack_interval = 0.8
+attack_windup = 0.35
 attack_reach = 5.0
 sight_range = 5.5
 body_radius = 0.5
