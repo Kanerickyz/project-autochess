@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
-value = 15
+value = 1
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -16,5 +16,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "ally_deploy_self_atk_small"
-display_name = "友方上场时 自身攻击+15"
+display_name = "友方上场时 自身攻击+1"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

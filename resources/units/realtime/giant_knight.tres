@@ -5,12 +5,12 @@
 
 [sub_resource type="Resource" id="UnitStats_giant_knight"]
 script = ExtResource("2_stats")
-max_hp = 4200
-attack = 380
+max_hp = 10
+attack = 6
 crit_rate_percent = 0
 move_speed = 0.75
-attack_interval = 1.5
-attack_windup = 0.8
+attack_interval = 1.8
+attack_windup = 0.85
 attack_reach = 1.2
 sight_range = 6.0
 body_radius = 1.05

@@ -5,12 +5,12 @@
 
 [sub_resource type="Resource" id="UnitStats_skeleton"]
 script = ExtResource("2_stats")
-max_hp = 65
-attack = 65
+max_hp = 1
+attack = 1
 crit_rate_percent = 0
 move_speed = 1.5
-attack_interval = 1.0
-attack_windup = 0.3
+attack_interval = 0.85
+attack_windup = 0.25
 attack_reach = 0.5
 sight_range = 5.5
 body_radius = 0.5
