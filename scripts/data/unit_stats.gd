@@ -43,8 +43,8 @@ enum MovementPattern {
 @export_range(0.0, 40.0, 0.5) var projectile_speed: float = 0.0
 ## 溅射半径（格，以目标为圆心）；0 = 单体
 @export_range(0.0, 4.0, 0.05) var splash_radius: float = 0.0
-## 落地后多久才开始行动（秒）
-@export_range(0.0, 5.0, 0.05) var deploy_time: float = 1.0
+## 落地后多久才开始行动（秒）。玩家篇已取消部署时间；主路径投放会强制为 0。
+@export_range(0.0, 5.0, 0.05) var deploy_time: float = 0.0
 
 
 func duplicate_stats() -> UnitStats:

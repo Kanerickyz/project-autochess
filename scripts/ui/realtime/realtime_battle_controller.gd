@@ -1,6 +1,6 @@
 class_name RealtimeBattleController
 extends Control
-## 竖屏实时战斗关卡：准备阶段投放/收回、开战、战斗中 cycle 补人、结算遮罩。
+## 竖屏实时战斗关卡：进遭遇即开战，抽打弃手牌轮转出牌、结算遮罩（见 Features/PLAYER.md）。
 ## 逻辑由 RealtimeCombatSim 固定步推进；本节点只做流程、输入与 HUD。
 
 signal encounter_completed(won: bool)
@@ -10,7 +10,6 @@ signal combat_resolved(won: bool)
 
 enum Phase { IDLE, PREPARE, COMBAT, RESULT }
 
-const DEFAULT_DRAW_COUNT := 5
 ## 敌人随机落点避开最靠中线的行数
 const ENEMY_MIDLINE_MARGIN_ROWS := 2
 const HINT_SECONDS := 2.0
@@ -30,10 +29,9 @@ var _encounter: EncounterData
 var _tier_index: int = 0
 var _board_size: Vector2i = Vector2i(18, 32)
 var _phase: Phase = Phase.IDLE
-var _hand: Array[DeckEntry] = []
+var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _cards: Array[RealtimeHandCard] = []
 var _selected_entry_id: int = -1
-var _pending_enemies: Array = []
 var _sim: RealtimeCombatSim
 var _bus: CombatEventBus
 var _won: bool = false
@@ -61,6 +59,8 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_result_overlay.visible = false
+	if _start_button != null:
+		_start_button.visible = false
 	_refresh_hud()
 
 
@@ -75,6 +75,8 @@ func _process(delta: float) -> void:
 		if _hint_remaining <= 0.0:
 			_hint_text = ""
 	if _phase == Phase.COMBAT and _sim != null:
+		_card_flow.tick(delta * time_scale)
+		_sync_wipe_loss_suppression()
 		_sim.step(delta * time_scale)
 	_refresh_hud()
 	_refresh_cards()
@@ -93,7 +95,7 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	_refresh_hud()
 
 
-## 进入准备阶段：抽本场手牌、生成并预览敌人落点。
+## 进入遭遇：由构筑库建抽打弃、起手抽牌，敌人一次刷出并直接开战（无准备阶段）。
 func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	if _deck_state == null or _level == null:
 		push_error("RealtimeBattleController.start_encounter: call setup() first")
@@ -115,8 +117,9 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	rng.seed = last_seed
 	print("RealtimeBattle: encounter=%s tier=%d seed=%d board=%s" % [encounter.id, tier_index, last_seed, _board_size])
 
-	_hand = DrawService.draw_wave_hand(_deck_state, _resolve_draw_count(), rng)
-	_pending_enemies = _roll_enemy_spawns(rng)
+	_card_flow.configure_from_deck_config(_deck_state.get_config())
+	_card_flow.begin_from_deck(_deck_state, rng)
+	var enemy_spawns := _roll_enemy_spawns(rng)
 
 	_bus = CombatEventBus.new()
 	_bus.name = "RealtimeCombatEventBus"
@@ -131,9 +134,13 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	_arena.board_size = _board_size
 	_arena.sim = _sim
 	_arena.clear_fx()
-	_arena.enemy_previews = _build_enemy_previews()
+	_arena.enemy_previews = []
+	for spawn in enemy_spawns:
+		_sim.add_unit(spawn["unit"], spawn["position"])
+	_sim.begin_combat()
+	_sync_wipe_loss_suppression()
 	_rebuild_cards()
-	_set_phase(Phase.PREPARE)
+	_set_phase(Phase.COMBAT)
 
 
 func get_phase() -> Phase:
@@ -149,17 +156,16 @@ func get_board_size() -> Vector2i:
 
 
 func get_hand() -> Array[DeckEntry]:
-	return _hand.duplicate()
+	return _card_flow.get_hand()
 
 
 func get_pending_enemy_positions() -> Array[Vector2]:
-	var out: Array[Vector2] = []
-	for spawn in _pending_enemies:
-		out.append(spawn["position"])
-	return out
+	## 进遭遇即开战，无预览落点列表；保留空实现供旧测试调用。
+	return []
 
 
 func get_max_board_units() -> int:
+	## Legacy；玩家篇已取消人口硬顶。
 	return _deck_state.get_max_board_units() if _deck_state != null else 5
 
 
@@ -168,6 +174,7 @@ func get_player_unit_count() -> int:
 
 
 func is_entry_on_field(entry_id: int) -> bool:
+	## 取消一张一体后不再用「在场」挡打出；保留查询供调试。
 	return _sim != null and _sim.find_unit_by_deck_entry(entry_id) != null
 
 
@@ -178,41 +185,35 @@ func try_deploy(entry_id: int, cell: Vector2i) -> String:
 		_show_hint(reason)
 		return reason
 	var entry := _find_hand_entry(entry_id)
+	if entry == null:
+		_show_hint("该牌不在手牌中")
+		return "该牌不在手牌中"
 	var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 	if unit == null:
 		_show_hint("无法生成单位")
 		return "无法生成单位"
+	# 玩家篇：取消部署时间；落地即可行动。
+	if unit.stats != null:
+		unit.stats.deploy_time = 0.0
+	if _card_flow.try_play(entry_id) == null:
+		_show_hint("无法打出")
+		return "无法打出"
 	_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
+	_sync_wipe_loss_suppression()
 	if _selected_entry_id == entry_id:
 		_set_selected(-1)
-	_refresh_cards()
+	_rebuild_cards()
 	return ""
 
 
-## 准备阶段收回己方单位；成功返回 true。
-func try_recall_at(tile_pos: Vector2) -> bool:
-	if _phase != Phase.PREPARE or _sim == null:
-		return false
-	var rt := _find_player_unit_at(tile_pos)
-	if rt == null:
-		return false
-	return _sim.remove_unit(rt)
+## 准备阶段已取消；保留空实现以免旧调用报错。
+func try_recall_at(_tile_pos: Vector2) -> bool:
+	return false
 
 
+## 进遭遇即开战；保留接口，恒返回当前是否已在战斗。
 func try_start_combat() -> bool:
-	if _phase != Phase.PREPARE or _sim == null:
-		return false
-	if get_player_unit_count() < 1:
-		_show_hint("至少投放 1 名单位才能开战")
-		return false
-	for spawn in _pending_enemies:
-		_sim.add_unit(spawn["unit"], spawn["position"])
-	_pending_enemies.clear()
-	_sim.begin_combat()
-	_arena.enemy_previews = []
-	_set_selected(-1)
-	_set_phase(Phase.COMBAT)
-	return true
+	return _phase == Phase.COMBAT and _sim != null
 
 
 ## 结算后“继续”：释放本场战斗并发出 encounter_completed。
@@ -222,10 +223,17 @@ func continue_after_result() -> void:
 	var won := _won
 	_result_overlay.visible = false
 	_teardown_sim()
-	_hand.clear()
+	_card_flow.clear()
 	_rebuild_cards()
 	_set_phase(Phase.IDLE)
 	encounter_completed.emit(won)
+
+
+func _sync_wipe_loss_suppression() -> void:
+	if _sim == null:
+		return
+	# 场上暂无友方但牌区尚有牌时不判负（开局 0 人、死后待补人）。
+	_sim.suppress_player_wipe_loss = _card_flow.has_cards_remaining()
 
 
 # --- 流程 ---
@@ -236,11 +244,6 @@ func _set_phase(phase: Phase) -> void:
 	_refresh_hud()
 	_refresh_cards()
 	phase_changed.emit(phase)
-
-
-func _resolve_draw_count() -> int:
-	var count := _deck_state.get_draw_count() if _deck_state != null else 0
-	return count if count > 0 else DEFAULT_DRAW_COUNT
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
@@ -282,36 +285,18 @@ func _enemy_spawn_cells() -> Array[Vector2i]:
 	return cells
 
 
-func _build_enemy_previews() -> Array:
-	var previews: Array = []
-	for spawn in _pending_enemies:
-		var unit := spawn["unit"] as UnitInstance
-		var label := unit.unit_data.display_name if unit.unit_data != null else unit.id
-		var stats := unit.stats
-		var body_r := stats.body_radius if stats != null else 0.7
-		previews.append({
-			"position": spawn["position"],
-			"radius": body_r,
-			"visual_half_width": stats.get_visual_half_width() if stats != null else body_r * 1.3,
-			"visual_half_height": stats.get_visual_half_height() if stats != null else body_r * 1.6,
-			"label": label,
-		})
-	return previews
-
-
 func _validate_deploy(entry_id: int, cell: Vector2i) -> String:
-	if _sim == null or (_phase != Phase.PREPARE and _phase != Phase.COMBAT):
+	if _sim == null or _phase != Phase.COMBAT:
 		return "当前不可投放"
 	if cell.x < 0 or cell.y < 0 or cell.x >= _board_size.x or cell.y >= _board_size.y:
 		return "请投放到战场内"
 	if not BoardHalf.is_player_deploy_cell(cell, _board_size.y):
 		return "敌方半场不可投放"
-	if _find_hand_entry(entry_id) == null:
-		return "该牌不在本场手牌中"
-	if is_entry_on_field(entry_id):
-		return "该单位已在场"
-	if get_player_unit_count() >= get_max_board_units():
-		return "人口已满 (%d/%d)" % [get_player_unit_count(), get_max_board_units()]
+	if not _card_flow.is_in_hand(entry_id):
+		return "该牌不在手牌中"
+	if not _card_flow.is_ready(entry_id):
+		var left := _card_flow.get_cooldown_remaining(entry_id)
+		return "冷却中 %.1fs" % left
 	if _is_cell_occupied(cell):
 		return "该格已有单位"
 	return ""
@@ -325,7 +310,7 @@ func _is_cell_occupied(cell: Vector2i) -> bool:
 
 
 func _find_hand_entry(entry_id: int) -> DeckEntry:
-	for entry in _hand:
+	for entry in _card_flow.get_hand():
 		if entry.entry_id == entry_id:
 			return entry
 	return null
@@ -355,7 +340,6 @@ func _teardown_sim() -> void:
 	if _bus != null and is_instance_valid(_bus):
 		_bus.queue_free()
 	_bus = null
-	_pending_enemies.clear()
 
 
 func _disconnect_economy() -> void:
@@ -369,9 +353,6 @@ func _disconnect_economy() -> void:
 func _on_board_pressed(tile_pos: Vector2) -> void:
 	if _sim == null:
 		return
-	if _phase == Phase.PREPARE and try_recall_at(tile_pos):
-		_show_hint("已收回")
-		return
 	if _selected_entry_id >= 0:
 		try_deploy(_selected_entry_id, _arena.tile_to_cell(tile_pos))
 		return
@@ -384,17 +365,17 @@ func _on_card_dropped(entry_id: int, tile_pos: Vector2) -> void:
 
 
 func _on_card_pressed(entry_id: int) -> void:
-	if _phase != Phase.PREPARE and _phase != Phase.COMBAT:
+	if _phase != Phase.COMBAT:
 		return
-	if is_entry_on_field(entry_id):
-		_show_hint("该单位已在场")
+	if not _card_flow.is_ready(entry_id):
+		_show_hint("冷却中 %.1fs" % _card_flow.get_cooldown_remaining(entry_id))
 		_set_selected(-1)
 		return
 	_set_selected(-1 if _selected_entry_id == entry_id else entry_id)
 
 
 func _on_start_pressed() -> void:
-	try_start_combat()
+	pass
 
 
 func _on_continue_pressed() -> void:
@@ -459,7 +440,7 @@ func _rebuild_cards() -> void:
 	for card in _cards:
 		card.queue_free()
 	_cards.clear()
-	for entry in _hand:
+	for entry in _card_flow.get_hand():
 		var card := RealtimeHandCard.new()
 		_hand_row.add_child(card)
 		card.setup(entry)
@@ -469,23 +450,20 @@ func _rebuild_cards() -> void:
 
 
 func _refresh_cards() -> void:
-	var deploy_phase := _phase == Phase.PREPARE or _phase == Phase.COMBAT
+	var in_combat := _phase == Phase.COMBAT
 	for card in _cards:
-		var on_field := is_entry_on_field(card.get_entry_id())
-		card.available = deploy_phase and not on_field
-		card.status_text = "在场" if on_field else ""
-		if on_field and card.selected:
+		var entry_id := card.get_entry_id()
+		var ready := in_combat and _card_flow.is_ready(entry_id)
+		card.available = ready
+		var cd := _card_flow.get_cooldown_remaining(entry_id)
+		if cd > 0.0:
+			card.status_text = "%.1fs" % cd
+		else:
+			card.status_text = ""
+		if not ready and card.selected:
 			_set_selected(-1)
 	if _start_button != null:
-		var preparing := _phase == Phase.PREPARE
-		_start_button.disabled = not preparing or get_player_unit_count() < 1
-		match _phase:
-			Phase.COMBAT:
-				_start_button.text = "战斗中"
-			Phase.RESULT:
-				_start_button.text = "已结束"
-			_:
-				_start_button.text = "开始战斗"
+		_start_button.visible = false
 
 
 func _refresh_hud() -> void:
@@ -493,7 +471,10 @@ func _refresh_hud() -> void:
 		return
 	_encounter_label.text = _encounter.display_name if _encounter != null else "实时战斗"
 	_gold_label.text = "金币 %d" % (_economy.gold if _economy != null else 0)
-	_pop_label.text = "人口 %d/%d" % [get_player_unit_count(), get_max_board_units()]
+	var hand_n := _card_flow.get_hand().size()
+	var draw_n := _card_flow.get_draw_count()
+	var discard_n := _card_flow.get_discard_count()
+	_pop_label.text = "手牌 %d  库 %d  弃 %d" % [hand_n, draw_n, discard_n]
 	var elapsed := _sim.elapsed_seconds if _sim != null else 0.0
 	_timer_label.text = _format_time(elapsed)
 	if not _hint_text.is_empty():
@@ -502,10 +483,8 @@ func _refresh_hud() -> void:
 		return
 	_phase_label.modulate = Color.WHITE
 	match _phase:
-		Phase.PREPARE:
-			_phase_label.text = "准备：选牌后点下半场" if _selected_entry_id < 0 else "点下半场格子投放"
 		Phase.COMBAT:
-			_phase_label.text = "战斗中·可补人"
+			_phase_label.text = "战斗中·拖拽手牌到我半场" if _selected_entry_id < 0 else "点我半场投放"
 		Phase.RESULT:
 			_phase_label.text = "胜利" if _won else "失败"
 		_:

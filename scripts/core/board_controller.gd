@@ -654,16 +654,7 @@ func try_deploy_entry(entry_id: int, cell: Vector2i, clear_selection: bool = fal
 	if board_grid.get_unit(cell) != null:
 		_set_status("该格已被占用")
 		return false
-	if _is_entry_deployed(entry_id):
-		if clear_selection:
-			_selected_entry_id = -1
-			_refresh_hand_ui()
-		_set_status("该单位已在场上")
-		return false
-	if not _can_deploy_more():
-		var max_units := deck_state.get_max_board_units()
-		_set_status("人口已满（%d/%d）" % [_count_player_units_on_board(), max_units])
-		return false
+	# 玩家篇：取消「一张一体」与人口硬顶；旧准备 cycle 路径仍可投放。
 
 	var entry := deck_state.get_entry(entry_id)
 	if entry == null:

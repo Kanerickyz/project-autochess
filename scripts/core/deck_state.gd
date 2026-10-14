@@ -71,15 +71,33 @@ func get_max_size() -> int:
 
 
 func get_max_board_units() -> int:
+	## Legacy; PLAYER.md 已取消人口硬顶。保留给旧 UI / 测试兼容。
 	if _config == null:
 		return 5
 	return _config.max_board_units
 
 
 func get_draw_count() -> int:
+	## Legacy prepare draw; 遭遇内请用 get_hand_width()。
 	if _config == null:
 		return 5
 	return _config.draw_count
+
+
+func get_hand_width() -> int:
+	if _config == null:
+		return EncounterCardFlow.DEFAULT_HAND_WIDTH
+	return _config.get_hand_width()
+
+
+func get_enter_hand_cooldown() -> float:
+	if _config == null:
+		return EncounterCardFlow.DEFAULT_ENTER_HAND_COOLDOWN
+	return _config.get_enter_hand_cooldown()
+
+
+func get_config() -> DeckConfig:
+	return _config
 
 
 func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dictionary:

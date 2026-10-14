@@ -36,6 +36,8 @@ var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
 var _adding_effect_spawn: bool = false
+## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
+var suppress_player_wipe_loss: bool = false
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -317,7 +319,8 @@ func _check_finished() -> void:
 	if _finished:
 		return
 	if count_alive(UnitInstance.Team.PLAYER) == 0:
-		_finish(false)
+		if not suppress_player_wipe_loss:
+			_finish(false)
 	elif count_alive(UnitInstance.Team.ENEMY) == 0:
 		_finish(true)
 
