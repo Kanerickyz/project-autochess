@@ -82,6 +82,8 @@ func _process(delta: float) -> void:
 		_hint_remaining -= delta
 		if _hint_remaining <= 0.0:
 			_hint_text = ""
+	if _arena != null:
+		_arena.presentation_time_scale = time_scale
 	if _phase == Phase.COMBAT and _sim != null:
 		var scaled := delta * time_scale
 		_sim.step(scaled)
@@ -151,6 +153,10 @@ func get_phase() -> Phase:
 
 func get_sim() -> RealtimeCombatSim:
 	return _sim
+
+
+func get_arena() -> RealtimeArenaView:
+	return _arena
 
 
 func get_board_size() -> Vector2i:
@@ -548,12 +554,55 @@ func _on_unit_died(rt: RtUnit) -> void:
 
 
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:
+	if event_type == CombatEvents.ON_EFFECT_RESOLVED:
+		_present_effect_feedback(payload)
+		return
 	if event_type != CombatEvents.ON_DEATH or payload.target == null or _economy == null:
 		return
 	if payload.target.team == UnitInstance.Team.ENEMY:
 		_economy.grant_kill_gold(payload.target.unit_data)
 	elif payload.target.death_grant_gold > 0:
 		_economy.grant(payload.target.death_grant_gold)
+
+
+## 技能因果反馈：只接效果管线已结算；普攻命中不走此路径。
+func _present_effect_feedback(payload: CombatEventPayload) -> void:
+	if _arena == null or payload == null:
+		return
+	var pops := RealtimeEffectFeedback.build_popups(payload)
+	for pop in pops:
+		var target: UnitInstance = pop.get("target")
+		var center := _resolve_feedback_center(target, payload)
+		var tip := ""
+		if bool(pop.get("show_tip", false)):
+			tip = String(pop.get("tip", ""))
+		_arena.add_feedback_popup(
+			pop["kind"],
+			String(pop["text"]),
+			center,
+			bool(pop.get("is_player", true)),
+			int(pop.get("unit_id", -1)),
+			int(pop.get("amount", 0)),
+			String(pop.get("merge_key", "")),
+			tip,
+		)
+
+
+func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload) -> Vector2:
+	if _sim != null and target != null:
+		var rt := _sim.find_unit(target)
+		if rt != null:
+			return rt.position
+	if target != null:
+		return Vector2(target.grid_pos) + Vector2(0.5, 0.5)
+	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	if _sim != null and owner != null:
+		var owner_rt := _sim.find_unit(owner)
+		if owner_rt != null:
+			return owner_rt.position
+	if owner != null:
+		return Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
+	return Vector2(_board_size) * 0.5
 
 
 func _on_combat_finished(won: bool) -> void:

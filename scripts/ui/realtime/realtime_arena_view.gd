@@ -22,6 +22,12 @@ const ATTACK_FLASH_SECONDS := 0.12
 const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
 const ELLIPSE_SEGMENTS := 28
+## 技能因果飘字（COMBAT_FEEDBACK）：基础寿命；加速时缩短但不短于下限。
+const FEEDBACK_SECONDS := 0.85
+const FEEDBACK_MIN_SECONDS := 0.35
+const FEEDBACK_MERGE_WINDOW := 0.28
+const FEEDBACK_MAX_PER_UNIT := 3
+const FEEDBACK_FLOAT_TILES := 0.55
 
 var board_size: Vector2i = Vector2i(9, 16)
 var sim: RealtimeCombatSim
@@ -37,6 +43,8 @@ var ghost_label: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
+## 战斗加速倍率：仅缩短反馈寿命，不挡模拟。
+var presentation_time_scale: float = 1.0
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -46,6 +54,8 @@ var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _fx: Array = []
 var _fx_clock: float = 0.0
+## Array[Dictionary]：技能结果数字 / 短提示
+var _feedback: Array = []
 
 const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
 const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
@@ -69,6 +79,12 @@ func _process(delta: float) -> void:
 			if _fx_clock - float(fx["t0"]) < FX_SECONDS:
 				alive.append(fx)
 		_fx = alive
+	if not _feedback.is_empty():
+		var keep: Array = []
+		for fb in _feedback:
+			if _fx_clock - float(fb["t0"]) < float(fb["duration"]):
+				keep.append(fb)
+		_feedback = keep
 	queue_redraw()
 
 
@@ -119,8 +135,113 @@ func add_death_fx(center: Vector2, radius: float, is_player: bool) -> void:
 	_fx.append({"kind": "death", "center": center, "radius": radius, "t0": _fx_clock, "player": is_player})
 
 
+## 技能因果反馈：kind=damage/heal/stat/label；同单位短窗可合并。
+func add_feedback_popup(
+	kind: StringName,
+	text: String,
+	center: Vector2,
+	is_player: bool,
+	unit_id: int = -1,
+	amount: int = 0,
+	merge_key: String = "",
+	tip: String = "",
+) -> void:
+	if text.is_empty() and tip.is_empty():
+		return
+	var key := merge_key
+	if key.is_empty():
+		key = "%d|%s" % [unit_id, String(kind)]
+	var duration := _feedback_duration_for_scale(presentation_time_scale)
+	## 短合并窗：同 merge_key 且仍存活 → 合计数字或刷新短标。
+	if unit_id >= 0:
+		for fb in _feedback:
+			if String(fb.get("merge_key", "")) != key:
+				continue
+			if _fx_clock - float(fb["t0"]) > FEEDBACK_MERGE_WINDOW:
+				continue
+			if kind == RealtimeEffectFeedback.KIND_DAMAGE or kind == RealtimeEffectFeedback.KIND_HEAL \
+					or kind == RealtimeEffectFeedback.KIND_STAT:
+				var merged_amount := int(fb["amount"]) + amount
+				fb["amount"] = merged_amount
+				fb["text"] = _format_merged_feedback_text(kind, merged_amount, text)
+			else:
+				fb["text"] = text if not text.is_empty() else String(fb["text"])
+			if not tip.is_empty():
+				fb["tip"] = tip
+			fb["t0"] = _fx_clock
+			fb["duration"] = duration
+			fb["center"] = center
+			return
+	_feedback.append({
+		"kind": kind,
+		"text": text,
+		"tip": tip,
+		"center": center,
+		"player": is_player,
+		"unit_id": unit_id,
+		"amount": amount,
+		"merge_key": key,
+		"t0": _fx_clock,
+		"duration": duration,
+	})
+	_trim_feedback_for_unit(unit_id)
+
+
+func get_feedback_count() -> int:
+	return _feedback.size()
+
+
+func get_feedback_entries() -> Array:
+	return _feedback.duplicate()
+
+
 func clear_fx() -> void:
 	_fx.clear()
+	_feedback.clear()
+
+
+func _feedback_duration_for_scale(scale: float) -> float:
+	var s := maxf(0.25, scale)
+	return clampf(FEEDBACK_SECONDS / s, FEEDBACK_MIN_SECONDS, FEEDBACK_SECONDS)
+
+
+func _format_merged_feedback_text(kind: StringName, amount: int, fallback: String) -> String:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return "-%d" % amount
+		RealtimeEffectFeedback.KIND_HEAL:
+			return "+%d" % amount if amount > 0 else "%d" % amount
+		RealtimeEffectFeedback.KIND_STAT:
+			## 保留原后缀（攻/生命/暴）；跳过符号与数字。
+			var suffix := ""
+			for i in fallback.length():
+				var ch := fallback.substr(i, 1)
+				if ch == "+" or ch == "-":
+					continue
+				if ch >= "0" and ch <= "9":
+					continue
+				suffix = fallback.substr(i)
+				break
+			var sign := "+" if amount > 0 else ""
+			return "%s%d%s" % [sign, amount, suffix]
+		_:
+			return fallback
+
+
+func _trim_feedback_for_unit(unit_id: int) -> void:
+	if unit_id < 0:
+		return
+	var indices: Array[int] = []
+	for i in _feedback.size():
+		if int(_feedback[i].get("unit_id", -1)) == unit_id:
+			indices.append(i)
+	while indices.size() > FEEDBACK_MAX_PER_UNIT:
+		var drop_i: int = indices[0]
+		_feedback.remove_at(drop_i)
+		indices.remove_at(0)
+		for j in indices.size():
+			if indices[j] > drop_i:
+				indices[j] -= 1
 
 
 # --- 输入 ---
@@ -203,6 +324,7 @@ func _draw() -> void:
 		_draw_units(px)
 		_draw_projectiles(px)
 	_draw_fx(px)
+	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
 
@@ -355,6 +477,72 @@ func _draw_fx(px: float) -> void:
 		else:
 			var color := PLAYER_COLOR if bool(fx["player"]) else ENEMY_COLOR
 			draw_arc(center, r_px * (1.0 + t), 0.0, TAU, 24, Color(color, 0.8 * (1.0 - t)), 2.0)
+
+
+func _draw_feedback(px: float) -> void:
+	if _feedback.is_empty():
+		return
+	var font := get_theme_default_font()
+	for fb in _feedback:
+		var life := float(fb["duration"])
+		if life <= 0.0:
+			continue
+		var t := clampf((_fx_clock - float(fb["t0"])) / life, 0.0, 1.0)
+		var is_player := bool(fb["player"])
+		## 友方优先可读：字号更大、更不透明；敌方保下限。
+		var base_size := 16 if is_player else 13
+		var alpha := (1.0 - t * 0.85) * (1.0 if is_player else 0.78)
+		var float_y := -FEEDBACK_FLOAT_TILES * px * t
+		var center := tile_to_local(fb["center"]) + Vector2(0.0, float_y - px * 0.35)
+		var kind: StringName = fb["kind"]
+		var color := _feedback_color(kind, is_player)
+		color.a = alpha
+		var main_text := String(fb["text"])
+		var tip := String(fb.get("tip", ""))
+		if not main_text.is_empty():
+			var font_size := base_size + (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0)
+			_draw_feedback_string(font, center, main_text, font_size, color)
+			center.y -= float(font_size) + 2.0
+		if not tip.is_empty():
+			var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
+			_draw_feedback_string(font, center, tip, maxi(10, base_size - 3), tip_color)
+
+
+func _feedback_color(kind: StringName, is_player: bool) -> Color:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return Color(1.0, 0.42, 0.32) if is_player else Color(1.0, 0.55, 0.40)
+		RealtimeEffectFeedback.KIND_HEAL:
+			return Color(0.40, 0.95, 0.55)
+		RealtimeEffectFeedback.KIND_STAT:
+			return Color(1.0, 0.88, 0.35)
+		_:
+			return Color(0.88, 0.94, 1.0)
+
+
+func _draw_feedback_string(
+	font: Font,
+	center: Vector2,
+	text: String,
+	font_size: int,
+	color: Color,
+) -> void:
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var baseline := center + Vector2(
+		-text_size.x * 0.5,
+		font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25,
+	)
+	## 描边：形/字双通道，不完全靠颜色。
+	var outline := Color(0.05, 0.05, 0.08, color.a * 0.85)
+	for ox in [-1.0, 0.0, 1.0]:
+		for oy in [-1.0, 0.0, 1.0]:
+			if ox == 0.0 and oy == 0.0:
+				continue
+			draw_string(
+				font, baseline + Vector2(ox, oy), text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline,
+			)
+	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
 func _draw_ghost(px: float, mid: int) -> void:

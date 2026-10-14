@@ -145,6 +145,11 @@ func get_projectiles() -> Array:
 	return _projectiles.duplicate()
 
 
+## 表现层：按 UnitInstance 查找场上 RtUnit（含刚死亡、尚未 _remove_dead 的）。
+func find_unit(unit: UnitInstance) -> RtUnit:
+	return _find_rt_for_unit(unit)
+
+
 func find_unit_by_deck_entry(entry_id: int) -> RtUnit:
 	for rt in _units:
 		if rt.is_player() and rt.unit.deck_entry_id == entry_id and rt.is_alive():
