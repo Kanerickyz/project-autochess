@@ -14,7 +14,11 @@ max_size = 5
 max_board_units = 4
 draw_count = 4
 hand_width = 4
+<<<<<<< HEAD
 seat_rows = 2
 seat_cols = 5
 slot_count = 0
+=======
+slot_count = 10
+>>>>>>> 2a4ef85 (feat(realtime): 2×5 座位、上场上限 4、战场 9×16)
 level_config = ExtResource("2_level")
