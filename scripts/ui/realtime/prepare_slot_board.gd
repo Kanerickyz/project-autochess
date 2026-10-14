@@ -4,10 +4,8 @@ extends RefCounted
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 前排相对中线向己半场内偏移的格数（0 = 贴中线第一行）。
-const FRONT_OFFSET_FROM_MID := 0
-## 后排相对己方底边向内偏移的格数（0 = 贴边）。
-const BACK_INSET_FROM_EDGE := 1
+## 座位行与行、列与列之间空出的格数。
+const SEAT_GAP_CELLS := 1
 
 var seat_rows: int = DEFAULT_SEAT_ROWS
 var seat_cols: int = DEFAULT_SEAT_COLS
@@ -57,12 +55,18 @@ static func build_grid_cells(
 ) -> Array[Vector2i]:
 	var n_rows := maxi(1, rows)
 	var n_cols := maxi(1, cols)
-	var row_ys := _row_ys_for_side(board_size.y, n_rows, enemy_side)
+	var gap := maxi(0, SEAT_GAP_CELLS)
+	var stride := 1 + gap
+	var block_w := n_cols + (n_cols - 1) * gap
+	var block_h := n_rows + (n_rows - 1) * gap
+	var start_x := (board_size.x - block_w) / 2
+	start_x = clampi(start_x, 0, maxi(0, board_size.x - 1))
+	var row_ys := _centered_row_ys(board_size.y, n_rows, stride, block_h, enemy_side)
 	var result: Array[Vector2i] = []
 	for row_i in row_ys.size():
 		var y: int = row_ys[row_i]
 		for c in n_cols:
-			var x := int(round(float(c + 1) * float(board_size.x) / float(n_cols + 1)))
+			var x := start_x + c * stride
 			x = clampi(x, 0, maxi(0, board_size.x - 1))
 			result.append(Vector2i(x, y))
 	return result
@@ -73,24 +77,31 @@ static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vect
 	return build_grid_cells(board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
 
 
-static func _row_ys_for_side(height: int, rows: int, enemy_side: bool) -> Array[int]:
+## 在各自半场可放置区内垂直居中；索引 0 为前排（更近中线），行距 = stride。
+static func _centered_row_ys(
+	height: int,
+	rows: int,
+	stride: int,
+	block_h: int,
+	enemy_side: bool,
+) -> Array[int]:
 	var mid := BoardHalf.midline_row(height)
-	var front_y: int
-	var back_y: int
-	if enemy_side:
-		front_y = clampi(mid - 1 - FRONT_OFFSET_FROM_MID, 0, maxi(0, mid - 1))
-		back_y = clampi(BACK_INSET_FROM_EDGE, 0, front_y)
-	else:
-		front_y = clampi(mid + FRONT_OFFSET_FROM_MID, mid, maxi(mid, height - 1))
-		back_y = clampi(height - 1 - BACK_INSET_FROM_EDGE, front_y, maxi(0, height - 1))
+	var half_h := mid if enemy_side else maxi(0, height - mid)
+	var start_in_half := (half_h - block_h) / 2
+	start_in_half = maxi(0, start_in_half)
 	var ys: Array[int] = []
-	if rows <= 1:
-		ys.append(front_y)
-		return ys
-	## 前排在前（索引 0..cols-1），后排在后；多行时在前后之间插值。
 	for i in rows:
-		var t := 0.0 if rows <= 1 else float(i) / float(rows - 1)
-		ys.append(int(round(lerpf(float(front_y), float(back_y), t))))
+		var y: int
+		if enemy_side:
+			## 敌半场：块从顶侧居中；前排靠近中线（更大 y）。
+			var back_y := start_in_half
+			y = back_y + (rows - 1 - i) * stride
+			y = clampi(y, 0, maxi(0, mid - 1))
+		else:
+			## 我半场：块从中线起居中；前排靠近中线（更小 y）。
+			y = mid + start_in_half + i * stride
+			y = clampi(y, mid, maxi(mid, height - 1))
+		ys.append(y)
 	return ys
 
 

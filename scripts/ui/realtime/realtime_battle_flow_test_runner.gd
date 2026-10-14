@@ -80,6 +80,12 @@ func _test_battle_controller_rules() -> void:
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
 	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
+	## 9×16 / 2×5 / 隔一格：列 x=0,2,4,6,8；我半场行 y=10,12；敌半场行 y=4,2（前排近中线）。
+	_expect(slots.get_cell(0) == Vector2i(0, 10), "controller: ally front-left centered gap grid")
+	_expect(slots.get_cell(1) == Vector2i(2, 10), "controller: ally col gap one cell")
+	_expect(slots.get_cell(5) == Vector2i(0, 12), "controller: ally row gap one cell")
+	_expect(enemy_slots.get_cell(0) == Vector2i(0, 4), "controller: enemy front-left centered gap grid")
+	_expect(enemy_slots.get_cell(5) == Vector2i(0, 2), "controller: enemy back row with one-cell gap")
 
 	var first_id := hand[0].entry_id
 	var slot0 := slots.get_cell(0)
