@@ -1,30 +1,33 @@
 class_name RtUnitBrain
 extends RefCounted
-## 皇室战争式单位决策：只更新自身的目标/状态/计时器，并返回本步的移动意图与是否出手。
-## 不修改其他单位；伤害由 RealtimeCombatSim 交给 RealtimeDamagePipeline。
+## 八方向格步决策：索敌/出手用切比雪夫格距；移动选邻格；不修改其他单位。
 
 ## 进入攻击判定的距离容差（格）
 const REACH_EPSILON := 0.02
 ## 已锁定目标时允许超出 reach 的滞回（格）
 const REACH_HYSTERESIS := 0.25
 const TIME_EPSILON := 0.000001
-## 前进方向短探测距离（格）；至少覆盖一步位移
-const AVOID_PROBE := 0.75
-## 侧向试探角（弧度），固定顺序：平局取先出现者
-const AVOID_ANGLES: Array[float] = [
-	PI / 6.0,
-	-PI / 6.0,
-	PI / 3.0,
-	-PI / 3.0,
+
+## 八方向：先正四向再对角（平局稳定次序）
+const DIR8: Array[Vector2i] = [
+	Vector2i(1, 0),
+	Vector2i(-1, 0),
+	Vector2i(0, 1),
+	Vector2i(0, -1),
+	Vector2i(1, 1),
+	Vector2i(1, -1),
+	Vector2i(-1, 1),
+	Vector2i(-1, -1),
 ]
 
 
 class Decision:
-	var move: Vector2 = Vector2.ZERO
+	## 本步要踏入的邻格相对偏移；ZERO = 不移动（攻击中 / 等待占格）
+	var step: Vector2i = Vector2i.ZERO
 	var fire: bool = false
 
 
-static func decide(unit: RtUnit, units: Array, dt: float) -> Decision:
+static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable) -> Decision:
 	var decision := Decision.new()
 	if not unit.is_alive():
 		return decision
@@ -39,7 +42,8 @@ static func decide(unit: RtUnit, units: Array, dt: float) -> Decision:
 	if unit.target != null and not unit.target.is_alive():
 		_drop_target(unit)
 	if unit.state == RtUnit.State.ATTACKING and unit.target != null:
-		if unit.edge_distance_to(unit.target) > stats.attack_reach + REACH_HYSTERESIS:
+		var lock_dist := float(unit.cell_distance_to(unit.target))
+		if lock_dist > grid_reach(stats.attack_reach) + REACH_HYSTERESIS:
 			_drop_target(unit)
 	if unit.state != RtUnit.State.ATTACKING:
 		unit.target = acquire_target(unit, units)
@@ -47,8 +51,9 @@ static func decide(unit: RtUnit, units: Array, dt: float) -> Decision:
 		unit.state = RtUnit.State.MOVING
 		return decision
 
-	var edge := unit.edge_distance_to(unit.target)
-	if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
+	var dist := float(unit.cell_distance_to(unit.target))
+	var reach := grid_reach(stats.attack_reach)
+	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
 		if unit.state != RtUnit.State.ATTACKING:
 			unit.state = RtUnit.State.ATTACKING
 			unit.attack_timer = maxf(0.0, stats.attack_windup)
@@ -56,121 +61,89 @@ static func decide(unit: RtUnit, units: Array, dt: float) -> Decision:
 		if unit.attack_timer <= TIME_EPSILON:
 			decision.fire = true
 			unit.attack_timer += maxf(0.05, stats.attack_interval)
+		## 逻辑停在当前格攻击；若仍在格间插值，表现继续滑完，不新开步
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	var to_target := unit.target.position - unit.position
-	var dist := to_target.length()
-	if dist <= 0.0:
+	if maxf(0.0, stats.move_speed) <= 0.0:
 		return decision
-	var travel := minf(maxf(0.0, stats.move_speed) * dt, maxf(0.0, edge - stats.attack_reach))
-	if travel <= 0.0:
-		return decision
-	var forward := to_target / dist
-	var move_dir := _steer_avoid(unit, units, unit.target, forward, travel)
-	decision.move = move_dir * travel
+	## 步进中：若本帧尚走不完则等待；走得完则衔接下一步（避免格间空帧）
+	if unit.is_stepping():
+		var remain := 1.0 - unit.step_t
+		if remain > stats.move_speed * dt + TIME_EPSILON:
+			return decision
+	decision.step = pick_step(unit, unit.target, is_cell_free)
 	return decision
 
 
-## sight_range 内最近敌人；没有则全场最近敌人。距离按碰撞圆边缘，平局取较小 instance_id。
+## 旧欧氏近战 reach 常 < 1；一格一体下邻格切比雪夫为 1，正 reach 至少按邻格处理。
+static func grid_reach(reach: float) -> float:
+	if reach <= 0.0:
+		return 0.0
+	if reach < 1.0:
+		return 1.0
+	return reach
+
+
+## sight_range 内格距最近敌人；没有则全场最近。平局取较小 instance_id。
 static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 	var sight := unit.get_stats().sight_range
 	var best_in_sight: RtUnit = null
-	var best_in_sight_dist := INF
+	var best_in_sight_dist := 999999
+	var best_in_sight_id := 0x7fffffff
 	var best_any: RtUnit = null
-	var best_any_dist := INF
+	var best_any_dist := 999999
+	var best_any_id := 0x7fffffff
 	for item in units:
 		var other := item as RtUnit
 		if other == null or other == unit or not other.is_alive():
 			continue
 		if other.get_team() == unit.get_team():
 			continue
-		var edge := unit.edge_distance_to(other)
-		if edge < best_any_dist:
-			best_any_dist = edge
+		var d := unit.cell_distance_to(other)
+		var oid := other.get_id()
+		if d < best_any_dist or (d == best_any_dist and oid < best_any_id):
+			best_any_dist = d
+			best_any_id = oid
 			best_any = other
-		if edge <= sight and edge < best_in_sight_dist:
-			best_in_sight_dist = edge
+		if float(d) <= sight and (d < best_in_sight_dist or (d == best_in_sight_dist and oid < best_in_sight_id)):
+			best_in_sight_dist = d
+			best_in_sight_id = oid
 			best_in_sight = other
 	return best_in_sight if best_in_sight != null else best_any
 
 
-## 简单避障：先只避同队；不够再扩到非当前目标。无随机，平局固定角序。
-static func _steer_avoid(
-	unit: RtUnit,
-	units: Array,
-	target: RtUnit,
-	forward: Vector2,
-	travel: float,
-) -> Vector2:
-	var probe := maxf(AVOID_PROBE, travel)
-	var ally_hits := _probe_hit_count(unit, units, forward, probe, true, target)
-	if ally_hits > 0:
-		var steered := _pick_avoid_dir(unit, units, target, forward, probe, travel, true)
-		if _probe_hit_count(unit, units, steered, probe, true, target) == 0:
-			return steered
-		return _pick_avoid_dir(unit, units, target, forward, probe, travel, false)
-	var other_hits := _probe_hit_count(unit, units, forward, probe, false, target)
-	if other_hits > 0:
-		return _pick_avoid_dir(unit, units, target, forward, probe, travel, false)
-	return forward
-
-
-## allies_only=true 只计同队；false 计任意非当前目标。
-static func _pick_avoid_dir(
-	unit: RtUnit,
-	units: Array,
-	target: RtUnit,
-	forward: Vector2,
-	probe: float,
-	travel: float,
-	allies_only: bool,
-) -> Vector2:
-	var best_dir := forward
-	var best_hits := _probe_hit_count(unit, units, forward, probe, allies_only, target)
-	for angle in AVOID_ANGLES:
-		var cand: Vector2 = forward.rotated(angle)
-		# 可行侧向：本步仍靠近目标，且探测碰撞严格更少；平局保留先试到的方向
-		if _approach_score(unit, target, cand, travel) <= 0.0:
+## 八向贪心：优先减小切比雪夫；同距再减曼哈顿；目标格被占则改道或返回 ZERO（短等）。
+static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> Vector2i:
+	if unit == null or target == null:
+		return Vector2i.ZERO
+	var cur := unit.cell
+	var goal := target.cell
+	var cur_d := RtUnit.chebyshev(cur, goal)
+	var cur_man := absi(cur.x - goal.x) + absi(cur.y - goal.y)
+	var best_dir := Vector2i.ZERO
+	var best_d := cur_d
+	var best_man := cur_man
+	var found := false
+	for dir in DIR8:
+		var nxt: Vector2i = cur + dir
+		if not bool(is_cell_free.call(nxt)):
 			continue
-		var hits := _probe_hit_count(unit, units, cand, probe, allies_only, target)
-		if hits < best_hits:
-			best_hits = hits
-			best_dir = cand
+		var d := RtUnit.chebyshev(nxt, goal)
+		var man := absi(nxt.x - goal.x) + absi(nxt.y - goal.y)
+		if not found or d < best_d or (d == best_d and man < best_man):
+			found = true
+			best_d = d
+			best_man = man
+			best_dir = dir
+	if not found:
+		return Vector2i.ZERO
+	## 不恶化格距；同距时须更靠近（曼哈顿下降）才挪步
+	if best_d > cur_d:
+		return Vector2i.ZERO
+	if best_d == cur_d and best_man >= cur_man:
+		return Vector2i.ZERO
 	return best_dir
-
-
-## 探测点处与障碍圆重叠的数量（不含自身）。
-static func _probe_hit_count(
-	unit: RtUnit,
-	units: Array,
-	dir: Vector2,
-	probe: float,
-	allies_only: bool,
-	target: RtUnit,
-) -> int:
-	var probe_pos := unit.position + dir * probe
-	var hits := 0
-	for item in units:
-		var other := item as RtUnit
-		if other == null or other == unit or not other.is_alive():
-			continue
-		if allies_only:
-			if other.get_team() != unit.get_team():
-				continue
-		elif other == target:
-			continue
-		var min_dist := unit.get_radius() + other.get_radius()
-		if probe_pos.distance_squared_to(other.position) < min_dist * min_dist:
-			hits += 1
-	return hits
-
-
-## 本步位移后缩短的目标距离；<=0 表示不靠近。
-static func _approach_score(unit: RtUnit, target: RtUnit, dir: Vector2, travel: float) -> float:
-	var before := unit.position.distance_to(target.position)
-	var after := (unit.position + dir * travel).distance_to(target.position)
-	return before - after
 
 
 static func _drop_target(unit: RtUnit) -> void:

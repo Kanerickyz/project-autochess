@@ -17,7 +17,7 @@ func set_rng(rng: RandomNumberGenerator) -> void:
 	_rng = rng if rng != null else RandomNumberGenerator.new()
 
 
-## 结算一次命中。splash_radius > 0 时伤害目标周围（含目标）所有敌方单位。
+## 结算一次命中。splash_radius > 0 时按目标格切比雪夫格距溅射敌方。
 ## 返回本次被击杀的单位（按 instance_id 升序）。
 func resolve_hit(
 	source: RtUnit,
@@ -47,6 +47,7 @@ static func collect_splash_victims(
 	units: Array,
 ) -> Array[RtUnit]:
 	var result: Array[RtUnit] = []
+	var reach := RtUnitBrain.grid_reach(splash_radius)
 	for item in units:
 		var other := item as RtUnit
 		if other == null or not other.is_alive():
@@ -56,8 +57,8 @@ static func collect_splash_victims(
 		if other == primary:
 			result.append(other)
 			continue
-		var edge := primary.position.distance_to(other.position) - other.get_radius()
-		if edge <= splash_radius:
+		var dist := float(primary.cell_distance_to(other))
+		if dist <= reach:
 			result.append(other)
 	return result
 

@@ -1,8 +1,7 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 皇室战争式实时战斗的纯逻辑模拟。固定步长推进，结果与调用方帧率无关。
-## 坐标单位为格（arena 左上角为原点），时间单位为秒。
-## 技能效果：镜像 BoardGrid + EffectResolver 订阅 CombatEventBus，固定步内排空 pending。
+## 实时战斗纯逻辑模拟：八方向格步 + 格心取样 + 一格一体 + 切比雪夫格距。
+## 固定步长推进，结果与调用方帧率无关。坐标单位为格，时间单位为秒。
 
 signal unit_added(unit: RtUnit)
 signal unit_attacked(attacker: RtUnit, target: RtUnit)
@@ -14,7 +13,6 @@ signal combat_finished(won: bool)
 
 const FIXED_STEPS_PER_SECOND := 30
 const FIXED_DT := 1.0 / FIXED_STEPS_PER_SECOND
-const SEPARATION_ITERATIONS := 4
 const STEP_EPSILON := 0.000001
 const EFFECT_DRAIN_GUARD := 64
 
@@ -31,6 +29,8 @@ var _effect_pipeline: DamagePipeline
 var _effect_resolver: EffectResolver
 var _units: Array[RtUnit] = []
 var _projectiles: Array[RtProjectile] = []
+## 逻辑占格：一格一体（存活单位）
+var _occupancy: Dictionary = {}
 var _input_seconds: float = 0.0
 var _started: bool = false
 var _finished: bool = false
@@ -74,6 +74,7 @@ func dispose() -> void:
 	_break_reference_cycles()
 	_units.clear()
 	_projectiles.clear()
+	_occupancy.clear()
 	_teardown_effect_resolver()
 	if _bus != null and is_instance_valid(_bus):
 		if _bus.combat_event.is_connected(_on_bus_event):
@@ -106,8 +107,13 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	var existing := _find_rt_for_unit(unit)
 	if existing != null:
 		return existing
-	var rt := RtUnit.new(unit, position)
-	rt.position = _clamp_to_arena(position, rt.get_radius())
+	var preferred := _clamp_cell(Vector2i(floori(position.x), floori(position.y)))
+	var cell := _find_free_cell(preferred)
+	if cell == Vector2i(-1, -1):
+		push_warning("RealtimeCombatSim.add_unit: arena full, cannot place %s" % unit.id)
+		return null
+	var rt := RtUnit.new(unit, RtUnit.cell_center(cell))
+	rt.snap_to_cell(cell)
 	rt.spawn_time = elapsed_seconds
 	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
@@ -117,6 +123,7 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	while index < _units.size() and _units[index].get_id() < rt.get_id():
 		index += 1
 	_units.insert(index, rt)
+	_set_occupancy(cell, rt)
 	_register_on_effect_grid(unit, rt.get_cell())
 	unit_added.emit(rt)
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
@@ -135,6 +142,7 @@ func remove_unit(rt: RtUnit) -> bool:
 		return false
 	_units.remove_at(index)
 	rt.target = null
+	_clear_occupancy_of(rt)
 	if _effect_grid != null:
 		_effect_grid.remove_unit(rt.unit)
 	return true
@@ -167,6 +175,15 @@ func count_alive(team: UnitInstance.Team) -> int:
 		if rt.get_team() == team and rt.is_alive():
 			count += 1
 	return count
+
+
+## 占格查询（测试 / 调试）。
+func is_cell_occupied(cell: Vector2i) -> bool:
+	return _occupancy_owner(cell) != null
+
+
+func get_occupancy_owner(cell: Vector2i) -> RtUnit:
+	return _occupancy_owner(cell)
 
 
 ## 标记开战：此后 add_unit 的单位都要走部署时间。未显式调用时首个固定步会自动调用。
@@ -219,14 +236,33 @@ func advance_fixed_step() -> void:
 		return
 	begin_combat()
 
+	var free_fn := func(cell: Vector2i) -> bool:
+		return _is_cell_free(cell)
+
 	var decisions: Array[RtUnitBrain.Decision] = []
 	for rt in _units:
-		decisions.append(RtUnitBrain.decide(rt, _units, FIXED_DT))
+		decisions.append(RtUnitBrain.decide(rt, _units, FIXED_DT, free_fn))
 
+	## 先提交格步（逻辑格立刻更新，一格一体），再出手；出手只认逻辑格距。
 	for i in _units.size():
 		var rt := _units[i]
-		if rt.is_alive() and decisions[i].move != Vector2.ZERO:
-			rt.position = _clamp_to_arena(rt.position + decisions[i].move, rt.get_radius())
+		var step_dir := decisions[i].step
+		if not rt.is_alive() or step_dir == Vector2i.ZERO:
+			continue
+		if maxf(0.0, rt.get_stats().move_speed) <= 0.0:
+			continue
+		var dest: Vector2i = rt.cell + step_dir
+		if not _is_cell_free(dest):
+			continue
+		## 衔接下一步前先收束当前插值，避免表现跳帧
+		if rt.is_stepping():
+			rt.step_t = 1.0
+			rt.position = RtUnit.cell_center(rt.cell)
+		_move_unit_to_cell(rt, dest)
+
+	for rt in _units:
+		if rt.is_alive():
+			rt.advance_step_visual(FIXED_DT)
 
 	for i in _units.size():
 		var rt := _units[i]
@@ -234,7 +270,7 @@ func advance_fixed_step() -> void:
 			_fire(rt)
 
 	_advance_projectiles()
-	_resolve_separation()
+	_sync_unit_grid_pos()
 	_drain_effects()
 	_remove_dead()
 
@@ -252,6 +288,8 @@ func _fire(rt: RtUnit) -> void:
 		_resolve_hit(rt, rt.target, damage, stats.splash_radius)
 		return
 	var dir := rt.position.direction_to(rt.target.position)
+	if dir == Vector2.ZERO:
+		dir = Vector2.DOWN
 	var projectile := RtProjectile.new(
 		rt,
 		rt.target,
@@ -283,47 +321,74 @@ func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: fl
 	_drain_effects()
 
 
-func _resolve_separation() -> void:
-	var count := _units.size()
-	for _iter in SEPARATION_ITERATIONS:
-		var moved := false
-		for i in count:
-			var a := _units[i]
-			if not a.is_alive():
-				continue
-			for j in range(i + 1, count):
-				var b := _units[j]
-				if not b.is_alive():
-					continue
-				var delta := b.position - a.position
-				var min_dist := a.get_radius() + b.get_radius()
-				var dist_sq := delta.length_squared()
-				if dist_sq >= min_dist * min_dist:
-					continue
-				var dist := sqrt(dist_sq)
-				var normal: Vector2
-				if dist > 0.00001:
-					normal = delta / dist
-				else:
-					normal = Vector2.RIGHT.rotated(_rng.randf() * TAU)
-				var overlap := min_dist - dist
-				# 部署中的单位视为不可推动：重叠全由对方让开
-				var a_share := b.get_mass() / (a.get_mass() + b.get_mass())
-				if a.is_deploying() and b.is_deploying():
-					continue
-				elif a.is_deploying():
-					a_share = 0.0
-				elif b.is_deploying():
-					a_share = 1.0
-				a.position -= normal * overlap * a_share
-				b.position += normal * overlap * (1.0 - a_share)
-				moved = true
-		for rt in _units:
-			rt.position = _clamp_to_arena(rt.position, rt.get_radius())
-		if not moved:
-			break
+func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
+	var from_cell := rt.cell
+	_clear_occupancy_of(rt)
+	rt.begin_step(from_cell, dest)
+	_set_occupancy(dest, rt)
+	rt.unit.grid_pos = dest
+
+
+func _sync_unit_grid_pos() -> void:
 	for rt in _units:
-		rt.unit.grid_pos = rt.get_cell()
+		if rt.is_alive():
+			rt.unit.grid_pos = rt.get_cell()
+
+
+func _is_cell_free(cell: Vector2i) -> bool:
+	if not _in_arena(cell):
+		return false
+	return _occupancy_owner(cell) == null
+
+
+func _in_arena(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < int(_arena_size.x) and cell.y < int(_arena_size.y)
+
+
+func _clamp_cell(cell: Vector2i) -> Vector2i:
+	return Vector2i(
+		clampi(cell.x, 0, int(_arena_size.x) - 1),
+		clampi(cell.y, 0, int(_arena_size.y) - 1),
+	)
+
+
+func _occupancy_owner(cell: Vector2i) -> RtUnit:
+	if not _occupancy.has(cell):
+		return null
+	var owner: RtUnit = _occupancy[cell]
+	if owner == null or not owner.is_alive():
+		_occupancy.erase(cell)
+		return null
+	return owner
+
+
+func _set_occupancy(cell: Vector2i, rt: RtUnit) -> void:
+	_occupancy[cell] = rt
+
+
+func _clear_occupancy_of(rt: RtUnit) -> void:
+	if rt == null:
+		return
+	var keys: Array = _occupancy.keys()
+	for key in keys:
+		if _occupancy[key] == rt:
+			_occupancy.erase(key)
+
+
+func _find_free_cell(origin: Vector2i) -> Vector2i:
+	var start := _clamp_cell(origin)
+	if _is_cell_free(start):
+		return start
+	var max_r := maxi(int(_arena_size.x), int(_arena_size.y))
+	for radius in range(1, max_r + 1):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var cand := Vector2i(start.x + dx, start.y + dy)
+				if _is_cell_free(cand):
+					return cand
+	return Vector2i(-1, -1)
 
 
 func _remove_dead() -> void:
@@ -333,6 +398,7 @@ func _remove_dead() -> void:
 			alive.append(rt)
 		else:
 			rt.state = RtUnit.State.DEAD
+			_clear_occupancy_of(rt)
 			if _effect_grid != null:
 				_effect_grid.remove_unit(rt.unit)
 	_units = alive
@@ -359,14 +425,6 @@ func _finish(won: bool) -> void:
 func _break_reference_cycles() -> void:
 	for rt in _units:
 		rt.target = null
-
-
-func _clamp_to_arena(position: Vector2, radius: float) -> Vector2:
-	var r := minf(radius, minf(_arena_size.x, _arena_size.y) * 0.5)
-	return Vector2(
-		clampf(position.x, r, _arena_size.x - r),
-		clampf(position.y, r, _arena_size.y - r),
-	)
 
 
 func _bus_emit(event_type: StringName, payload: CombatEventPayload) -> void:
@@ -488,6 +546,7 @@ func _sync_deaths_from_hp() -> void:
 			continue
 		rt.state = RtUnit.State.DEAD
 		rt.target = null
+		_clear_occupancy_of(rt)
 		unit_died.emit(rt)
 
 

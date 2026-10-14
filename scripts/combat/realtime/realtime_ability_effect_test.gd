@@ -109,8 +109,9 @@ static func _test_combat_start_charge_atk() -> bool:
 	var base_atk := rider.unit.get_effective_attack()
 	sim.begin_combat()
 	var after := rider.unit.get_effective_attack()
-	if after != base_atk + 50:
-		push_error("charge: atk %d -> %d, expected +50" % [base_atk, after])
+	## combat_start_charge：开战自身攻击 +2（与 ability 资源一致）
+	if after != base_atk + 2:
+		push_error("charge: atk %d -> %d, expected +2" % [base_atk, after])
 		return false
 	return true
 
@@ -124,7 +125,10 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 7)
 	var shield := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	# 敌方贴近即可出手；盾兵高生命，挨打叠攻
+	## 当前骑士资源 max_hp 较低：测试内抬高生命，保证能挨多次打
+	shield.unit.stats.max_hp = 1000
+	shield.unit.current_hp = 1000
+	# 邻格出手（一格一体）；盾兵挨打叠攻
 	sim.add_unit(
 		RealtimeCombatSimTest.make_unit(
 			UnitInstance.Team.ENEMY,
@@ -138,7 +142,7 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 				"sight_range": 10.0,
 			},
 		),
-		Vector2(9.5, 20.0),
+		Vector2(9.5, 21.5),
 	)
 	var base_atk := shield.unit.get_effective_attack()
 	var hits: Array[int] = [0]
@@ -155,8 +159,9 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 		push_error("hurt: expected >=2 hits, got %d" % hits[0])
 		return false
 	var after := shield.unit.get_effective_attack()
-	if after < base_atk + 24:
-		push_error("hurt: atk %d -> %d, expected at least +24 (2x12)" % [base_atk, after])
+	## hurt_gain_atk_small：每次受伤 +1
+	if after < base_atk + 2:
+		push_error("hurt: atk %d -> %d, expected at least +2 (2x1)" % [base_atk, after])
 		return false
 	return true
 
@@ -169,7 +174,7 @@ static func _test_deal_damage_gain_atk() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 11)
 	var flail := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"body_radius": 0.4}), Vector2(9.5, 20.0))
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"body_radius": 0.4}), Vector2(9.5, 21.5))
 	# 强制近身出手；关掉溅射避免单次出手多段 ON_DEAL_DAMAGE
 	flail.unit.stats.attack_windup = 0.0
 	flail.unit.stats.attack_interval = 0.4
@@ -408,7 +413,8 @@ static func _test_death_aoe_deal_damage() -> bool:
 		)
 		return false
 	var dealt := enemy_hp_before - enemy.unit.current_hp
-	if dealt < 65:
-		push_error("aoe: dealt %d, expected >=65" % dealt)
+	## death_aoe_mid：死亡对随机敌人造成 3 伤害
+	if dealt < 3:
+		push_error("aoe: dealt %d, expected >=3" % dealt)
 		return false
 	return true
