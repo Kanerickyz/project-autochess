@@ -21,6 +21,7 @@ func _run() -> void:
 	await _test_effect_resolved_feedback_on_arena()
 	await _test_rider_combat_start_feedback()
 	await _test_basic_attack_does_not_float()
+	await _test_timestop_queue_blocks_sim()
 	if _failures == 0:
 		print("RealtimeCombatFeedbackTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -246,6 +247,55 @@ func _test_basic_attack_does_not_float() -> void:
 		battle._bus.emit_event(CombatEvents.ON_ATTACK_HIT, dmg)
 	await process_frame
 	_expect(arena.get_feedback_count() == before, "atk: basic-attack events do not add float text")
+	_expect(not battle.is_timestop_blocking(), "atk: basic-attack does not enter timestop queue")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_timestop_queue_blocks_sim() -> void:
+	var battle := _make_battle(99)
+	await process_frame
+	_expect(_seat_first_hand(battle), "timestop: seat one unit")
+	_expect(battle.try_start_combat(), "timestop: start combat")
+	var sim := battle.get_sim()
+	var arena := battle.get_arena()
+	arena.clear_fx()
+	## 清空开战可能入队的播报（锁阵阶段不入队；此处仅防残留）。
+	battle._timestop_queue.clear()
+	sim.release_presentation()
+	var steps_before := sim.fixed_step_count
+	var target: UnitInstance = null
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt.is_player():
+			target = rt.unit
+			break
+	_expect(target != null, "timestop: player unit")
+	var action := EffectAction.new()
+	action.action_type = EffectAction.Type.HEAL
+	action.value = 5
+	var payload := CombatEventPayload.new()
+	payload.effect_owner = target
+	payload.source = target
+	payload.target = target
+	payload.effect_action = action
+	payload.effect_entries = [{"action": action, "target": target}]
+	battle._bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
+	_expect(battle.is_timestop_blocking(), "timestop: queue blocks after effect")
+	_expect(arena.get_feedback_count() > 0, "timestop: feedback shown for active item")
+	## 推进若干帧：时停中 fixed_step 不应增加。
+	for _i in 3:
+		await process_frame
+	_expect(sim.fixed_step_count == steps_before, "timestop: sim steps frozen while queue active")
+	## 加速耗尽队列（0.4s / scale）；time_scale=8 → 墙钟约 0.05s+
+	battle.time_scale = 8.0
+	var guard := 0
+	while battle.is_timestop_blocking() and guard < 60:
+		await process_frame
+		guard += 1
+	_expect(not battle.is_timestop_blocking(), "timestop: queue drains")
+	_expect(not sim.presentation_hold, "timestop: presentation hold released")
 
 	battle.queue_free()
 	await process_frame

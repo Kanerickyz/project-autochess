@@ -29,6 +29,7 @@ const FEEDBACK_MIN_SECONDS := 0.35
 const FEEDBACK_MERGE_WINDOW := 0.28
 const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
+const CALLOUT_SECONDS := 0.45
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATK_FILL := Color(0.18, 0.18, 0.20, 0.95)
 const STAT_HP_FILL := Color(0.86, 0.18, 0.20, 0.95)
@@ -50,7 +51,7 @@ var ghost_label: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
-## 战斗加速倍率：仅缩短反馈寿命，不挡模拟。
+## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
 var presentation_time_scale: float = 1.0
 
 var _hover_cell: Vector2i = NO_CELL
@@ -83,7 +84,8 @@ func _process(delta: float) -> void:
 	if not _fx.is_empty():
 		var alive: Array = []
 		for fx in _fx:
-			if _fx_clock - float(fx["t0"]) < FX_SECONDS:
+			var life := CALLOUT_SECONDS if fx.get("kind", "") == "callout" else FX_SECONDS
+			if _fx_clock - float(fx["t0"]) < life:
 				alive.append(fx)
 		_fx = alive
 	if not _feedback.is_empty():
@@ -140,6 +142,18 @@ func add_splash_fx(center: Vector2, radius: float) -> void:
 
 func add_death_fx(center: Vector2, radius: float, is_player: bool) -> void:
 	_fx.append({"kind": "death", "center": center, "radius": radius, "t0": _fx_clock, "player": is_player})
+
+
+## 技能播报占位：高亮圈 + 可选短标（锁阵与时停队列共用）。
+func add_skill_callout(center: Vector2, text: String = "", is_player: bool = true) -> void:
+	_fx.append({
+		"kind": "callout",
+		"center": center,
+		"radius": 0.85,
+		"t0": _fx_clock,
+		"player": is_player,
+		"text": text,
+	})
 
 
 ## 技能因果反馈：kind=damage/heal/stat/label；同单位短窗可合并。
@@ -552,12 +566,28 @@ func _draw_projectiles(px: float) -> void:
 
 func _draw_fx(px: float) -> void:
 	for fx in _fx:
-		var t := clampf((_fx_clock - float(fx["t0"])) / FX_SECONDS, 0.0, 1.0)
+		var kind := String(fx.get("kind", ""))
+		var life := CALLOUT_SECONDS if kind == "callout" else FX_SECONDS
+		var t := clampf((_fx_clock - float(fx["t0"])) / life, 0.0, 1.0)
 		var center := tile_to_local(fx["center"])
 		var r_px := float(fx["radius"]) * px
-		if fx["kind"] == "splash":
+		if kind == "splash":
 			draw_circle(center, r_px, Color(1.0, 0.9, 0.5, 0.35 * (1.0 - t)))
 			draw_arc(center, r_px, 0.0, TAU, 32, Color(1.0, 0.85, 0.4, 0.8 * (1.0 - t)), 2.0)
+		elif kind == "callout":
+			var callout_c := PLAYER_COLOR if bool(fx.get("player", true)) else ENEMY_COLOR
+			draw_arc(center, r_px * (1.0 + t * 0.35), 0.0, TAU, 28, Color(callout_c, 0.9 * (1.0 - t)), 2.5)
+			draw_circle(center, r_px * 0.35, Color(callout_c, 0.22 * (1.0 - t)))
+			var callout_text := String(fx.get("text", ""))
+			if not callout_text.is_empty():
+				var font := get_theme_default_font()
+				_draw_feedback_string(
+					font,
+					center + Vector2(0.0, -r_px - 6.0),
+					callout_text,
+					12,
+					Color(0.95, 0.98, 1.0, 0.95 * (1.0 - t)),
+				)
 		else:
 			var color := PLAYER_COLOR if bool(fx["player"]) else ENEMY_COLOR
 			draw_arc(center, r_px * (1.0 + t), 0.0, TAU, 24, Color(color, 0.8 * (1.0 - t)), 2.0)

@@ -1,14 +1,15 @@
 class_name RealtimeEffectFeedback
 extends RefCounted
-## 将 ON_EFFECT_RESOLVED 映射为战场结果数字 / 稀有短提示（Features/COMBAT_FEEDBACK）。
-## 仅表现层：不读普攻 ON_DAMAGE_TAKEN，不挡模拟。
+## 将 ON_EFFECT_RESOLVED 映射为战场结果数字 / 短提示（Features/COMBAT_FEEDBACK）。
+## 仅表现层映射；实时战斗内是否时停由 RealtimeBattleController 播报队列决定。
+## 高频也入队时停；短提示可从简。不读普攻 ON_DAMAGE_TAKEN。
 
 const KIND_DAMAGE := &"damage"
 const KIND_HEAL := &"heal"
 const KIND_STAT := &"stat"
 const KIND_LABEL := &"label"
 
-## 高频触发：默认只飘结果数字，不喊技能全名。
+## 高频触发：结果数字为主、短提示从简；仍须入队时停（控制器处理）。
 const HIGH_FREQ_TRIGGERS := {
 	&"OnDamageTaken": true,
 	&"OnDealDamage": true,

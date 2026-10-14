@@ -15,11 +15,16 @@ var is_enemy_side: bool = false
 var cells: Array[Vector2i] = []
 ## 与 cells 等长；null 表示空座。友方存 DeckEntry；敌方座位表可仅用几何。
 var occupants: Array = []
+## 与 occupants 等长；成功入座序号（越大越晚）；空座为 -1。开战友方生成序用。
+var seat_assign_seq: Array[int] = []
+var _assign_seq_counter: int = 0
 
 
 func clear() -> void:
 	cells.clear()
 	occupants.clear()
+	seat_assign_seq.clear()
+	_assign_seq_counter = 0
 	slot_count = 0
 	seat_rows = 0
 	seat_cols = 0
@@ -38,8 +43,10 @@ func configure_grid(
 	is_enemy_side = enemy_side
 	cells = build_grid_cells(board_size, seat_rows, seat_cols, enemy_side)
 	occupants.resize(slot_count)
+	seat_assign_seq.resize(slot_count)
 	for i in slot_count:
 		occupants[i] = null
+		seat_assign_seq[i] = -1
 
 
 ## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
@@ -170,6 +177,9 @@ func try_assign(slot_index: int, entry: DeckEntry) -> bool:
 	if occupants[slot_index] != null:
 		return false
 	occupants[slot_index] = entry
+	_assign_seq_counter += 1
+	if slot_index < seat_assign_seq.size():
+		seat_assign_seq[slot_index] = _assign_seq_counter
 	return true
 
 
@@ -180,6 +190,8 @@ func try_recall(slot_index: int) -> DeckEntry:
 	if entry == null:
 		return null
 	occupants[slot_index] = null
+	if slot_index < seat_assign_seq.size():
+		seat_assign_seq[slot_index] = -1
 	return entry
 
 
@@ -189,3 +201,27 @@ func find_slot_by_entry(entry_id: int) -> int:
 		if entry != null and entry.entry_id == entry_id:
 			return i
 	return -1
+
+
+## 已占用座位下标，按入座时间序（先入座在前；收回再入 = 最后一次成功入座）。
+func get_occupied_indices_by_seat_order() -> Array[int]:
+	var indices: Array[int] = []
+	for i in occupants.size():
+		if occupants[i] != null:
+			indices.append(i)
+	indices.sort_custom(_compare_seat_order)
+	return indices
+
+
+func get_seat_assign_seq(slot_index: int) -> int:
+	if slot_index < 0 or slot_index >= seat_assign_seq.size():
+		return -1
+	return seat_assign_seq[slot_index]
+
+
+func _compare_seat_order(a: int, b: int) -> bool:
+	var sa := get_seat_assign_seq(a)
+	var sb := get_seat_assign_seq(b)
+	if sa == sb:
+		return a < b
+	return sa < sb

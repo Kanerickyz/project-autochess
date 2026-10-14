@@ -13,7 +13,6 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT }
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
 const DEFAULT_BOARD_SIZE := Vector2i(9, 16)
-
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
 ## 战斗推进倍速（仅表现层；不影响结果）
@@ -43,6 +42,9 @@ var _hint_text: String = ""
 var _hint_remaining: float = 0.0
 var _enemy_spawns: Array = []
 var _encounter_rng: RandomNumberGenerator
+## 开战锁阵阶段：部署/开战技能只播动画·UI，不走时停队列。
+var _lock_phase_active: bool = false
+var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -85,8 +87,17 @@ func _process(delta: float) -> void:
 	if _arena != null:
 		_arena.presentation_time_scale = time_scale
 	if _phase == Phase.COMBAT and _sim != null:
-		var scaled := delta * time_scale
-		_sim.step(scaled)
+		## 时停播报：队列非空时不推进固定步；加速只缩短表现寿命。
+		if _timestop_queue.is_blocking():
+			_sim.hold_for_presentation()
+			var started := _timestop_queue.tick(delta, time_scale)
+			if started != null:
+				_present_effect_feedback(started, true)
+			if not _timestop_queue.is_blocking():
+				_sim.release_presentation()
+		else:
+			_sim.release_presentation()
+			_sim.step(delta * time_scale)
 	_refresh_hud()
 	_refresh_cards()
 
@@ -118,6 +129,7 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	_won = false
 	_wave_gold = 0
 	_selected_entry_id = -1
+	_lock_phase_active = false
 	_result_overlay.visible = false
 	_board_size = encounter.get_board_size(_level.get_board_size())
 
@@ -197,6 +209,14 @@ func get_pending_enemy_positions() -> Array[Vector2]:
 
 func get_deploy_cap() -> int:
 	return _deploy_cap
+
+
+func get_timestop_queue_size() -> int:
+	return _timestop_queue.size() if _timestop_queue != null else 0
+
+
+func is_timestop_blocking() -> bool:
+	return _timestop_queue != null and _timestop_queue.is_blocking()
 
 
 func get_max_board_units() -> int:
@@ -344,9 +364,9 @@ func continue_after_result() -> void:
 
 
 func _begin_combat_from_prepare() -> void:
-	_card_flow.return_hand_to_draw(_encounter_rng)
-	_set_selected(-1)
-	_rebuild_cards()
+	## COMBAT.md §6.5：友方入座时间序 → 敌方配置书写序 → 清手牌 → 锁操作 → 游戏开始。
+	_lock_phase_active = true
+	_timestop_queue.clear()
 
 	_bus = CombatEventBus.new()
 	_bus.name = "RealtimeCombatEventBus"
@@ -360,11 +380,19 @@ func _begin_combat_from_prepare() -> void:
 	## 开战纯观战：场上全灭即败（不再因牌区剩余而抑制）。
 	_sim.suppress_player_wipe_loss = false
 
-	for i in _slots.slot_count:
-		var entry := _slots.get_entry(i)
+	_arena.sim = _sim
+	_arena.enemy_previews = []
+	_arena.prepare_slots = _slots
+	_arena.enemy_slots = _enemy_slots
+	_arena.placement_active = false
+	_arena.clear_fx()
+
+	## 1) 友方按入座时间序依次生成；每体当下结算部署时技能。
+	for slot_i in _slots.get_occupied_indices_by_seat_order():
+		var entry := _slots.get_entry(slot_i)
 		if entry == null:
 			continue
-		var cell := _slots.get_cell(i)
+		var cell := _slots.get_cell(slot_i)
 		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 		if unit == null:
 			continue
@@ -372,16 +400,18 @@ func _begin_combat_from_prepare() -> void:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
 
+	## 2) 敌方按遭遇配置书写顺序依次生成（_enemy_spawns 已保序）。
 	for spawn in _enemy_spawns:
 		_sim.add_unit(spawn["unit"], spawn["position"])
 
-	_arena.sim = _sim
-	_arena.enemy_previews = []
-	_arena.prepare_slots = _slots
-	_arena.enemy_slots = _enemy_slots
-	_arena.placement_active = false
-	_arena.clear_fx()
+	## 3) 双方生成之后：未入座手牌回抽、清空手牌、准备结束。
+	_card_flow.return_hand_to_draw(_encounter_rng)
+	_set_selected(-1)
+	_rebuild_cards()
+
+	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
 	_sim.begin_combat()
+	_lock_phase_active = false
 	_set_phase(Phase.COMBAT)
 
 
@@ -393,6 +423,7 @@ func _set_phase(phase: Phase) -> void:
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
+	## 配置书写顺序即生成序；座位按空敌座索引依次占用，不 shuffle 打乱生成序。
 	var entries := _encounter.wave.roll_spawn_entries(_level.enemy_pool, _tier_index, rng)
 	var units: Array[UnitData] = []
 	for entry in entries:
@@ -401,15 +432,9 @@ func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
 		for _i in maxi(1, entry.count):
 			units.append(entry.unit)
 
-	## 敌方落点：镜像座位表随机分配（可不填满）；不再扫整片敌半场。
 	var seat_indices: Array[int] = []
 	for i in _enemy_slots.slot_count:
 		seat_indices.append(i)
-	for i in range(seat_indices.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var tmp := seat_indices[i]
-		seat_indices[i] = seat_indices[j]
-		seat_indices[j] = tmp
 	if units.size() > seat_indices.size():
 		push_warning(
 			"RealtimeBattleController: %d enemies but only %d enemy seats; extra enemies dropped"
@@ -450,6 +475,9 @@ func _build_enemy_previews(spawns: Array) -> Array:
 
 
 func _teardown_sim() -> void:
+	_lock_phase_active = false
+	if _timestop_queue != null:
+		_timestop_queue.clear()
 	if _sim != null:
 		_sim.dispose()
 		_sim = null
@@ -557,7 +585,7 @@ func _on_unit_died(rt: RtUnit) -> void:
 
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	if event_type == CombatEvents.ON_EFFECT_RESOLVED:
-		_present_effect_feedback(payload)
+		_on_effect_resolved_feedback(payload)
 		return
 	if event_type != CombatEvents.ON_DEATH or payload.target == null or _economy == null:
 		return
@@ -567,14 +595,35 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 		_economy.grant(payload.target.death_grant_gold)
 
 
+## 锁阵：立刻播动画/UI；实时战斗：入时停播报队列（含高频；普攻不经此路径）。
+func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
+	if payload == null:
+		return
+	if _lock_phase_active or _phase != Phase.COMBAT:
+		_present_effect_feedback(payload, true)
+		return
+	var started := _timestop_queue.enqueue(payload, time_scale)
+	if _sim != null:
+		_sim.hold_for_presentation()
+	if started:
+		_present_effect_feedback(payload, true)
+
+
 ## 技能因果反馈：只接效果管线已结算；普攻命中不走此路径。
-func _present_effect_feedback(payload: CombatEventPayload) -> void:
+func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
 	var pops := RealtimeEffectFeedback.build_popups(payload)
+	var callout_center := Vector2.ZERO
+	var callout_player := true
+	var saw_center := false
 	for pop in pops:
 		var target: UnitInstance = pop.get("target")
 		var center := _resolve_feedback_center(target, payload)
+		if not saw_center:
+			callout_center = center
+			callout_player = bool(pop.get("is_player", true))
+			saw_center = true
 		var tip := ""
 		if bool(pop.get("show_tip", false)):
 			tip = String(pop.get("tip", ""))
@@ -588,6 +637,13 @@ func _present_effect_feedback(payload: CombatEventPayload) -> void:
 			String(pop.get("merge_key", "")),
 			tip,
 		)
+	if with_callout:
+		if not saw_center:
+			callout_center = _resolve_feedback_center(null, payload)
+			var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+			if owner != null:
+				callout_player = owner.team == UnitInstance.Team.PLAYER
+		_arena.add_skill_callout(callout_center, "", callout_player)
 
 
 func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload) -> Vector2:
@@ -608,6 +664,7 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 
 
 func _on_combat_finished(won: bool) -> void:
+	_timestop_queue.clear()
 	_won = won
 	if won and _economy != null:
 		_wave_gold = _economy.grant_wave_gold(_encounter.wave)

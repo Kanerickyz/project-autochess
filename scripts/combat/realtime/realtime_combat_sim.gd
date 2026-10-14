@@ -36,6 +36,8 @@ var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
 var _adding_effect_spawn: bool = false
+## 表现层时停：为 true 时 step 不再推进固定步（效果真值已结算）。
+var presentation_hold: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
@@ -107,6 +109,7 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	var rt := RtUnit.new(unit, position)
 	rt.position = _clamp_to_arena(position, rt.get_radius())
 	rt.spawn_time = elapsed_seconds
+	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
 		rt.skip_deploy()
 	unit.grid_pos = rt.get_cell()
@@ -116,8 +119,9 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	_units.insert(index, rt)
 	_register_on_effect_grid(unit, rt.get_cell())
 	unit_added.emit(rt)
-	if _started and not _adding_effect_spawn:
-		_emit_mid_combat_summon(unit, rt.get_cell())
+	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
+	if not _adding_effect_spawn:
+		_emit_spawn_events(unit, rt.get_cell())
 		_drain_effects()
 	return rt
 
@@ -188,12 +192,26 @@ func did_player_win() -> bool:
 
 ## 按调用方 dt 推进；内部以 FIXED_DT 拆步，累计总输入时间决定步数，避免浮点累加误差导致步数漂移。
 func step(dt: float) -> void:
-	if _finished or dt <= 0.0:
+	if _finished or dt <= 0.0 or presentation_hold:
 		return
 	_input_seconds += dt
 	var target_steps := floori(_input_seconds * FIXED_STEPS_PER_SECOND + STEP_EPSILON)
 	while fixed_step_count < target_steps and not _finished:
+		if presentation_hold:
+			## 时停切入：丢弃本帧尚未执行的步，避免恢复时瞬间追帧。
+			_input_seconds = fixed_step_count * FIXED_DT
+			return
 		advance_fixed_step()
+
+
+## 技能播报时停：打断后续固定步；队列清空后由控制器 release。
+func hold_for_presentation() -> void:
+	presentation_hold = true
+	_input_seconds = fixed_step_count * FIXED_DT
+
+
+func release_presentation() -> void:
+	presentation_hold = false
 
 
 func advance_fixed_step() -> void:
@@ -426,7 +444,7 @@ func _find_free_effect_cell(origin: Vector2i) -> Vector2i:
 	return empty[0]
 
 
-func _emit_mid_combat_summon(unit: UnitInstance, cell: Vector2i) -> void:
+func _emit_spawn_events(unit: UnitInstance, cell: Vector2i) -> void:
 	var payload := CombatEventPayload.new()
 	payload.target = unit
 	payload.to_cell = cell

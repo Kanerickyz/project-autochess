@@ -93,9 +93,11 @@ func _test_battle_controller_rules() -> void:
 	_expect(slots.get_entry(0) != null and slots.get_entry(0).entry_id == first_id, "controller: seat occupied")
 	_expect(not battle._card_flow.is_in_hand(first_id), "controller: seated card left hand")
 	_expect(battle.get_hand().size() == hand.size() - 1, "controller: no auto-draw on seat assign")
+	_expect(slots.get_seat_assign_seq(0) > 0, "controller: seat assign seq recorded")
 
 	_expect(battle.try_recall_slot(0), "controller: recall from seat to hand")
 	_expect(slots.is_empty(0), "controller: seat empty after recall")
+	_expect(slots.get_seat_assign_seq(0) < 0, "controller: seat seq cleared on recall")
 	_expect(battle._card_flow.is_in_hand(first_id), "controller: recalled card back in hand")
 
 	# 刷新：入座保留，未入座重抽
@@ -118,6 +120,13 @@ func _test_battle_controller_rules() -> void:
 	_expect(sim.count_alive(UnitInstance.Team.ENEMY) > 0, "controller: enemies spawned on combat start")
 	_expect(sim.count_alive(UnitInstance.Team.PLAYER) >= 1, "controller: allies spawned from seats")
 	_expect(battle.get_hand().is_empty(), "controller: unseated hand returned / cleared on combat")
+	## 敌方生成序：座位索引升序（配置书写序 → 顺序占座，无 shuffle）
+	var enemy_seats: Array[int] = []
+	for spawn in battle._enemy_spawns:
+		enemy_seats.append(int(spawn.get("seat_index", -1)))
+	var seats_sorted := enemy_seats.duplicate()
+	seats_sorted.sort()
+	_expect(enemy_seats == seats_sorted, "controller: enemy spawn seats follow index order (no shuffle)")
 	_expect(not battle.try_deploy(keep_id, Vector2i(3, battle.get_board_size().y - 3)).is_empty(), "controller: deploy rejected in COMBAT")
 	_expect(not battle.try_refresh_hand(), "controller: refresh rejected in COMBAT")
 	_expect(not battle.try_assign_to_slot(keep_id, slot0).is_empty(), "controller: assign rejected in COMBAT")
@@ -186,6 +195,30 @@ func _test_battle_controller_rules() -> void:
 	battle._rebuild_cards()
 	_expect(battle.get_hand().is_empty(), "controller: hand empty for refresh-empty check")
 	_expect(not battle.try_refresh_hand(), "controller: refresh blocked when hand empty")
+
+	## 入座时间序：先 A 再 B，收回 A 再入 A → 生成序为 B 然后 A
+	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
+	var hand_ord := battle.get_hand()
+	var slots_ord := battle.get_slot_board()
+	_expect(hand_ord.size() >= 2, "seat-order: need >=2 hand cards")
+	if hand_ord.size() >= 2:
+		var id_a := hand_ord[0].entry_id
+		var id_b := hand_ord[1].entry_id
+		_expect(battle.try_assign_to_slot(id_a, slots_ord.get_cell(0)).is_empty(), "seat-order: assign A")
+		_expect(battle.try_assign_to_slot(id_b, slots_ord.get_cell(1)).is_empty(), "seat-order: assign B")
+		var seq_a1 := slots_ord.get_seat_assign_seq(0)
+		var seq_b := slots_ord.get_seat_assign_seq(1)
+		_expect(seq_a1 > 0 and seq_b > seq_a1, "seat-order: B seated after A")
+		_expect(battle.try_recall_slot(0), "seat-order: recall A")
+		_expect(battle.try_assign_to_slot(id_a, slots_ord.get_cell(0)).is_empty(), "seat-order: re-seat A")
+		var seq_a2 := slots_ord.get_seat_assign_seq(0)
+		_expect(seq_a2 > seq_b, "seat-order: re-seat A is latest")
+		var order := slots_ord.get_occupied_indices_by_seat_order()
+		_expect(order.size() == 2 and order[0] == 1 and order[1] == 0, "seat-order: spawn order B then A")
+		_expect(battle.try_start_combat(), "seat-order: start combat")
+		var sim_ord := battle.get_sim()
+		_expect(sim_ord != null and sim_ord.has_started(), "seat-order: sim started")
+		_expect(battle.get_hand().is_empty(), "seat-order: hand cleared after lock spawn")
 
 	battle.queue_free()
 	await process_frame
