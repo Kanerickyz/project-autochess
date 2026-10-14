@@ -12,10 +12,10 @@
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
 - **M3.5 Effect**：`EffectSpec` / `EffectAction` / `AbilityData`、`EffectResolver`、`StatModifierStack`；样本：受伤+2攻、死亡召唤2HP、移动+1血
 - **M3b Deck/Shop**：`DeckState`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
-- **手牌 As-Is**：SHOP 展示整库出售；PREPARE/COMBAT 为本波手牌（`DrawService` 抽 `draw_count`）并可战中补人；冷却队列 / 可见窗 4 **To-Be**
+- **手牌 As-Is**：实时主路径为战中抽打弃 + 号令出牌（待按玩家篇回摆）
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
-- **M2 交互**：进入波次 → 准备布阵 → 开始战斗 → 刷怪（As-Is 全盘空闲格；To-Be 敌半场，见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)）→ 自动战斗 → 波次结算（发金）→ 商店构筑 → 下一波 PREPARE
-- 尚无：商店锁定、牌库内手动合并；冷却队列 / 可见窗 4（cycle 节奏层）
+- **M2 交互**：进入波次 →（To-Be 准备入槽）→ 开始战斗 → 刷怪（敌半场）→ 自动战斗观战 → 波次结算（发金）→ 商店构筑
+- 尚无：商店锁定、牌库内手动合并；准备角色槽几何与刷新 UI
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
 - **未创建** `resources/traits/`（v1 不含羁绊）
@@ -91,7 +91,7 @@ flowchart TB
 
 **微观 Match**（`MatchStateMachine`）：单次遭遇内 `SHOP | PREPARE → COMBAT → RESOLVE`；`current_encounter: EncounterData` 替代线性 `LevelData.waves`。
 
-胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽本波子集并预布阵；战斗中 cycle 补人 + 人口上限，已上场不可移动。**As-Is**：手牌常为整库展示，仅 PREPARE 可放置。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)。
+胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽选手牌 → 入角色槽（可刷新）→ 开战纯观战；无人口、无号令。**As-Is**：实时主路径仍为无准备、战中号令出牌。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) 与 [Features/PLAYER.md](./Features/PLAYER.md)。
 
 ```mermaid
 flowchart TD
@@ -122,8 +122,8 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 步骤 | 状态 | 要点 |
 |------|------|------|
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
-| 2 准备 | PREPARE | As-Is：整库可选放置；To-Be：抽本波子集预布阵；首波前商店已在关卡加载时 roll |
-| 3 战斗 | COMBAT | 击杀掉金；自动战斗；线性工具环无 cycle 补人（Run 主路径见 §3.4）；`CombatEventBus` 开战创建、战后销毁 |
+| 2 准备 | PREPARE | To-Be：抽选入角色槽（可刷新）；As-Is 实时路径常跳过 |
+| 3 战斗 | COMBAT | 击杀掉金；自动战斗观战（To-Be 不能出牌）；`CombatEventBus` 见 §3.4 |
 | 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；清波制胜负；**不得**直接开下一场战斗 |
 | 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()`（线性工具环） |
 | 6 下一波 | PREPARE → COMBAT | 玩家手动点「开始第 N 波」 |
@@ -160,10 +160,10 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 ### 3.3 Board & Deck
 
-- **棋盘**：每关可配置 `width × height` 方格；每格最多一单位。**As-Is**：友方与怪物共享全盘空闲格投放/刷怪。**To-Be（战斗关卡）**：竖屏窄深、我下敌上、偶数行中线硬半场——友方预布阵/cycle 仅我半场，敌一次刷出仅敌半场；开战后天可越半场。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
-- **牌库（Deck）**：Run 内 `DeckEntry` 列表（默认 10 占位、上限 20）；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
-- **手牌 / 抽牌**：As-Is 为手牌展示完整牌库；To-Be 为 PREPARE 抽本波子集 → **cycle 手牌**（见愿景）
-- **布阵规则**：**As-Is** 仅 PREPARE 可放置、开战锁阵；**To-Be** 准备预布阵 + 战斗中 cycle 补人（已上场不可移动，人口上限；落点限我半场）
+- **棋盘 / 槽位**：**To-Be（战斗关卡）**：竖屏窄深、我下敌上、硬半场；友方准备入**角色槽**，敌一次刷出仅敌半场；开战后天可越半场。**As-Is**：18×32 半场自由投放 + 战中出牌。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
+- **牌库（Deck）**：Run 内 `DeckEntry` 列表；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
+- **手牌 / 抽牌**：**To-Be** 准备阶段从构筑库洗入抽牌堆并抽候选手牌（手牌宽度 &gt; 槽位数）；可刷新未入槽牌回抽牌堆（≤3）。见 [Features/PLAYER.md](./Features/PLAYER.md)。
+- **布阵规则**：**To-Be** 仅准备入槽，开战锁阵纯观战；**As-Is** 战中号令出牌（待拆除）
 
 **Legacy（已移除）**：原备战席点击上场流程。
 
@@ -188,11 +188,11 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | `RtUnit` / `RtProjectile` | 连续坐标（格）、状态（部署中 / 移动 / 攻击 / 阵亡）、计时器；追踪投射物 |
 | `RtUnitBrain` | 索敌范围内最近 → 否则全场最近；攻击中锁定目标；只改自身状态 |
 | `RealtimeDamagePipeline` | 唯一扣血处；经 `CombatEventBus` 发 `ON_ATTACK_HIT` / `ON_DAMAGE_TAKEN` / `ON_DEATH` 等 |
-| `RealtimeBattleController`（`scripts/ui/realtime/`） | 准备 / 战斗 / 结算；抽本场手牌、我半场投放校验、人口、敌半场刷出预览与落点；击杀金与波次金 |
+| `RealtimeBattleController`（`scripts/ui/realtime/`） | **As-Is**：进遭遇即开战、抽打弃 + 号令出牌。**To-Be**：准备入槽 / 刷新 / 开战观战（见玩家篇） |
 
-每步顺序：大脑决策 → 移动 → 出手 → 投射物结算 → 按质量反比推挤并钳在边界内 → 移除阵亡 → 胜负。点「开始战斗」时控制器调用 `begin_combat()`；此前在场的单位（预布阵、开战刷出）不走 `deploy_time`，此后投放的都走。属性读 `UnitStats` 的 Realtime 组。新角色无技能，本版未接 `EffectResolver`：实时路径不结算暴击（`crit_rate_percent`）和牌库条目上的附加技能。
+每步顺序：大脑决策 → 移动 → 出手 → 投射物结算 → 按质量反比推挤并钳在边界内 → 移除阵亡 → 胜负。属性读 `UnitStats` 的 Realtime 组。
 
-`CombatEventBus` 生命周期：进入遭遇（准备阶段）时由控制器创建，准备阶段不发战斗事件；结算后「继续」时随模拟一起释放。
+`CombatEventBus` 生命周期：进入遭遇时由控制器创建，准备阶段不发战斗事件；结算后「继续」时随模拟一起释放。
 
 **旧网格回合制（`main.tscn` / 沙盒）** 职责拆分：
 
@@ -382,7 +382,7 @@ assets/               → 仅美术/音频
 4. **M2c** `MatchStateMachine` 多波 `PREPARE → COMBAT → RESOLVE`
 5. 商店 → 备战席 → 购买（M3 Legacy，**已由 M3b 替换**）
 6. **M3b** 牌库 + 双卡种商店 + 手牌布阵（**已实现**；见本节摘要）；本波抽牌 + 战中补人已接 `DrawService`
-7. **`EffectResolver` + 样板联动技能** + 增益卡 + Tier（已落地；cycle 补人属后续）
+7. **`EffectResolver` + 样板联动技能** + 增益卡 + Tier（已落地；准备入槽观战属文档 To-Be）
 8. 多关卡、多流派样板、tooltip、平衡、美术音效、存档（M5）
 
 ---

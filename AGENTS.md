@@ -10,8 +10,8 @@
 - **提出需求时先问验收方式**（见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「验收方式」）：**轻量** = `bash tools/run_light_verify.sh` 加载通过即可，效果由用户验；**完全** = 现行 runner + 按 L 级 QA/GUI。未指定先问再做。
 
 ## 游戏约束
-- 关卡制 / 爬塔 PvE 自走棋：商店构筑牌库、准备预布阵、战斗中 **cycle 补人**（人口上限；玩家不可拖动已上场单位）、上场单位自动实时战斗。新增 PVP、羁绊或单位微操走位需明确设计需求。
-- v1 不含种族/职业羁绊。流派来自单位内建技能、增益卡与站位。若将来加羁绊必须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
+- 关卡制 / 爬塔 PvE 自走棋：商店构筑牌库、**准备抽选入角色槽**（可刷新）、开战后天**纯观战**（不能出牌）；上场单位自动实时战斗、玩家不可拖动。无人口、无号令。新增 PVP、羁绊或单位微操走位需明确设计需求。
+- v1 不含种族/职业羁绊。流派来自单位内建技能、增益卡与槽位站位。若将来加羁绊必须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 战场是 18×32 矩形逻辑格（竖屏、我下敌上）：格子只用于投放吸附与半场判定；开战后单位在连续坐标上实时移动与攻击（`scripts/combat/realtime/`，长度单位为格、固定步长），不用六边形替代。旧回合制格子战斗（`main.tscn` / 沙盒）为旧工具环，仍用 `BoardGrid`。

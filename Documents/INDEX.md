@@ -1,8 +1,8 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（构筑 + 战中出牌轮转 + 号令节奏 + 清波制）· Godot 4.6 · 最后更新：2026-10-14
+> 中世纪幻想 2D PvE 自走棋（构筑 + 准备入槽观战 + 清波制）· Godot 4.6 · 最后更新：2026-10-14
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与遭遇内牌流（构筑库 / 手牌 / 弃牌堆、号令、入手冷却弱化、无人口）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（实时主路径已落地号令）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备牌流（构筑库 / 手牌 / 弃牌堆、角色槽、刷新）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（To-Be；As-Is 仍为战中号令出牌）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 
@@ -11,16 +11,16 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**、单局时长、流派联动、棋盘与敌压 |
-| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（构筑库 / 手牌 / 弃牌堆、**号令**、抽打弃、无准备与无人口） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（构筑库 / 手牌 / 弃牌堆、角色槽、准备刷新、开战观战） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
-| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（十人：定位、数值含号令费用草案、§6 主技能挂载；九人资源槽已绑、民兵空） |
+| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（十人：定位、数值草案、§6 主技能挂载；九人资源槽已绑、民兵空） |
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池与相对强度；挂载见角色库 §6；九人单位槽已绑） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
-| [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备预布阵 → 自动战斗 + cycle 补人 To-Be → 结算） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏 18×32、我下敌上、投放吸附与开战实时越线） |
+| [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备入槽 → 自动战斗观战 → 结算） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、角色槽、开战实时越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
@@ -140,7 +140,7 @@ Project Autochess/
 |------|------|------|
 | Level / Wave | 关卡配置、遭遇、`MatchStateMachine` | GAME_VISION · **M2c** |
 | Run / Map | 爬塔地图、选路、节点类型、Boss | GAME_VISION · **Run** |
-| Run / Match | 遭遇内：抽牌预布阵 → 战斗 cycle 补人 → 结算；地图商店 | GAME_VISION · **M2c / Run** |
+| Run / Match | 遭遇内：准备入槽 → 开战观战 → 结算；地图商店 | GAME_VISION · **M2c / Run** |
 | Economy & Shop | 角色卡/增益卡、Tier、牌库、击杀掉金、波次结算 | **GAME_VISION** · **BUFF_SYSTEM** · **ARCHITECTURE** · **M3b** |
 | Board & Deck | 可变棋盘 + 本波 cycle 手牌（抽牌/战中补人 To-Be） | **GAME_VISION** · **M3b** |
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |

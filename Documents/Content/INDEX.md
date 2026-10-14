@@ -18,7 +18,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（十人：定位、数值含**号令费用**草案、§6 主技能挂载；九人资源槽已绑、民兵空） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（十人：定位、数值草案、§6 主技能挂载；九人资源槽已绑、民兵空） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池、相对强度；挂载见角色库 §6；技能 `.tres` 已建、九人单位槽已绑） |
 
 敌方 Boss / 高威胁位另册，不进本版友方总表。
