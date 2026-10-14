@@ -16,8 +16,8 @@
 
 [resource]
 script = ExtResource("1")
-board_width = 18
-board_height = 32
+board_width = 9
+board_height = 16
 enemy_pool = Array[ExtResource("1_unit")]([ExtResource("u_knight"), ExtResource("u_archer"), ExtResource("u_barbarian"), ExtResource("u_goblin"), ExtResource("u_spear_goblin"), ExtResource("u_musketeer"), ExtResource("u_mini_pekka"), ExtResource("u_valkyrie"), ExtResource("u_skeleton"), ExtResource("u_rider")])
 generate_terrain = false
 terrain_tileset = ExtResource("2_nqghs")

@@ -10,10 +10,9 @@ signal combat_resolved(won: bool)
 
 enum Phase { IDLE, PREPARE, COMBAT, RESULT }
 
-## 敌人随机落点避开最靠中线的行数
-const ENEMY_MIDLINE_MARGIN_ROWS := 2
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
+const DEFAULT_BOARD_SIZE := Vector2i(9, 16)
 
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
@@ -27,10 +26,13 @@ var _economy: RunEconomy
 var _level: LevelData
 var _encounter: EncounterData
 var _tier_index: int = 0
-var _board_size: Vector2i = Vector2i(18, 32)
+var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
+## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
+var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
+var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []
 var _selected_entry_id: int = -1
 var _sim: RealtimeCombatSim
@@ -125,14 +127,18 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	var config := _deck_state.get_config()
 	_card_flow.configure_from_deck_config(config)
 	_card_flow.begin_from_deck(_deck_state, _encounter_rng)
-	var slot_n := config.get_slot_count() if config != null else 3
-	_slots.configure(slot_n, _board_size)
+	var seat_rows := config.get_seat_rows() if config != null else DeckConfig.DEFAULT_SEAT_ROWS
+	var seat_cols := config.get_seat_cols() if config != null else DeckConfig.DEFAULT_SEAT_COLS
+	_deploy_cap = config.get_deploy_cap() if config != null else DeckConfig.DEFAULT_DEPLOY_CAP
+	_slots.configure_grid(seat_rows, seat_cols, _board_size, false)
+	_enemy_slots.configure_grid(seat_rows, seat_cols, _board_size, true)
 	_enemy_spawns = _roll_enemy_spawns(_encounter_rng)
 
 	_arena.board_size = _board_size
 	_arena.sim = null
 	_arena.clear_fx()
 	_arena.prepare_slots = _slots
+	_arena.enemy_slots = _enemy_slots
 	_arena.enemy_previews = _build_enemy_previews(_enemy_spawns)
 	_arena.placement_active = false
 	_rebuild_cards()
@@ -159,6 +165,10 @@ func get_slot_board() -> PrepareSlotBoard:
 	return _slots
 
 
+func get_enemy_slot_board() -> PrepareSlotBoard:
+	return _enemy_slots
+
+
 func get_refresh_remaining() -> int:
 	return _card_flow.get_refresh_remaining()
 
@@ -179,9 +189,13 @@ func get_pending_enemy_positions() -> Array[Vector2]:
 	return positions
 
 
+func get_deploy_cap() -> int:
+	return _deploy_cap
+
+
 func get_max_board_units() -> int:
-	## 上场上限 = 槽位数（无人口硬顶）。
-	return _slots.slot_count if _slots.slot_count > 0 else 3
+	## 本场上场人数上限（deploy_cap）；空座可多于上限。
+	return get_deploy_cap()
 
 
 func get_player_unit_count() -> int:
@@ -194,37 +208,41 @@ func is_entry_on_field(entry_id: int) -> bool:
 	return _sim != null and _sim.find_unit_by_deck_entry(entry_id) != null
 
 
-## 准备：把手牌放入空角色槽。cell 为最近空槽吸附；成功返回空串。
+## 准备：把手牌放入空角色座位。cell 为最近空座吸附；成功返回空串。
 func try_assign_to_slot(entry_id: int, cell: Vector2i) -> String:
 	if _phase != Phase.PREPARE:
-		return "当前不可入槽"
+		return "当前不可入座"
 	if not _card_flow.is_in_hand(entry_id):
 		return "该牌不在手牌中"
+	if not _slots.can_assign_more(_deploy_cap):
+		var msg := "已达上场人数上限" if not _slots.is_full() else "座位已满"
+		_show_hint(msg)
+		return msg
 	if cell != NO_CELL and not BoardHalf.is_player_deploy_cell(cell, _board_size.y):
-		_show_hint("请放到我半场角色槽")
-		return "请放到我半场角色槽"
+		_show_hint("请放到我半场角色座位")
+		return "请放到我半场角色座位"
 	var slot_index := _slots.find_slot_at_cell(cell)
 	if slot_index < 0:
 		slot_index = _slots.find_nearest_empty_slot(cell)
 		if slot_index >= 0:
 			var sc := _slots.get_cell(slot_index)
 			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
-				_show_hint("请放到角色槽")
-				return "请放到角色槽"
+				_show_hint("请放到角色座位")
+				return "请放到角色座位"
 	if slot_index < 0:
-		_show_hint("槽位已满")
-		return "槽位已满"
+		_show_hint("座位已满")
+		return "座位已满"
 	if not _slots.is_empty(slot_index):
-		_show_hint("该槽已有人")
-		return "该槽已有人"
+		_show_hint("该座已有人")
+		return "该座已有人"
 	var entry := _card_flow.try_take_from_hand(entry_id)
 	if entry == null:
-		_show_hint("无法入槽")
-		return "无法入槽"
+		_show_hint("无法入座")
+		return "无法入座"
 	if not _slots.try_assign(slot_index, entry):
 		_card_flow.try_return_to_hand(entry)
-		_show_hint("无法入槽")
-		return "无法入槽"
+		_show_hint("无法入座")
+		return "无法入座"
 	if _selected_entry_id == entry_id:
 		_set_selected(-1)
 	_sync_slot_visuals()
@@ -309,6 +327,7 @@ func continue_after_result() -> void:
 	_teardown_sim()
 	_card_flow.clear()
 	_slots.clear()
+	_enemy_slots.clear()
 	_enemy_spawns.clear()
 	_rebuild_cards()
 	_set_phase(Phase.IDLE)
@@ -353,6 +372,7 @@ func _begin_combat_from_prepare() -> void:
 	_arena.sim = _sim
 	_arena.enemy_previews = []
 	_arena.prepare_slots = _slots
+	_arena.enemy_slots = _enemy_slots
 	_arena.placement_active = false
 	_arena.clear_fx()
 	_sim.begin_combat()
@@ -375,21 +395,30 @@ func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
 		for _i in maxi(1, entry.count):
 			units.append(entry.unit)
 
-	var cells := _enemy_spawn_cells()
-	for i in range(cells.size() - 1, 0, -1):
+	## 敌方落点：镜像座位表随机分配（可不填满）；不再扫整片敌半场。
+	var seat_indices: Array[int] = []
+	for i in _enemy_slots.slot_count:
+		seat_indices.append(i)
+	for i in range(seat_indices.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
-		var tmp := cells[i]
-		cells[i] = cells[j]
-		cells[j] = tmp
-	if units.size() > cells.size():
+		var tmp := seat_indices[i]
+		seat_indices[i] = seat_indices[j]
+		seat_indices[j] = tmp
+	if units.size() > seat_indices.size():
 		push_warning(
-			"RealtimeBattleController: %d enemies but only %d spawn cells; extra enemies dropped"
-			% [units.size(), cells.size()]
+			"RealtimeBattleController: %d enemies but only %d enemy seats; extra enemies dropped"
+			% [units.size(), seat_indices.size()]
 		)
 	var result: Array = []
-	for i in mini(units.size(), cells.size()):
-		var unit := UnitInstance.from_unit_data(units[i], cells[i], UnitInstance.Team.ENEMY)
-		result.append({"unit": unit, "position": Vector2(cells[i]) + Vector2(0.5, 0.5)})
+	for i in mini(units.size(), seat_indices.size()):
+		var seat_i: int = seat_indices[i]
+		var cell := _enemy_slots.get_cell(seat_i)
+		var unit := UnitInstance.from_unit_data(units[i], cell, UnitInstance.Team.ENEMY)
+		result.append({
+			"unit": unit,
+			"position": Vector2(cell) + Vector2(0.5, 0.5),
+			"seat_index": seat_i,
+		})
 	return result
 
 
@@ -407,20 +436,9 @@ func _build_enemy_previews(spawns: Array) -> Array:
 			"visual_half_width": stats.get_visual_half_width() if stats != null else 0.0,
 			"visual_half_height": stats.get_visual_half_height() if stats != null else 0.0,
 			"label": label,
+			"seat_index": int(spawn.get("seat_index", -1)),
 		})
 	return previews
-
-
-func _enemy_spawn_cells() -> Array[Vector2i]:
-	var mid := BoardHalf.midline_row(_board_size.y)
-	var max_row := mid - ENEMY_MIDLINE_MARGIN_ROWS
-	if max_row <= 0:
-		max_row = mid
-	var cells: Array[Vector2i] = []
-	for y in max_row:
-		for x in _board_size.x:
-			cells.append(Vector2i(x, y))
-	return cells
 
 
 func _teardown_sim() -> void:
@@ -431,6 +449,7 @@ func _teardown_sim() -> void:
 		_arena.sim = null
 		_arena.enemy_previews = []
 		_arena.prepare_slots = null
+		_arena.enemy_slots = null
 		_arena.placement_active = false
 	if _bus != null and is_instance_valid(_bus):
 		_bus.queue_free()
@@ -445,6 +464,7 @@ func _disconnect_economy() -> void:
 func _sync_slot_visuals() -> void:
 	if _arena != null:
 		_arena.prepare_slots = _slots
+		_arena.enemy_slots = _enemy_slots
 		_arena.queue_redraw()
 
 
@@ -637,11 +657,10 @@ func _refresh_hud() -> void:
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
-	var slot_n := _slots.occupied_count()
-	var slot_max := _slots.slot_count
+	var seated_n := _slots.occupied_count()
 	var refresh_left := _card_flow.get_refresh_remaining()
-	_pop_label.text = "槽 %d/%d  手 %d 库 %d 弃 %d  刷 %d" % [
-		slot_n, slot_max, hand_n, draw_n, discard_n, refresh_left,
+	_pop_label.text = "入座 %d/%d  手 %d 库 %d 弃 %d  刷 %d" % [
+		seated_n, _deploy_cap, hand_n, draw_n, discard_n, refresh_left,
 	]
 	var elapsed := _sim.elapsed_seconds if _sim != null else 0.0
 	_timer_label.text = _format_time(elapsed)
@@ -653,7 +672,7 @@ func _refresh_hud() -> void:
 	match _phase:
 		Phase.PREPARE:
 			_phase_label.text = (
-				"准备·选人入槽" if _selected_entry_id < 0 else "点空槽入阵 / 点已占槽收回"
+				"准备·选人入座" if _selected_entry_id < 0 else "点空座入阵 / 点已占座收回"
 			)
 		Phase.COMBAT:
 			_phase_label.text = "战斗中·观战"

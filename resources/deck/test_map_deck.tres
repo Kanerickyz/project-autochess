@@ -11,6 +11,8 @@
 script = ExtResource("1")
 starting_units = Array[ExtResource("1_unit")]([ExtResource("u_ember_rat"), ExtResource("u_ember_rat"), ExtResource("u_ash_shaman"), ExtResource("u_pyre_guard"), ExtResource("u_pyre_guard")])
 max_size = 5
-max_board_units = 5
-draw_count = 5
+max_board_units = 4
+draw_count = 4
+hand_width = 4
+slot_count = 10
 level_config = ExtResource("2_level")

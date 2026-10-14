@@ -4,7 +4,7 @@ extends RefCounted
 
 signal hand_changed
 
-const DEFAULT_HAND_WIDTH := 5
+const DEFAULT_HAND_WIDTH := 4
 const DEFAULT_ENTER_HAND_COOLDOWN := 0.0
 const DEFAULT_MAX_REFRESH := 3
 

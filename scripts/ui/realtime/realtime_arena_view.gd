@@ -23,7 +23,7 @@ const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
 const ELLIPSE_SEGMENTS := 28
 
-var board_size: Vector2i = Vector2i(18, 32)
+var board_size: Vector2i = Vector2i(9, 16)
 var sim: RealtimeCombatSim
 ## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label}
 var enemy_previews: Array = []
@@ -33,8 +33,10 @@ var ghost_radius: float = 0.7
 var ghost_visual_half_width: float = 0.0
 var ghost_visual_half_height: float = 0.0
 var ghost_label: String = ""
-## 准备阶段角色槽（可读座位）；战斗中仍可画占位框
+## 准备阶段友方角色座位；战斗中仍可画占位框
 var prepare_slots: PrepareSlotBoard
+## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
+var enemy_slots: PrepareSlotBoard
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -48,6 +50,9 @@ var _fx_clock: float = 0.0
 const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
 const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
 const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.9)
+const ENEMY_SLOT_EMPTY := Color(0.95, 0.40, 0.36, 0.18)
+const ENEMY_SLOT_OCCUPIED := Color(0.90, 0.30, 0.28, 0.32)
+const ENEMY_SLOT_BORDER := Color(0.95, 0.60, 0.55, 0.55)
 
 
 func _ready() -> void:
@@ -183,6 +188,7 @@ func _draw() -> void:
 	var mid_y := rect.position.y + mid * px
 	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
 
+	_draw_enemy_slots(px)
 	_draw_prepare_slots(px)
 
 	for preview in enemy_previews:
@@ -199,6 +205,29 @@ func _draw() -> void:
 	_draw_fx(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
+
+
+func _draw_enemy_slots(px: float) -> void:
+	if enemy_slots == null or enemy_slots.cells.is_empty():
+		return
+	var occupied := _enemy_preview_seat_set()
+	var rect := get_board_rect()
+	for i in enemy_slots.cells.size():
+		var cell: Vector2i = enemy_slots.cells[i]
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
+		var filled := occupied.has(i)
+		draw_rect(cell_rect, ENEMY_SLOT_OCCUPIED if filled else ENEMY_SLOT_EMPTY)
+		draw_rect(cell_rect, ENEMY_SLOT_BORDER, false, 1.5)
+
+
+func _enemy_preview_seat_set() -> Dictionary:
+	var occupied: Dictionary = {}
+	for preview in enemy_previews:
+		if preview is Dictionary and (preview as Dictionary).has("seat_index"):
+			var seat_i := int(preview["seat_index"])
+			if seat_i >= 0:
+				occupied[seat_i] = true
+	return occupied
 
 
 func _draw_prepare_slots(px: float) -> void:

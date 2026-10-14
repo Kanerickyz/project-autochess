@@ -71,16 +71,20 @@ func get_max_size() -> int:
 
 
 func get_max_board_units() -> int:
-	## Legacy; PLAYER.md 已取消人口硬顶。保留给旧 UI / 测试兼容。
+	## 兼容旧调用；实时主路径请用 get_deploy_cap()（本场上场人数上限）。
+	return get_deploy_cap()
+
+
+func get_deploy_cap() -> int:
 	if _config == null:
-		return 5
-	return _config.max_board_units
+		return DeckConfig.DEFAULT_DEPLOY_CAP
+	return _config.get_deploy_cap()
 
 
 func get_draw_count() -> int:
 	## Legacy prepare draw; 遭遇内请用 get_hand_width()。
 	if _config == null:
-		return 5
+		return DeckConfig.DEFAULT_HAND_WIDTH
 	return _config.draw_count
 
 
@@ -88,6 +92,18 @@ func get_hand_width() -> int:
 	if _config == null:
 		return EncounterCardFlow.DEFAULT_HAND_WIDTH
 	return _config.get_hand_width()
+
+
+func get_seat_rows() -> int:
+	if _config == null:
+		return DeckConfig.DEFAULT_SEAT_ROWS
+	return _config.get_seat_rows()
+
+
+func get_seat_cols() -> int:
+	if _config == null:
+		return DeckConfig.DEFAULT_SEAT_COLS
+	return _config.get_seat_cols()
 
 
 func get_enter_hand_cooldown() -> float:

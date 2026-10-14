@@ -103,7 +103,7 @@ func _on_encounter_completed(_won: bool) -> void:
 func _auto_prepare() -> void:
 	var slots := _battle.get_slot_board()
 	var hand := _battle.get_hand()
-	var n := mini(hand.size(), slots.slot_count)
+	var n := mini(hand.size(), _battle.get_deploy_cap())
 	for i in n:
 		_battle.try_assign_to_slot(hand[i].entry_id, slots.get_cell(i))
 	if not _battle.try_start_combat():
@@ -119,8 +119,11 @@ func _load_deck_config() -> DeckConfig:
 	push_warning("RealtimeBattleDemo: %s missing, using fallback deck" % DECK_PATH)
 	var fallback := DeckConfig.new()
 	fallback.starting_units = _fallback_units()
-	fallback.max_board_units = 5
-	fallback.draw_count = 5
+	fallback.max_board_units = DeckConfig.DEFAULT_DEPLOY_CAP
+	fallback.hand_width = DeckConfig.DEFAULT_HAND_WIDTH
+	fallback.draw_count = DeckConfig.DEFAULT_HAND_WIDTH
+	fallback.seat_rows = DeckConfig.DEFAULT_SEAT_ROWS
+	fallback.seat_cols = DeckConfig.DEFAULT_SEAT_COLS
 	return fallback
 
 
@@ -129,10 +132,10 @@ func _load_level() -> LevelData:
 		var level := load(LEVEL_PATH) as LevelData
 		if level != null:
 			return level
-	push_warning("RealtimeBattleDemo: %s missing, using fallback 18x32 level" % LEVEL_PATH)
+	push_warning("RealtimeBattleDemo: %s missing, using fallback 9x16 level" % LEVEL_PATH)
 	var fallback := LevelData.new()
-	fallback.board_width = 18
-	fallback.board_height = 32
+	fallback.board_width = 9
+	fallback.board_height = 16
 	fallback.enemy_pool = _fallback_units()
 	return fallback
 

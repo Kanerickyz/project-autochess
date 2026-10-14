@@ -21,7 +21,7 @@ const EFFECT_DRAIN_GUARD := 64
 var elapsed_seconds: float = 0.0
 var fixed_step_count: int = 0
 
-var _arena_size: Vector2 = Vector2(18, 32)
+var _arena_size: Vector2 = Vector2(9, 16)
 var _rng := RandomNumberGenerator.new()
 var _bus: CombatEventBus
 var _owns_bus: bool = false

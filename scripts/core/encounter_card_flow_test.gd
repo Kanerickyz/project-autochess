@@ -13,10 +13,12 @@ static func run_all() -> bool:
 	return ok
 
 
-static func _make_deck(count: int, hand_width: int = 5) -> DeckState:
+static func _make_deck(count: int, hand_width: int = 4) -> DeckState:
 	var config := DeckConfig.new()
 	config.hand_width = hand_width
-	config.slot_count = 3
+	config.max_board_units = 4
+	config.seat_rows = 2
+	config.seat_cols = 5
 	config.max_refresh = 3
 	config.enter_hand_cooldown = 0.0
 	config.max_size = 40
@@ -32,23 +34,26 @@ static func _make_deck(count: int, hand_width: int = 5) -> DeckState:
 
 
 static func _test_begin_draws_hand() -> bool:
-	var deck := _make_deck(8, 5)
+	var deck := _make_deck(8, 4)
 	var flow := EncounterCardFlow.new()
 	flow.configure_from_deck_config(deck.get_config())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	flow.begin_from_deck(deck, rng)
-	if flow.get_hand().size() != 5:
-		push_error("begin: expected hand 5, got %d" % flow.get_hand().size())
+	if flow.get_hand().size() != 4:
+		push_error("begin: expected hand 4, got %d" % flow.get_hand().size())
 		return false
-	if flow.get_draw_count() != 3:
-		push_error("begin: expected draw 3, got %d" % flow.get_draw_count())
+	if flow.get_draw_count() != 4:
+		push_error("begin: expected draw 4, got %d" % flow.get_draw_count())
+		return false
+	if EncounterCardFlow.DEFAULT_HAND_WIDTH != 4:
+		push_error("begin: DEFAULT_HAND_WIDTH should be 4")
 		return false
 	return true
 
 
 static func _test_take_from_hand_no_refill() -> bool:
-	var deck := _make_deck(8, 5)
+	var deck := _make_deck(8, 4)
 	var flow := EncounterCardFlow.new()
 	flow.configure_from_deck_config(deck.get_config())
 	var rng := RandomNumberGenerator.new()
@@ -59,7 +64,7 @@ static func _test_take_from_hand_no_refill() -> bool:
 	if entry == null or entry.entry_id != taken_id:
 		push_error("take: failed to take from hand")
 		return false
-	if flow.get_hand().size() != 4:
+	if flow.get_hand().size() != 3:
 		push_error("take: hand should shrink without refill, got %d" % flow.get_hand().size())
 		return false
 	if flow.get_discard_count() != 0:
@@ -68,14 +73,14 @@ static func _test_take_from_hand_no_refill() -> bool:
 	if not flow.try_return_to_hand(entry):
 		push_error("return: failed to return to hand")
 		return false
-	if flow.get_hand().size() != 5:
-		push_error("return: hand should be 5 again")
+	if flow.get_hand().size() != 4:
+		push_error("return: hand should be 4 again")
 		return false
 	return true
 
 
 static func _test_refresh_returns_to_draw() -> bool:
-	var deck := _make_deck(8, 5)
+	var deck := _make_deck(8, 4)
 	var flow := EncounterCardFlow.new()
 	flow.configure_from_deck_config(deck.get_config())
 	var rng := RandomNumberGenerator.new()
@@ -86,16 +91,16 @@ static func _test_refresh_returns_to_draw() -> bool:
 	if not flow.try_refresh(rng):
 		push_error("refresh: failed")
 		return false
-	# 4 张回抽 + 原抽堆，再抽满到 5（槽位牌不在手牌）
-	if flow.get_hand().size() != 5:
-		push_error("refresh: expected hand 5, got %d" % flow.get_hand().size())
+	# 3 张回抽 + 原抽堆，再抽满到 4（入座牌不在手牌）
+	if flow.get_hand().size() != 4:
+		push_error("refresh: expected hand 4, got %d" % flow.get_hand().size())
 		return false
 	if flow.refresh_used != 1:
 		push_error("refresh: used should be 1")
 		return false
 	# 取出的牌不在刷新集合里
 	if flow.is_in_hand(taken.entry_id):
-		push_error("refresh: taken (slotted) card should not be in hand")
+		push_error("refresh: taken (seated) card should not be in hand")
 		return false
 	if before_draw < 0:
 		push_error("refresh: sanity")
@@ -104,7 +109,7 @@ static func _test_refresh_returns_to_draw() -> bool:
 
 
 static func _test_return_hand_to_draw() -> bool:
-	var deck := _make_deck(6, 5)
+	var deck := _make_deck(6, 4)
 	var flow := EncounterCardFlow.new()
 	flow.configure_from_deck_config(deck.get_config())
 	var rng := RandomNumberGenerator.new()
@@ -121,7 +126,7 @@ static func _test_return_hand_to_draw() -> bool:
 
 
 static func _test_refresh_limit() -> bool:
-	var deck := _make_deck(8, 5)
+	var deck := _make_deck(8, 4)
 	var flow := EncounterCardFlow.new()
 	flow.configure_from_deck_config(deck.get_config())
 	var rng := RandomNumberGenerator.new()

@@ -1,13 +1,21 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段我半场角色槽：固定座位、入槽/收回占用（见 Features/PLAYER.md / COMBATLEVEL.md）。
+## 准备阶段角色座位：双方各 2×5 网格；满座 ≠ 上场人数上限（见 Features/PLAYER.md / COMBATLEVEL.md）。
 
-## 槽位相对我半场底部的行偏移（board_height - 1 - offset）。
-const DEFAULT_ROW_FROM_BOTTOM := 4
+const DEFAULT_SEAT_ROWS := 2
+const DEFAULT_SEAT_COLS := 5
+## 前排相对中线向己半场内偏移的格数（0 = 贴中线第一行）。
+const FRONT_OFFSET_FROM_MID := 0
+## 后排相对己方底边向内偏移的格数（0 = 贴边）。
+const BACK_INSET_FROM_EDGE := 1
 
-var slot_count: int = 3
+var seat_rows: int = DEFAULT_SEAT_ROWS
+var seat_cols: int = DEFAULT_SEAT_COLS
+## 座位总数（= seat_rows × seat_cols）；保留旧字段名供调用方兼容。
+var slot_count: int = 0
+var is_enemy_side: bool = false
 var cells: Array[Vector2i] = []
-## 与 cells 等长；null 表示空槽。
+## 与 cells 等长；null 表示空座。友方存 DeckEntry；敌方座位表可仅用几何。
 var occupants: Array = []
 
 
@@ -15,31 +23,75 @@ func clear() -> void:
 	cells.clear()
 	occupants.clear()
 	slot_count = 0
+	seat_rows = 0
+	seat_cols = 0
 
 
-func configure(p_slot_count: int, board_size: Vector2i) -> void:
+func configure_grid(
+	rows: int,
+	cols: int,
+	board_size: Vector2i,
+	enemy_side: bool = false,
+) -> void:
 	clear()
-	slot_count = maxi(1, p_slot_count)
-	cells = build_default_cells(board_size, slot_count)
+	seat_rows = maxi(1, rows)
+	seat_cols = maxi(1, cols)
+	slot_count = seat_rows * seat_cols
+	is_enemy_side = enemy_side
+	cells = build_grid_cells(board_size, seat_rows, seat_cols, enemy_side)
 	occupants.resize(slot_count)
 	for i in slot_count:
 		occupants[i] = null
 
 
-static func build_default_cells(board_size: Vector2i, count: int) -> Array[Vector2i]:
-	var n := maxi(1, count)
-	var mid := BoardHalf.midline_row(board_size.y)
-	var row := board_size.y - 1 - DEFAULT_ROW_FROM_BOTTOM
-	if row < mid:
-		row = mid
-	if row >= board_size.y:
-		row = board_size.y - 1
+## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
+func configure(_p_slot_count: int, board_size: Vector2i) -> void:
+	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
+
+
+static func build_grid_cells(
+	board_size: Vector2i,
+	rows: int,
+	cols: int,
+	enemy_side: bool,
+) -> Array[Vector2i]:
+	var n_rows := maxi(1, rows)
+	var n_cols := maxi(1, cols)
+	var row_ys := _row_ys_for_side(board_size.y, n_rows, enemy_side)
 	var result: Array[Vector2i] = []
-	for i in n:
-		var x := int(round(float(i + 1) * float(board_size.x) / float(n + 1)))
-		x = clampi(x, 0, board_size.x - 1)
-		result.append(Vector2i(x, row))
+	for row_i in row_ys.size():
+		var y: int = row_ys[row_i]
+		for c in n_cols:
+			var x := int(round(float(c + 1) * float(board_size.x) / float(n_cols + 1)))
+			x = clampi(x, 0, maxi(0, board_size.x - 1))
+			result.append(Vector2i(x, y))
 	return result
+
+
+## 旧单排落点（仅兼容）；主路径请用 build_grid_cells。
+static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vector2i]:
+	return build_grid_cells(board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
+
+
+static func _row_ys_for_side(height: int, rows: int, enemy_side: bool) -> Array[int]:
+	var mid := BoardHalf.midline_row(height)
+	var front_y: int
+	var back_y: int
+	if enemy_side:
+		front_y = clampi(mid - 1 - FRONT_OFFSET_FROM_MID, 0, maxi(0, mid - 1))
+		back_y = clampi(BACK_INSET_FROM_EDGE, 0, front_y)
+	else:
+		front_y = clampi(mid + FRONT_OFFSET_FROM_MID, mid, maxi(mid, height - 1))
+		back_y = clampi(height - 1 - BACK_INSET_FROM_EDGE, front_y, maxi(0, height - 1))
+	var ys: Array[int] = []
+	if rows <= 1:
+		ys.append(front_y)
+		return ys
+	## 前排在前（索引 0..cols-1），后排在后；多行时在前后之间插值。
+	for i in rows:
+		var t := 0.0 if rows <= 1 else float(i) / float(rows - 1)
+		ys.append(int(round(lerpf(float(front_y), float(back_y), t))))
+	return ys
 
 
 func get_cell(slot_index: int) -> Vector2i:
@@ -58,8 +110,18 @@ func is_empty(slot_index: int) -> bool:
 	return get_entry(slot_index) == null
 
 
+## 全部座位是否被占满（与上场人数上限无关）。
 func is_full() -> bool:
-	return occupied_count() >= slot_count
+	return occupied_count() >= slot_count and slot_count > 0
+
+
+## 是否还能再入座：未达 deploy_cap，且仍有空座。
+func can_assign_more(deploy_cap: int) -> bool:
+	if slot_count <= 0:
+		return false
+	if occupied_count() >= maxi(0, deploy_cap):
+		return false
+	return occupied_count() < slot_count
 
 
 func occupied_count() -> int:
