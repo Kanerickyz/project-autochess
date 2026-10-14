@@ -29,5 +29,6 @@ id = "musketeer"
 display_name = "火枪手"
 cost = 3
 tier = 2
+command_cost = 4
 stats = SubResource("UnitStats_musketeer")
 ability = ExtResource("3_ability")

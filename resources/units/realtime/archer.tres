@@ -29,5 +29,6 @@ id = "archer"
 display_name = "弓箭手"
 cost = 2
 tier = 1
+command_cost = 3
 stats = SubResource("UnitStats_archer")
 ability = ExtResource("3_ability")

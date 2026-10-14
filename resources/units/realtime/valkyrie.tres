@@ -28,5 +28,6 @@ id = "valkyrie"
 display_name = "链枷兵"
 cost = 4
 tier = 3
+command_cost = 5
 stats = SubResource("UnitStats_valkyrie")
 ability = ExtResource("3_ability")

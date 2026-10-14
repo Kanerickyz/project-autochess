@@ -33,6 +33,10 @@ func _clear_hand_cooldowns(battle: RealtimeBattleController) -> void:
 	battle._card_flow.tick(30.0)
 
 
+func _fill_command(battle: RealtimeBattleController) -> void:
+	battle._command.reset(battle._command.get_max())
+
+
 func _test_battle_controller_rules() -> void:
 	var deck := DeckState.new()
 	deck.configure(load(DECK_PATH) as DeckConfig)
@@ -47,9 +51,11 @@ func _test_battle_controller_rules() -> void:
 	battle.setup(deck, economy, load(LEVEL_PATH) as LevelData)
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 	_clear_hand_cooldowns(battle)
+	_fill_command(battle)
 
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.COMBAT, "controller: start_encounter enters COMBAT")
 	_expect(battle.get_board_size() == Vector2i(18, 32), "controller: board is 18x32")
+	_expect(battle.get_command_current() >= 5.0, "controller: command starts at or above open value")
 	var hand := battle.get_hand()
 	_expect(hand.size() == deck.get_hand_width(), "controller: hand size equals hand_width")
 	var sim := battle.get_sim()
@@ -60,13 +66,19 @@ func _test_battle_controller_rules() -> void:
 	var size := battle.get_board_size()
 	var mid := BoardHalf.midline_row(size.y)
 	var first_id := hand[0].entry_id
+	var first_cost := hand[0].get_command_cost()
+	battle._command.reset(0.0)
+	_expect(not battle.try_deploy(first_id, Vector2i(3, size.y - 3)).is_empty(), "controller: deploy rejected when command empty")
+	_fill_command(battle)
 	_expect(not battle.try_deploy(first_id, Vector2i(5, 2)).is_empty(), "controller: enemy half rejected")
 	_expect(battle.try_deploy(first_id, Vector2i(3, size.y - 3)).is_empty(), "controller: player half accepted")
+	_expect(battle.get_command_current() <= battle.get_command_max() - float(first_cost) + 0.001, "controller: command spent on deploy")
 	_expect(battle.is_entry_on_field(first_id), "controller: deployed entry is on field")
 	_expect(not battle._card_flow.is_in_hand(first_id), "controller: played card left hand")
 	_expect(not battle.try_recall_at(Vector2(3.5, size.y - 2.5)), "controller: no prepare recall")
 
 	_clear_hand_cooldowns(battle)
+	_fill_command(battle)
 	hand = battle.get_hand()
 	_expect(not hand.is_empty(), "controller: hand refilled after play")
 	if not hand.is_empty():

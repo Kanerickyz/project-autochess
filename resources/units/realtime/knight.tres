@@ -28,5 +28,6 @@ id = "knight"
 display_name = "盾兵"
 cost = 3
 tier = 2
+command_cost = 4
 stats = SubResource("UnitStats_knight")
 ability = ExtResource("3_ability")

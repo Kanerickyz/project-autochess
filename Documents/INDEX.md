@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（构筑 + 战中出牌轮转 + 号令节奏 + 清波制）· Godot 4.6 · 最后更新：2026-10-14
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与遭遇内牌流（构筑库 / 手牌 / 弃牌堆、号令、入手冷却弱化、无人口）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（To-Be；As-Is 尚无号令）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与遭遇内牌流（构筑库 / 手牌 / 弃牌堆、号令、入手冷却弱化、无人口）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（实时主路径已落地号令）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 

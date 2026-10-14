@@ -30,6 +30,7 @@ var _tier_index: int = 0
 var _board_size: Vector2i = Vector2i(18, 32)
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
+var _command: CommandResource = CommandResource.new()
 var _cards: Array[RealtimeHandCard] = []
 var _selected_entry_id: int = -1
 var _sim: RealtimeCombatSim
@@ -75,9 +76,11 @@ func _process(delta: float) -> void:
 		if _hint_remaining <= 0.0:
 			_hint_text = ""
 	if _phase == Phase.COMBAT and _sim != null:
-		_card_flow.tick(delta * time_scale)
+		var scaled := delta * time_scale
+		_card_flow.tick(scaled)
+		_command.tick(scaled)
 		_sync_wipe_loss_suppression()
-		_sim.step(delta * time_scale)
+		_sim.step(scaled)
 	_refresh_hud()
 	_refresh_cards()
 
@@ -119,6 +122,8 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 
 	_card_flow.configure_from_deck_config(_deck_state.get_config())
 	_card_flow.begin_from_deck(_deck_state, rng)
+	_command.configure()
+	_command.reset(CommandResource.DEFAULT_START)
 	var enemy_spawns := _roll_enemy_spawns(rng)
 
 	_bus = CombatEventBus.new()
@@ -159,6 +164,14 @@ func get_hand() -> Array[DeckEntry]:
 	return _card_flow.get_hand()
 
 
+func get_command_current() -> float:
+	return _command.get_current()
+
+
+func get_command_max() -> float:
+	return _command.get_max()
+
+
 func get_pending_enemy_positions() -> Array[Vector2]:
 	## 进遭遇即开战，无预览落点列表；保留空实现供旧测试调用。
 	return []
@@ -195,7 +208,13 @@ func try_deploy(entry_id: int, cell: Vector2i) -> String:
 	# 玩家篇：取消部署时间；落地即可行动。
 	if unit.stats != null:
 		unit.stats.deploy_time = 0.0
+	var cmd_cost := entry.get_command_cost()
+	if not _command.try_spend(cmd_cost):
+		_show_hint("号令不足（需 %d）" % cmd_cost)
+		return "号令不足（需 %d）" % cmd_cost
 	if _card_flow.try_play(entry_id) == null:
+		# 牌流失败时退回已扣号令，避免白扣。
+		_command.refund(cmd_cost)
 		_show_hint("无法打出")
 		return "无法打出"
 	_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
@@ -224,6 +243,7 @@ func continue_after_result() -> void:
 	_result_overlay.visible = false
 	_teardown_sim()
 	_card_flow.clear()
+	_command.clear()
 	_rebuild_cards()
 	_set_phase(Phase.IDLE)
 	encounter_completed.emit(won)
@@ -297,6 +317,12 @@ func _validate_deploy(entry_id: int, cell: Vector2i) -> String:
 	if not _card_flow.is_ready(entry_id):
 		var left := _card_flow.get_cooldown_remaining(entry_id)
 		return "冷却中 %.1fs" % left
+	var entry := _find_hand_entry(entry_id)
+	if entry == null:
+		return "该牌不在手牌中"
+	var cmd_cost := entry.get_command_cost()
+	if not _command.can_afford(cmd_cost):
+		return "号令不足（需 %d）" % cmd_cost
 	if _is_cell_occupied(cell):
 		return "该格已有单位"
 	return ""
@@ -369,6 +395,11 @@ func _on_card_pressed(entry_id: int) -> void:
 		return
 	if not _card_flow.is_ready(entry_id):
 		_show_hint("冷却中 %.1fs" % _card_flow.get_cooldown_remaining(entry_id))
+		_set_selected(-1)
+		return
+	var entry := _find_hand_entry(entry_id)
+	if entry != null and not _command.can_afford(entry.get_command_cost()):
+		_show_hint("号令不足（需 %d）" % entry.get_command_cost())
 		_set_selected(-1)
 		return
 	_set_selected(-1 if _selected_entry_id == entry_id else entry_id)
@@ -453,11 +484,18 @@ func _refresh_cards() -> void:
 	var in_combat := _phase == Phase.COMBAT
 	for card in _cards:
 		var entry_id := card.get_entry_id()
-		var ready := in_combat and _card_flow.is_ready(entry_id)
+		var entry := _find_hand_entry(entry_id)
+		var cmd_cost := entry.get_command_cost() if entry != null else 1
+		var cooled := _card_flow.is_ready(entry_id)
+		var affordable := _command.can_afford(cmd_cost)
+		var ready := in_combat and cooled and affordable
 		card.available = ready
+		card.command_cost = cmd_cost
 		var cd := _card_flow.get_cooldown_remaining(entry_id)
 		if cd > 0.0:
 			card.status_text = "%.1fs" % cd
+		elif not affordable:
+			card.status_text = "号令%d" % cmd_cost
 		else:
 			card.status_text = ""
 		if not ready and card.selected:
@@ -474,7 +512,9 @@ func _refresh_hud() -> void:
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
-	_pop_label.text = "手牌 %d  库 %d  弃 %d" % [hand_n, draw_n, discard_n]
+	var cmd_cur := _command.get_current()
+	var cmd_max := int(_command.get_max())
+	_pop_label.text = "号令 %.1f/%d  手 %d 库 %d 弃 %d" % [cmd_cur, cmd_max, hand_n, draw_n, discard_n]
 	var elapsed := _sim.elapsed_seconds if _sim != null else 0.0
 	_timer_label.text = _format_time(elapsed)
 	if not _hint_text.is_empty():

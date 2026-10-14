@@ -5,7 +5,8 @@ extends RefCounted
 signal hand_changed
 
 const DEFAULT_HAND_WIDTH := 4
-const DEFAULT_ENTER_HAND_COOLDOWN := 1.0
+## 号令落地后入手冷却仅作极短防误触（见 Features/PLAYER.md）。
+const DEFAULT_ENTER_HAND_COOLDOWN := 0.15
 
 var hand_width: int = DEFAULT_HAND_WIDTH
 var enter_hand_cooldown: float = DEFAULT_ENTER_HAND_COOLDOWN

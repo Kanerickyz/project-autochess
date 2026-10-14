@@ -4,7 +4,7 @@
 > 功能规则见 [Features/UNITS.md](../Features/UNITS.md)、[Features/PLAYER.md](../Features/PLAYER.md)；本篇写**兵种名、角色定位、数值草案（含号令费用）与主技能挂载（测试用）**。  
 > **本版不写**：被动挂载；敌方 Boss 高威胁位（另册）。技能效果正文见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)，本篇只写挂载关系。  
 > **【资源已对齐】** 显示名与战斗数值已写入 `resources/units/realtime/`；资源文件 id 仍沿用旧英文名（如 `knight`=`盾兵`），新骑士为 `rider.tres`。  
-> **【号令费用 To-Be】** §3「号令」列为设计草案；资源字段 `command_cost` **尚未落地**（与商店 `cost` 独立）。  
+> **【号令费用】** §3「号令」为现行草案；资源字段 `command_cost` 已写入 `resources/units/realtime/*.tres`（与商店 `cost` 独立）。  
 > **【挂载 As-Is】** Content 挂载表见 §6；九人主技能已写入 `resources/units/realtime/*.tres` 的 `ability` 槽（民兵 / `skeleton` 为空）。
 
 ## 1. 范围与共识
@@ -40,7 +40,7 @@
 
 长度单位：格；时间单位：秒。字段含义见 Features/UNITS。  
 战斗属性列与 `resources/units/realtime/` **已对齐**（以资源为准回写本文时保持同步）。  
-**号令**列为设计草案（To-Be）；与**花费（商店金）**独立，允许分叉。
+**号令**列为可调草案（资源已写 `command_cost`）；与**花费（商店金）**独立，允许分叉。
 
 | 兵种名 | 生命 | 攻击 | 移速 | 攻间隔 | 前摇 | 攻击距离 | 索敌 | 碰撞半径 | 质量 | 弹速 | 溅射 | 花费 | 品阶 | **号令** |
 |--------|------|------|------|--------|------|----------|------|----------|------|------|------|------|------|--------|

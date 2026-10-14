@@ -27,5 +27,6 @@ id = "giant_knight"
 display_name = "铁甲统领"
 cost = 6
 tier = 3
+command_cost = 6
 stats = SubResource("UnitStats_giant_knight")
 team_default = 1

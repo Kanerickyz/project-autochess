@@ -27,4 +27,5 @@ id = "skeleton"
 display_name = "民兵"
 cost = 1
 tier = 1
+command_cost = 1
 stats = SubResource("UnitStats_skeleton")

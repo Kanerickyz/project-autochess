@@ -3,7 +3,7 @@
 > 功能规格 · 只谈规则与结构，不写具体数值 · 2026-10-14（实时战斗版）  
 > 相关文档：[游戏愿景](../GAME_VISION.md) · [玩家](./PLAYER.md) · [Content 角色库](../Content/UNITS_ROSTER.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [角色技能](./UNIT_ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
 > **本版不写**：兵种花名册与具体数字（见 Content）；伤害公式系数；每一级加多少；号令回复曲线与各兵费用点数（见玩家篇默认 + Content）。  
-> **【现状】** 实时属性字段在单位属性脚本（`scripts/data/unit_stats.gd` 的「Realtime」组）；资源在 `resources/units/realtime/`。号令费用字段 **To-Be**（资源尚未落地）。旧动物占位只留在旧网格工具环。
+> **【现状】** 实时属性字段在单位属性脚本（`scripts/data/unit_stats.gd` 的「Realtime」组）；资源在 `resources/units/realtime/`。号令费用字段 `command_cost` 已落地。旧动物占位只留在旧网格工具环。
 
 ## 1. 这是什么
 
@@ -71,7 +71,7 @@
 构筑与出牌
  ├ 花费 / 商店金（cost）— 买进牌库
  ├ 品阶（tier）— 商店解锁档
- └ 号令费用（command_cost，暂定字段名）— 战中打出消耗号令；与花费独立
+ └ 号令费用（command_cost）— 战中打出消耗号令；与花费独立
 ```
 
 ### 4.1 生命
@@ -130,7 +130,7 @@
 |------|------|----------|
 | **花费**（`cost`） | 商店买进构筑库消耗的**金币** | 与号令费用独立 |
 | **品阶**（`tier`） | 商店解锁档 | — |
-| **号令费用**（`command_cost`，暂定） | 战斗中打出该友方时消耗的**号令** | 与花费独立；具体点数见 Content |
+| **号令费用**（`command_cost`） | 战斗中打出该友方时消耗的**号令** | 与花费独立；具体点数见 Content |
 
 敌方角色与生成的代理角色**不读号令费用**（敌不耗号令；代理由技能生成、不耗号令）。  
 号令回复、上限与打出流程见 [玩家](./PLAYER.md)。

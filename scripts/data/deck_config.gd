@@ -12,8 +12,8 @@ extends Resource
 @export_range(1, 20, 1) var draw_count: int = 5
 ## 遭遇内手牌宽度（默认 4，见玩家篇）。
 @export_range(1, 20, 1) var hand_width: int = 4
-## 牌进入手牌时的冷却秒数（默认 1，见玩家篇）。
-@export_range(0.0, 10.0, 0.05) var enter_hand_cooldown: float = 1.0
+## 牌进入手牌时的冷却秒数（弱化防误触；默认见 EncounterCardFlow）。
+@export_range(0.0, 10.0, 0.05) var enter_hand_cooldown: float = 0.15
 @export var level_config: LevelConfig
 
 

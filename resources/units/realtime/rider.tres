@@ -28,5 +28,6 @@ id = "rider"
 display_name = "骑士"
 cost = 3
 tier = 2
+command_cost = 4
 stats = SubResource("UnitStats_rider")
 ability = ExtResource("3_ability")

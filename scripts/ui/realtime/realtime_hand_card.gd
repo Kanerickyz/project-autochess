@@ -17,6 +17,11 @@ var status_text: String = "":
 		if status_text != value:
 			status_text = value
 			queue_redraw()
+var command_cost: int = 1:
+	set(value):
+		if command_cost != value:
+			command_cost = value
+			queue_redraw()
 var selected: bool = false:
 	set(value):
 		if selected != value:
@@ -52,7 +57,11 @@ func _ready() -> void:
 
 func setup(p_entry: DeckEntry) -> void:
 	entry = p_entry
-	tooltip_text = p_entry.get_display_name() if p_entry != null else ""
+	command_cost = p_entry.get_command_cost() if p_entry != null else 1
+	tooltip_text = (
+		"%s · 号令 %d" % [p_entry.get_display_name(), command_cost]
+		if p_entry != null else ""
+	)
 	queue_redraw()
 
 
@@ -114,17 +123,17 @@ func _draw() -> void:
 		font, Vector2(rect.position.x, rect.position.y + 20), entry.get_display_name(),
 		HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 13, text_color,
 	)
+	draw_string(
+		font, Vector2(rect.position.x, rect.position.y + 38), "令 %d" % command_cost,
+		HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 12, text_color,
+	)
 	var stats := entry.unit.stats if entry.unit != null else null
 	if stats != null:
 		var hp := stats.max_hp + entry.bonus_max_hp
 		var atk := stats.attack + entry.bonus_attack
 		draw_string(
-			font, Vector2(rect.position.x, rect.position.y + 44), "血 %d" % hp,
-			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 11, text_color,
-		)
-		draw_string(
-			font, Vector2(rect.position.x, rect.position.y + 60), "攻 %d" % atk,
-			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 11, text_color,
+			font, Vector2(rect.position.x, rect.position.y + 54), "血%d 攻%d" % [hp, atk],
+			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 10, text_color,
 		)
 	if not status_text.is_empty():
 		var tag := Rect2(rect.position + Vector2(4, rect.size.y - 22), Vector2(rect.size.x - 8, 18))

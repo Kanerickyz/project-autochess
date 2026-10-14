@@ -28,5 +28,6 @@ id = "barbarian"
 display_name = "斧兵"
 cost = 2
 tier = 1
+command_cost = 3
 stats = SubResource("UnitStats_barbarian")
 ability = ExtResource("3_ability")

@@ -28,5 +28,6 @@ id = "goblin"
 display_name = "轻步兵"
 cost = 2
 tier = 1
+command_cost = 2
 stats = SubResource("UnitStats_goblin")
 ability = ExtResource("3_ability")

@@ -27,6 +27,12 @@ func get_display_name() -> String:
 	return "未知"
 
 
+func get_command_cost() -> int:
+	if unit == null:
+		return 1
+	return unit.get_command_cost()
+
+
 func get_buff_summary() -> String:
 	if attached_buffs.is_empty():
 		return ""

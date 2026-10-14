@@ -21,5 +21,5 @@ max_size = 20
 max_board_units = 5
 draw_count = 5
 hand_width = 4
-enter_hand_cooldown = 1.0
+enter_hand_cooldown = 0.15
 level_config = ExtResource("2_level")
