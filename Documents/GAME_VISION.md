@@ -43,7 +43,7 @@
    战场竖屏窄深、我下敌上、中线硬半场：双方在各自半场的**角色座位**上开战落点；开战后天可越线交战。友方准备只入我半场空座位（且不超过上场人数上限）；敌方按关卡占敌半场座位一次出齐。压力来自阵型对冲与越线。Boss：超高单体威胁。细则见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
 
 3. **中世纪幻想主题**【设定定稿】  
-   兵种/魔物剪影可读；特效服务技能因果。表现迁移待实现。
+   兵种/魔物剪影可读；特效服务技能因果（观战反馈见 [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md)）。表现迁移待实现。
 
 **深度公式**：联动技能 + 槽位站位 + 增益卡。  
 商店与牌库见 [Features/PLAYER.md](./Features/PLAYER.md) 与本篇经济约定；增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)；实现摘要见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
