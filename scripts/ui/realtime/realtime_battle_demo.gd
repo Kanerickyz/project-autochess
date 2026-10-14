@@ -1,7 +1,7 @@
 extends Control
 ## 实时战斗演示：独立构造牌库/经济/关卡，循环打 resources/encounters/realtime/ 下的遇敌。
 ## 命令行用户参数（`--` 之后）：
-##   --autoplay   自动投放前 3 张手牌、开战并在战斗中补人，结算后自动继续
+##   --autoplay   自动入槽开战（观战），结算后自动继续
 ##   --once       autoplay 下打完一场即退出（退出码 0）
 ##   --speed=X    战斗推进倍速（默认 1）
 ##   --seed=N     固定种子
@@ -61,8 +61,8 @@ func _process(delta: float) -> void:
 		RealtimeBattleController.Phase.PREPARE:
 			_auto_prepare()
 		RealtimeBattleController.Phase.COMBAT:
+			## 开战纯观战，不再战中补人。
 			_auto_timer = AUTO_DEPLOY_INTERVAL
-			_auto_reinforce()
 		RealtimeBattleController.Phase.RESULT:
 			if _autoplay_once:
 				get_tree().quit(0)
@@ -101,28 +101,14 @@ func _on_encounter_completed(_won: bool) -> void:
 
 
 func _auto_prepare() -> void:
-	var size := _battle.get_board_size()
-	var row := size.y - 6
-	var columns: Array[int] = [int(size.x * 0.25), int(size.x * 0.5), int(size.x * 0.75)]
+	var slots := _battle.get_slot_board()
 	var hand := _battle.get_hand()
-	for i in mini(3, hand.size()):
-		_battle.try_deploy(hand[i].entry_id, Vector2i(columns[i], row))
+	var n := mini(hand.size(), slots.slot_count)
+	for i in n:
+		_battle.try_assign_to_slot(hand[i].entry_id, slots.get_cell(i))
 	if not _battle.try_start_combat():
 		push_warning("RealtimeBattleDemo: autoplay could not start combat")
 	_auto_timer = AUTO_DEPLOY_INTERVAL
-
-
-func _auto_reinforce() -> void:
-	if _battle.get_player_unit_count() >= _battle.get_max_board_units():
-		return
-	var size := _battle.get_board_size()
-	var mid := BoardHalf.midline_row(size.y)
-	for entry in _battle.get_hand():
-		if _battle.is_entry_on_field(entry.entry_id):
-			continue
-		var cell := Vector2i(_auto_rng.randi_range(1, size.x - 2), _auto_rng.randi_range(mid + 3, size.y - 2))
-		if _battle.try_deploy(entry.entry_id, cell).is_empty():
-			return
 
 
 func _load_deck_config() -> DeckConfig:

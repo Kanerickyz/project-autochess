@@ -1,21 +1,25 @@
 class_name EncounterCardFlow
 extends RefCounted
-## 遭遇内抽牌堆 / 手牌 / 弃牌堆与入手冷却（见 Documents/Features/PLAYER.md）。
+## 遭遇内抽牌堆 / 手牌 / 弃牌堆；服务准备阶段抽选、刷新与开战回抽（见 Documents/Features/PLAYER.md）。
 
 signal hand_changed
 
-const DEFAULT_HAND_WIDTH := 4
-## 号令落地后入手冷却仅作极短防误触（见 Features/PLAYER.md）。
-const DEFAULT_ENTER_HAND_COOLDOWN := 0.15
+const DEFAULT_HAND_WIDTH := 5
+const DEFAULT_ENTER_HAND_COOLDOWN := 0.0
+const DEFAULT_MAX_REFRESH := 3
 
 var hand_width: int = DEFAULT_HAND_WIDTH
 var enter_hand_cooldown: float = DEFAULT_ENTER_HAND_COOLDOWN
+var max_refresh: int = DEFAULT_MAX_REFRESH
+## 本场已用刷新次数。
+var refresh_used: int = 0
 
 var _draw_pile: Array[DeckEntry] = []
 var _hand: Array[DeckEntry] = []
 var _discard: Array[DeckEntry] = []
-## entry_id -> remaining seconds
+## entry_id -> remaining seconds（遗留；准备入槽不依赖冷却）
 var _cooldown_remaining: Dictionary = {}
+var _rng: RandomNumberGenerator
 
 
 func clear() -> void:
@@ -23,6 +27,8 @@ func clear() -> void:
 	_hand.clear()
 	_discard.clear()
 	_cooldown_remaining.clear()
+	refresh_used = 0
+	_rng = null
 	hand_changed.emit()
 
 
@@ -30,22 +36,24 @@ func configure_from_deck_config(config: DeckConfig) -> void:
 	if config == null:
 		hand_width = DEFAULT_HAND_WIDTH
 		enter_hand_cooldown = DEFAULT_ENTER_HAND_COOLDOWN
+		max_refresh = DEFAULT_MAX_REFRESH
 		return
 	hand_width = config.get_hand_width()
 	enter_hand_cooldown = config.get_enter_hand_cooldown()
+	max_refresh = config.get_max_refresh()
 
 
-## 由构筑库生成本场抽牌堆（洗乱），弃牌清空，抽满手牌并挂入手冷却。
+## 由构筑库生成本场抽牌堆（洗乱），弃牌清空，抽满手牌。
 func begin_from_deck(deck: DeckState, rng: RandomNumberGenerator = null) -> void:
 	clear()
 	if deck == null:
 		return
-	var local_rng := rng
-	if local_rng == null:
-		local_rng = RandomNumberGenerator.new()
-		local_rng.randomize()
+	_rng = rng
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
+		_rng.randomize()
 	_draw_pile = deck.get_entries()
-	_shuffle(_draw_pile, local_rng)
+	_shuffle(_draw_pile, _rng)
 	_fill_hand()
 	hand_changed.emit()
 
@@ -78,6 +86,14 @@ func get_discard_count() -> int:
 	return _discard.size()
 
 
+func get_refresh_remaining() -> int:
+	return maxi(0, max_refresh - refresh_used)
+
+
+func can_refresh() -> bool:
+	return get_refresh_remaining() > 0 and not _hand.is_empty()
+
+
 func has_cards_remaining() -> bool:
 	return not _hand.is_empty() or not _draw_pile.is_empty() or not _discard.is_empty()
 
@@ -98,7 +114,70 @@ func get_cooldown_remaining(entry_id: int) -> float:
 	return maxf(0.0, float(_cooldown_remaining[entry_id]))
 
 
-## 打出成功：牌进弃牌、补抽；返回被打出的条目。失败返回 null。
+## 入槽：把手牌中的牌取出，不进弃牌、不自动补抽。失败返回 null。
+func try_take_from_hand(entry_id: int) -> DeckEntry:
+	var index := _find_hand_index(entry_id)
+	if index < 0:
+		return null
+	var entry := _hand[index]
+	_hand.remove_at(index)
+	_cooldown_remaining.erase(entry_id)
+	hand_changed.emit()
+	return entry
+
+
+## 收回：牌回手牌（手牌未满）。成功返回 true。
+func try_return_to_hand(entry: DeckEntry) -> bool:
+	if entry == null:
+		return false
+	if _hand.size() >= hand_width:
+		return false
+	if is_in_hand(entry.entry_id):
+		return false
+	_hand.append(entry)
+	_start_cooldown(entry.entry_id)
+	hand_changed.emit()
+	return true
+
+
+## 刷新：未入槽手牌全部回抽牌堆并洗匀，再抽满手牌宽度。已入槽不在手牌内故不受影响。
+func try_refresh(rng: RandomNumberGenerator = null) -> bool:
+	if not can_refresh():
+		return false
+	var local_rng := rng if rng != null else _rng
+	if local_rng == null:
+		local_rng = RandomNumberGenerator.new()
+		local_rng.randomize()
+	for entry in _hand:
+		if entry != null:
+			_cooldown_remaining.erase(entry.entry_id)
+			_draw_pile.append(entry)
+	_hand.clear()
+	_shuffle(_draw_pile, local_rng)
+	refresh_used += 1
+	_fill_hand()
+	hand_changed.emit()
+	return true
+
+
+## 开战：未入槽手牌全部回抽牌堆并洗匀，手牌清空。
+func return_hand_to_draw(rng: RandomNumberGenerator = null) -> void:
+	if _hand.is_empty():
+		return
+	var local_rng := rng if rng != null else _rng
+	if local_rng == null:
+		local_rng = RandomNumberGenerator.new()
+		local_rng.randomize()
+	for entry in _hand:
+		if entry != null:
+			_cooldown_remaining.erase(entry.entry_id)
+			_draw_pile.append(entry)
+	_hand.clear()
+	_shuffle(_draw_pile, local_rng)
+	hand_changed.emit()
+
+
+## 遗留：打出进弃牌并补抽。准备入槽路径请用 try_take_from_hand。
 func try_play(entry_id: int) -> DeckEntry:
 	if not is_ready(entry_id):
 		return null
@@ -140,8 +219,10 @@ func _reshuffle_discard_into_draw() -> void:
 		return
 	_draw_pile.append_array(_discard)
 	_discard.clear()
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
+	var rng := _rng
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
 	_shuffle(_draw_pile, rng)
 
 

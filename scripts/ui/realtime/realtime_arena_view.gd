@@ -33,6 +33,8 @@ var ghost_radius: float = 0.7
 var ghost_visual_half_width: float = 0.0
 var ghost_visual_half_height: float = 0.0
 var ghost_label: String = ""
+## 准备阶段角色槽（可读座位）；战斗中仍可画占位框
+var prepare_slots: PrepareSlotBoard
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -42,6 +44,10 @@ var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _fx: Array = []
 var _fx_clock: float = 0.0
+
+const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
+const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
+const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.9)
 
 
 func _ready() -> void:
@@ -177,6 +183,8 @@ func _draw() -> void:
 	var mid_y := rect.position.y + mid * px
 	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
 
+	_draw_prepare_slots(px)
+
 	for preview in enemy_previews:
 		var body_r := float(preview["radius"])
 		var vwx := float(preview.get("visual_half_width", 0.0))
@@ -191,6 +199,27 @@ func _draw() -> void:
 	_draw_fx(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
+
+
+func _draw_prepare_slots(px: float) -> void:
+	if prepare_slots == null or prepare_slots.cells.is_empty():
+		return
+	var rect := get_board_rect()
+	for i in prepare_slots.cells.size():
+		var cell: Vector2i = prepare_slots.cells[i]
+		var entry: DeckEntry = prepare_slots.get_entry(i)
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
+		draw_rect(cell_rect, SLOT_OCCUPIED if entry != null else SLOT_EMPTY)
+		draw_rect(cell_rect, SLOT_BORDER, false, 2.0)
+		if entry != null and (sim == null or not sim.has_started()):
+			var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+			var stats := entry.unit.stats if entry.unit != null else null
+			var radius := stats.body_radius if stats != null else 0.7
+			var vwx := stats.get_visual_half_width() if stats != null else 0.0
+			var vhy := stats.get_visual_half_height() if stats != null else 0.0
+			_draw_body(
+				center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.75, entry.get_display_name(), px, true,
+			)
 
 
 func _draw_units(px: float) -> void:

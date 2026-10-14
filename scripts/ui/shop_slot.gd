@@ -57,10 +57,7 @@ func set_offer(offer: ShopOffer, gold: int) -> void:
 			_text_stack.visible = true
 		return
 
-	if offer.type == ShopOffer.OfferType.CHARACTER and offer.unit != null:
-		_cost_label.text = "%d 金 · 令 %d" % [offer.get_cost(), offer.unit.get_command_cost()]
-	else:
-		_cost_label.text = "%d 金" % offer.get_cost()
+	_cost_label.text = "%d 金" % offer.get_cost()
 	_buy_button.disabled = gold < offer.get_cost()
 
 	if offer.type == ShopOffer.OfferType.CHARACTER and offer.unit != null:

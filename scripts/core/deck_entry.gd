@@ -27,6 +27,7 @@ func get_display_name() -> String:
 	return "未知"
 
 
+## 【已停用】号令费用；保留兼容旧调用。
 func get_command_cost() -> int:
 	if unit == null:
 		return 1
