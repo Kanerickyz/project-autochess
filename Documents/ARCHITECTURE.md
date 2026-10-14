@@ -6,7 +6,7 @@
 
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
-- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏 18×32，格子只用于投放吸附与半场；开战后 `RealtimeCombatSim` 以固定步长（1/30 秒）在连续坐标上推进移动、攻击、投射物、溅射与推挤（见 §3.4）。角色为 `resources/units/realtime/`（Content 十人基础兵种，无主技能；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
+- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏；**【As-Is】** 18×32 自由投放；**【To-Be】** 参考 9×16 + 双方角色座位（见 [COMBATLEVEL](./Features/COMBATLEVEL.md)）。格子只用于投放吸附与半场；开战后 `RealtimeCombatSim` 以固定步长（1/30 秒）在连续坐标上推进移动、攻击、投射物、溅射与推挤（见 §3.4）。角色为 `resources/units/realtime/`（Content 十人基础兵种，无主技能；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
 - **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关与沙盒，不再是 Run 主路径
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
@@ -14,8 +14,8 @@
 - **M3b Deck/Shop**：`DeckState`、`ShopOffer`、双卡种 `ShopService`（角色 + 增益）、手牌布阵、满库替换与增益附加 UI
 - **手牌 As-Is**：实时主路径为战中抽打弃 + 号令出牌（待按玩家篇回摆）
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
-- **M2 交互**：进入波次 →（To-Be 准备入槽）→ 开始战斗 → 刷怪（敌半场）→ 自动战斗观战 → 波次结算（发金）→ 商店构筑
-- 尚无：商店锁定、牌库内手动合并；准备角色槽几何与刷新 UI
+- **M2 交互**：进入波次 →（To-Be 准备入座）→ 开始战斗 → 敌方按座位出齐 → 自动战斗观战 → 波次结算（发金）→ 商店构筑
+- 尚无：商店锁定、牌库内手动合并；准备角色座位几何与刷新 UI
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
 - **未创建** `resources/traits/`（v1 不含羁绊）
@@ -37,7 +37,7 @@ flowchart TB
     subgraph Gameplay
         SM[Match 状态机]
         LEVEL[关卡 / 波次]
-        SPAWN[刷怪·As-Is全盘/To-Be敌半场]
+        SPAWN[出兵·As-Is半场候选/To-Be敌方座位]
         SHOP[商店 / 经济]
         BOARD[棋盘 / 牌库]
         COMBAT[战斗模拟]
@@ -91,7 +91,7 @@ flowchart TB
 
 **微观 Match**（`MatchStateMachine`）：单次遭遇内 `SHOP | PREPARE → COMBAT → RESOLVE`；`current_encounter: EncounterData` 替代线性 `LevelData.waves`。
 
-胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽选手牌 → 入角色槽（可刷新）→ 开战纯观战；无人口、无号令。**As-Is**：实时主路径仍为无准备、战中号令出牌。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) 与 [Features/PLAYER.md](./Features/PLAYER.md)。
+胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽选手牌 → 入角色座位（可刷新；受上场人数上限约束）→ 开战纯观战；无人口、无号令。**As-Is**：实时主路径仍为无准备、战中号令出牌。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) 与 [Features/PLAYER.md](./Features/PLAYER.md)。
 
 ```mermaid
 flowchart TD
@@ -122,7 +122,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 步骤 | 状态 | 要点 |
 |------|------|------|
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
-| 2 准备 | PREPARE | To-Be：抽选入角色槽（可刷新）；As-Is 实时路径常跳过 |
+| 2 准备 | PREPARE | To-Be：抽选入角色座位（可刷新）；As-Is 实时路径常跳过 |
 | 3 战斗 | COMBAT | 击杀掉金；自动战斗观战（To-Be 不能出牌）；`CombatEventBus` 见 §3.4 |
 | 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；清波制胜负；**不得**直接开下一场战斗 |
 | 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()`（线性工具环） |
@@ -160,9 +160,9 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 ### 3.3 Board & Deck
 
-- **棋盘 / 槽位**：**To-Be（战斗关卡）**：竖屏窄深、我下敌上、硬半场；友方准备入**角色槽**，敌一次刷出仅敌半场；开战后天可越半场。**As-Is**：18×32 半场自由投放 + 战中出牌。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
+- **棋盘 / 座位**：**To-Be（战斗关卡）**：竖屏窄深、我下敌上、硬半场、参考 **9×16**；双方各 **2×5** 角色座位；友方入座受上场人数上限约束；敌方按关卡占座一次出齐；开战后天可越半场。**As-Is**：18×32 半场自由投放 + 战中出牌。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。
 - **牌库（Deck）**：Run 内 `DeckEntry` 列表；角色卡购买增删；增益卡附加到条目（`attached_buffs`）
-- **手牌 / 抽牌**：**To-Be** 准备阶段从构筑库洗入抽牌堆并抽候选手牌（手牌宽度 &gt; 槽位数）；可刷新未入槽牌回抽牌堆（≤3）。见 [Features/PLAYER.md](./Features/PLAYER.md)。
+- **手牌 / 抽牌**：**To-Be** 准备阶段从构筑库洗入抽牌堆并抽候选手牌（手牌宽度默认 4；上场人数上限默认 4；座位网格默认 2×5）；可刷新未入座牌回抽牌堆（≤3）。见 [Features/PLAYER.md](./Features/PLAYER.md)。
 - **布阵规则**：**To-Be** 仅准备入槽，开战锁阵纯观战；**As-Is** 战中号令出牌（待拆除）
 
 **Legacy（已移除）**：原备战席点击上场流程。
@@ -170,7 +170,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 **SpawnSystem（刷怪）**：
 
 - **As-Is**：战斗开始时从全盘空闲格采样，按当前 `WaveData` 生成怪物；依赖 `BoardGrid.get_empty_cells()`
-- **To-Be**：采样集合改为**敌半场**空闲格（中线划分），不再默认全盘空闲格
+- **To-Be**：敌方按关卡已配置的**敌方角色座位**出兵；不再以敌半场自由落点 / 全盘空闲格为主路径
 - 实际数量 = `min(配置数量, 候选格数)`；不覆盖已占格；采样 RNG 可 seeded
 
 实现提示：

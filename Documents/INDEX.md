@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（构筑 + 准备入槽观战 + 清波制）· Godot 4.6 · 最后更新：2026-10-14
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备牌流（构筑库 / 手牌 / 弃牌堆、角色槽、刷新）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（To-Be；As-Is 仍为战中号令出牌）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备牌流（构筑库 / 手牌 / 弃牌堆、角色座位、上场人数上限、刷新）** 见 [Features/PLAYER.md](./Features/PLAYER.md)（To-Be；As-Is 仍为战中号令出牌）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 
@@ -11,7 +11,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**、单局时长、流派联动、棋盘与敌压 |
-| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（构筑库 / 手牌 / 弃牌堆、角色槽、准备刷新、开战观战） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（构筑库 / 手牌 / 弃牌堆、角色座位、上场人数上限、准备刷新、开战观战） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
@@ -20,7 +20,7 @@
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备入槽 → 自动战斗观战 → 结算） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、角色槽、开战实时越线） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、9×16 To-Be、开战实时越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
@@ -87,7 +87,7 @@ Project Autochess/
 | `resources/economy/` | `EconomyConfig` | **M3 已实现** |
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
 | `resources/levels/dev_6x6.tres` | **8×8** 线性开发关，**15 波**（`wave_01`–`wave_15`）；`main.tscn` 直接 F5 | **M1 已实现** |
-| `resources/levels/board_act1.tres` | Act1 实时战场 18×32 + 敌池（无波次表） | **Run 已实现** |
+| `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 9×16 + 座位见 COMBATLEVEL） | **Run 已实现** |
 | `resources/levels/board_legacy_4x8.tres` | 沙盒用旧 4×8 格子棋盘 | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
@@ -144,7 +144,7 @@ Project Autochess/
 | Economy & Shop | 角色卡/增益卡、Tier、牌库、击杀掉金、波次结算 | **GAME_VISION** · **BUFF_SYSTEM** · **ARCHITECTURE** · **M3b** |
 | Board & Deck | 可变棋盘 + 本波 cycle 手牌（抽牌/战中补人 To-Be） | **GAME_VISION** · **M3b** |
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
-| Spawn | `SpawnSystem` 刷怪（As-Is 全盘空闲格；To-Be 敌半场） | **M2a** · ARCHITECTURE §3.3 · [COMBATLEVEL](./Features/COMBATLEVEL.md) |
+| Spawn | `SpawnSystem` 出兵（As-Is 半场候选；To-Be 敌方座位） | **M2a** · ARCHITECTURE §3.3 · [COMBATLEVEL](./Features/COMBATLEVEL.md) |
 | Effect / Synergy | `EffectResolver` + `EffectSpec` + 3 样本技能 | ARCHITECTURE §3.7 · **M3.5** |
 | Units & Abilities | 单位数据、星级、`AbilityData` | **Features/UNITS** · **Features/UNIT_ABILITIES** · ARCHITECTURE §3.5 |
 | UI Layer | 与逻辑解耦的界面 | ARCHITECTURE §3.6 |
