@@ -443,6 +443,8 @@ func _build_enemy_previews(spawns: Array) -> Array:
 			"visual_half_height": stats.get_visual_half_height() if stats != null else 0.0,
 			"label": label,
 			"seat_index": int(spawn.get("seat_index", -1)),
+			"attack": unit.get_effective_attack() if unit != null else 0,
+			"hp": unit.current_hp if unit != null else 0,
 		})
 	return previews
 

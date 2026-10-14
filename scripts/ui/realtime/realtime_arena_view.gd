@@ -1,6 +1,7 @@
 class_name RealtimeArenaView
 extends Control
-## 实时战场占位绘制：棋盘格、半场色调、中线、投放高亮/虚影、单位剪影、血条、部署弧、投射物与溅射圈。
+## 实时战场占位绘制：棋盘格、半场色调、中线、投放高亮/虚影、单位剪影、
+## 底部攻/血色块标（参考小动物自走棋）、血条、部署弧、投射物与溅射圈。
 ## 只读 RealtimeCombatSim 状态，不参与逻辑。剪影可大于碰撞圆（脚小身大）。
 
 signal board_pressed(tile_pos: Vector2)
@@ -28,10 +29,16 @@ const FEEDBACK_MIN_SECONDS := 0.35
 const FEEDBACK_MERGE_WINDOW := 0.28
 const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
+## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
+const STAT_ATK_FILL := Color(0.18, 0.18, 0.20, 0.95)
+const STAT_HP_FILL := Color(0.86, 0.18, 0.20, 0.95)
+const STAT_BADGE_BORDER := Color(1.0, 1.0, 1.0, 0.95)
+const STAT_BADGE_TEXT := Color(1.0, 1.0, 1.0, 1.0)
+const STAT_HEX_SEGMENTS := 6
 
 var board_size: Vector2i = Vector2i(9, 16)
 var sim: RealtimeCombatSim
-## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label}
+## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label, attack?, hp?}
 var enemy_previews: Array = []
 ## 已选中手牌时为 true：高亮我方半场并显示悬停虚影
 var placement_active: bool = false
@@ -319,6 +326,14 @@ func _draw() -> void:
 		_draw_body(
 			preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.35, String(preview["label"]), px, false,
 		)
+		_draw_stat_badges(
+			tile_to_local(preview["position"]),
+			maxf(vwx, vhy) * px,
+			int(preview.get("attack", 0)),
+			int(preview.get("hp", 0)),
+			0.9,
+			px,
+		)
 
 	if sim != null:
 		_draw_units(px)
@@ -371,6 +386,14 @@ func _draw_prepare_slots(px: float) -> void:
 			_draw_body(
 				center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.75, entry.get_display_name(), px, true,
 			)
+			var atk := 0
+			var hp := 0
+			if stats != null:
+				atk = maxi(1, stats.attack + entry.bonus_attack)
+				hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+			_draw_stat_badges(
+				tile_to_local(center_tile), maxf(vwx, vhy) * px, atk, hp, 0.95, px,
+			)
 
 
 func _draw_units(px: float) -> void:
@@ -395,6 +418,9 @@ func _draw_units(px: float) -> void:
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
 		_draw_hp_bar(center, silhouette_r_px, rt.get_hp_ratio(), rt.is_player())
+		_draw_stat_badges(
+			center, silhouette_r_px, rt.get_effective_attack(), rt.get_current_hp(), alpha, px,
+		)
 
 
 func _draw_body(
@@ -457,6 +483,64 @@ func _draw_hp_bar(center: Vector2, r_px: float, ratio: float, is_player: bool) -
 	draw_rect(bar, Color(0, 0, 0, 0.6))
 	var fill_color := Color(0.35, 0.8, 1.0) if is_player else Color(1.0, 0.4, 0.35)
 	draw_rect(Rect2(bar.position, Vector2(width * ratio, bar.size.y)), fill_color)
+
+
+## 剪影下方左右：攻击（深色六边形）/ 生命（红色六边形）；白描边 + 白字保证可读。
+func _draw_stat_badges(
+	center: Vector2,
+	silhouette_r_px: float,
+	attack: int,
+	hp: int,
+	alpha: float,
+	px: float,
+) -> void:
+	var badge_r := clampf(maxf(silhouette_r_px * 0.42, px * 0.28), 9.0, 18.0)
+	var gap := badge_r * 0.15
+	var pair_half := badge_r + gap * 0.5
+	var baseline_y := center.y + silhouette_r_px + badge_r * 0.55
+	var atk_center := Vector2(center.x - pair_half, baseline_y)
+	var hp_center := Vector2(center.x + pair_half, baseline_y)
+	_draw_stat_hex(atk_center, badge_r, STAT_ATK_FILL, attack, alpha)
+	_draw_stat_hex(hp_center, badge_r, STAT_HP_FILL, hp, alpha)
+
+
+func _draw_stat_hex(center: Vector2, radius: float, fill: Color, value: int, alpha: float) -> void:
+	var fill_c := Color(fill, fill.a * alpha)
+	var border_c := Color(STAT_BADGE_BORDER, STAT_BADGE_BORDER.a * alpha)
+	var text_c := Color(STAT_BADGE_TEXT, STAT_BADGE_TEXT.a * alpha)
+	var points := _hexagon_points(center, radius)
+	draw_colored_polygon(points, fill_c)
+	## 外圈白边：略大一圈描边多边形。
+	var rim := _hexagon_points(center, radius + 1.6)
+	draw_polyline(rim, border_c, 2.4, true)
+	draw_polyline(points, border_c, 1.5, true)
+	var font := get_theme_default_font()
+	var text := str(maxi(0, value))
+	var font_size := clampi(int(radius * 1.15), 9, 16)
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var baseline := center + Vector2(
+		-text_size.x * 0.5,
+		font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25,
+	)
+	## 深色描边字，避免浅色草地上糊掉。
+	var shadow := Color(0, 0, 0, 0.65 * alpha)
+	for ox in [-1, 0, 1]:
+		for oy in [-1, 0, 1]:
+			if ox == 0 and oy == 0:
+				continue
+			draw_string(
+				font, baseline + Vector2(ox, oy), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow,
+			)
+	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_c)
+
+
+func _hexagon_points(center: Vector2, radius: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	## 平顶六边形（更接近参考色块）。
+	for i in STAT_HEX_SEGMENTS:
+		var a := TAU * float(i) / float(STAT_HEX_SEGMENTS)
+		points.append(center + Vector2(cos(a) * radius, sin(a) * radius))
+	return points
 
 
 func _draw_projectiles(px: float) -> void:

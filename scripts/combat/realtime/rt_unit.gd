@@ -85,6 +85,14 @@ func get_hp_ratio() -> float:
 	return clampf(float(unit.current_hp) / float(unit.get_effective_max_hp()), 0.0, 1.0)
 
 
+func get_current_hp() -> int:
+	return maxi(0, unit.current_hp)
+
+
+func get_effective_attack() -> int:
+	return unit.get_effective_attack()
+
+
 func get_deploy_ratio() -> float:
 	var total := get_stats().deploy_time
 	if total <= 0.0:
