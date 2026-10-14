@@ -32,7 +32,7 @@
 - 项目规则以根目录 [AGENTS.md](AGENTS.md) 为准。`.cursor/rules/` 只做入口，不复制长表。
 - 跨模块功能按 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md) 派发；小型串行修改由主代理完成。
 - Customize 里看不见的角色文件不算已加载；手读 `.cursor/agents/<role>.md` 再传合同。
-- 可重复步骤用 `.cursor/skills/`：`vertical-slice`、`verify-godot`、`gui-acceptance`。
+- 可重复步骤用 `.cursor/skills/`：`design-brainstorm`、`implement`、`vertical-slice`、`verify-godot`、`gui-acceptance`。
 - 开需求先确认验收方式（轻量 / 完全），见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)。
 - 不把 Plan 草稿、提案文档或未跑过的测试写成已完成。
 

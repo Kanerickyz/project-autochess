@@ -119,7 +119,8 @@ L5 合同额外写明：禁止新功能；只列缺陷与复现。
 
 职责表只在本文维护。角色文件是短合同，不复制本表。
 
-- Cursor：`.cursor/agents/*.md`，按 [Cursor Subagents](https://cursor.com/docs/subagents.md) 用 Task 或 `/role` 委派。可重复步骤用 `.cursor/skills/`。
+- Cursor：`.cursor/agents/*.md`，按 [Cursor Subagents](https://cursor.com/docs/subagents.md) 用 Task 或 `/role` 委派。可重复步骤用 `.cursor/skills/`：`design-brainstorm`（设计未定）、`implement`（设计已定 → 代码/资源/编辑器）、`vertical-slice`（完整 L 级纵切片）、`verify-godot`、`gui-acceptance`。
 - 主规则为根目录 `AGENTS.md`。Customize 或客户端里看不见就不算已加载；改为手读对应文件再传合同。文件存在不等于角色已运行。不修改全局权限或模型。
 
-示例：“实现新的死亡召唤技能，目标 L3。按项目流程让 game-designer 定义验收，gameplay-engineer 实现，qa-tester 验证等级，reviewer 审查。”
+示例：“按 Features/UNIT_ABILITIES 与上文共识实现死亡召唤，目标 L3，完全验收 → 用 `implement` 拉 gameplay-engineer（必要时 balance-designer），再 QA / reviewer。”
+示例：“从零开新 Feature 纵切片，目标 L3 → 用 `vertical-slice` 让 game-designer 定义验收，再实现与验证。”
