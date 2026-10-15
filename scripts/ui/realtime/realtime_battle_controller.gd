@@ -493,6 +493,9 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		seconds = session.config.panel_enter_seconds
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
+	_show_recruit_hud()
+	## 等一帧让 Dock 最小高度生效，Arena 与准备同尺后再算 slide / 画单位。
+	await get_tree().process_frame
 	_bind_recruit_session()
 	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
 	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
@@ -502,7 +505,6 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		if not already_out:
 			_arena.set_half_slide_offscreen(travel)
 	_sync_recruit_arena()
-	_show_recruit_hud()
 	_refresh_recruit_hud()
 	if _arena != null:
 		_arena.queue_redraw()
@@ -785,15 +787,33 @@ func _ensure_recruit_hud() -> void:
 	row.add_child(_recruit_finish_btn)
 
 
+## 准备阶段底栏等效高度：手牌行 + 刷新 + 开战 + DockBox 间距 + panel 上下边距。
+## 开局招募时开战钮尚未显示，不能用当前 _dock.size（会偏矮 → Arena 变高）。
+func _prepare_equivalent_dock_height() -> float:
+	var hand_h := 88.0
+	if _hand_row != null:
+		hand_h = maxf(_hand_row.custom_minimum_size.y, hand_h)
+	var refresh_h := 38.0
+	if _refresh_button != null:
+		refresh_h = maxf(_refresh_button.custom_minimum_size.y, 36.0)
+		## 准备阶段按钮实际高度常略大于 custom_minimum（见 measure：38）。
+		refresh_h = maxf(refresh_h, 38.0)
+	var start_h := 40.0
+	if _start_button != null:
+		start_h = maxf(_start_button.custom_minimum_size.y, start_h)
+	var sep := 6.0
+	var margin_tb := 14.0 ## StyleBoxFlat_dock content_margin top 6 + bottom 8
+	return margin_tb + hand_h + sep + refresh_h + sep + start_h
+
+
 func _hide_combat_chrome_for_recruit() -> void:
-	## 只藏手牌/开战/刷新；Dock 保持可见占位，避免 VBox 把空间让给 Arena 导致格子变大。
+	## 只藏手牌/开战/刷新；Dock 锁到准备等效高度，避免开局/胜后招募 Arena 变高变宽。
 	if _dock != null:
 		_dock.visible = true
-		## 先锁当前底栏高度，再藏子控件，保证招募与准备/战斗同尺。
-		var keep_h := _dock.size.y
-		if keep_h < 1.0:
-			keep_h = 120.0
-		_dock.custom_minimum_size.y = maxf(keep_h, 120.0)
+		var keep_h := _prepare_equivalent_dock_height()
+		if _dock.size.y > keep_h:
+			keep_h = _dock.size.y
+		_dock.custom_minimum_size.y = keep_h
 	if _hand_row != null:
 		_hand_row.visible = false
 	if _start_button != null:
@@ -905,9 +925,8 @@ func _build_recruit_candidate_previews() -> Array:
 
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
-	## 与 PrepareSlotBoard 半场垂直居中一致（单行候选人相对我半场竖直居中）。
-	var block_h := 1
-	var row_ys := PrepareSlotBoard._centered_row_ys(_board_size.y, 1, 1, block_h, false)
+	## 单行候选人：相对我半场垂直居中（与 PrepareSlotBoard._centered_row_ys 同一公式）。
+	var row_ys := PrepareSlotBoard._centered_row_ys(_board_size.y, 1, 1, 1, false)
 	var y := row_ys[0] if not row_ys.is_empty() else BoardHalf.midline_row(_board_size.y)
 	var gap := 2
 	var block_w := n + (n - 1) * gap

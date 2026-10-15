@@ -101,7 +101,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
 	_expect(dock != null and dock.visible, "dock visible during opening recruit")
-	_expect(dock.custom_minimum_size.y >= 120.0, "dock min height reserved")
+	_expect(dock.custom_minimum_size.y >= 190.0, "dock min height == prepare-equivalent")
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
