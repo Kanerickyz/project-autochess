@@ -55,7 +55,7 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	stats.max_hp = 100
 	stats.attack = 10
 	stats.crit_rate_percent = 0
-	stats.move_speed = 1.0
+	stats.steps_per_turn = 1
 	stats.attack_interval = 1.0
 	stats.attack_windup = 0.3
 	stats.attack_reach = 1.0
@@ -78,7 +78,7 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 static func make_dummy(team: UnitInstance.Team, hp: int = 100000, overrides: Dictionary = {}) -> UnitInstance:
 	var params := {
 		"max_hp": hp,
-		"move_speed": 0.0,
+		"steps_per_turn": 0,
 		"attack_windup": 5.0,
 		"attack_interval": 10.0,
 		"attack": 1,
@@ -124,13 +124,13 @@ static func _test_actors_act_sequentially() -> bool:
 	sim.configure(ARENA, 2)
 	var a := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 2.0, "attack_windup": 5.0, "sight_range": 30.0, "id": "ally",
+			"steps_per_turn": 2, "attack_windup": 5.0, "sight_range": 30.0, "id": "ally",
 		}),
 		Vector2(9.5, 26.5),
 	)
 	var b := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
-			"move_speed": 2.0, "attack_windup": 5.0, "sight_range": 30.0, "id": "foe",
+			"steps_per_turn": 2, "attack_windup": 5.0, "sight_range": 30.0, "id": "foe",
 		}),
 		Vector2(9.5, 6.5),
 	)
@@ -173,9 +173,9 @@ static func _test_melee_approach_hit_once_per_turn() -> bool:
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 1)
-	## 格距 8；move_speed 2 → 一动最多 2 格
+	## 格距 8；steps_per_turn 2 → 一动最多 2 格
 	var attacker := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {"move_speed": 2.0, "attack_reach": 1.0, "attack_windup": 0.0}),
+		make_unit(UnitInstance.Team.PLAYER, {"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0}),
 		Vector2(9.5, 28.5),
 	)
 	var dummy := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 20.5))
@@ -222,7 +222,7 @@ static func _test_eight_dir_diagonal_step() -> bool:
 	sim.configure(ARENA, 12)
 	var mover := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 30.0,
+			"steps_per_turn": 30,
 			"attack_reach": 1.0,
 			"attack_windup": 5.0,
 			"sight_range": 30.0,
@@ -231,15 +231,14 @@ static func _test_eight_dir_diagonal_step() -> bool:
 	)
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(8.5, 22.5))
 	var start := mover.cell
-	## 开步一拍 + 高速落稳一拍
-	sim.advance_fixed_step()
-	sim.advance_fixed_step()
+	## 开步后跑完一格表现时长（CELL_STEP_SECONDS≈0.2s）
+	_run_until(sim, RtUnit.CELL_STEP_SECONDS + RealtimeCombatSim.FIXED_DT)
 	var delta: Vector2i = mover.cell - start
 	if absi(delta.x) != 1 or absi(delta.y) != 1:
 		push_error("eight_dir: expected one diagonal step, got delta=%s cell=%s" % [delta, mover.cell])
 		return false
 	if mover.is_stepping():
-		push_error("eight_dir: expected settled after high-speed step")
+		push_error("eight_dir: expected settled after one cell step")
 		return false
 	return true
 
@@ -249,10 +248,10 @@ static func _test_no_attack_until_cell_settled() -> bool:
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 21)
-	## 格距 2；迈一步到邻格后才进 reach=1。移速 1 → 一步耗时 1s
+	## 格距 2；迈一步到邻格后才进 reach=1。一格表现 ≈ CELL_STEP_SECONDS
 	var attacker := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 1.0,
+			"steps_per_turn": 1,
 			"attack_reach": 1.0,
 			"attack_windup": 0.0,
 			"attack_interval": 10.0,
@@ -269,9 +268,9 @@ static func _test_no_attack_until_cell_settled() -> bool:
 				hit_times.append(sim.elapsed_seconds)
 	)
 	var start_cell := Vector2i(9, 23)
-	_run_until(sim, 0.4)
+	_run_until(sim, RtUnit.CELL_STEP_SECONDS * 0.5)
 	if not attacker.is_stepping():
-		push_error("settle: expected mid-step at t=0.4 (cell=%s t=%.3f)" % [attacker.cell, attacker.step_t])
+		push_error("settle: expected mid-step at half cell duration (cell=%s t=%.3f)" % [attacker.cell, attacker.step_t])
 		bus.free()
 		return false
 	if attacker.cell != start_cell:
@@ -294,8 +293,8 @@ static func _test_no_attack_until_cell_settled() -> bool:
 		push_error("settle: attacked before cell settled (hits=%d)" % hit_times.size())
 		bus.free()
 		return false
-	## 落稳后再判攻（风up=0）
-	_run_until(sim, 1.2)
+	## 落稳后再判攻（windup=0）；一格约 CELL_STEP_SECONDS
+	_run_until(sim, RtUnit.CELL_STEP_SECONDS + 0.15)
 	bus.free()
 	if attacker.cell != Vector2i(9, 22):
 		push_error("settle: expected standing cell (9,22) after land, got %s" % attacker.cell)
@@ -303,8 +302,9 @@ static func _test_no_attack_until_cell_settled() -> bool:
 	if hit_times.is_empty():
 		push_error("settle: expected attack after settle")
 		return false
-	if hit_times[0] < 1.0 or hit_times[0] > 1.25:
-		push_error("settle: first hit at %.3f, expected just after land" % hit_times[0])
+	var land_t := RtUnit.CELL_STEP_SECONDS
+	if hit_times[0] < land_t - 0.02 or hit_times[0] > land_t + 0.12:
+		push_error("settle: first hit at %.3f, expected just after land (~%.2f)" % [hit_times[0], land_t])
 		return false
 	return true
 
@@ -315,7 +315,7 @@ static func _test_occupancy_blocks_or_detours() -> bool:
 	sim.configure(ARENA, 13)
 	var mover := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 4.0,
+			"steps_per_turn": 4,
 			"attack_reach": 1.0,
 			"attack_windup": 5.0,
 			"sight_range": 30.0,
@@ -348,7 +348,7 @@ static func _test_chebyshev_attack_reach() -> bool:
 	## 对角邻格：欧氏 √2，切比雪夫 1 → 应能出手
 	var a := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 0.0, "attack_reach": 1.0, "attack_windup": 0.0, "attack_interval": 1.0,
+			"steps_per_turn": 0, "attack_reach": 1.0, "attack_windup": 0.0, "attack_interval": 1.0,
 		}),
 		Vector2(9.5, 20.5),
 	)
@@ -365,7 +365,7 @@ static func _test_chebyshev_attack_reach() -> bool:
 	sim2.configure(ARENA, 15)
 	var b := sim2.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 0.0, "attack_reach": 1.0, "attack_windup": 0.0, "attack_interval": 1.0,
+			"steps_per_turn": 0, "attack_reach": 1.0, "attack_windup": 0.0, "attack_interval": 1.0,
 		}),
 		Vector2(9.5, 20.5),
 	)
@@ -387,7 +387,7 @@ static func _test_ally_blocker_melee_reach() -> bool:
 	var attack_reach := 1.0
 	var attacker := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"move_speed": 2.5,
+			"steps_per_turn": 2,
 			"attack_reach": attack_reach,
 			"attack_windup": 5.0,
 			"attack_interval": 10.0,
@@ -425,7 +425,7 @@ static func _test_ranged_projectile_delay() -> bool:
 	sim.configure(ARENA, 2)
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 5.0, "attack_windup": 0.0, "projectile_speed": 4.0, "move_speed": 0.0,
+			"attack_reach": 5.0, "attack_windup": 0.0, "projectile_speed": 4.0, "steps_per_turn": 0,
 		}),
 		Vector2(9.5, 26.5),
 	)
@@ -459,7 +459,7 @@ static func _test_deploy_time_freezes() -> bool:
 	var start_cell := Vector2i(9, 28)
 	var preplaced := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"deploy_time": 1.0, "move_speed": 0.0, "attack_reach": 0.0, "max_hp": 9999,
+			"deploy_time": 1.0, "steps_per_turn": 0, "attack_reach": 0.0, "max_hp": 9999,
 		}),
 		Vector2(0.5, 31.5),
 	)
@@ -467,7 +467,7 @@ static func _test_deploy_time_freezes() -> bool:
 	var shooter := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"attack_reach": 20.0, "sight_range": 40.0, "attack_windup": 0.0,
-			"projectile_speed": 0.0, "move_speed": 0.0, "attack": 5,
+			"projectile_speed": 0.0, "steps_per_turn": 0, "attack": 5,
 		}),
 		Vector2(9.5, 10.5),
 	)
@@ -477,7 +477,7 @@ static func _test_deploy_time_freezes() -> bool:
 		return false
 	var deployed_at := sim.elapsed_seconds
 	var deploying := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {"deploy_time": 1.0, "move_speed": 2.0}),
+		make_unit(UnitInstance.Team.PLAYER, {"deploy_time": 1.0, "steps_per_turn": 2}),
 		RtUnit.cell_center(start_cell),
 	)
 	_run_until(sim, deployed_at + 0.9)
@@ -533,7 +533,7 @@ static func _test_splash_hits_cluster() -> bool:
 	sim.configure(ARENA, 4)
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 3.0, "attack_windup": 0.0, "move_speed": 0.0, "splash_radius": 1.0,
+			"attack_reach": 3.0, "attack_windup": 0.0, "steps_per_turn": 0, "splash_radius": 1.0,
 		}),
 		Vector2(9.5, 23.5),
 	)
@@ -566,7 +566,7 @@ static func _test_occupancy_no_shared_cells() -> bool:
 	var center := Vector2(9.5, 16.5)
 	for i in 6:
 		var team := UnitInstance.Team.PLAYER if i % 2 == 0 else UnitInstance.Team.ENEMY
-		sim.add_unit(make_dummy(team, 100000, {"id": "u%d" % i, "move_speed": 1.0, "sight_range": 20.0, "attack_reach": 1.0, "attack_windup": 5.0}), center)
+		sim.add_unit(make_dummy(team, 100000, {"id": "u%d" % i, "steps_per_turn": 1, "sight_range": 20.0, "attack_reach": 1.0, "attack_windup": 5.0}), center)
 	_run_until(sim, 4.0)
 	var seen: Dictionary = {}
 	for item in sim.get_units():
@@ -588,9 +588,9 @@ static func _test_win_and_bus_death_events() -> bool:
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 7)
-	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"attack": 60, "max_hp": 1000, "move_speed": 3.0, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 24.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(8.5, 8.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(11.5, 6.5))
+	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"attack": 60, "max_hp": 1000, "steps_per_turn": 3, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 24.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0}), Vector2(8.5, 8.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0}), Vector2(11.5, 6.5))
 	var deaths: Array[UnitInstance] = []
 	var starts: Array[int] = [0]
 	bus.combat_event.connect(
@@ -623,8 +623,8 @@ static func _test_win_and_bus_death_events() -> bool:
 static func _test_lose_when_no_player_alive() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 8)
-	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"max_hp": 50, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(9.5, 24.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1000, "attack": 30, "move_speed": 3.0, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 6.5))
+	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"max_hp": 50, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0}), Vector2(9.5, 24.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1000, "attack": 30, "steps_per_turn": 3, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 6.5))
 	var finished_with: Array = []
 	sim.combat_finished.connect(func(won: bool) -> void: finished_with.append(won))
 	_run_until(sim, 120.0)
@@ -639,13 +639,13 @@ static func _build_mixed_scenario(seed_value: int) -> RealtimeCombatSim:
 	sim.configure(ARENA, seed_value)
 	var p := UnitInstance.Team.PLAYER
 	var e := UnitInstance.Team.ENEMY
-	sim.add_unit(make_unit(p, {"max_hp": 400, "attack": 25, "move_speed": 1.2, "mass": 3.0, "deploy_time": 1.0, "attack_reach": 1.0}), Vector2(8.5, 24.5))
+	sim.add_unit(make_unit(p, {"max_hp": 400, "attack": 25, "steps_per_turn": 1, "mass": 3.0, "deploy_time": 1.0, "attack_reach": 1.0}), Vector2(8.5, 24.5))
 	sim.add_unit(make_unit(p, {"max_hp": 150, "attack": 18, "attack_reach": 5.0, "projectile_speed": 8.0, "body_radius": 0.35}), Vector2(10.5, 27.5))
-	sim.add_unit(make_unit(p, {"max_hp": 250, "attack": 15, "splash_radius": 1.0, "move_speed": 1.5, "attack_reach": 1.0}), Vector2(6.5, 25.5))
-	sim.add_unit(make_unit(e, {"max_hp": 300, "attack": 20, "move_speed": 1.5, "deploy_time": 0.5, "attack_reach": 1.0}), Vector2(9.5, 6.5))
+	sim.add_unit(make_unit(p, {"max_hp": 250, "attack": 15, "splash_radius": 1.0, "steps_per_turn": 2, "attack_reach": 1.0}), Vector2(6.5, 25.5))
+	sim.add_unit(make_unit(e, {"max_hp": 300, "attack": 20, "steps_per_turn": 2, "deploy_time": 0.5, "attack_reach": 1.0}), Vector2(9.5, 6.5))
 	sim.add_unit(make_unit(e, {"max_hp": 120, "attack": 12, "attack_reach": 4.5, "projectile_speed": 6.0, "splash_radius": 0.8}), Vector2(5.5, 4.5))
 	for i in 4:
-		sim.add_unit(make_unit(e, {"max_hp": 60, "attack": 8, "move_speed": 2.0, "body_radius": 0.3, "attack_reach": 1.0, "id": "swarm_%d" % i}), Vector2(11.5 + float(i), 8.5))
+		sim.add_unit(make_unit(e, {"max_hp": 60, "attack": 8, "steps_per_turn": 2, "body_radius": 0.3, "attack_reach": 1.0, "id": "swarm_%d" % i}), Vector2(11.5 + float(i), 8.5))
 	return sim
 
 
@@ -701,13 +701,13 @@ static func _test_projectile_vanishes_when_target_dead() -> bool:
 	sim.configure(ARENA, 10)
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 10.0, "attack_windup": 0.0, "projectile_speed": 1.0, "move_speed": 0.0, "attack": 50,
+			"attack_reach": 10.0, "attack_windup": 0.0, "projectile_speed": 1.0, "steps_per_turn": 0, "attack": 50,
 		}),
 		Vector2(9.5, 28.5),
 	)
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 1.0, "attack_windup": 0.0, "move_speed": 0.0, "attack": 1000,
+			"attack_reach": 1.0, "attack_windup": 0.0, "steps_per_turn": 0, "attack": 1000,
 		}),
 		Vector2(9.5, 21.5),
 	)
@@ -729,19 +729,19 @@ static func _test_dead_skipped_in_queue() -> bool:
 	sim.configure(ARENA, 17)
 	var f0 := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"max_hp": 1000, "attack": 100, "move_speed": 0.0, "attack_reach": 10.0,
+			"max_hp": 1000, "attack": 100, "steps_per_turn": 0, "attack_reach": 10.0,
 			"attack_windup": 0.0, "id": "killer",
 		}),
 		Vector2(9.5, 20.5),
 	)
 	var e0 := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
-			"max_hp": 10, "attack": 1, "move_speed": 0.0, "attack_reach": 1.0, "id": "victim",
+			"max_hp": 10, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0, "id": "victim",
 		}),
 		Vector2(9.5, 18.5),
 	)
 	var e1 := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "survivor", "move_speed": 0.0}),
+		make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "survivor", "steps_per_turn": 0}),
 		Vector2(5.5, 5.5),
 	)
 	var seen_after_death: Array[String] = []

@@ -165,19 +165,18 @@ func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
 	position = step_from
 
 
-## As-Is 字段名 move_speed：表现上完成一格步进的速率（格/秒）；正/斜等价。
-## 一动步数预算由 RtUnitBrain.turn_step_budget 用同一字段启发式换算。
+## 一格步进表现时长（秒）；与一动可走几格解耦，避免再用移速绑演出。
+const CELL_STEP_SECONDS := 0.2
+
+## 按固定短时长插值一格；一动步数预算见 UnitStats.steps_per_turn。
 ## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
 func advance_step_visual(dt: float) -> void:
 	if not is_stepping():
 		position = cell_center(cell)
 		return
-	var speed := maxf(0.0, get_stats().move_speed)
-	if speed <= 0.0:
-		_commit_step()
-		return
-	var delta_t := dt * speed
-	## 本帧将达/过格心即提交，避免 15×(1/30×2) 浮点欠一丝导致晚一帧落格
+	var duration := maxf(0.05, CELL_STEP_SECONDS)
+	var delta_t := dt / duration
+	## 本帧将达/过格心即提交，避免浮点欠一丝导致晚一帧落格
 	if step_t + delta_t >= 1.0 - 0.000001:
 		_commit_step()
 		return

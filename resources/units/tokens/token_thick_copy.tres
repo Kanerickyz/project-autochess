@@ -7,8 +7,8 @@
 script = ExtResource("2_stats")
 max_hp = 110
 attack = 45
+steps_per_turn = 2
 crit_rate_percent = 0
-move_speed = 1.5
 attack_interval = 1.0
 attack_windup = 0.3
 attack_reach = 0.5

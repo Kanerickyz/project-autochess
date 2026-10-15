@@ -30,14 +30,11 @@ class Decision:
 	var turn_done: bool = false
 
 
-## As-Is move_speed（格/秒）→ 一动最多走几格。0 移速不挪步。
+## 一动最多走几格：直接读整数 steps_per_turn（0 = 本动不挪步）。
 static func turn_step_budget(stats: UnitStats) -> int:
 	if stats == null:
 		return 0
-	var speed := maxf(0.0, stats.move_speed)
-	if speed <= 0.0:
-		return 0
-	return maxi(1, roundi(speed))
+	return maxi(0, stats.steps_per_turn)
 
 
 ## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
@@ -85,7 +82,7 @@ static func decide_turn(
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	if steps_left <= 0 or maxf(0.0, stats.move_speed) <= 0.0:
+	if steps_left <= 0:
 		decision.turn_done = true
 		return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
@@ -131,7 +128,7 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	if maxf(0.0, stats.move_speed) <= 0.0:
+	if turn_step_budget(stats) <= 0:
 		return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	return decision

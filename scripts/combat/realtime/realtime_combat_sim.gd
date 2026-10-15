@@ -435,7 +435,7 @@ func _advance_current_actor() -> void:
 
 	if decision.step != Vector2i.ZERO and _actor_steps_left > 0:
 		var dest: Vector2i = rt.cell + decision.step
-		if _is_cell_free(dest) and maxf(0.0, rt.get_stats().move_speed) > 0.0:
+		if _is_cell_free(dest) and _actor_steps_left > 0:
 			_move_unit_to_cell(rt, dest)
 			_actor_steps_left -= 1
 			return
