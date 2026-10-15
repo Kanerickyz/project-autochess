@@ -6,7 +6,7 @@
 
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
-- **实时战斗（Run 主路径）**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏；**【As-Is】** 开战后八向格步 + 一格一体 + 切比雪夫（弱滑动、可与逻辑格并行判攻）；**【To-Be】** 9×16 + 双方角色座位 + **落格顿步**（见 [COMBATLEVEL](./Features/COMBATLEVEL.md)）。`RealtimeCombatSim` 以固定步长（1/30 秒）推进移动、攻击、投射物与溅射（见 §3.4）。角色为 `resources/units/realtime/`（Content 十人基础兵种；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
+- **Run 主路径战斗**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏；**【As-Is】** 实时并行八向格步 + 一格一体 + 切比雪夫（弱滑动、可边滑边判攻）；**【To-Be】** 9×16 + 双方角色座位 + **回合制敌我混排依次行动**（一动内落格顿步；见 [COMBAT](./Features/COMBAT.md) / [COMBATLEVEL](./Features/COMBATLEVEL.md)）。As-Is `RealtimeCombatSim` 以固定步长（1/30 秒）推进（见 §3.4）；实现回摆后主时钟应为行动队列而非全场并行步进。角色为 `resources/units/realtime/`（Content 十人基础兵种；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
 - **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关与沙盒，不再是 Run 主路径
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
@@ -190,7 +190,8 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | `RealtimeDamagePipeline` | 唯一扣血处；经 `CombatEventBus` 发 `ON_ATTACK_HIT` / `ON_DAMAGE_TAKEN` / `ON_DEATH` 等 |
 | `RealtimeBattleController`（`scripts/ui/realtime/`） | **As-Is**：进遭遇即开战、抽打弃 + 号令出牌。**To-Be**：准备入槽 / 刷新 / 开战观战（见玩家篇） |
 
-每步顺序：大脑决策 → 八向格步（**【To-Be】** 落格顿步：落稳再判攻）→ 出手 → 投射物结算 → 占格冲突改道/短等（非圆推挤主轴）→ 移除阵亡 → 胜负。属性读 `UnitStats` 的 Realtime 组。
+**【As-Is】** 每步顺序：大脑决策 → 八向格步 → 出手 → 投射物结算 → 占格冲突改道/短等 → 移除阵亡 → 胜负。  
+**【To-Be】** 按行动队列轮到单位 → 一动内：决策 → 落格顿步靠近 → 能打则出手 → 该动技能尾巴 → 胜负检查 → 下一名（见战斗篇）。属性读 `UnitStats` 的 Realtime 组（字段名 As-Is；语义回摆见单位篇）。
 
 `CombatEventBus` 生命周期：进入遭遇时由控制器创建，准备阶段不发战斗事件；结算后「继续」时随模拟一起释放。
 

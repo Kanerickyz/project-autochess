@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制）· Godot 4.6 · 最后更新：2026-10-15
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备布阵**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 仍为战中号令出牌与牌库/手牌中介，无招募）。实时主路径角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备布阵**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 仍为战中号令出牌与牌库/手牌中介，无招募）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）；As-Is 仍为实时并行。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 
@@ -20,9 +20,9 @@
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（独立技能池与相对强度；挂载见角色库 §6；九人单位槽已绑） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
-| [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 自动战斗观战 → 结算；胜后衔接招募） |
-| [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（技能结果数字 + 稀有短提示；本版无普攻飘字/战斗日志） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、9×16、开战八向落格顿步越线） |
+| [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
+| [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、9×16、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
@@ -93,7 +93,7 @@ Project Autochess/
 | `resources/levels/board_legacy_4x8.tres` | 沙盒用旧 4×8 格子棋盘 | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
-| `scripts/combat/realtime/` | `RealtimeCombatSim` 固定时间步模拟（As-Is 八向弱滑动；To-Be 落格顿步） | **已实现 / 待对齐** |
+| `scripts/combat/realtime/` | `RealtimeCombatSim` 固定时间步模拟（As-Is 实时并行弱滑动；To-Be 回合制依次 + 一动内落格顿步） | **已实现 / 待对齐** |
 | `resources/units/realtime/` | 实时十人基础兵种（显示名/数值对齐 Content；含 `rider`） | **已实现** |
 | `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（九人，不含民兵） | **已实现** |
 | `scenes/ui/placeholder/` | 地图非战斗节点占位界面 | **已实现** |
