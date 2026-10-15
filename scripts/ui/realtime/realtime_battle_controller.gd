@@ -112,9 +112,10 @@ func _process(delta: float) -> void:
 		if _hint_remaining <= 0.0:
 			_hint_text = ""
 	if _arena != null:
+		## 观战加速：缩短单动格步/出手与反馈寿命；不改行动序与已结算数值。
 		_arena.presentation_time_scale = time_scale
 	if _phase == Phase.COMBAT and _sim != null:
-		## 时停播报：队列非空时不推进固定步；加速只缩短表现寿命。
+		## 时停队列仅兼容钩子（COMBAT_FEEDBACK 已废止为主通道）；主推进为行动队列依次一动。
 		if _timestop_queue.is_blocking():
 			_sim.hold_for_presentation()
 			var started := _timestop_queue.tick(delta, time_scale)
@@ -125,6 +126,8 @@ func _process(delta: float) -> void:
 		else:
 			_sim.release_presentation()
 			_sim.step(delta * time_scale)
+		if _arena != null:
+			_arena.queue_redraw()
 	_refresh_hud()
 	_refresh_cards()
 
@@ -1292,6 +1295,21 @@ func _refresh_cards() -> void:
 		_refresh_button.text = "刷新手牌（剩 %d）" % _card_flow.get_refresh_remaining()
 
 
+func _combat_phase_status_text() -> String:
+	if _sim == null:
+		return "战斗中·观战"
+	var round_i := _sim.get_round_index()
+	var actor := _sim.get_current_actor()
+	var scale_txt := ""
+	if time_scale > 1.01:
+		scale_txt = " ×%.2g" % time_scale
+	if actor == null:
+		return "战斗中·第%d回合%s" % [round_i, scale_txt]
+	var name := actor.get_display_name()
+	var side := "友" if actor.is_player() else "敌"
+	return "第%d回合·%s[%s]%s" % [round_i, side, name, scale_txt]
+
+
 func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
@@ -1321,7 +1339,7 @@ func _refresh_hud() -> void:
 				"准备·选人入座" if _selected_entry_id < 0 else "点空座入阵 / 点已占座收回"
 			)
 		Phase.COMBAT:
-			_phase_label.text = "战斗中·观战"
+			_phase_label.text = _combat_phase_status_text()
 		Phase.RESULT:
 			_phase_label.text = "胜利" if _won else "失败"
 		Phase.RECRUIT:

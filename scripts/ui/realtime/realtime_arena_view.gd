@@ -731,22 +731,35 @@ func _draw_prepare_slots(px: float) -> void:
 func _draw_units(px: float) -> void:
 	var now := sim.elapsed_seconds
 	var started := sim.has_started()
+	## COMBAT_FEEDBACK：当前行动者高亮；其余略降对比，不做出手条。
+	var actor: RtUnit = sim.get_current_actor() if started else null
 	for item in sim.get_units():
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR
 		var alpha := 1.0
+		var is_actor := actor != null and rt == actor
+		if started and actor != null and not is_actor:
+			alpha = 0.72
 		if started and rt.is_deploying():
-			alpha = 0.55
+			alpha = mini(alpha, 0.55)
 		if now - rt.last_attack_time < ATTACK_FLASH_SECONDS:
 			base = base.lightened(0.45)
 		if now - rt.last_hit_time < HIT_FLASH_SECONDS:
 			base = base.lerp(Color.WHITE, 0.5)
+		if is_actor:
+			base = base.lightened(0.28)
 		var vwx := rt.get_visual_half_width()
 		var vhy := rt.get_visual_half_height()
+		## 当前行动者略放大剪影，便于观战指认。
+		var scale := 1.12 if is_actor else 1.0
 		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
-		_draw_body(rt.position, rt.get_radius(), vwx, vhy, base, alpha, rt.get_display_name(), px, true, off)
+		_draw_body(
+			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off
+		)
 		var center := tile_to_local(rt.position) + off
-		var silhouette_r_px := maxf(vwx, vhy) * px
+		var silhouette_r_px := maxf(vwx, vhy) * scale * px
+		if is_actor:
+			draw_arc(center, silhouette_r_px + 5.0, 0.0, TAU, 28, Color(1.0, 0.92, 0.35, 0.95), 2.5)
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)

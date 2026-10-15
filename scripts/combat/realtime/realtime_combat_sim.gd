@@ -1,7 +1,8 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 实时战斗纯逻辑模拟：八方向格步 + 格心取样 + 一格一体 + 切比雪夫格距。
-## 固定步长推进，结果与调用方帧率无关。坐标单位为格，时间单位为秒。
+## 回合制自动战纯逻辑模拟：敌我混排行动队列 + 一动靠近并出手 + 落格顿步。
+## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
+## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
 
 signal unit_added(unit: RtUnit)
 signal unit_attacked(attacker: RtUnit, target: RtUnit)
@@ -10,6 +11,8 @@ signal unit_died(unit: RtUnit)
 signal projectile_spawned(projectile: RtProjectile)
 signal splash_triggered(center: Vector2, radius: float)
 signal combat_finished(won: bool)
+## 当前行动者变更（含回合推进跳过阵亡后落到下一位）；UI 高亮用。
+signal current_actor_changed(actor: RtUnit)
 
 const FIXED_STEPS_PER_SECOND := 30
 const FIXED_DT := 1.0 / FIXED_STEPS_PER_SECOND
@@ -36,10 +39,21 @@ var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
 var _adding_effect_spawn: bool = false
-## 表现层时停：为 true 时 step 不再推进固定步（效果真值已结算）。
+## 表现层时停兼容钩子：为 true 时 step 不再推进固定步（主通道已改为行动队列，不依赖时停）。
 var presentation_hold: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
+
+## 开战锁阵生成序（友入座序 + 敌配置序，按 add_unit 先后）；用于交错混排。
+var _lock_spawn_order: Array[RtUnit] = []
+## 敌我混排固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
+var _action_queue: Array[RtUnit] = []
+var _queue_cursor: int = 0
+var _round_index: int = 0
+var _current_actor: RtUnit = null
+var _actor_steps_left: int = 0
+var _actor_has_attacked: bool = false
+var _actor_turn_active: bool = false
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -75,6 +89,10 @@ func dispose() -> void:
 	_units.clear()
 	_projectiles.clear()
 	_occupancy.clear()
+	_lock_spawn_order.clear()
+	_action_queue.clear()
+	_current_actor = null
+	_actor_turn_active = false
 	_teardown_effect_resolver()
 	if _bus != null and is_instance_valid(_bus):
 		if _bus.combat_event.is_connected(_on_bus_event):
@@ -125,6 +143,11 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	_units.insert(index, rt)
 	_set_occupancy(cell, rt)
 	_register_on_effect_grid(unit, rt.get_cell())
+	## 开战前：记录锁阵生成序。开战中：默认插到当前行动者之后（COMBAT §7.1 建议默认）。
+	if not _started:
+		_lock_spawn_order.append(rt)
+	else:
+		_insert_mid_combat_into_queue(rt)
 	unit_added.emit(rt)
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
 	if not _adding_effect_spawn:
@@ -141,6 +164,9 @@ func remove_unit(rt: RtUnit) -> bool:
 	if index < 0:
 		return false
 	_units.remove_at(index)
+	var spawn_i := _lock_spawn_order.find(rt)
+	if spawn_i >= 0:
+		_lock_spawn_order.remove_at(spawn_i)
 	rt.target = null
 	_clear_occupancy_of(rt)
 	if _effect_grid != null:
@@ -186,13 +212,18 @@ func get_occupancy_owner(cell: Vector2i) -> RtUnit:
 	return _occupancy_owner(cell)
 
 
-## 标记开战：此后 add_unit 的单位都要走部署时间。未显式调用时首个固定步会自动调用。
+## 标记开战：广播游戏开始 → 排出敌我混排行动队列。未显式调用时首个固定步会自动调用。
 func begin_combat() -> void:
 	if _started or _finished:
 		return
 	_started = true
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
 	_drain_effects()
+	_build_action_queue_from_lock_order()
+	_queue_cursor = 0
+	_round_index = 1
+	_current_actor = null
+	_actor_turn_active = false
 
 
 func has_started() -> bool:
@@ -205,6 +236,27 @@ func is_finished() -> bool:
 
 func did_player_win() -> bool:
 	return _finished and _player_won
+
+
+## 当前正在执行一动的单位；无人行动时为 null。
+func get_current_actor() -> RtUnit:
+	if not _actor_turn_active:
+		return null
+	return _current_actor
+
+
+## 当前回合序号（从 1 起；开战排队列后尚未行动前亦为 1）。
+func get_round_index() -> int:
+	return _round_index
+
+
+## 行动队列只读快照（含已阵亡占位，推进时跳过）。
+func get_action_queue() -> Array:
+	return _action_queue.duplicate()
+
+
+func get_queue_cursor() -> int:
+	return _queue_cursor
 
 
 ## 按调用方 dt 推进；内部以 FIXED_DT 拆步，累计总输入时间决定步数，避免浮点累加误差导致步数漂移。
@@ -236,42 +288,14 @@ func advance_fixed_step() -> void:
 		return
 	begin_combat()
 
-	var free_fn := func(cell: Vector2i) -> bool:
-		return _is_cell_free(cell)
+	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
+	_tick_all_deploying()
 
-	var decisions: Array[RtUnitBrain.Decision] = []
-	for rt in _units:
-		decisions.append(RtUnitBrain.decide(rt, _units, FIXED_DT, free_fn))
+	if not _actor_turn_active:
+		_begin_next_actor_turn()
 
-	## 先开格步（预占 dest、站立格仍留 from），再推进插值；出手只认站立格距，且未落稳不 fire。
-	for i in _units.size():
-		var rt := _units[i]
-		var step_dir := decisions[i].step
-		if not rt.is_alive() or step_dir == Vector2i.ZERO:
-			continue
-		if rt.is_stepping():
-			continue
-		if maxf(0.0, rt.get_stats().move_speed) <= 0.0:
-			continue
-		var dest: Vector2i = rt.cell + step_dir
-		if not _is_cell_free(dest):
-			continue
-		_move_unit_to_cell(rt, dest)
-
-	for rt in _units:
-		if rt.is_alive():
-			rt.advance_step_visual(FIXED_DT)
-
-	for i in _units.size():
-		var rt := _units[i]
-		if (
-			decisions[i].fire
-			and not rt.is_stepping()
-			and rt.is_alive()
-			and rt.target != null
-			and rt.target.is_alive()
-		):
-			_fire(rt)
+	if _actor_turn_active and _current_actor != null:
+		_advance_current_actor()
 
 	_advance_projectiles()
 	_sync_unit_grid_pos()
@@ -280,7 +304,151 @@ func advance_fixed_step() -> void:
 
 	fixed_step_count += 1
 	elapsed_seconds = fixed_step_count * FIXED_DT
+	## 胜负在每一动结束后检查；若本步刚结束一动则此处已查过，再查一次无害。
 	_check_finished()
+
+
+## COMBAT §7.1：友入座序与敌配置序交错（友0敌0友1敌1…）；一侧用尽续另一侧。
+func _build_action_queue_from_lock_order() -> void:
+	var friends: Array[RtUnit] = []
+	var enemies: Array[RtUnit] = []
+	for rt in _lock_spawn_order:
+		if rt == null:
+			continue
+		if rt.is_player():
+			friends.append(rt)
+		else:
+			enemies.append(rt)
+	_action_queue.clear()
+	var i := 0
+	while i < friends.size() or i < enemies.size():
+		if i < friends.size():
+			_action_queue.append(friends[i])
+		if i < enemies.size():
+			_action_queue.append(enemies[i])
+		i += 1
+
+
+## 中途召唤：插到当前行动者之后；无当前行动者则队尾。
+func _insert_mid_combat_into_queue(rt: RtUnit) -> void:
+	if rt == null:
+		return
+	if _action_queue.is_empty():
+		_action_queue.append(rt)
+		return
+	var insert_at := _action_queue.size()
+	if _actor_turn_active and _current_actor != null:
+		var cur_i := _action_queue.find(_current_actor)
+		if cur_i >= 0:
+			insert_at = cur_i + 1
+	elif _queue_cursor >= 0 and _queue_cursor < _action_queue.size():
+		insert_at = _queue_cursor + 1
+	_action_queue.insert(insert_at, rt)
+
+
+func _tick_all_deploying() -> void:
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		if rt.state != RtUnit.State.DEPLOYING:
+			continue
+		rt.deploy_remaining -= FIXED_DT
+		if rt.deploy_remaining <= STEP_EPSILON:
+			rt.deploy_remaining = 0.0
+			rt.state = RtUnit.State.MOVING
+
+
+func _begin_next_actor_turn() -> void:
+	_current_actor = null
+	_actor_turn_active = false
+	_actor_has_attacked = false
+	_actor_steps_left = 0
+	if _action_queue.is_empty() or _finished:
+		current_actor_changed.emit(null)
+		return
+
+	var scanned := 0
+	while scanned < _action_queue.size():
+		if _queue_cursor >= _action_queue.size():
+			_queue_cursor = 0
+			_round_index += 1
+		var candidate := _action_queue[_queue_cursor]
+		if candidate != null and candidate.is_alive() and _units.has(candidate):
+			_current_actor = candidate
+			_actor_turn_active = true
+			_actor_has_attacked = false
+			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate.get_stats())
+			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
+			var payload := CombatEventPayload.new()
+			payload.source = candidate.unit
+			payload.target = candidate.unit
+			_bus_emit(CombatEvents.ON_ROUND_START, payload)
+			_drain_effects()
+			current_actor_changed.emit(candidate)
+			return
+		_queue_cursor += 1
+		scanned += 1
+
+	current_actor_changed.emit(null)
+
+
+func _end_current_actor_turn() -> void:
+	if not _actor_turn_active:
+		return
+	_actor_turn_active = false
+	_current_actor = null
+	_actor_has_attacked = false
+	_actor_steps_left = 0
+	_queue_cursor += 1
+	current_actor_changed.emit(null)
+	_check_finished()
+
+
+func _advance_current_actor() -> void:
+	var rt := _current_actor
+	if rt == null or not rt.is_alive():
+		_end_current_actor_turn()
+		return
+
+	## 落格顿步：先推进当前行动者步进插值；本拍落稳则停，下拍再判攻/再迈。
+	if rt.is_stepping():
+		rt.advance_step_visual(FIXED_DT)
+		return
+
+	var free_fn := func(cell: Vector2i) -> bool:
+		return _is_cell_free(cell)
+	var decision := RtUnitBrain.decide_turn(
+		rt, _units, FIXED_DT, free_fn, _actor_steps_left, _actor_has_attacked
+	)
+
+	if (
+		decision.fire
+		and not rt.is_stepping()
+		and rt.is_alive()
+		and rt.target != null
+		and rt.target.is_alive()
+	):
+		_fire(rt)
+		_actor_has_attacked = true
+		_end_current_actor_turn()
+		return
+
+	if decision.step != Vector2i.ZERO and _actor_steps_left > 0:
+		var dest: Vector2i = rt.cell + decision.step
+		if _is_cell_free(dest) and maxf(0.0, rt.get_stats().move_speed) > 0.0:
+			_move_unit_to_cell(rt, dest)
+			_actor_steps_left -= 1
+			return
+
+	if decision.turn_done:
+		_end_current_actor_turn()
+		return
+
+	## 前摇中：继续耗时，不交权。
+	if rt.state == RtUnit.State.ATTACKING and not _actor_has_attacked:
+		return
+
+	_end_current_actor_turn()
 
 
 func _fire(rt: RtUnit) -> void:

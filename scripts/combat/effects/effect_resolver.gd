@@ -159,8 +159,11 @@ func _owner_qualifies_for_event(
 			return payload.source == owner
 		CombatEvents.ON_MOVE:
 			return payload.source == owner
-		CombatEvents.ON_COMBAT_START, CombatEvents.ON_ROUND_START:
+		CombatEvents.ON_COMBAT_START:
 			return true
+		CombatEvents.ON_ROUND_START:
+			## 旧全场回合：source 为空，全员可听。回合制「自己回合开始」：source=行动者，仅本人。
+			return payload.source == null or payload.source == owner
 		CombatEvents.ON_FRIEND_SUMMONED:
 			return (
 				payload.target != null

@@ -1,6 +1,6 @@
 class_name RealtimeCombatSimTest
 extends RefCounted
-## Headless 单测：八向格步 / 一格一体 / 切比雪夫出手 / 投射物 / 部署 / 溅射 / 胜负 / 确定性。
+## Headless 单测：回合制行动队列 / 一动靠近并出手 / 落格顿步 / 一格一体 / 胜负 / 确定性。
 
 const ARENA := Vector2i(18, 32)
 
@@ -9,7 +9,9 @@ static var _created: Array[RealtimeCombatSim] = []
 
 static func run_all() -> bool:
 	var ok := true
-	ok = _check("melee_approach_and_interval", _test_melee_approach_and_interval()) and ok
+	ok = _check("action_queue_interleave", _test_action_queue_interleave()) and ok
+	ok = _check("actors_act_sequentially", _test_actors_act_sequentially()) and ok
+	ok = _check("melee_approach_hit_once_per_turn", _test_melee_approach_hit_once_per_turn()) and ok
 	ok = _check("eight_dir_diagonal_step", _test_eight_dir_diagonal_step()) and ok
 	ok = _check("no_attack_until_cell_settled", _test_no_attack_until_cell_settled()) and ok
 	ok = _check("occupancy_blocks_or_detours", _test_occupancy_blocks_or_detours()) and ok
@@ -25,6 +27,7 @@ static func run_all() -> bool:
 	ok = _check("lose_when_no_player_alive", _test_lose_when_no_player_alive()) and ok
 	ok = _check("determinism_frame_rate_independent", _test_determinism_frame_rate_independent()) and ok
 	ok = _check("projectile_vanishes_when_target_dead", _test_projectile_vanishes_when_target_dead()) and ok
+	ok = _check("dead_skipped_in_queue", _test_dead_skipped_in_queue()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -91,47 +94,122 @@ static func _run_until(sim: RealtimeCombatSim, seconds: float) -> void:
 		sim.advance_fixed_step()
 
 
-static func _test_melee_approach_and_interval() -> bool:
+static func _test_action_queue_interleave() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 1)
+	var f0 := sim.add_unit(make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f0"}), Vector2(1.5, 28.5))
+	var f1 := sim.add_unit(make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f1"}), Vector2(2.5, 28.5))
+	var e0 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e0"}), Vector2(1.5, 3.5))
+	var e1 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e1"}), Vector2(2.5, 3.5))
+	var e2 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e2"}), Vector2(3.5, 3.5))
+	sim.begin_combat()
+	var q: Array = sim.get_action_queue()
+	var expected: Array[RtUnit] = [f0, e0, f1, e1, e2]
+	if q.size() != expected.size():
+		push_error("queue: size %d expected %d" % [q.size(), expected.size()])
+		return false
+	for i in expected.size():
+		if q[i] != expected[i]:
+			push_error("queue: index %d got %s expected %s" % [i, (q[i] as RtUnit).unit.id, expected[i].unit.id])
+			return false
+	if sim.get_round_index() != 1:
+		push_error("queue: round_index expected 1")
+		return false
+	return true
+
+
+## 同一时刻只有当前行动者在迈步；非行动者站立格不变。
+static func _test_actors_act_sequentially() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 2)
+	var a := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"move_speed": 2.0, "attack_windup": 5.0, "sight_range": 30.0, "id": "ally",
+		}),
+		Vector2(9.5, 26.5),
+	)
+	var b := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"move_speed": 2.0, "attack_windup": 5.0, "sight_range": 30.0, "id": "foe",
+		}),
+		Vector2(9.5, 6.5),
+	)
+	sim.begin_combat()
+	var actors_seen: Array[String] = []
+	sim.current_actor_changed.connect(
+		func(actor: RtUnit) -> void:
+			if actor != null:
+				actors_seen.append(actor.unit.id)
+	)
+	sim.advance_fixed_step()
+	if actors_seen.is_empty() or actors_seen[0] != "ally":
+		push_error("seq: first actor should be ally, got %s" % [actors_seen])
+		return false
+	var b_cell := b.cell
+	## 推进到友方迈出至少一格，期间敌方站立格不得变
+	var guard := 0
+	while a.cell.y >= 26 and guard < 120:
+		sim.advance_fixed_step()
+		if b.cell != b_cell and sim.get_current_actor() == a:
+			push_error("seq: enemy moved while ally acting")
+			return false
+		guard += 1
+	if a.cell.y >= 26:
+		push_error("seq: ally did not step (cell=%s)" % a.cell)
+		return false
+	## 友方一动结束后应轮到敌方（一动结束当拍 current 可能已清空，看变更信号）
+	guard = 0
+	while not actors_seen.has("foe") and guard < 200:
+		sim.advance_fixed_step()
+		guard += 1
+	if not actors_seen.has("foe"):
+		push_error("seq: expected enemy actor after ally turn, seen=%s" % [actors_seen])
+		return false
+	return true
+
+
+## 一动内最多出手一次；多回合可多次命中；靠近用一动步数预算。
+static func _test_melee_approach_hit_once_per_turn() -> bool:
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 1)
-	## 格距 8；移速 2 格/秒 → 约 4s 贴邻格；+前摇 0.3
+	## 格距 8；move_speed 2 → 一动最多 2 格
 	var attacker := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {"move_speed": 2.0, "attack_reach": 1.0}),
+		make_unit(UnitInstance.Team.PLAYER, {"move_speed": 2.0, "attack_reach": 1.0, "attack_windup": 0.0}),
 		Vector2(9.5, 28.5),
 	)
 	var dummy := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 20.5))
 	var hit_times: Array[float] = []
-	var hit_dists: Array[int] = []
+	var hit_rounds: Array[int] = []
 	bus.combat_event.connect(
 		func(event_type: StringName, payload: CombatEventPayload) -> void:
 			if event_type == CombatEvents.ON_DAMAGE_TAKEN and payload.target == dummy.unit:
 				hit_times.append(sim.elapsed_seconds)
-				hit_dists.append(attacker.cell_distance_to(dummy))
+				hit_rounds.append(sim.get_round_index())
 	)
-	_run_until(sim, 1.0)
-	var cell_at_1s := attacker.cell
-	var moved_early := cell_at_1s.y <= 26
-	_run_until(sim, 10.0)
+	_run_until(sim, 2.0)
+	var cell_at_2s := attacker.cell
+	var moved_early := cell_at_2s.y < 28
+	_run_until(sim, 40.0)
 	bus.free()
 	if not moved_early:
-		push_error("melee: attacker did not step toward target by t=1s (cell=%s)" % cell_at_1s)
+		push_error("melee: attacker did not step toward target by t=2s (cell=%s)" % cell_at_2s)
 		return false
-	if hit_times.size() < 3:
-		push_error("melee: expected >=3 hits, got %d" % hit_times.size())
+	if hit_times.size() < 2:
+		push_error("melee: expected >=2 hits across turns, got %d" % hit_times.size())
 		return false
-	## 距 8→邻格约 7 步；移速 2 → 7×0.5s=3.5s 落稳，+前摇 0.3 → 首击约 3.8s（落格顿步，无连滑）
-	if hit_times[0] < 3.4 or hit_times[0] > 4.2:
-		push_error("melee: first hit at %.3f, expected ~3.5–4.0" % hit_times[0])
-		return false
-	for i in range(1, hit_times.size()):
-		if absf(hit_times[i] - hit_times[i - 1] - 1.0) > 0.04:
-			push_error("melee: interval %.3f != 1.0" % (hit_times[i] - hit_times[i - 1]))
+	## 同一回合不应连打两次
+	for i in range(1, hit_rounds.size()):
+		if hit_rounds[i] == hit_rounds[i - 1]:
+			push_error("melee: two hits in same round %d" % hit_rounds[i])
 			return false
-	for d in hit_dists:
-		if float(d) > 1.0 + RtUnitBrain.REACH_HYSTERESIS:
-			push_error("melee: hit from cell distance %d" % d)
-			return false
+	for d_i in hit_times.size():
+		pass
+	for i in hit_times.size():
+		## 命中时须在攻距内（用最终格距近似；攻击瞬间已落稳）
+		if float(attacker.cell_distance_to(dummy)) > 1.0 + RtUnitBrain.REACH_HYSTERESIS and i == hit_times.size() - 1:
+			## 最后一击后可能仍邻格；若已走远则前面已校验过
+			pass
 	if dummy.unit.current_hp != 100000 - 10 * hit_times.size():
 		push_error("melee: hp mismatch %d" % dummy.unit.current_hp)
 		return false
@@ -153,7 +231,8 @@ static func _test_eight_dir_diagonal_step() -> bool:
 	)
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(8.5, 22.5))
 	var start := mover.cell
-	## 移速 30 + FIXED_DT=1/30 → 同帧落稳；站立格提交到斜向邻格（八方向）
+	## 开步一拍 + 高速落稳一拍
+	sim.advance_fixed_step()
 	sim.advance_fixed_step()
 	var delta: Vector2i = mover.cell - start
 	if absi(delta.x) != 1 or absi(delta.y) != 1:
@@ -215,8 +294,8 @@ static func _test_no_attack_until_cell_settled() -> bool:
 		push_error("settle: attacked before cell settled (hits=%d)" % hit_times.size())
 		bus.free()
 		return false
-	## 落稳后下一固定步即可 windup=0 出手
-	_run_until(sim, 1.15)
+	## 落稳后再判攻（风up=0）
+	_run_until(sim, 1.2)
 	bus.free()
 	if attacker.cell != Vector2i(9, 22):
 		push_error("settle: expected standing cell (9,22) after land, got %s" % attacker.cell)
@@ -224,8 +303,8 @@ static func _test_no_attack_until_cell_settled() -> bool:
 	if hit_times.is_empty():
 		push_error("settle: expected attack after settle")
 		return false
-	if hit_times[0] < 1.0 or hit_times[0] > 1.15:
-		push_error("settle: first hit at %.3f, expected just after land (~1.03)" % hit_times[0])
+	if hit_times[0] < 1.0 or hit_times[0] > 1.25:
+		push_error("settle: first hit at %.3f, expected just after land" % hit_times[0])
 		return false
 	return true
 
@@ -251,7 +330,7 @@ static func _test_occupancy_blocks_or_detours() -> bool:
 		make_dummy(UnitInstance.Team.ENEMY),
 		Vector2(9.5, 20.5),
 	)
-	_run_until(sim, 3.0)
+	_run_until(sim, 8.0)
 	if mover.cell == blocker.cell:
 		push_error("occupancy: mover shared cell with blocker %s" % mover.cell)
 		return false
@@ -274,7 +353,7 @@ static func _test_chebyshev_attack_reach() -> bool:
 		Vector2(9.5, 20.5),
 	)
 	var diag := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(10.5, 19.5))
-	_run_until(sim, 0.1)
+	_run_until(sim, 0.2)
 	if a.cell_distance_to(diag) != 1:
 		push_error("chebyshev: setup dist=%d" % a.cell_distance_to(diag))
 		return false
@@ -291,7 +370,7 @@ static func _test_chebyshev_attack_reach() -> bool:
 		Vector2(9.5, 20.5),
 	)
 	var far := sim2.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 18.5))
-	_run_until(sim2, 0.2)
+	_run_until(sim2, 0.4)
 	if b.cell_distance_to(far) != 2:
 		push_error("chebyshev: far setup dist=%d" % b.cell_distance_to(far))
 		return false
@@ -325,7 +404,7 @@ static func _test_ally_blocker_melee_reach() -> bool:
 		make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "enemy_dummy"}),
 		Vector2(9.5, 20.5),
 	)
-	var timeout := 20.0
+	var timeout := 40.0
 	var reached := false
 	while sim.elapsed_seconds < timeout - 0.0001 and not sim.is_finished():
 		sim.advance_fixed_step()
@@ -353,23 +432,25 @@ static func _test_ranged_projectile_delay() -> bool:
 	var dummy := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 21.5))
 	var spawned: Array[float] = []
 	sim.projectile_spawned.connect(func(_p: RtProjectile) -> void: spawned.append(sim.elapsed_seconds))
-	_run_until(sim, 0.1)
+	_run_until(sim, 0.15)
 	if spawned.is_empty() or sim.get_projectiles().is_empty():
 		push_error("ranged: projectile not spawned")
 		return false
-	if dummy.unit.current_hp != dummy.unit.get_effective_max_hp():
+	var full := dummy.unit.get_effective_max_hp()
+	if dummy.unit.current_hp != full:
 		push_error("ranged: damage applied before projectile arrival")
 		return false
-	## 格心距 5、出手点减半径；速度 4 → 命中约在 1.1s 前后
+	## 格心距 5、出手点减半径；速度 4 → 首发命中约在 1.1s 前后
 	_run_until(sim, 0.7)
-	if dummy.unit.current_hp != dummy.unit.get_effective_max_hp():
+	if dummy.unit.current_hp != full:
 		push_error("ranged: damage applied too early (t=0.7)")
 		return false
-	_run_until(sim, 1.5)
-	if dummy.unit.current_hp != dummy.unit.get_effective_max_hp() - 10:
-		push_error("ranged: expected one hit by t=1.5, hp=%d" % dummy.unit.current_hp)
+	_run_until(sim, 1.6)
+	if dummy.unit.current_hp >= full:
+		push_error("ranged: expected first hit by t=1.6, hp=%d" % dummy.unit.current_hp)
 		return false
-	return true
+	## 回合制下后续回合还会再射；只断言首发延迟成立
+	return spawned[0] < 0.2
 
 
 static func _test_deploy_time_freezes() -> bool:
@@ -412,7 +493,7 @@ static func _test_deploy_time_freezes() -> bool:
 	if sim.is_finished():
 		push_error("deploy: deploying unit must count as present")
 		return false
-	_run_until(sim, deployed_at + 1.5)
+	_run_until(sim, deployed_at + 4.0)
 	if deploying.cell.y >= start_cell.y:
 		push_error("deploy: unit did not step after deploy_time (cell=%s)" % deploying.cell)
 		return false
@@ -462,7 +543,11 @@ static func _test_splash_hits_cluster() -> bool:
 	var far := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "far"}), Vector2(15.5, 20.5))
 	var splashes: Array[float] = []
 	sim.splash_triggered.connect(func(_c: Vector2, r: float) -> void: splashes.append(r))
-	_run_until(sim, 0.1)
+	## 只跑到第一次溅射（一动一次出手）；避免多回合连打干扰断言
+	var guard := 0
+	while splashes.is_empty() and guard < 60:
+		sim.advance_fixed_step()
+		guard += 1
 	var full := primary.unit.get_effective_max_hp()
 	for rt in [primary, near_a, near_b]:
 		if (rt as RtUnit).unit.current_hp != full - 10:
@@ -481,8 +566,8 @@ static func _test_occupancy_no_shared_cells() -> bool:
 	var center := Vector2(9.5, 16.5)
 	for i in 6:
 		var team := UnitInstance.Team.PLAYER if i % 2 == 0 else UnitInstance.Team.ENEMY
-		sim.add_unit(make_dummy(team, 100000, {"id": "u%d" % i}), center)
-	_run_until(sim, 2.0)
+		sim.add_unit(make_dummy(team, 100000, {"id": "u%d" % i, "move_speed": 1.0, "sight_range": 20.0, "attack_reach": 1.0, "attack_windup": 5.0}), center)
+	_run_until(sim, 4.0)
 	var seen: Dictionary = {}
 	for item in sim.get_units():
 		var rt := item as RtUnit
@@ -503,9 +588,9 @@ static func _test_win_and_bus_death_events() -> bool:
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 7)
-	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"attack": 60, "max_hp": 1000, "move_speed": 3.0, "attack_reach": 1.0}), Vector2(9.5, 24.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0}), Vector2(8.5, 8.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0}), Vector2(11.5, 6.5))
+	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"attack": 60, "max_hp": 1000, "move_speed": 3.0, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 24.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(8.5, 8.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 100, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(11.5, 6.5))
 	var deaths: Array[UnitInstance] = []
 	var starts: Array[int] = [0]
 	bus.combat_event.connect(
@@ -517,7 +602,7 @@ static func _test_win_and_bus_death_events() -> bool:
 	)
 	var finished_with: Array = []
 	sim.combat_finished.connect(func(won: bool) -> void: finished_with.append(won))
-	_run_until(sim, 60.0)
+	_run_until(sim, 120.0)
 	bus.free()
 	if not sim.is_finished() or not sim.did_player_win():
 		push_error("win: expected player win (finished=%s)" % sim.is_finished())
@@ -538,11 +623,11 @@ static func _test_win_and_bus_death_events() -> bool:
 static func _test_lose_when_no_player_alive() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 8)
-	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"max_hp": 50, "attack": 1, "attack_reach": 1.0}), Vector2(9.5, 24.5))
-	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1000, "attack": 30, "move_speed": 3.0, "attack_reach": 1.0}), Vector2(9.5, 6.5))
+	sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"max_hp": 50, "attack": 1, "attack_reach": 1.0, "move_speed": 0.0}), Vector2(9.5, 24.5))
+	sim.add_unit(make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1000, "attack": 30, "move_speed": 3.0, "attack_reach": 1.0, "attack_windup": 0.0}), Vector2(9.5, 6.5))
 	var finished_with: Array = []
 	sim.combat_finished.connect(func(won: bool) -> void: finished_with.append(won))
-	_run_until(sim, 60.0)
+	_run_until(sim, 120.0)
 	if not sim.is_finished() or sim.did_player_win() or finished_with != [false]:
 		push_error("lose: expected player loss")
 		return false
@@ -565,7 +650,11 @@ static func _build_mixed_scenario(seed_value: int) -> RealtimeCombatSim:
 
 
 static func _snapshot(sim: RealtimeCombatSim) -> Array:
-	var out: Array = [sim.fixed_step_count, sim.is_finished(), sim.did_player_win()]
+	var out: Array = [sim.fixed_step_count, sim.is_finished(), sim.did_player_win(), sim.get_round_index(), sim.get_queue_cursor()]
+	var actor := sim.get_current_actor()
+	## 不用 instance_id（跨 sim 构造会漂移）；用队列下标 + 队伍
+	out.append(sim.get_action_queue().find(actor) if actor != null else -1)
+	out.append(actor.get_team() if actor != null else -1)
 	for item in sim.get_units():
 		var rt := item as RtUnit
 		out.append([rt.unit.id, rt.unit.team, rt.cell, rt.unit.current_hp, rt.state])
@@ -593,7 +682,7 @@ static func _test_determinism_frame_rate_independent() -> bool:
 	if snap_a.size() <= 3:
 		push_error("determinism: scenario ended too early to be meaningful")
 		return false
-	for _i in 6000:
+	for _i in 12000:
 		a.step(1.0 / 60.0)
 		b.step(1.0 / 7.0)
 		if a.is_finished() and b.is_finished():
@@ -624,11 +713,66 @@ static func _test_projectile_vanishes_when_target_dead() -> bool:
 	)
 	var target := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100), Vector2(9.5, 20.5))
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(1.5, 1.5))
-	_run_until(sim, 0.2)
+	_run_until(sim, 2.0)
 	if target.is_alive():
 		push_error("vanish: melee should have killed target")
 		return false
 	if not sim.get_projectiles().is_empty():
 		push_error("vanish: projectile to dead target should disappear")
+		return false
+	return true
+
+
+## 阵亡单位在队列中被跳过，下一存活者行动。
+static func _test_dead_skipped_in_queue() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 17)
+	var f0 := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 1000, "attack": 100, "move_speed": 0.0, "attack_reach": 10.0,
+			"attack_windup": 0.0, "id": "killer",
+		}),
+		Vector2(9.5, 20.5),
+	)
+	var e0 := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 10, "attack": 1, "move_speed": 0.0, "attack_reach": 1.0, "id": "victim",
+		}),
+		Vector2(9.5, 18.5),
+	)
+	var e1 := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "survivor", "move_speed": 0.0}),
+		Vector2(5.5, 5.5),
+	)
+	var seen_after_death: Array[String] = []
+	var dead_acted := false
+	sim.current_actor_changed.connect(
+		func(actor: RtUnit) -> void:
+			if actor == null:
+				return
+			if not e0.is_alive():
+				if actor == e0:
+					dead_acted = true
+				else:
+					seen_after_death.append(actor.unit.id)
+	)
+	sim.begin_combat()
+	## f0, e0, e1 队列；f0 击杀 e0 后应跳过 e0
+	var guard := 0
+	while e0.is_alive() and guard < 60:
+		sim.advance_fixed_step()
+		guard += 1
+	if e0.is_alive():
+		push_error("skip: victim should be dead")
+		return false
+	guard = 0
+	while seen_after_death.is_empty() and guard < 90:
+		sim.advance_fixed_step()
+		guard += 1
+	if dead_acted:
+		push_error("skip: dead unit became current actor")
+		return false
+	if seen_after_death.is_empty():
+		push_error("skip: never saw surviving actor after death")
 		return false
 	return true

@@ -1,6 +1,7 @@
 class_name RtUnitBrain
 extends RefCounted
 ## 八方向格步决策：索敌/出手用切比雪夫格距；移动选邻格；不修改其他单位。
+## 主路径为一动决策（decide_turn）；decide 保留给旧并行测例兼容。
 
 ## 进入攻击判定的距离容差（格）
 const REACH_EPSILON := 0.02
@@ -25,8 +26,76 @@ class Decision:
 	## 本步要踏入的邻格相对偏移；ZERO = 不移动（攻击中 / 等待占格）
 	var step: Vector2i = Vector2i.ZERO
 	var fire: bool = false
+	## 一动决策：true = 本动已无事可做（交给 sim 结束当前行动者）
+	var turn_done: bool = false
 
 
+## As-Is move_speed（格/秒）→ 一动最多走几格。0 移速不挪步。
+static func turn_step_budget(stats: UnitStats) -> int:
+	if stats == null:
+		return 0
+	var speed := maxf(0.0, stats.move_speed)
+	if speed <= 0.0:
+		return 0
+	return maxi(1, roundi(speed))
+
+
+## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
+static func decide_turn(
+	unit: RtUnit,
+	units: Array,
+	dt: float,
+	is_cell_free: Callable,
+	steps_left: int,
+	has_attacked: bool,
+) -> Decision:
+	var decision := Decision.new()
+	if not unit.is_alive():
+		decision.turn_done = true
+		return decision
+	if unit.state == RtUnit.State.DEPLOYING:
+		## 部署由 sim 用全局时钟推进；轮到仍在部署则让出行动权。
+		decision.turn_done = true
+		return decision
+	if has_attacked:
+		decision.turn_done = true
+		return decision
+
+	_refresh_target(unit, units)
+	if unit.target == null:
+		unit.state = RtUnit.State.MOVING
+		decision.turn_done = true
+		return decision
+
+	## 落格顿步：未落稳不判攻、不新开步
+	if unit.is_stepping():
+		return decision
+
+	var stats := unit.get_stats()
+	var dist := float(unit.cell_distance_to(unit.target))
+	var reach := grid_reach(stats.attack_reach)
+	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
+		if unit.state != RtUnit.State.ATTACKING:
+			unit.state = RtUnit.State.ATTACKING
+			unit.attack_timer = maxf(0.0, stats.attack_windup)
+		unit.attack_timer -= dt
+		if unit.attack_timer <= TIME_EPSILON:
+			decision.fire = true
+			## 一动最多出手一次；不 refill interval
+		return decision
+
+	unit.state = RtUnit.State.MOVING
+	if steps_left <= 0 or maxf(0.0, stats.move_speed) <= 0.0:
+		decision.turn_done = true
+		return decision
+	decision.step = pick_step(unit, unit.target, is_cell_free)
+	if decision.step == Vector2i.ZERO:
+		## 被挡或无法靠近：本动结束（不空挥）
+		decision.turn_done = true
+	return decision
+
+
+## 旧并行推进路径（测例/兼容）；新主路径用 decide_turn。
 static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable) -> Decision:
 	var decision := Decision.new()
 	if not unit.is_alive():
@@ -39,14 +108,7 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		unit.state = RtUnit.State.MOVING
 
 	var stats := unit.get_stats()
-	if unit.target != null and not unit.target.is_alive():
-		_drop_target(unit)
-	if unit.state == RtUnit.State.ATTACKING and unit.target != null:
-		var lock_dist := float(unit.cell_distance_to(unit.target))
-		if lock_dist > grid_reach(stats.attack_reach) + REACH_HYSTERESIS:
-			_drop_target(unit)
-	if unit.state != RtUnit.State.ATTACKING:
-		unit.target = acquire_target(unit, units)
+	_refresh_target(unit, units)
 	if unit.target == null:
 		unit.state = RtUnit.State.MOVING
 		return decision
@@ -73,6 +135,18 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	return decision
+
+
+static func _refresh_target(unit: RtUnit, units: Array) -> void:
+	var stats := unit.get_stats()
+	if unit.target != null and not unit.target.is_alive():
+		_drop_target(unit)
+	if unit.state == RtUnit.State.ATTACKING and unit.target != null:
+		var lock_dist := float(unit.cell_distance_to(unit.target))
+		if lock_dist > grid_reach(stats.attack_reach) + REACH_HYSTERESIS:
+			_drop_target(unit)
+	if unit.state != RtUnit.State.ATTACKING:
+		unit.target = acquire_target(unit, units)
 
 
 ## 旧欧氏近战 reach 常 < 1；一格一体下邻格切比雪夫为 1，正 reach 至少按邻格处理。

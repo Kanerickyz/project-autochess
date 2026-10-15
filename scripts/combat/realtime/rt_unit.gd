@@ -1,6 +1,6 @@
 class_name RtUnit
 extends RefCounted
-## 实时战斗单位运行态：逻辑格坐标 + 格心取样表现插值。属性只读自 UnitInstance。
+## 战斗单位运行态：逻辑格坐标 + 一动内落格顿步表现插值。属性只读自 UnitInstance。
 
 enum State { DEPLOYING, MOVING, ATTACKING, DEAD }
 
@@ -165,7 +165,8 @@ func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
 	position = step_from
 
 
-## move_speed = 完成一格步进的速率（格/秒）；正/斜等价。
+## As-Is 字段名 move_speed：表现上完成一格步进的速率（格/秒）；正/斜等价。
+## 一动步数预算由 RtUnitBrain.turn_step_budget 用同一字段启发式换算。
 ## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
 func advance_step_visual(dt: float) -> void:
 	if not is_stepping():
