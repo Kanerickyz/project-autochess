@@ -1,9 +1,8 @@
 # 旧纸剪贴涂鸦风 — 美术简报（L0）
 
-> **状态：未实装。** 本文是用户定稿风格的可落地简报，供 `technical-artist` 做 Run 战场环境 + 少量 archetype 贴纸单位。  
-> **禁止**将本文写成已实现；As-Is 主路径仍为椭圆色块占位（见 §8）。  
+> **状态：Run 主路径已接环境层 + 四类蓝/红贴纸。** 无合同贴图的兵种仍走椭圆回退（§9）。  
 > **范围 C**：环境 + 少量 archetype（非整库）。不扩二十四人全角色库贴图。  
-> 目标等级：L0（简报）。验收方式：完全（本职只交简报；实现另切片）。
+> 风格正文仍是落地依据；资产与接线见 §6 映射与 §7 路径。
 
 ---
 
@@ -18,7 +17,7 @@
 | 项 | 说明 |
 | --- | --- |
 | 风格共识参考图 | `/home/ubuntu/.cursor/projects/workspace/assets/C5C72000-44C8-4A42-BE27-CA926E9CDEA1_L0_001.jpg`（工作区外参考；**未**入库 `assets/`） |
-| 主路径绘制（As-Is） | `scripts/ui/realtime/realtime_arena_view.gd`：棋盘格 + 半场色调 + **椭圆单位占位** |
+| 主路径绘制 | `scripts/ui/realtime/realtime_arena_view.gd`：纸基 + 左右边界 + archetype 贴纸；无贴纸时椭圆 |
 | 主题约束 | 中世纪幻想 2D；剪影可读优先（与 `GAME_VISION` 一致） |
 | 本切片不做 | 全角色库换皮、写实/3D 管线、羁绊视觉、UI 整套换皮 |
 
@@ -114,7 +113,19 @@
 | `captain_cape` | 队长披风剑 | **大披风**为第一识别；举剑或持剑；尖盔 | 钴蓝披风（最抢眼） | 砖红披风 |
 
 **制作优先级**：`captain_cape`（阵营旗舰）→ `knight_shield` → `heavy_axe` → `archer`。  
-**未列入本切片**：法师、枪兵、召唤物、坐骑、Boss 异形等（需另开合同）。
+**未列入本切片**：法师、枪兵、召唤物、坐骑、Boss 异形等（需另开合同）。这些 id 继续椭圆回退。
+
+### 6.1 资源 id → archetype（已接线）
+
+`PaperArchetype.from_unit_id` 按子串匹配，先匹配更具体的项。敌我各用对应颜色贴纸。
+
+| 命中子串（小写 id） | archetype |
+| --- | --- |
+| archer / crossbow / horsebow / musket / hunter | `archer` |
+| maul / barbarian / axe | `heavy_axe` |
+| giant_knight / valkyrie / banner | `captain_cape` |
+| knight / shield / aegis / pekka | `knight_shield` |
+| 其余（含空 id） | 无贴纸，椭圆 + 短名 |
 
 ---
 
@@ -193,19 +204,16 @@ assets/sprites/paper_cutout/
 | 等级 | 本职出口 | 本切片 |
 | --- | --- | --- |
 | **L0** | 风格、调色板、贴纸要点、分层、archetype、命名、可读距离、回退、禁止项 | **本文件** |
-| L1 | 概念或灰盒：环境分层示意图 / 单 archetype 线稿或色块稿 | 未做 |
-| L2 | 占位可辨认单位/阵营（可临时色块贴纸）进主路径 | 未做 |
-| L3 | 合同 8 单位 + 环境层资产到位，或明确走 §9 回退 | 未做 |
-| L4 | 展示距离 GUI 证据：全板阵营/archetype 可读 | 另切片 |
+| L1–L3 | 环境层 + 8 张贴纸进 `assets/sprites/paper_cutout/`，`RealtimeArenaView` 按 §6.1 绘制，缺图走椭圆 | **已接** |
+| L4 | 展示距离 GUI 证据：全板阵营/archetype 可读 | 以当次验收记录为准 |
 | L5 | 只修资产缺陷，不扩题材 | — |
 
-**实现另切片**：`technical-artist` 出图与导入；主路径替换挂在 `realtime_arena_view.gd`（或 TA 指定的精灵节点）；程序只接资源引用与回退，不改战斗规则。
+贴纸由 `tools/generate_paper_cutout_art.py` 生成（手绘感色块，不是照片贴图）。程序只引用贴图与回退，不改战斗规则。
 
 ---
 
-## 12. 主代理待处理项（交接）
+## 12. 仍开放
 
-1. 开实现切片（建议目标 L3）：派 `technical-artist` 按 §6–§7 出环境 + 8 贴纸；必要时 `gameplay-engineer` 接线贴图与椭圆回退。  
-2. 参考图是否复制进仓库 `Documents/Reference/` 或设计附件区：需主代理决定（当前在 Cursor 项目 assets，**非**游戏 `assets/`）。  
-3. archetype ↔ 角色库映射（谁用骑士盾剑皮、谁用队长皮）留给内容/程序，不在本 L0 锁定。  
-4. 勿改 `GAME_VISION` / Features 大改；本文件仅 Content 简报。
+1. 参考图未入库（仍在工作区外的效果图）；游戏内资产是按本简报生成的贴纸，不是那张效果图本身。  
+2. 四类以外的兵种、UI 全套、音效不在本切片。  
+3. 贴纸是色块剪纸占位，后续可换手绘原画，路径保持 §7。

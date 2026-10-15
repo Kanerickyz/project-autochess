@@ -738,6 +738,7 @@ func _build_enemy_previews(spawns: Array) -> Array:
 			"visual_half_width": stats.get_visual_half_width() if stats != null else 0.0,
 			"visual_half_height": stats.get_visual_half_height() if stats != null else 0.0,
 			"label": label,
+			"unit_id": unit.unit_data.id if unit != null and unit.unit_data != null else "",
 			"seat_index": int(spawn.get("seat_index", -1)),
 			"attack": unit.get_effective_attack() if unit != null else 0,
 			"hp": unit.current_hp if unit != null else 0,
@@ -1329,6 +1330,7 @@ func _set_selected(entry_id: int) -> void:
 	_arena.placement_active = entry != null and _phase == Phase.PREPARE
 	if entry != null and entry.unit != null:
 		_arena.ghost_label = entry.get_display_name()
+		_arena.ghost_unit_id = entry.get_unit_id()
 		var stats := entry.unit.stats
 		_arena.ghost_radius = stats.body_radius if stats != null else 0.7
 		_arena.ghost_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
