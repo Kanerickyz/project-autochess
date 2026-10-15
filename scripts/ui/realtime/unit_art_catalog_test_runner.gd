@@ -1,6 +1,6 @@
 extends SceneTree
 ## 每个 Run 兵种（友方、敌方与召唤代理）都必须显式映射造型并解析到蓝 / 红两张贴图；
-## 战场布局在不同宽高比下坐标可往返、棋盘不越出控件。
+## 战场布局在不同宽高比下坐标可往返、棋盘不越出控件；攻血标尺寸统一。
 
 const UNIT_DIRS := [
 	"res://resources/units/realtime",
@@ -59,6 +59,14 @@ func _check_layout() -> void:
 		is_equal_approx(view.get_board_rect().get_center().x, 540.0),
 		"board centered horizontally",
 	)
+	_expect(
+		RealtimeArenaView.STAT_ATTACK_TEX.get_size() == RealtimeArenaView.STAT_HP_TEX.get_size(),
+		"attack and hp badge textures share one size",
+	)
+	for px: float in [30.0, 37.0, 60.0]:
+		var badge := view.get_stat_badge_size(px)
+		_expect(badge.y >= RealtimeArenaView.STAT_BADGE_MIN_HEIGHT - 0.01, "badge readable at px %.0f" % px)
+		_expect(badge.x * 2.0 <= px * 2.0, "badge pair fits within two cells at px %.0f" % px)
 	view.free()
 
 
