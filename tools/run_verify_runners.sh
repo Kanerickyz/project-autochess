@@ -15,6 +15,7 @@ runners=(
   "res://scripts/combat/realtime/realtime_combat_sim_test_runner.gd"
   "res://scripts/combat/realtime/realtime_ability_effect_test_runner.gd"
   "res://scripts/ui/realtime/realtime_battle_flow_test_runner.gd"
+  "res://scripts/ui/realtime/recruit_arena_transition_test_runner.gd"
   "res://scripts/ui/realtime/realtime_combat_feedback_test_runner.gd"
   "res://scripts/core/board_grid_distance_test_runner.gd"
   "res://scripts/core/draw_service_test_runner.gd"

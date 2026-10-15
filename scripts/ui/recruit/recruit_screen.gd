@@ -1,6 +1,7 @@
 class_name RecruitScreen
 extends Control
-## 招募 UI：上区队伍、下区三人；进出拼屏动画；拖拽/点选招募。
+## 【遗留卡片面板】主路径已改为 RealtimeBattleController.enter_recruit（Arena 草地+单位体）。
+## 本场景可留作对照/废弃；Run 不再实例化。上区队伍、下区三人卡片与拼屏动画。
 
 signal finished(kept_changes: bool)
 

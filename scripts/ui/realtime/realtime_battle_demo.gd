@@ -68,6 +68,9 @@ func _process(delta: float) -> void:
 				get_tree().quit(0)
 				return
 			_battle.continue_after_result()
+		RealtimeBattleController.Phase.RECRUIT:
+			## 自动演示：招募阶段直接完成。
+			_auto_timer = AUTO_DEPLOY_INTERVAL
 
 
 func _parse_args() -> void:

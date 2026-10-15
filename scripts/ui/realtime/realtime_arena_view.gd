@@ -6,8 +6,13 @@ extends Control
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
+## 招募：候选人 index 拖放到上半场；replace_entry_id≥0 为替换，-1 为空席加入。
+signal recruit_drop(candidate_index: int, replace_entry_id: int)
+signal recruit_candidate_pressed(candidate_index: int)
+signal recruit_team_pressed(entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
+const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
 const NO_CELL := Vector2i(-1, -1)
 const GRASS_A := Color(0.58, 0.74, 0.46)
 const GRASS_B := Color(0.55, 0.71, 0.43)
@@ -53,9 +58,19 @@ var prepare_slots: PrepareSlotBoard
 var enemy_slots: PrepareSlotBoard
 ## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
 var presentation_time_scale: float = 1.0
-## 胜后半场退出演出：敌半场向上、友半场向下的像素位移（由控制器 Tween）。
+## 胜后半场退出/招募进入：上半场 / 下半场像素位移（由控制器 Tween）。
+## 草地与外框不随位移；仅半场色调与单位/座位内容滑动。
 var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
+## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
+var recruit_active: bool = false
+## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
+var recruit_team_slots: PrepareSlotBoard
+## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
+var recruit_candidates: Array = []
+var recruit_selected_candidate: int = -1
+var recruit_selected_replace_id: int = -1
+var recruit_needs_replace: bool = false
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -67,6 +82,8 @@ var _fx: Array = []
 var _fx_clock: float = 0.0
 ## Array[Dictionary]：技能结果数字 / 短提示
 var _feedback: Array = []
+var _recruit_drag_index: int = -1
+var _recruit_press_index: int = -1
 
 const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
 const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
@@ -74,6 +91,13 @@ const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.9)
 const ENEMY_SLOT_EMPTY := Color(0.95, 0.40, 0.36, 0.18)
 const ENEMY_SLOT_OCCUPIED := Color(0.90, 0.30, 0.28, 0.32)
 const ENEMY_SLOT_BORDER := Color(0.95, 0.60, 0.55, 0.55)
+const RECRUIT_TEAM_EMPTY := Color(0.45, 0.70, 0.95, 0.22)
+const RECRUIT_TEAM_FILL := Color(0.30, 0.55, 0.95, 0.42)
+const RECRUIT_TEAM_BORDER := Color(0.75, 0.90, 1.0, 0.95)
+const RECRUIT_CAND_EMPTY := Color(0.95, 0.78, 0.35, 0.28)
+const RECRUIT_CAND_FILL := Color(0.95, 0.70, 0.25, 0.48)
+const RECRUIT_CAND_BORDER := Color(1.0, 0.92, 0.45, 0.95)
+const RECRUIT_SELECT := Color(1.0, 0.95, 0.35, 0.55)
 
 
 func _ready() -> void:
@@ -103,6 +127,8 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END:
 		_drag_active = false
+		_recruit_drag_index = -1
+		_recruit_press_index = -1
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
 		_hover_cell = NO_CELL
@@ -272,6 +298,9 @@ func _trim_feedback_for_unit(unit_id: int) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if recruit_active:
+		_gui_input_recruit(event)
+		return
 	if event is InputEventMouseMotion:
 		_hover_cell = tile_to_cell(local_to_tile((event as InputEventMouseMotion).position))
 	elif event is InputEventMouseButton:
@@ -281,10 +310,126 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 
 
+func _gui_input_recruit(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		if _recruit_press_index >= 0 and _recruit_drag_index < 0:
+			## 按下后略移即进入拖拽。
+			if motion.relative.length() > 2.0:
+				_begin_recruit_drag(_recruit_press_index)
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var tile := local_to_tile(mb.position)
+		var cell := tile_to_cell(tile)
+		if mb.pressed:
+			var cand := _find_recruit_candidate_at(cell)
+			if cand >= 0:
+				_recruit_press_index = cand
+				accept_event()
+				return
+			var entry_id := _find_recruit_team_entry_at(cell)
+			if entry_id >= 0:
+				recruit_team_pressed.emit(entry_id)
+				accept_event()
+			return
+		## 松开
+		if _recruit_drag_index >= 0:
+			_finish_recruit_drag(cell)
+			accept_event()
+			return
+		if _recruit_press_index >= 0:
+			var pressed := _recruit_press_index
+			_recruit_press_index = -1
+			recruit_candidate_pressed.emit(pressed)
+			accept_event()
+
+
+func _begin_recruit_drag(index: int) -> void:
+	if index < 0 or index >= recruit_candidates.size():
+		return
+	var info: Dictionary = recruit_candidates[index]
+	if info.get("unit") == null:
+		return
+	_recruit_drag_index = index
+	_recruit_press_index = -1
+	recruit_selected_candidate = index
+	_drag_active = true
+	var unit: UnitData = info.get("unit") as UnitData
+	var stats: UnitStats = unit.stats if unit != null else null
+	_drag_radius = stats.body_radius if stats != null else 0.7
+	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
+	_drag_label = unit.display_name if unit != null else String(info.get("label", ""))
+	queue_redraw()
+
+
+func _finish_recruit_drag(cell: Vector2i) -> void:
+	var index := _recruit_drag_index
+	_recruit_drag_index = -1
+	_recruit_press_index = -1
+	_drag_active = false
+	if index < 0:
+		return
+	var mid := BoardHalf.midline_row(board_size.y)
+	if cell == NO_CELL or cell.y >= mid:
+		queue_redraw()
+		return
+	var replace_id := _find_recruit_team_entry_at(cell)
+	if recruit_needs_replace:
+		if replace_id < 0:
+			queue_redraw()
+			return
+		recruit_drop.emit(index, replace_id)
+	else:
+		## 空席：落到上半任意格（含空队位）即可加入。
+		recruit_drop.emit(index, -1)
+	queue_redraw()
+
+
+func _find_recruit_candidate_at(cell: Vector2i) -> int:
+	if cell == NO_CELL:
+		return -1
+	for info in recruit_candidates:
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = info.get("cell", NO_CELL)
+		if c == cell:
+			return int(info.get("index", -1))
+	return -1
+
+
+func _find_recruit_team_entry_at(cell: Vector2i) -> int:
+	if recruit_team_slots == null or cell == NO_CELL:
+		return -1
+	var slot_i := recruit_team_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := recruit_team_slots.get_entry(slot_i)
+	if entry == null:
+		return -1
+	return entry.entry_id
+
+
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
-	if not (data is Dictionary) or not (data as Dictionary).has(DRAG_KEY):
+	if not (data is Dictionary):
 		return false
 	var dict := data as Dictionary
+	if dict.has(RECRUIT_CANDIDATE_KEY) and recruit_active:
+		_drag_active = true
+		_recruit_drag_index = int(dict[RECRUIT_CANDIDATE_KEY])
+		_drag_radius = float(dict.get("radius", 0.7))
+		_drag_visual_half_width = float(dict.get("visual_half_width", 0.0))
+		_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
+		_drag_label = String(dict.get("label", ""))
+		_hover_cell = tile_to_cell(local_to_tile(at_position))
+		return true
+	if not dict.has(DRAG_KEY):
+		return false
 	_drag_active = true
 	_drag_radius = float(dict.get("radius", 0.7))
 	_drag_visual_half_width = float(dict.get("visual_half_width", 0.0))
@@ -297,6 +442,21 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_drag_active = false
 	var dict := data as Dictionary
+	if dict.has(RECRUIT_CANDIDATE_KEY) and recruit_active:
+		var index := int(dict[RECRUIT_CANDIDATE_KEY])
+		_recruit_drag_index = -1
+		var cell := tile_to_cell(local_to_tile(at_position))
+		var mid := BoardHalf.midline_row(board_size.y)
+		if cell == NO_CELL or cell.y >= mid:
+			return
+		var replace_id := _find_recruit_team_entry_at(cell)
+		if recruit_needs_replace:
+			if replace_id < 0:
+				return
+			recruit_drop.emit(index, replace_id)
+		else:
+			recruit_drop.emit(index, -1)
+		return
 	card_dropped.emit(int(dict[DRAG_KEY]), local_to_tile(at_position))
 
 
@@ -309,19 +469,38 @@ func reset_half_slide() -> void:
 	queue_redraw()
 
 
+func clear_recruit_mode() -> void:
+	recruit_active = false
+	recruit_team_slots = null
+	recruit_candidates.clear()
+	recruit_selected_candidate = -1
+	recruit_selected_replace_id = -1
+	recruit_needs_replace = false
+	_recruit_drag_index = -1
+	_recruit_press_index = -1
+	queue_redraw()
+
+
+func set_half_slide_offscreen(travel: float) -> void:
+	enemy_half_slide_y = -absf(travel)
+	ally_half_slide_y = absf(travel)
+	queue_redraw()
+
+
 func _draw() -> void:
 	var rect := get_board_rect()
 	var px := get_cell_px()
 	var mid := BoardHalf.midline_row(board_size.y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	var ally_off := Vector2(0.0, ally_half_slide_y)
+	## 外框始终固定在 board rect，不随半场 slide。
 	draw_rect(rect.grow(2.0), BORDER)
-	## 半场草色与单位随 slide 移出摄像范围；中线/边框保持便于读「离开战场」。
+	## 草地始终画满棋盘（不随 slide），保证胜→招募同屏背景不断。
 	for y in board_size.y:
-		var half_off := enemy_off if y < mid else ally_off
 		for x in board_size.x:
-			var cell_rect := Rect2(rect.position + Vector2(x, y) * px + half_off, Vector2(px, px))
+			var cell_rect := Rect2(rect.position + Vector2(x, y) * px, Vector2(px, px))
 			draw_rect(cell_rect, GRASS_A if (x + y) % 2 == 0 else GRASS_B)
+	## 半场色调与单位/座位随内容滑动。
 	draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
 	draw_rect(
 		Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
@@ -334,7 +513,7 @@ func _draw() -> void:
 		var ly := rect.position.y + y * px
 		draw_line(Vector2(rect.position.x, ly), Vector2(rect.end.x, ly), GRID_LINE, 1.0)
 
-	var showing_placement := placement_active or _drag_active
+	var showing_placement := (placement_active or _drag_active) and not recruit_active
 	if showing_placement:
 		draw_rect(
 			Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
@@ -343,32 +522,156 @@ func _draw() -> void:
 	var mid_y := rect.position.y + mid * px
 	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
 
-	_draw_enemy_slots(px)
-	_draw_prepare_slots(px)
+	if recruit_active:
+		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
+		_draw_recruit_team(px, enemy_off)
+		_draw_recruit_candidates(px, ally_off)
+		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
+			_draw_recruit_drop_hint(px, mid)
+	else:
+		_draw_enemy_slots(px)
+		_draw_prepare_slots(px)
 
-	for preview in enemy_previews:
-		var body_r := float(preview["radius"])
-		var vwx := float(preview.get("visual_half_width", 0.0))
-		var vhy := float(preview.get("visual_half_height", 0.0))
-		_draw_body(
-			preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.35, String(preview["label"]), px, false, enemy_off,
-		)
-		_draw_stat_badges(
-			tile_to_local(preview["position"]) + enemy_off,
-			maxf(vwx, vhy) * px,
-			int(preview.get("attack", 0)),
-			int(preview.get("hp", 0)),
-			0.9,
-			px,
-		)
+		for preview in enemy_previews:
+			var body_r := float(preview["radius"])
+			var vwx := float(preview.get("visual_half_width", 0.0))
+			var vhy := float(preview.get("visual_half_height", 0.0))
+			_draw_body(
+				preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.35, String(preview["label"]), px, false, enemy_off,
+			)
+			_draw_stat_badges(
+				tile_to_local(preview["position"]) + enemy_off,
+				maxf(vwx, vhy) * px,
+				int(preview.get("attack", 0)),
+				int(preview.get("hp", 0)),
+				0.9,
+				px,
+			)
 
-	if sim != null:
-		_draw_units(px)
-		_draw_projectiles(px)
+		if sim != null:
+			_draw_units(px)
+			_draw_projectiles(px)
 	_draw_fx(px)
 	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
+
+
+func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.55), 11, 18)
+	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "候选人", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+
+
+func _draw_recruit_team(px: float, off: Vector2) -> void:
+	if recruit_team_slots == null or recruit_team_slots.cells.is_empty():
+		return
+	var rect := get_board_rect()
+	for i in recruit_team_slots.cells.size():
+		var cell: Vector2i = recruit_team_slots.cells[i]
+		var entry: DeckEntry = recruit_team_slots.get_entry(i)
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_TEAM_FILL if entry != null else RECRUIT_TEAM_EMPTY)
+		var border := RECRUIT_TEAM_BORDER
+		if entry != null and entry.entry_id == recruit_selected_replace_id:
+			draw_rect(cell_rect, RECRUIT_SELECT)
+			border = Color(1.0, 0.95, 0.4, 1.0)
+		draw_rect(cell_rect, border, false, 2.0)
+		if entry == null:
+			continue
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var stats := entry.unit.stats if entry.unit != null else null
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		_draw_body(
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
+		)
+		var atk := 0
+		var hp := 0
+		if stats != null:
+			atk = maxi(1, stats.attack + entry.bonus_attack)
+			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+		_draw_stat_badges(
+			tile_to_local(center_tile) + off, maxf(vwx, vhy) * px, atk, hp, 0.95, px,
+		)
+
+
+func _draw_recruit_candidates(px: float, off: Vector2) -> void:
+	var rect := get_board_rect()
+	for info in recruit_candidates:
+		if not (info is Dictionary):
+			continue
+		var cell: Vector2i = info.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var index := int(info.get("index", -1))
+		var unit: UnitData = info.get("unit") as UnitData
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_CAND_FILL if unit != null else RECRUIT_CAND_EMPTY)
+		var border := RECRUIT_CAND_BORDER
+		if index == recruit_selected_candidate or index == _recruit_drag_index:
+			draw_rect(cell_rect, RECRUIT_SELECT)
+			border = Color(1.0, 0.95, 0.4, 1.0)
+		draw_rect(cell_rect, border, false, 2.0)
+		if unit == null:
+			continue
+		## 拖拽中的候选人在原位半透明，并在悬停格画幽灵。
+		var alpha := 0.35 if index == _recruit_drag_index else 0.95
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var stats := unit.stats
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		_draw_body(
+			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
+		)
+		var atk := stats.attack if stats != null else 0
+		var hp := stats.max_hp if stats != null else 0
+		_draw_stat_badges(
+			tile_to_local(center_tile) + off, maxf(vwx, vhy) * px, atk, hp, alpha, px,
+		)
+		var cost := int(info.get("cost", 0))
+		var affordable := bool(info.get("affordable", true))
+		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
+
+
+func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
+	var font := get_theme_default_font()
+	var text := "%d金" % cost
+	var font_size := clampi(int(px * 0.35), 9, 14)
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.85)
+	var color := Color(1.0, 0.9, 0.35, 0.95) if affordable else Color(1.0, 0.35, 0.3, 0.95)
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
+
+func _draw_recruit_drop_hint(px: float, mid: int) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	if cell.y >= mid:
+		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
+		return
+	var ok := true
+	if recruit_needs_replace:
+		ok = _find_recruit_team_entry_at(cell) >= 0
+	draw_rect(cell_rect, Color(0.35, 0.95, 0.45, 0.35) if ok else Color(1.0, 0.25, 0.2, 0.3))
+	var info: Dictionary = {}
+	if _recruit_drag_index >= 0 and _recruit_drag_index < recruit_candidates.size():
+		info = recruit_candidates[_recruit_drag_index]
+	var unit: UnitData = info.get("unit") as UnitData if not info.is_empty() else null
+	var stats := unit.stats if unit != null else null
+	var radius := stats.body_radius if stats != null else _drag_radius
+	var vwx := stats.get_visual_half_width() if stats != null else _drag_visual_half_width
+	var vhy := stats.get_visual_half_height() if stats != null else _drag_visual_half_height
+	var label := unit.display_name if unit != null else _drag_label
+	_draw_body(Vector2(cell) + Vector2(0.5, 0.5), radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true)
 
 
 func _draw_enemy_slots(px: float) -> void:
