@@ -16,6 +16,8 @@ var _rng: RandomNumberGenerator
 var candidates: Array[UnitData] = []
 var is_active: bool = false
 var progress_ratio: float = 0.0
+## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
+var require_nonempty_roster: bool = false
 
 var _snapshot_gold: int = 0
 var _snapshot_entries: Array[DeckEntry] = []
@@ -195,8 +197,25 @@ func reset() -> void:
 	session_changed.emit()
 
 
-func skip() -> void:
+func can_finish() -> bool:
 	if not is_active:
+		return false
+	if require_nonempty_roster:
+		return deck != null and deck.size() >= 1
+	return true
+
+
+func can_skip() -> bool:
+	if not is_active:
+		return false
+	## 开局禁用跳过（空队不可离开）。
+	if require_nonempty_roster:
+		return false
+	return true
+
+
+func skip() -> void:
+	if not can_skip():
 		return
 	reset()
 	is_active = false
@@ -204,7 +223,7 @@ func skip() -> void:
 
 
 func finish() -> void:
-	if not is_active:
+	if not can_finish():
 		return
 	is_active = false
 	session_finished.emit(true)

@@ -9,7 +9,8 @@ const DEFAULT_SEAT_COLS := 5
 ## Legacy single starter; ignored when starting_units is non-empty.
 @export var starting_unit: UnitData
 @export var starting_units: Array[UnitData] = []
-@export_range(1, 40, 1) var starting_count: int = 10
+## 允许 0：开局空队（开局招募后再进地图）；legacy 单单位路径用。
+@export_range(0, 40, 1) var starting_count: int = 10
 @export_range(1, 40, 1) var max_size: int = 20
 ## 本场上场人数上限（deploy_cap；空座可保留，不等于座位数）。
 @export_range(1, 20, 1) var max_board_units: int = DEFAULT_DEPLOY_CAP

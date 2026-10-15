@@ -17,6 +17,7 @@ static func run_all() -> bool:
 	passed = _test_refresh_keeps_recruited() and passed
 	passed = _test_replace_no_refund() and passed
 	passed = _test_skip_discards_finish_keeps() and passed
+	passed = _test_opening_require_nonempty_roster() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -244,5 +245,44 @@ static func _test_skip_discards_finish_keeps() -> bool:
 		return false
 	if economy.gold != gold_after_buy:
 		push_error("RecruitSessionTest: finish should keep gold")
+		return false
+	return true
+
+
+static func _test_opening_require_nonempty_roster() -> bool:
+	var deck := _make_deck([])
+	var economy := _make_economy(6)
+	var session := _make_session(deck, economy, 9, 0.0)
+	session.require_nonempty_roster = true
+	if session.can_skip():
+		push_error("RecruitSessionTest: opening should disable skip")
+		return false
+	if session.can_finish():
+		push_error("RecruitSessionTest: empty opening roster cannot finish")
+		return false
+	session.finish()
+	if not session.is_active:
+		push_error("RecruitSessionTest: finish must no-op while empty opening roster")
+		return false
+	session.skip()
+	if not session.is_active:
+		push_error("RecruitSessionTest: skip must no-op while opening require_nonempty")
+		return false
+	var buy := session.try_recruit(0)
+	if not buy.get("ok", false):
+		push_error("RecruitSessionTest: opening recruit buy failed: %s" % buy.get("reason"))
+		return false
+	if not session.can_finish():
+		push_error("RecruitSessionTest: opening can finish after roster >=1")
+		return false
+	if session.can_skip():
+		push_error("RecruitSessionTest: opening skip stays disabled after buy")
+		return false
+	session.finish()
+	if session.is_active:
+		push_error("RecruitSessionTest: opening finish should end session")
+		return false
+	if deck.size() < 1:
+		push_error("RecruitSessionTest: opening finish should keep recruited unit")
 		return false
 	return true

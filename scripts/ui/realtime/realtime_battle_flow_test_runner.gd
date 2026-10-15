@@ -28,10 +28,29 @@ func _expect(condition: bool, label: String) -> void:
 		push_error("RealtimeBattleFlowTest: FAIL %s" % label)
 
 
+func _seed_test_deck(deck: DeckState) -> void:
+	## 开局空队后 starter tres 可能为空；战斗规则测试自行注入牌库。
+	deck.reset_from_config()
+	if deck.size() > 0:
+		return
+	var paths := [
+		"res://resources/units/realtime/knight.tres",
+		"res://resources/units/realtime/archer.tres",
+		"res://resources/units/realtime/barbarian.tres",
+		"res://resources/units/realtime/goblin.tres",
+		"res://resources/units/realtime/musketeer.tres",
+		"res://resources/units/realtime/valkyrie.tres",
+	]
+	for path in paths:
+		var unit := load(path) as UnitData
+		if unit != null:
+			deck.add_entry(unit)
+
+
 func _test_battle_controller_rules() -> void:
 	var deck := DeckState.new()
 	deck.configure(load(DECK_PATH) as DeckConfig)
-	deck.reset_from_config()
+	_seed_test_deck(deck)
 	var economy := RunEconomy.new()
 	economy.configure(load(ECONOMY_PATH) as EconomyConfig)
 	economy.reset()

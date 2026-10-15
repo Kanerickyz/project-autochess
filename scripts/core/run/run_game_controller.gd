@@ -20,6 +20,9 @@ var _battle: RealtimeBattleController
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
+## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
+var _opening_recruit_pending: bool = false
+var _suppress_map_show: bool = false
 
 
 func _ready() -> void:
@@ -46,7 +49,7 @@ func _ready() -> void:
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
 
-	_start_new_run()
+	await _start_new_run()
 
 
 func _start_new_run() -> void:
@@ -54,11 +57,16 @@ func _start_new_run() -> void:
 	run_economy.reset()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	_hide_encounter_ui()
+	_suppress_map_show = true
+	_opening_recruit_pending = true
 	run_controller.start_run()
-	_show_map()
+	## 见地图之前先开局招募；完成且队伍 ≥1 后由 _on_recruit_finished → _show_map。
+	await _open_opening_recruit()
 
 
 func _show_map() -> void:
+	if _suppress_map_show:
+		return
 	_hide_encounter_ui()
 	_battle_root.visible = false
 	if _battle != null:
@@ -126,8 +134,8 @@ func _on_encounter_completed(won: bool) -> void:
 	await _open_recruit()
 
 
-## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
-func _open_recruit() -> void:
+## 开局招募：与胜后同一套 Arena enter_recruit；进度 0；须队伍 ≥1 才能完成。
+func _open_opening_recruit() -> void:
 	if _recruit_busy:
 		return
 	_recruit_busy = true
@@ -138,6 +146,26 @@ func _open_recruit() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
+	_recruit_session.require_nonempty_roster = true
+	_recruit_session.begin(0.0)
+	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
+	await _battle.enter_recruit(_recruit_session, enter_s)
+
+
+## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
+func _open_recruit() -> void:
+	if _recruit_busy:
+		return
+	_recruit_busy = true
+	_opening_recruit_pending = false
+	_battle_root.visible = true
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _rng.randi()
+	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
+	_recruit_session.require_nonempty_roster = false
 	_recruit_session.begin(_recruit_progress_ratio())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
@@ -153,6 +181,11 @@ func _recruit_progress_ratio() -> float:
 
 func _on_recruit_finished(_kept: bool) -> void:
 	_recruit_busy = false
+	if _opening_recruit_pending:
+		_opening_recruit_pending = false
+		_suppress_map_show = false
+		_show_map()
+		return
 	_battle_root.visible = false
 	run_controller.complete_encounter()
 
@@ -176,7 +209,7 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 
 
 func _on_map_updated() -> void:
-	if run_controller.phase == RunController.RunPhase.MAP:
+	if run_controller.phase == RunController.RunPhase.MAP and not _suppress_map_show:
 		_map_screen.refresh_map(run_controller)
 
 

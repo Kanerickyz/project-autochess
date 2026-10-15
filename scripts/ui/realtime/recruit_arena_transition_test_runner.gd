@@ -31,10 +31,26 @@ func _expect(condition: bool, label: String) -> void:
 		push_error("RecruitArenaTransitionTest: FAIL %s" % label)
 
 
+func _seed_test_deck(deck: DeckState) -> void:
+	## 勿假设 starter 开局有人；空队时自行注入。
+	deck.reset_from_config()
+	if deck.size() > 0:
+		return
+	for path in [
+		"res://resources/units/realtime/knight.tres",
+		"res://resources/units/realtime/archer.tres",
+		"res://resources/units/realtime/barbarian.tres",
+		"res://resources/units/realtime/goblin.tres",
+	]:
+		var unit := load(path) as UnitData
+		if unit != null:
+			deck.add_entry(unit)
+
+
 func _test_recruit_arena_transition() -> void:
 	var deck := DeckState.new()
 	deck.configure(load(DECK_PATH) as DeckConfig)
-	deck.reset_from_config()
+	_seed_test_deck(deck)
 	var economy := RunEconomy.new()
 	economy.configure(load(ECONOMY_PATH) as EconomyConfig)
 	economy.reset()
@@ -53,6 +69,10 @@ func _test_recruit_arena_transition() -> void:
 	var arena := battle.get_arena()
 	_expect(arena != null, "arena exists")
 	_expect(not arena.recruit_active, "recruit inactive at prepare")
+	await process_frame
+	var prepare_arena_h := arena.size.y
+	var prepare_dock := battle.get_node_or_null("Layout/Dock") as Control
+	_expect(prepare_dock != null and prepare_dock.visible, "dock visible in prepare")
 
 	## 入座并开战清敌 → RESULT
 	var hand := battle.get_hand()
@@ -85,6 +105,7 @@ func _test_recruit_arena_transition() -> void:
 	_expect(session.get_candidates().size() == RecruitSession.CANDIDATE_COUNT, "3 candidates rolled")
 
 	await battle.enter_recruit(session, 0.0)
+	await process_frame
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
 	_expect(arena.recruit_active, "arena recruit_active")
 	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "enemy half slid in to 0")
@@ -97,6 +118,23 @@ func _test_recruit_arena_transition() -> void:
 		if info is Dictionary and info.get("unit") != null:
 			alive_cands += 1
 	_expect(alive_cands == RecruitSession.CANDIDATE_COUNT, "3 candidate unit bodies")
+	## 招募时 Dock 保持占位，Arena 高度不膨胀。
+	var recruit_dock := battle.get_node_or_null("Layout/Dock") as Control
+	_expect(recruit_dock != null and recruit_dock.visible, "dock stays visible in recruit")
+	_expect(recruit_dock.find_child("RecruitHud", true, false) != null, "RecruitHud parented under Dock")
+	if prepare_arena_h > 1.0:
+		_expect(
+			absf(arena.size.y - prepare_arena_h) <= 2.0,
+			"arena height matches prepare (no dock collapse)"
+		)
+	## 候选人行相对我半场垂直居中（与 PrepareSlotBoard._centered_row_ys 一致）。
+	var expected_ys := PrepareSlotBoard._centered_row_ys(battle.get_board_size().y, 1, 1, 1, false)
+	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
+	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
+	_expect(
+		not expected_ys.is_empty() and cand_cell.y == expected_ys[0],
+		"candidate row vertically centered in ally half"
+	)
 
 	## 规则：刷新 / 重置仍可用
 	var gold_before := economy.gold

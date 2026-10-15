@@ -697,14 +697,22 @@ func _ensure_recruit_hud() -> void:
 	_recruit_hud.name = "RecruitHud"
 	_recruit_hud.visible = false
 	_recruit_hud.mouse_filter = Control.MOUSE_FILTER_STOP
-	_recruit_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_recruit_hud.offset_top = -132.0
-	_recruit_hud.offset_bottom = 0.0
+	_recruit_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.10, 0.14, 0.12, 0.92)
 	style.set_content_margin_all(8.0)
 	_recruit_hud.add_theme_stylebox_override("panel", style)
-	add_child(_recruit_hud)
+	## 放进 Dock：招募时保持底栏占位，Arena 格像素与准备/战斗一致。
+	var dock_box: Node = null
+	if _dock != null:
+		dock_box = _dock.get_node_or_null("DockBox")
+	if dock_box != null:
+		dock_box.add_child(_recruit_hud)
+	else:
+		_recruit_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		_recruit_hud.offset_top = -132.0
+		_recruit_hud.offset_bottom = 0.0
+		add_child(_recruit_hud)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
@@ -754,14 +762,20 @@ func _ensure_recruit_hud() -> void:
 
 
 func _hide_combat_chrome_for_recruit() -> void:
+	## 只藏手牌/开战/刷新；Dock 保持可见占位，避免 VBox 把空间让给 Arena 导致格子变大。
+	if _dock != null:
+		_dock.visible = true
+		## 先锁当前底栏高度，再藏子控件，保证招募与准备/战斗同尺。
+		var keep_h := _dock.size.y
+		if keep_h < 1.0:
+			keep_h = 120.0
+		_dock.custom_minimum_size.y = maxf(keep_h, 120.0)
 	if _hand_row != null:
 		_hand_row.visible = false
 	if _start_button != null:
 		_start_button.visible = false
 	if _refresh_button != null:
 		_refresh_button.visible = false
-	if _dock != null:
-		_dock.visible = false
 	if _result_overlay != null:
 		_result_overlay.visible = false
 
@@ -769,6 +783,7 @@ func _hide_combat_chrome_for_recruit() -> void:
 func _restore_combat_chrome_after_recruit() -> void:
 	if _dock != null:
 		_dock.visible = true
+		_dock.custom_minimum_size.y = 0.0
 	if _hand_row != null:
 		_hand_row.visible = true
 
@@ -866,10 +881,10 @@ func _build_recruit_candidate_previews() -> Array:
 
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
-	var mid := BoardHalf.midline_row(_board_size.y)
-	var half_h := maxi(1, _board_size.y - mid)
-	var y := mid + half_h / 2
-	y = clampi(y, mid, maxi(mid, _board_size.y - 1))
+	## 与 PrepareSlotBoard 半场垂直居中一致（单行候选人相对我半场竖直居中）。
+	var block_h := 1
+	var row_ys := PrepareSlotBoard._centered_row_ys(_board_size.y, 1, 1, block_h, false)
+	var y := row_ys[0] if not row_ys.is_empty() else BoardHalf.midline_row(_board_size.y)
 	var gap := 2
 	var block_w := n + (n - 1) * gap
 	var start_x := (_board_size.x - block_w) / 2
@@ -892,7 +907,9 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_seat != null:
 		_recruit_seat.text = "席位 %d/%d" % [seats, cap]
 	if _recruit_hint != null:
-		if _recruit_session.needs_replace():
+		if _recruit_session.require_nonempty_roster and seats < 1:
+			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
+		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）"
 		else:
 			_recruit_hint.text = "将下半场候选人拖到上半场队伍（空位加入）"
@@ -902,9 +919,11 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_reset_btn != null:
 		_recruit_reset_btn.disabled = _recruit_animating
 	if _recruit_skip_btn != null:
-		_recruit_skip_btn.disabled = _recruit_animating
+		## 开局隐藏跳过；胜后显示。
+		_recruit_skip_btn.visible = not _recruit_session.require_nonempty_roster
+		_recruit_skip_btn.disabled = _recruit_animating or not _recruit_session.can_skip()
 	if _recruit_finish_btn != null:
-		_recruit_finish_btn.disabled = _recruit_animating
+		_recruit_finish_btn.disabled = _recruit_animating or not _recruit_session.can_finish()
 	if _gold_label != null:
 		_gold_label.text = "金币 %d" % gold
 	if _phase_label != null:
@@ -982,6 +1001,8 @@ func _on_recruit_reset_pressed() -> void:
 func _on_recruit_skip_pressed() -> void:
 	if _recruit_animating or _recruit_session == null:
 		return
+	if not _recruit_session.can_skip():
+		return
 	_recruit_session.skip()
 	exit_recruit()
 	recruit_finished.emit(false)
@@ -989,6 +1010,8 @@ func _on_recruit_skip_pressed() -> void:
 
 func _on_recruit_finish_pressed() -> void:
 	if _recruit_animating or _recruit_session == null:
+		return
+	if not _recruit_session.can_finish():
 		return
 	_recruit_session.finish()
 	exit_recruit()
