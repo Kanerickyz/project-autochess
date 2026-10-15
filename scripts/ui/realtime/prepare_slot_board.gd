@@ -85,6 +85,7 @@ static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vect
 
 
 ## 在各自半场可放置区内垂直居中；索引 0 为前排（更近中线），行距 = stride。
+## 半场内边距用 round，避免 (half-block)/2 整除把角色行偏到半场一侧。
 static func _centered_row_ys(
 	height: int,
 	rows: int,
@@ -94,8 +95,8 @@ static func _centered_row_ys(
 ) -> Array[int]:
 	var mid := BoardHalf.midline_row(height)
 	var half_h := mid if enemy_side else maxi(0, height - mid)
-	var start_in_half := (half_h - block_h) / 2
-	start_in_half = maxi(0, start_in_half)
+	var start_in_half := int(round((float(half_h) - float(block_h)) * 0.5))
+	start_in_half = clampi(start_in_half, 0, maxi(0, half_h - block_h))
 	var ys: Array[int] = []
 	for i in rows:
 		var y: int
