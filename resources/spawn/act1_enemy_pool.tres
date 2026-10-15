@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpawnBudgetConfig" format=3]
+
+[ext_resource type="Script" uid="uid://ylqf0o7zv961t" path="res://scripts/data/spawn_budget_config.gd" id="1_cfg"]
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="2_unit"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_skeleton.tres" id="u_skel"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_spear_goblin.tres" id="u_spear"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_archer.tres" id="u_archer"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_goblin.tres" id="u_goblin"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_barbarian.tres" id="u_barb"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_knight.tres" id="u_knight"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_musketeer.tres" id="u_musk"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_rider.tres" id="u_rider"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_valkyrie.tres" id="u_valk"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mini_pekka.tres" id="u_pekka"]
+
+[resource]
+script = ExtResource("1_cfg")
+enabled = false
+enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka")])

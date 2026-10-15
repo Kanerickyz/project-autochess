@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://dcw5g8btb599i" path="res://resources/abilities/death_spawn_pack.tres" id="3_ability"]
+
+[sub_resource type="Resource" id="UnitStats_enemy_goblin"]
+script = ExtResource("2_stats")
+max_hp = 1
+attack = 3
+steps_per_turn = 1
+crit_rate_percent = 0
+attack_interval = 0.9
+attack_windup = 0.25
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.5
+visual_half_width = 0.55
+visual_half_height = 0.68
+mass = 1.0
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 0.8
+
+[resource]
+script = ExtResource("1_unit")
+id = "enemy_goblin"
+display_name = "敌·轻步兵"
+cost = 2
+tier = 1
+command_cost = 2
+stats = SubResource("UnitStats_enemy_goblin")
+team_default = 1
+ability = ExtResource("3_ability")

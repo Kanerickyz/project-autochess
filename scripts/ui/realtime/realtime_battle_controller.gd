@@ -31,6 +31,10 @@ var _economy: RunEconomy
 var _level: LevelData
 var _encounter: EncounterData
 var _tier_index: int = 0
+## 层预算抽阵上下文（Run 传入；沙盒/测试可省略并按 encounter 旗标推断）。
+var _floor_index: int = 0
+var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
+var _spawn_budget_config: SpawnBudgetConfig = null
 var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
@@ -145,8 +149,19 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	_refresh_hud()
 
 
+## 注入层预算配置（测试用）；null 时按 SpawnBudgetConfig.load_or_default()。
+func set_spawn_budget_config(config: SpawnBudgetConfig) -> void:
+	_spawn_budget_config = config
+
+
 ## 进入遭遇：构筑库 → 抽选手牌 → PREPARE；敌方落点可预览，开战时再刷怪。
-func start_encounter(encounter: EncounterData, tier_index: int) -> void:
+## floor_index / node_type 供层预算抽阵；node_type < 0 时按 encounter.is_boss/is_elite 推断。
+func start_encounter(
+	encounter: EncounterData,
+	tier_index: int,
+	floor_index: int = 0,
+	node_type: int = -1,
+) -> void:
 	if _deck_state == null or _level == null:
 		push_error("RealtimeBattleController.start_encounter: call setup() first")
 		return
@@ -156,6 +171,8 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	_teardown_sim()
 	_encounter = encounter
 	_tier_index = tier_index
+	_floor_index = maxi(0, floor_index)
+	_node_type = _resolve_node_type(encounter, node_type)
 	_won = false
 	_wave_gold = 0
 	_selected_entry_id = -1
@@ -166,7 +183,10 @@ func start_encounter(encounter: EncounterData, tier_index: int) -> void:
 	last_seed = rng_seed if rng_seed != 0 else randi()
 	_encounter_rng = RandomNumberGenerator.new()
 	_encounter_rng.seed = last_seed
-	print("RealtimeBattle: encounter=%s tier=%d seed=%d board=%s" % [encounter.id, tier_index, last_seed, _board_size])
+	print(
+		"RealtimeBattle: encounter=%s tier=%d floor=%d node=%s seed=%d board=%s"
+		% [encounter.id, tier_index, _floor_index, MapNodeType.display_name(_node_type), last_seed, _board_size]
+	)
 
 	var config := _deck_state.get_config()
 	_card_flow.configure_from_deck_config(config)
@@ -615,6 +635,13 @@ func _set_phase(phase: Phase) -> void:
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
+	var budget_cfg := _get_spawn_budget_config()
+	if budget_cfg != null and budget_cfg.enabled:
+		return _roll_enemy_spawns_budget(rng, budget_cfg)
+	return _roll_enemy_spawns_legacy(rng)
+
+
+func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
 	## 配置书写顺序即生成序；座位按空敌座索引依次占用，不 shuffle 打乱生成序。
 	var entries := _encounter.wave.roll_spawn_entries(_level.enemy_pool, _tier_index, rng)
 	var units: Array[UnitData] = []
@@ -643,6 +670,58 @@ func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
 			"seat_index": seat_i,
 		})
 	return result
+
+
+func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudgetConfig) -> Array:
+	var fallback: Array[UnitData] = []
+	if _level != null:
+		fallback = _level.enemy_pool
+	var seated := EnemyBudgetSpawner.roll(
+		_encounter.wave,
+		budget_cfg,
+		fallback,
+		_tier_index,
+		_floor_index,
+		_node_type,
+		_enemy_slots.seat_rows,
+		_enemy_slots.seat_cols,
+		rng,
+	)
+	var result: Array = []
+	for item in seated:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var unit_data: UnitData = item.get("unit_data") as UnitData
+		if unit_data == null:
+			continue
+		var seat_i: int = int(item.get("seat_index", -1))
+		if seat_i < 0 or seat_i >= _enemy_slots.slot_count:
+			continue
+		var cell := _enemy_slots.get_cell(seat_i)
+		var unit := UnitInstance.from_unit_data(unit_data, cell, UnitInstance.Team.ENEMY)
+		result.append({
+			"unit": unit,
+			"position": Vector2(cell) + Vector2(0.5, 0.5),
+			"seat_index": seat_i,
+		})
+	return result
+
+
+func _get_spawn_budget_config() -> SpawnBudgetConfig:
+	if _spawn_budget_config != null:
+		return _spawn_budget_config
+	_spawn_budget_config = SpawnBudgetConfig.load_or_default()
+	return _spawn_budget_config
+
+
+func _resolve_node_type(encounter: EncounterData, node_type: int) -> MapNodeType.Type:
+	if node_type >= 0:
+		return node_type as MapNodeType.Type
+	if encounter != null and encounter.is_boss:
+		return MapNodeType.Type.BOSS
+	if encounter != null and encounter.is_elite:
+		return MapNodeType.Type.ELITE
+	return MapNodeType.Type.COMBAT
 
 
 func _build_enemy_previews(spawns: Array) -> Array:

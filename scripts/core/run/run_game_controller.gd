@@ -98,7 +98,13 @@ func _on_map_node_selected(node_id: int) -> void:
 			run_controller.complete_encounter()
 			return
 		_battle_root.visible = true
-		_battle.start_encounter(encounter, run_controller.get_encounter_tier_index())
+		var floor_index := node.get_floor()
+		_battle.start_encounter(
+			encounter,
+			run_controller.get_encounter_tier_index(),
+			floor_index,
+			int(node_type),
+		)
 		return
 	if node_type == MapNodeType.Type.SHOP:
 		run_controller.register_shop_visit()

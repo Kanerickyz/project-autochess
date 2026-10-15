@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://53lg2ketvoocj" path="res://resources/abilities/crit_extra_damage_mid.tres" id="3_ability"]
+
+[sub_resource type="Resource" id="UnitStats_enemy_musketeer"]
+script = ExtResource("2_stats")
+max_hp = 2
+attack = 5
+steps_per_turn = 1
+attack_range = 3
+crit_rate_percent = 25
+attack_interval = 1.35
+attack_windup = 0.5
+attack_reach = 3.0
+sight_range = 6.0
+body_radius = 0.7
+visual_half_width = 0.9
+visual_half_height = 1.15
+mass = 1.5
+projectile_speed = 14.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "enemy_musketeer"
+display_name = "敌·火枪手"
+cost = 3
+tier = 2
+command_cost = 4
+stats = SubResource("UnitStats_enemy_musketeer")
+team_default = 1
+ability = ExtResource("3_ability")

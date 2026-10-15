@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://goobxpv7q19pt" path="res://resources/abilities/deal_damage_gain_atk_small.tres" id="3_ability"]
+
+[sub_resource type="Resource" id="UnitStats_enemy_valkyrie"]
+script = ExtResource("2_stats")
+max_hp = 7
+attack = 4
+steps_per_turn = 1
+crit_rate_percent = 0
+attack_interval = 1.5
+attack_windup = 0.6
+attack_reach = 0.8
+sight_range = 5.5
+body_radius = 0.7
+visual_half_width = 0.9
+visual_half_height = 1.15
+mass = 2.3
+projectile_speed = 0.0
+splash_radius = 1.0
+deploy_time = 1.2
+
+[resource]
+script = ExtResource("1_unit")
+id = "enemy_valkyrie"
+display_name = "敌·链枷兵"
+cost = 4
+tier = 3
+command_cost = 5
+stats = SubResource("UnitStats_enemy_valkyrie")
+team_default = 1
+ability = ExtResource("3_ability")
