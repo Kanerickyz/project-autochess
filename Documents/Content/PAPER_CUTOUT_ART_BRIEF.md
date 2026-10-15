@@ -52,7 +52,7 @@
 
 ### 3.3 与 As-Is 代码色对照（仅供过渡，非定稿）
 
-`realtime_arena_view.gd` 现用 `PLAYER_COLOR ≈ (0.22,0.47,0.92)`、`ENEMY_COLOR ≈ (0.88,0.24,0.22)`，方向与钴蓝/砖红一致；落地贴纸后应以本表为准，椭圆回退可继续用现有色。
+`realtime_arena_view.gd` 现用 `PLAYER_COLOR ≈ (0.22,0.47,0.92)`、`ENEMY_COLOR ≈ (0.88,0.24,0.22)`，方向与钴蓝/砖红一致，仅用于阴影着色与缺目录时的椭圆兜底；贴图配色以本表为准。
 
 ---
 
@@ -115,7 +115,9 @@
 | `banner` 旗鼓 | 高旗 + 腰鼓 | banner、dirge_horn、wardrum |
 | `skeleton` 亡灵 | 骷髅 + 破兜帽 + 锈剑 | skeleton、goblin、gravewright、soulcaller |
 
-改映射只改 `resources/ui/paper_unit_art.tres`。
+召唤代理也须显式映射：bus、ram、token_thick_copy → `shield`；token_ember → `spear`；chick、slime_split、token_weak、token_weak_copy、zombie_fly → `skeleton`。
+
+改映射只改 `resources/ui/paper_unit_art.tres`；`unit_art_catalog_test_runner.gd` 校验 realtime / enemies / tokens 下每个单位都有显式映射。
 
 ---
 

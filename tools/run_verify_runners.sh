@@ -5,6 +5,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GODOT_BIN="${GODOT_BIN:-godot}"
 cd "$ROOT"
 
+# 新 clone 尚无导入缓存时，preload 的贴图会解析失败。
+"$GODOT_BIN" --headless --path . --import >/dev/null 2>&1 || true
+
 runners=(
   "res://scripts/combat/effect_resolver_faint_test_runner.gd"
   "res://scripts/combat/effect_resolver_bomber_test_runner.gd"

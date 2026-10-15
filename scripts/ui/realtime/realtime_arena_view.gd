@@ -146,7 +146,8 @@ func _notification(what: int) -> void:
 func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
-	var gutter := _get_background_rect().size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP)
+	var bg := _get_background_rect()
+	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
 	var avail_x := maxf(1.0, size.x - gutter * 2.0)
 	return maxf(1.0, minf(avail_x / board_size.x, size.y / board_size.y))
 

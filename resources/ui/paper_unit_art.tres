@@ -24,6 +24,8 @@ archetype_by_unit_id = {
 "archer": &"archer",
 "banner": &"banner",
 "barbarian": &"axe",
+"bus": &"shield",
+"chick": &"skeleton",
 "crossbow": &"archer",
 "dirge_horn": &"banner",
 "echo_spear": &"spear",
@@ -37,15 +39,22 @@ archetype_by_unit_id = {
 "mini_pekka": &"captain",
 "mirror_warden": &"shield",
 "musketeer": &"musket",
+"ram": &"shield",
 "relic_aegis": &"shield",
 "rider": &"captain",
 "rune_plate": &"shield",
 "skeleton": &"skeleton",
+"slime_split": &"skeleton",
 "soulcaller": &"skeleton",
 "spear_goblin": &"spear",
 "spike_shield": &"shield",
+"token_ember": &"spear",
+"token_thick_copy": &"shield",
+"token_weak": &"skeleton",
+"token_weak_copy": &"skeleton",
 "valkyrie": &"axe",
-"wardrum": &"banner"
+"wardrum": &"banner",
+"zombie_fly": &"skeleton"
 }
 default_archetype = &"spear"
 player_textures = {
