@@ -579,10 +579,16 @@ func _remove_dead() -> void:
 func _check_finished() -> void:
 	if _finished:
 		return
-	if count_alive(UnitInstance.Team.PLAYER) == 0:
+	var player_alive := count_alive(UnitInstance.Team.PLAYER)
+	var enemy_alive := count_alive(UnitInstance.Team.ENEMY)
+	## 对砍同归于尽：同帧双方清空 → 清敌胜（见 COMBAT §7.2）
+	if enemy_alive == 0 and player_alive == 0:
+		_finish(true)
+		return
+	if player_alive == 0:
 		if not suppress_player_wipe_loss:
 			_finish(false)
-	elif count_alive(UnitInstance.Team.ENEMY) == 0:
+	elif enemy_alive == 0:
 		_finish(true)
 
 

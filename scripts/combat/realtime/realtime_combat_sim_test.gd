@@ -28,6 +28,9 @@ static func run_all() -> bool:
 	ok = _check("determinism_frame_rate_independent", _test_determinism_frame_rate_independent()) and ok
 	ok = _check("projectile_vanishes_when_target_dead", _test_projectile_vanishes_when_target_dead()) and ok
 	ok = _check("dead_skipped_in_queue", _test_dead_skipped_in_queue()) and ok
+	ok = _check("mutual_melee_exchange", _test_mutual_melee_exchange()) and ok
+	ok = _check("mutual_kill_both_die_player_wins", _test_mutual_kill_both_die_player_wins()) and ok
+	ok = _check("ranged_out_of_reach_no_counter", _test_ranged_out_of_reach_no_counter()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -774,5 +777,108 @@ static func _test_dead_skipped_in_queue() -> bool:
 		return false
 	if seen_after_death.is_empty():
 		push_error("skip: never saw surviving actor after death")
+		return false
+	return true
+
+
+## 邻格近战出手：双方同批对砍扣血（无先后手）。
+static func _test_mutual_melee_exchange() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 41)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 50, "attack": 7, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "id": "ally",
+		}),
+		Vector2(9.5, 20.5),
+	)
+	var foe := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 50, "attack": 11, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "foe",
+		}),
+		Vector2(9.5, 19.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while ally.unit.current_hp == 50 and guard < 40:
+		sim.advance_fixed_step()
+		guard += 1
+	if ally.unit.current_hp != 50 - 11:
+		push_error("mutual: ally hp=%d expected %d (counter 11)" % [ally.unit.current_hp, 50 - 11])
+		return false
+	if foe.unit.current_hp != 50 - 7:
+		push_error("mutual: foe hp=%d expected %d" % [foe.unit.current_hp, 50 - 7])
+		return false
+	if not ally.is_alive() or not foe.is_alive():
+		push_error("mutual: both should still be alive")
+		return false
+	return true
+
+
+## 对砍同归于尽：双方同帧阵亡 → 清敌胜。
+static func _test_mutual_kill_both_die_player_wins() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 42)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 5, "attack": 20, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "id": "ally",
+		}),
+		Vector2(9.5, 20.5),
+	)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 5, "attack": 20, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "foe",
+		}),
+		Vector2(9.5, 19.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while not sim.is_finished() and guard < 40:
+		sim.advance_fixed_step()
+		guard += 1
+	if not sim.is_finished():
+		push_error("mutual_kill: combat should finish")
+		return false
+	if not sim.did_player_win():
+		push_error("mutual_kill: simultaneous wipe should count as player win")
+		return false
+	if sim.count_alive(UnitInstance.Team.PLAYER) != 0 or sim.count_alive(UnitInstance.Team.ENEMY) != 0:
+		push_error("mutual_kill: both teams should be empty")
+		return false
+	return true
+
+
+## 远程在攻距外命中：目标不反打。
+static func _test_ranged_out_of_reach_no_counter() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 43)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 40, "attack": 5, "steps_per_turn": 0, "attack_reach": 5.0,
+			"attack_windup": 0.0, "projectile_speed": 40.0, "id": "archer",
+		}),
+		Vector2(9.5, 24.5),
+	)
+	var foe := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 40, "attack": 9, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "foe",
+		}),
+		Vector2(9.5, 20.5),
+	)
+	## 格距 4 > 敌攻距 1
+	sim.begin_combat()
+	var guard := 0
+	while foe.unit.current_hp == 40 and guard < 120:
+		sim.advance_fixed_step()
+		guard += 1
+	if foe.unit.current_hp != 40 - 5:
+		push_error("ranged: foe hp=%d expected %d" % [foe.unit.current_hp, 35])
+		return false
+	if ally.unit.current_hp != 40:
+		push_error("ranged: ally should take no counter (hp=%d)" % ally.unit.current_hp)
 		return false
 	return true

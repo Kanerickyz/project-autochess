@@ -1,6 +1,7 @@
 class_name RealtimeDamagePipeline
 extends RefCounted
-## 实时战斗唯一的扣血入口；命中/受伤/死亡全部经 CombatEventBus 广播。
+## 战斗唯一的扣血入口；命中/受伤/死亡全部经 CombatEventBus 广播。
+## 出手命中时可与主目标对砍：双方同批扣血，无先后手。
 
 const CRIT_DAMAGE_MULT := 1.5
 
@@ -17,7 +18,8 @@ func set_rng(rng: RandomNumberGenerator) -> void:
 	_rng = rng if rng != null else RandomNumberGenerator.new()
 
 
-## 结算一次命中。splash_radius > 0 时按目标格切比雪夫格距溅射敌方。
+## 结算一次命中（含可选反打）。splash_radius > 0 时按目标格切比雪夫溅射敌方。
+## 若 source 也在 primary 的攻击距离内，primary 反打 source（单体、同批扣血）。
 ## 返回本次被击杀的单位（按 instance_id 升序）。
 func resolve_hit(
 	source: RtUnit,
@@ -32,13 +34,88 @@ func resolve_hit(
 	var source_instance: UnitInstance = source.unit if source != null else null
 	_emit(CombatEvents.ON_ATTACK_HIT, source_instance, primary.unit, 0, false)
 
+	var counter := can_counterattack(primary, source)
+	if counter:
+		_emit(CombatEvents.ON_ATTACK_HIT, primary.unit, source_instance, 0, false)
+
+	## 同批打击表：先全部扣血，再统一标死，避免「先打死对方导致无法反打」。
+	var pending: Array[Dictionary] = []
 	var victims: Array[RtUnit] = [primary]
 	if splash_radius > 0.0:
 		victims = collect_splash_victims(primary, splash_radius, units)
 	for victim in victims:
-		if apply_damage(source_instance, victim, damage):
-			killed.append(victim)
+		pending.append({
+			"source": source_instance,
+			"target": victim,
+			"amount": damage,
+		})
+	if counter and source != null and source.is_alive():
+		pending.append({
+			"source": primary.unit,
+			"target": source,
+			"amount": primary.unit.get_effective_attack(),
+		})
+
+	var death_pending: Array[Dictionary] = []
+	for strike in pending:
+		var tgt: RtUnit = strike["target"]
+		var src: UnitInstance = strike["source"]
+		var amount: int = int(strike["amount"])
+		if tgt == null or not tgt.is_alive() or amount <= 0:
+			continue
+		var rolled := amount
+		var is_crit := false
+		if src != null and _rng != null:
+			var crit_rate := src.get_effective_crit_rate()
+			if crit_rate > 0.0 and _rng.randf() < crit_rate:
+				is_crit = true
+				rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
+		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - rolled)
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, rolled, is_crit)
+		if is_crit and src != null:
+			_emit(CombatEvents.ON_CRIT, src, tgt.unit, rolled, true)
+		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
+			death_pending.append({
+				"source": src,
+				"target": tgt,
+				"rolled": rolled,
+				"is_crit": is_crit,
+			})
+
+	death_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ta: RtUnit = a["target"]
+		var tb: RtUnit = b["target"]
+		return ta.get_id() < tb.get_id()
+	)
+	for death in death_pending:
+		var tgt2: RtUnit = death["target"]
+		if tgt2.state == RtUnit.State.DEAD:
+			continue
+		var src2: UnitInstance = death["source"]
+		var rolled2: int = int(death["rolled"])
+		var is_crit2: bool = bool(death["is_crit"])
+		tgt2.state = RtUnit.State.DEAD
+		tgt2.target = null
+		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, is_crit2)
+		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, is_crit2)
+		if src2 != null:
+			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, is_crit2)
+		killed.append(tgt2)
 	return killed
+
+
+## 防守方能否对行动者反打：双方存活、防守方未在部署、行动者在其攻距内。
+static func can_counterattack(defender: RtUnit, attacker: RtUnit) -> bool:
+	if defender == null or attacker == null:
+		return false
+	if not defender.is_alive() or not attacker.is_alive():
+		return false
+	if defender.is_deploying():
+		return false
+	var reach := RtUnitBrain.grid_reach(defender.get_stats().attack_reach)
+	var dist := float(defender.cell_distance_to(attacker))
+	return dist <= reach + RtUnitBrain.REACH_EPSILON
 
 
 static func collect_splash_victims(
@@ -64,6 +141,7 @@ static func collect_splash_victims(
 
 
 ## 返回 true 表示目标因本次伤害死亡。
+## 单体直伤入口（效果等）；普攻主路径走 resolve_hit。
 func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if target == null or not target.is_alive() or amount <= 0:
 		return false
