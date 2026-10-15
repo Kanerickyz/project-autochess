@@ -4,5 +4,5 @@
 
 [resource]
 script = ExtResource("1")
-starting_gold = 8
+starting_gold = 6
 default_wave_gold = 2
