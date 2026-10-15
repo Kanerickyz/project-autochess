@@ -39,11 +39,17 @@ const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
 const CALLOUT_SECONDS := 0.45
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
-const STAT_ATK_FILL := Color(0.18, 0.18, 0.20, 0.95)
-const STAT_HP_FILL := Color(0.86, 0.18, 0.20, 0.95)
-const STAT_BADGE_BORDER := Color(1.0, 1.0, 1.0, 0.95)
-const STAT_BADGE_TEXT := Color(1.0, 1.0, 1.0, 1.0)
-const STAT_HEX_SEGMENTS := 6
+const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
+const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
+const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
+const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
+## 标签高度只随格子尺寸变化，所有单位同一尺寸。
+const STAT_BADGE_HEIGHT_MUL := 0.5
+const STAT_BADGE_MIN_HEIGHT := 14.0
+const STAT_BADGE_MAX_HEIGHT := 28.0
+## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
+const STAT_NUMBER_CENTER_X := 0.66
+const STAT_NUMBER_MAX_WIDTH := 0.42
 
 var board_size: Vector2i = Vector2i(9, 16)
 var sim: RealtimeCombatSim
@@ -553,7 +559,6 @@ func _draw() -> void:
 			)
 			_draw_stat_badges(
 				tile_to_local(preview["position"]) + enemy_off,
-				maxf(vwx, vhy) * px,
 				int(preview.get("attack", 0)),
 				int(preview.get("hp", 0)),
 				0.9,
@@ -609,9 +614,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(
-			tile_to_local(center_tile) + off, maxf(vwx, vhy) * px, atk, hp, 0.95, px,
-		)
+		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
@@ -646,9 +649,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
-		_draw_stat_badges(
-			tile_to_local(center_tile) + off, maxf(vwx, vhy) * px, atk, hp, alpha, px,
-		)
+		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
 		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
@@ -742,9 +743,7 @@ func _draw_prepare_slots(px: float) -> void:
 			if stats != null:
 				atk = maxi(1, stats.attack + entry.bonus_attack)
 				hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-			_draw_stat_badges(
-				tile_to_local(center_tile) + off, maxf(vwx, vhy) * px, atk, hp, 0.95, px,
-			)
+			_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
 
 
 func _draw_units(px: float) -> void:
@@ -752,6 +751,8 @@ func _draw_units(px: float) -> void:
 	var started := sim.has_started()
 	## COMBAT_FEEDBACK：当前行动者高亮；其余略降对比，不做出手条。
 	var actor: RtUnit = sim.get_current_actor() if started else null
+	## 先画全部单位再画全部攻血标，避免相邻贴图盖住标签。
+	var badges: Array[Dictionary] = []
 	for item in sim.get_units():
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR
@@ -783,10 +784,11 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
-		_draw_hp_bar(center, silhouette_r_px, rt.get_hp_ratio(), rt.is_player())
-		_draw_stat_badges(
-			center, silhouette_r_px, rt.get_effective_attack(), rt.get_current_hp(), alpha, px,
-		)
+		badges.append({
+			"center": center, "attack": rt.get_effective_attack(), "hp": rt.get_current_hp(), "alpha": alpha,
+		})
+	for badge in badges:
+		_draw_stat_badges(badge["center"], badge["attack"], badge["hp"], badge["alpha"], px)
 
 
 func _draw_body(
@@ -879,70 +881,44 @@ func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, 
 	draw_polyline(points, color, width, true)
 
 
-func _draw_hp_bar(center: Vector2, r_px: float, ratio: float, is_player: bool) -> void:
-	var width := maxf(14.0, r_px * 2.2)
-	var bar := Rect2(center + Vector2(-width * 0.5, -r_px - 7.0), Vector2(width, 4.0))
-	draw_rect(bar, Color(0, 0, 0, 0.6))
-	var fill_color := Color(0.35, 0.8, 1.0) if is_player else Color(1.0, 0.4, 0.35)
-	draw_rect(Rect2(bar.position, Vector2(width * ratio, bar.size.y)), fill_color)
+## 攻血标尺寸：只随格子尺寸变化，与兵种剪影、数值位数无关。
+func get_stat_badge_size(px: float) -> Vector2:
+	var h := clampf(px * STAT_BADGE_HEIGHT_MUL, STAT_BADGE_MIN_HEIGHT, STAT_BADGE_MAX_HEIGHT)
+	var tex_size := STAT_ATTACK_TEX.get_size()
+	return Vector2(h * tex_size.x / maxf(1.0, tex_size.y), h)
 
 
-## 剪影下方左右：攻击（深色六边形）/ 生命（红色六边形）；白描边 + 白字保证可读。
-func _draw_stat_badges(
-	center: Vector2,
-	silhouette_r_px: float,
-	attack: int,
-	hp: int,
-	alpha: float,
-	px: float,
-) -> void:
-	var badge_r := clampf(maxf(silhouette_r_px * 0.42, px * 0.28), 9.0, 18.0)
-	var gap := badge_r * 0.15
-	var pair_half := badge_r + gap * 0.5
-	var baseline_y := center.y + silhouette_r_px + badge_r * 0.55
-	var atk_center := Vector2(center.x - pair_half, baseline_y)
-	var hp_center := Vector2(center.x + pair_half, baseline_y)
-	_draw_stat_hex(atk_center, badge_r, STAT_ATK_FILL, attack, alpha)
-	_draw_stat_hex(hp_center, badge_r, STAT_HP_FILL, hp, alpha)
+## 脚下居中一对纸片标签：左攻击（剑）、右生命（心）。
+func _draw_stat_badges(center: Vector2, attack: int, hp: int, alpha: float, px: float) -> void:
+	var badge := get_stat_badge_size(px)
+	var gap := badge.y * 0.06
+	var top := center.y + px * 0.38 + badge.y * 0.05
+	var half_pair := badge.x + gap * 0.5
+	var cx := clampf(center.x, half_pair, maxf(half_pair, size.x - half_pair))
+	var atk_rect := Rect2(Vector2(cx - half_pair, top), badge)
+	var hp_rect := Rect2(Vector2(cx + gap * 0.5, top), badge)
+	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
+	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
 
 
-func _draw_stat_hex(center: Vector2, radius: float, fill: Color, value: int, alpha: float) -> void:
-	var fill_c := Color(fill, fill.a * alpha)
-	var border_c := Color(STAT_BADGE_BORDER, STAT_BADGE_BORDER.a * alpha)
-	var text_c := Color(STAT_BADGE_TEXT, STAT_BADGE_TEXT.a * alpha)
-	var points := _hexagon_points(center, radius)
-	draw_colored_polygon(points, fill_c)
-	## 外圈白边：略大一圈描边多边形。
-	var rim := _hexagon_points(center, radius + 1.6)
-	draw_polyline(rim, border_c, 2.4, true)
-	draw_polyline(points, border_c, 1.5, true)
-	var font := get_theme_default_font()
+func _draw_stat_badge(rect: Rect2, tex: Texture2D, value: int, alpha: float) -> void:
+	draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
 	var text := str(maxi(0, value))
-	var font_size := clampi(int(radius * 1.15), 9, 16)
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var baseline := center + Vector2(
-		-text_size.x * 0.5,
-		font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25,
+	var font_size := maxi(8, int(rect.size.y * 0.62))
+	var max_w := rect.size.x * STAT_NUMBER_MAX_WIDTH
+	var text_w := STAT_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	if text_w > max_w:
+		font_size = maxi(6, int(font_size * max_w / text_w))
+		text_w = STAT_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var ascent := STAT_FONT.get_ascent(font_size)
+	var descent := STAT_FONT.get_descent(font_size)
+	var baseline := Vector2(
+		rect.position.x + rect.size.x * STAT_NUMBER_CENTER_X - text_w * 0.5,
+		rect.position.y + rect.size.y * 0.5 + (ascent - descent) * 0.5,
 	)
-	## 深色描边字，避免浅色草地上糊掉。
-	var shadow := Color(0, 0, 0, 0.65 * alpha)
-	for ox in [-1, 0, 1]:
-		for oy in [-1, 0, 1]:
-			if ox == 0 and oy == 0:
-				continue
-			draw_string(
-				font, baseline + Vector2(ox, oy), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow,
-			)
-	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_c)
-
-
-func _hexagon_points(center: Vector2, radius: float) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	## 平顶六边形（更接近参考色块）。
-	for i in STAT_HEX_SEGMENTS:
-		var a := TAU * float(i) / float(STAT_HEX_SEGMENTS)
-		points.append(center + Vector2(cos(a) * radius, sin(a) * radius))
-	return points
+	draw_string(
+		STAT_FONT, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(STAT_TEXT, STAT_TEXT.a * alpha),
+	)
 
 
 func _draw_projectiles(px: float) -> void:
