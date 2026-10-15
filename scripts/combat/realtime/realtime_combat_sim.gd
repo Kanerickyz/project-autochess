@@ -243,21 +243,19 @@ func advance_fixed_step() -> void:
 	for rt in _units:
 		decisions.append(RtUnitBrain.decide(rt, _units, FIXED_DT, free_fn))
 
-	## 先提交格步（逻辑格立刻更新，一格一体），再出手；出手只认逻辑格距。
+	## 先开格步（预占 dest、站立格仍留 from），再推进插值；出手只认站立格距，且未落稳不 fire。
 	for i in _units.size():
 		var rt := _units[i]
 		var step_dir := decisions[i].step
 		if not rt.is_alive() or step_dir == Vector2i.ZERO:
+			continue
+		if rt.is_stepping():
 			continue
 		if maxf(0.0, rt.get_stats().move_speed) <= 0.0:
 			continue
 		var dest: Vector2i = rt.cell + step_dir
 		if not _is_cell_free(dest):
 			continue
-		## 衔接下一步前先收束当前插值，避免表现跳帧
-		if rt.is_stepping():
-			rt.step_t = 1.0
-			rt.position = RtUnit.cell_center(rt.cell)
 		_move_unit_to_cell(rt, dest)
 
 	for rt in _units:
@@ -266,7 +264,13 @@ func advance_fixed_step() -> void:
 
 	for i in _units.size():
 		var rt := _units[i]
-		if decisions[i].fire and rt.is_alive() and rt.target != null and rt.target.is_alive():
+		if (
+			decisions[i].fire
+			and not rt.is_stepping()
+			and rt.is_alive()
+			and rt.target != null
+			and rt.target.is_alive()
+		):
 			_fire(rt)
 
 	_advance_projectiles()
@@ -325,8 +329,8 @@ func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
 	var from_cell := rt.cell
 	_clear_occupancy_of(rt)
 	rt.begin_step(from_cell, dest)
+	## 一格一体：迈步即预占 dest、释放 from；站立格待落稳后由 advance_step_visual 提交
 	_set_occupancy(dest, rt)
-	rt.unit.grid_pos = dest
 
 
 func _sync_unit_grid_pos() -> void:

@@ -7,8 +7,10 @@ enum State { DEPLOYING, MOVING, ATTACKING, DEAD }
 const NEVER := -1000.0
 
 var unit: UnitInstance
-## 逻辑格（规则位置；出手/索敌/占格只认此格）
+## 站立格（规则位置；出手/索敌只认此格）。步进未落稳前仍为 from。
 var cell: Vector2i = Vector2i.ZERO
+## 步进目标格；未在步进时与 cell 相同。占格预占此格。
+var step_dest: Vector2i = Vector2i.ZERO
 ## 表现位置（格心或格间插值；不参与出手判定）
 var position: Vector2 = Vector2.ZERO
 var state: State = State.DEPLOYING
@@ -29,6 +31,7 @@ var step_to: Vector2 = Vector2.ZERO
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:
 	unit = p_unit
 	cell = Vector2i(floori(p_position.x), floori(p_position.y))
+	step_dest = cell
 	position = cell_center(cell)
 	step_t = 1.0
 	deploy_remaining = maxf(0.0, get_stats().deploy_time)
@@ -121,7 +124,7 @@ static func chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-## 切比雪夫格距（整数格）。
+## 切比雪夫格距（整数格；用双方站立格）。
 func cell_distance_to(other: RtUnit) -> int:
 	if other == null:
 		return 999999
@@ -137,35 +140,53 @@ func get_cell() -> Vector2i:
 	return cell
 
 
+## 占格查询用：步进中为预占的 dest，否则为站立格。
+func get_occupied_cell() -> Vector2i:
+	return step_dest if is_stepping() else cell
+
+
 ## 将逻辑格设到 p_cell 并立刻对齐表现（无插值）。
 func snap_to_cell(p_cell: Vector2i) -> void:
 	cell = p_cell
+	step_dest = p_cell
 	position = cell_center(cell)
 	step_t = 1.0
 	step_from = position
 	step_to = position
 
 
-## 开始一格步进：逻辑格立刻到 dest（弱棋感取样），表现从 from 插值到 dest 格心。
+## 开始一格步进：站立格留在 from，直到 step_t>=1 才提交到 dest；表现从 from 插值到 dest 格心。
 func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
 	step_from = cell_center(from_cell)
 	step_to = cell_center(dest_cell)
-	cell = dest_cell
+	cell = from_cell
+	step_dest = dest_cell
 	step_t = 0.0
 	position = step_from
 
 
 ## move_speed = 完成一格步进的速率（格/秒）；正/斜等价。
+## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
 func advance_step_visual(dt: float) -> void:
-	if step_t >= 1.0:
+	if not is_stepping():
 		position = cell_center(cell)
 		return
 	var speed := maxf(0.0, get_stats().move_speed)
 	if speed <= 0.0:
-		step_t = 1.0
-		position = cell_center(cell)
+		_commit_step()
 		return
-	step_t = minf(1.0, step_t + dt * speed)
+	var delta_t := dt * speed
+	## 本帧将达/过格心即提交，避免 15×(1/30×2) 浮点欠一丝导致晚一帧落格
+	if step_t + delta_t >= 1.0 - 0.000001:
+		_commit_step()
+		return
+	step_t += delta_t
 	position = step_from.lerp(step_to, step_t)
-	if step_t >= 1.0:
-		position = cell_center(cell)
+
+
+func _commit_step() -> void:
+	cell = step_dest
+	step_t = 1.0
+	position = cell_center(cell)
+	step_from = position
+	step_to = position

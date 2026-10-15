@@ -11,6 +11,7 @@ static func run_all() -> bool:
 	var ok := true
 	ok = _check("melee_approach_and_interval", _test_melee_approach_and_interval()) and ok
 	ok = _check("eight_dir_diagonal_step", _test_eight_dir_diagonal_step()) and ok
+	ok = _check("no_attack_until_cell_settled", _test_no_attack_until_cell_settled()) and ok
 	ok = _check("occupancy_blocks_or_detours", _test_occupancy_blocks_or_detours()) and ok
 	ok = _check("chebyshev_attack_reach", _test_chebyshev_attack_reach()) and ok
 	ok = _check("ally_blocker_melee_reach", _test_ally_blocker_melee_reach()) and ok
@@ -109,18 +110,19 @@ static func _test_melee_approach_and_interval() -> bool:
 				hit_dists.append(attacker.cell_distance_to(dummy))
 	)
 	_run_until(sim, 1.0)
-	var moved_early := attacker.cell.y <= 26
+	var cell_at_1s := attacker.cell
+	var moved_early := cell_at_1s.y <= 26
 	_run_until(sim, 10.0)
 	bus.free()
 	if not moved_early:
-		push_error("melee: attacker did not step toward target (cell=%s)" % attacker.cell)
+		push_error("melee: attacker did not step toward target by t=1s (cell=%s)" % cell_at_1s)
 		return false
 	if hit_times.size() < 3:
 		push_error("melee: expected >=3 hits, got %d" % hit_times.size())
 		return false
-	## 距 8→邻格约 7 步；移速 2 + 前摇 0.3，首击约 3~4s（衔步会略提前）
-	if hit_times[0] < 2.8 or hit_times[0] > 4.2:
-		push_error("melee: first hit at %.3f, expected ~3.1–3.8" % hit_times[0])
+	## 距 8→邻格约 7 步；移速 2 → 7×0.5s=3.5s 落稳，+前摇 0.3 → 首击约 3.8s（落格顿步，无连滑）
+	if hit_times[0] < 3.4 or hit_times[0] > 4.2:
+		push_error("melee: first hit at %.3f, expected ~3.5–4.0" % hit_times[0])
 		return false
 	for i in range(1, hit_times.size()):
 		if absf(hit_times[i] - hit_times[i - 1] - 1.0) > 0.04:
@@ -151,11 +153,79 @@ static func _test_eight_dir_diagonal_step() -> bool:
 	)
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(8.5, 22.5))
 	var start := mover.cell
-	## 单固定步：逻辑格应立刻斜向踏入一格（八方向）
+	## 移速 30 + FIXED_DT=1/30 → 同帧落稳；站立格提交到斜向邻格（八方向）
 	sim.advance_fixed_step()
 	var delta: Vector2i = mover.cell - start
 	if absi(delta.x) != 1 or absi(delta.y) != 1:
 		push_error("eight_dir: expected one diagonal step, got delta=%s cell=%s" % [delta, mover.cell])
+		return false
+	if mover.is_stepping():
+		push_error("eight_dir: expected settled after high-speed step")
+		return false
+	return true
+
+
+## 落格顿步：步进未落稳时站立格不前进、不得出手；落稳后方可判攻。
+static func _test_no_attack_until_cell_settled() -> bool:
+	var bus := CombatEventBus.new()
+	var sim := _new_sim(bus)
+	sim.configure(ARENA, 21)
+	## 格距 2；迈一步到邻格后才进 reach=1。移速 1 → 一步耗时 1s
+	var attacker := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"move_speed": 1.0,
+			"attack_reach": 1.0,
+			"attack_windup": 0.0,
+			"attack_interval": 10.0,
+			"attack": 10,
+			"sight_range": 30.0,
+		}),
+		Vector2(9.5, 23.5),
+	)
+	var dummy := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 21.5))
+	var hit_times: Array[float] = []
+	bus.combat_event.connect(
+		func(event_type: StringName, payload: CombatEventPayload) -> void:
+			if event_type == CombatEvents.ON_DAMAGE_TAKEN and payload.target == dummy.unit:
+				hit_times.append(sim.elapsed_seconds)
+	)
+	var start_cell := Vector2i(9, 23)
+	_run_until(sim, 0.4)
+	if not attacker.is_stepping():
+		push_error("settle: expected mid-step at t=0.4 (cell=%s t=%.3f)" % [attacker.cell, attacker.step_t])
+		bus.free()
+		return false
+	if attacker.cell != start_cell:
+		push_error("settle: standing cell advanced early %s (expected %s)" % [attacker.cell, start_cell])
+		bus.free()
+		return false
+	if attacker.step_dest != Vector2i(9, 22):
+		push_error("settle: step_dest=%s expected (9,22)" % attacker.step_dest)
+		bus.free()
+		return false
+	if sim.get_occupancy_owner(Vector2i(9, 22)) != attacker:
+		push_error("settle: dest should be pre-occupied while stepping")
+		bus.free()
+		return false
+	if sim.get_occupancy_owner(start_cell) != null:
+		push_error("settle: from cell should be free while stepping")
+		bus.free()
+		return false
+	if not hit_times.is_empty() or dummy.unit.current_hp != dummy.unit.get_effective_max_hp():
+		push_error("settle: attacked before cell settled (hits=%d)" % hit_times.size())
+		bus.free()
+		return false
+	## 落稳后下一固定步即可 windup=0 出手
+	_run_until(sim, 1.15)
+	bus.free()
+	if attacker.cell != Vector2i(9, 22):
+		push_error("settle: expected standing cell (9,22) after land, got %s" % attacker.cell)
+		return false
+	if hit_times.is_empty():
+		push_error("settle: expected attack after settle")
+		return false
+	if hit_times[0] < 1.0 or hit_times[0] > 1.15:
+		push_error("settle: first hit at %.3f, expected just after land (~1.03)" % hit_times[0])
 		return false
 	return true
 
@@ -404,7 +474,7 @@ static func _test_splash_hits_cluster() -> bool:
 	return splashes.size() == 1 and is_equal_approx(splashes[0], 1.0)
 
 
-## 多单位挤同一投放点后，任意时刻不应有两存活单位同逻辑格。
+## 多单位挤同一投放点后，任意时刻不应有两存活单位同占格（步进中认 step_dest）。
 static func _test_occupancy_no_shared_cells() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 5)
@@ -418,12 +488,13 @@ static func _test_occupancy_no_shared_cells() -> bool:
 		var rt := item as RtUnit
 		if not rt.is_alive():
 			continue
-		if seen.has(rt.cell):
-			push_error("occupancy: shared cell %s" % rt.cell)
+		var occ := rt.get_occupied_cell()
+		if seen.has(occ):
+			push_error("occupancy: shared occupied cell %s" % occ)
 			return false
-		seen[rt.cell] = true
-		if sim.get_occupancy_owner(rt.cell) != rt:
-			push_error("occupancy: map owner mismatch at %s" % rt.cell)
+		seen[occ] = true
+		if sim.get_occupancy_owner(occ) != rt:
+			push_error("occupancy: map owner mismatch at %s" % occ)
 			return false
 	return true
 

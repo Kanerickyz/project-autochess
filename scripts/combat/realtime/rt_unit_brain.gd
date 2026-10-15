@@ -51,6 +51,10 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		unit.state = RtUnit.State.MOVING
 		return decision
 
+	## 落格顿步：未落稳不判攻、不新开步；攻击计时仅落稳后推进
+	if unit.is_stepping():
+		return decision
+
 	var dist := float(unit.cell_distance_to(unit.target))
 	var reach := grid_reach(stats.attack_reach)
 	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
@@ -61,17 +65,12 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		if unit.attack_timer <= TIME_EPSILON:
 			decision.fire = true
 			unit.attack_timer += maxf(0.05, stats.attack_interval)
-		## 逻辑停在当前格攻击；若仍在格间插值，表现继续滑完，不新开步
+		## 落稳后站立攻击；不在出手帧同时开步
 		return decision
 
 	unit.state = RtUnit.State.MOVING
 	if maxf(0.0, stats.move_speed) <= 0.0:
 		return decision
-	## 步进中：若本帧尚走不完则等待；走得完则衔接下一步（避免格间空帧）
-	if unit.is_stepping():
-		var remain := 1.0 - unit.step_t
-		if remain > stats.move_speed * dt + TIME_EPSILON:
-			return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	return decision
 
