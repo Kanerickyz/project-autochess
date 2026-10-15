@@ -1,7 +1,6 @@
 class_name RealtimeArenaView
 extends Control
-## 实时战场绘制：旧纸底、左右纸片边界、半场色调、中线、投放高亮/虚影、
-## archetype 贴纸（缺图回退椭圆）、
+## 实时战场占位绘制：棋盘格、半场色调、中线、投放高亮/虚影、单位剪影、
 ## 底部攻/血色块标（参考小动物自走棋）、血条、部署弧、投射物与溅射圈。
 ## 只读 RealtimeCombatSim 状态，不参与逻辑。剪影可大于碰撞圆（脚小身大）。
 
@@ -15,32 +14,20 @@ signal recruit_team_pressed(entry_id: int)
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
 const NO_CELL := Vector2i(-1, -1)
-const PLAYER_TINT := Color(0.25, 0.45, 0.95, 0.05)
-const ENEMY_TINT := Color(0.95, 0.25, 0.22, 0.05)
+const GRASS_A := Color(0.58, 0.74, 0.46)
+const GRASS_B := Color(0.55, 0.71, 0.43)
+const PLAYER_TINT := Color(0.25, 0.45, 0.95, 0.10)
+const ENEMY_TINT := Color(0.95, 0.25, 0.22, 0.10)
+const GRID_LINE := Color(0.0, 0.0, 0.0, 0.05)
+const MIDLINE := Color(1.0, 1.0, 1.0, 0.75)
 const DEPLOY_HIGHLIGHT := Color(0.45, 0.75, 1.0, 0.18)
 const PLAYER_COLOR := Color(0.22, 0.47, 0.92)
 const ENEMY_COLOR := Color(0.88, 0.24, 0.22)
+const BORDER := Color(0.12, 0.18, 0.10, 0.9)
 const ATTACK_FLASH_SECONDS := 0.12
 const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
 const ELLIPSE_SEGMENTS := 28
-## 左右留白给纸片树林，避免树盖住贴边座位。
-const EDGE_GUTTER_X := 42.0
-const EDGE_GUTTER_Y := 6.0
-const PAPER_BASE := preload("res://assets/sprites/paper_cutout/env/arena_paper_base.png")
-const BORDER_LEFT := preload("res://assets/sprites/paper_cutout/env/arena_border_trees_left.png")
-const BORDER_RIGHT := preload("res://assets/sprites/paper_cutout/env/arena_border_trees_right.png")
-const GROUND_DOODLES := preload("res://assets/sprites/paper_cutout/env/arena_ground_doodles.png")
-const STICKER_KNIGHT_BLUE := preload("res://assets/sprites/paper_cutout/units/unit_knight_shield_blue.png")
-const STICKER_KNIGHT_RED := preload("res://assets/sprites/paper_cutout/units/unit_knight_shield_red.png")
-const STICKER_ARCHER_BLUE := preload("res://assets/sprites/paper_cutout/units/unit_archer_blue.png")
-const STICKER_ARCHER_RED := preload("res://assets/sprites/paper_cutout/units/unit_archer_red.png")
-const STICKER_AXE_BLUE := preload("res://assets/sprites/paper_cutout/units/unit_heavy_axe_blue.png")
-const STICKER_AXE_RED := preload("res://assets/sprites/paper_cutout/units/unit_heavy_axe_red.png")
-const STICKER_CAPTAIN_BLUE := preload("res://assets/sprites/paper_cutout/units/unit_captain_cape_blue.png")
-const STICKER_CAPTAIN_RED := preload("res://assets/sprites/paper_cutout/units/unit_captain_cape_red.png")
-const PAPER_INK := Color(0.20, 0.16, 0.12, 0.55)
-const CONTACT_SHADOW := Color(0.23, 0.18, 0.12, 0.30)
 ## 技能因果飘字（COMBAT_FEEDBACK）：基础寿命；加速时缩短但不短于下限。
 const FEEDBACK_SECONDS := 0.85
 const FEEDBACK_MIN_SECONDS := 0.35
@@ -65,7 +52,6 @@ var ghost_radius: float = 0.7
 var ghost_visual_half_width: float = 0.0
 var ghost_visual_half_height: float = 0.0
 var ghost_label: String = ""
-var ghost_unit_id: String = ""
 ## 准备阶段友方角色座位；战斗中仍可画占位框
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
@@ -92,7 +78,6 @@ var _drag_radius: float = 0.7
 var _drag_visual_half_width: float = 0.0
 var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
-var _drag_unit_id: String = ""
 var _fx: Array = []
 var _fx_clock: float = 0.0
 ## Array[Dictionary]：技能结果数字 / 短提示
@@ -155,9 +140,7 @@ func _notification(what: int) -> void:
 func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
-	var avail_x := maxf(1.0, size.x - EDGE_GUTTER_X * 2.0)
-	var avail_y := maxf(1.0, size.y - EDGE_GUTTER_Y * 2.0)
-	return maxf(1.0, minf(avail_x / float(board_size.x), avail_y / float(board_size.y)))
+	return maxf(1.0, minf(size.x / board_size.x, size.y / board_size.y))
 
 
 func get_board_rect() -> Rect2:
@@ -382,7 +365,6 @@ func _begin_recruit_drag(index: int) -> void:
 	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = unit.display_name if unit != null else String(info.get("label", ""))
-	_drag_unit_id = unit.id if unit != null else ""
 	queue_redraw()
 
 
@@ -444,7 +426,6 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		_drag_visual_half_width = float(dict.get("visual_half_width", 0.0))
 		_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
 		_drag_label = String(dict.get("label", ""))
-		_drag_unit_id = String(dict.get("unit_id", ""))
 		_hover_cell = tile_to_cell(local_to_tile(at_position))
 		return true
 	if not dict.has(DRAG_KEY):
@@ -454,7 +435,6 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	_drag_visual_half_width = float(dict.get("visual_half_width", 0.0))
 	_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
 	_drag_label = String(dict.get("label", ""))
-	_drag_unit_id = String(dict.get("unit_id", ""))
 	_hover_cell = tile_to_cell(local_to_tile(at_position))
 	return true
 
@@ -513,14 +493,25 @@ func _draw() -> void:
 	var mid := BoardHalf.midline_row(board_size.y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	var ally_off := Vector2(0.0, ally_half_slide_y)
-	_draw_paper_stage(rect)
-	## 半场色调很淡，只保留上下分区，不盖住纸纹。
+	## 外框始终固定在 board rect，不随半场 slide。
+	draw_rect(rect.grow(2.0), BORDER)
+	## 草地始终画满棋盘（不随 slide），保证胜→招募同屏背景不断。
+	for y in board_size.y:
+		for x in board_size.x:
+			var cell_rect := Rect2(rect.position + Vector2(x, y) * px, Vector2(px, px))
+			draw_rect(cell_rect, GRASS_A if (x + y) % 2 == 0 else GRASS_B)
+	## 半场色调与单位/座位随内容滑动。
 	draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
 	draw_rect(
 		Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
 		PLAYER_TINT,
 	)
-	_draw_ground_tufts(rect, px)
+	for x in range(1, board_size.x):
+		var lx := rect.position.x + x * px
+		draw_line(Vector2(lx, rect.position.y), Vector2(lx, rect.end.y), GRID_LINE, 1.0)
+	for y in range(1, board_size.y):
+		var ly := rect.position.y + y * px
+		draw_line(Vector2(rect.position.x, ly), Vector2(rect.end.x, ly), GRID_LINE, 1.0)
 
 	var showing_placement := (placement_active or _drag_active) and not recruit_active
 	if showing_placement:
@@ -529,7 +520,7 @@ func _draw() -> void:
 			DEPLOY_HIGHLIGHT,
 		)
 	var mid_y := rect.position.y + mid * px
-	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), PAPER_INK, 1.5)
+	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
 
 	if recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
@@ -547,7 +538,6 @@ func _draw() -> void:
 			var vhy := float(preview.get("visual_half_height", 0.0))
 			_draw_body(
 				preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.35, String(preview["label"]), px, false, enemy_off,
-				false, String(preview.get("unit_id", "")),
 			)
 			_draw_stat_badges(
 				tile_to_local(preview["position"]) + enemy_off,
@@ -573,8 +563,8 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var font_size := clampi(int(px * 0.55), 11, 18)
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.22, 0.16, 0.10, 0.9))
-	draw_string(font, bot_pos, "候选人", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.28, 0.18, 0.08, 0.9))
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "候选人", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_recruit_team(px: float, off: Vector2) -> void:
@@ -600,7 +590,6 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
-			true, entry.unit.id if entry.unit != null else "",
 		)
 		var atk := 0
 		var hp := 0
@@ -640,7 +629,6 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
-			true, unit.id,
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
@@ -683,8 +671,7 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	var vwx := stats.get_visual_half_width() if stats != null else _drag_visual_half_width
 	var vhy := stats.get_visual_half_height() if stats != null else _drag_visual_half_height
 	var label := unit.display_name if unit != null else _drag_label
-	var uid := unit.id if unit != null else _drag_unit_id
-	_draw_body(Vector2(cell) + Vector2(0.5, 0.5), radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true, Vector2.ZERO, true, uid)
+	_draw_body(Vector2(cell) + Vector2(0.5, 0.5), radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true)
 
 
 func _draw_enemy_slots(px: float) -> void:
@@ -730,7 +717,6 @@ func _draw_prepare_slots(px: float) -> void:
 			var vhy := stats.get_visual_half_height() if stats != null else 0.0
 			_draw_body(
 				center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.75, entry.get_display_name(), px, true, off,
-				true, entry.unit.id if entry.unit != null else "",
 			)
 			var atk := 0
 			var hp := 0
@@ -768,8 +754,7 @@ func _draw_units(px: float) -> void:
 		var scale := 1.12 if is_actor else 1.0
 		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
 		_draw_body(
-			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off,
-			rt.is_player(), _rt_unit_id(rt),
+			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off
 		)
 		var center := tile_to_local(rt.position) + off
 		var silhouette_r_px := maxf(vwx, vhy) * scale * px
@@ -784,72 +769,6 @@ func _draw_units(px: float) -> void:
 		)
 
 
-func _draw_paper_stage(board_rect: Rect2) -> void:
-	draw_texture_rect(PAPER_BASE, Rect2(Vector2.ZERO, size), false)
-	var border_w := minf(EDGE_GUTTER_X + 4.0, maxf(8.0, board_rect.position.x))
-	draw_texture_rect(BORDER_LEFT, Rect2(0.0, 0.0, border_w, size.y), false)
-	draw_texture_rect(BORDER_RIGHT, Rect2(size.x - border_w, 0.0, border_w, size.y), false)
-	draw_rect(board_rect, PAPER_INK, false, 1.25)
-
-
-func _draw_ground_tufts(board_rect: Rect2, px: float) -> void:
-	var spots: Array[Vector2] = [
-		Vector2(0.18, 0.12), Vector2(0.70, 0.18), Vector2(0.42, 0.36),
-		Vector2(0.80, 0.46), Vector2(0.24, 0.58), Vector2(0.58, 0.70),
-		Vector2(0.34, 0.86), Vector2(0.76, 0.84),
-	]
-	for i in spots.size():
-		var spot: Vector2 = spots[i]
-		var dest := Rect2(
-			board_rect.position + Vector2(spot.x * board_rect.size.x, spot.y * board_rect.size.y),
-			Vector2(px * 0.72, px * 0.48),
-		)
-		var src := Rect2(8.0 + float(i % 7) * 64.0, 12.0, 56.0, 80.0)
-		draw_texture_rect_region(GROUND_DOODLES, dest, src, Color(1, 1, 1, 0.9))
-
-
-func _sticker_texture(archetype: StringName, is_player: bool) -> Texture2D:
-	match archetype:
-		PaperArchetype.KNIGHT_SHIELD:
-			return STICKER_KNIGHT_BLUE if is_player else STICKER_KNIGHT_RED
-		PaperArchetype.ARCHER:
-			return STICKER_ARCHER_BLUE if is_player else STICKER_ARCHER_RED
-		PaperArchetype.HEAVY_AXE:
-			return STICKER_AXE_BLUE if is_player else STICKER_AXE_RED
-		PaperArchetype.CAPTAIN_CAPE:
-			return STICKER_CAPTAIN_BLUE if is_player else STICKER_CAPTAIN_RED
-		_:
-			return null
-
-
-func _draw_sticker(
-	center: Vector2,
-	rx: float,
-	ry: float,
-	tex: Texture2D,
-	alpha: float,
-	tint: Color,
-	is_player: bool,
-) -> void:
-	var h := maxf(ry * 2.25, rx * 2.05)
-	var aspect := float(tex.get_width()) / maxf(1.0, float(tex.get_height()))
-	var w := h * aspect
-	var shadow_color := CONTACT_SHADOW
-	shadow_color.a *= alpha
-	_draw_ellipse_filled(center + Vector2(w * 0.05, h * 0.10), w * 0.26, maxf(3.0, h * 0.07), shadow_color)
-	var rect := Rect2(center.x - w * 0.5, center.y - h * 0.62, w, h)
-	var base := PLAYER_COLOR if is_player else ENEMY_COLOR
-	var flash := clampf(tint.get_luminance() - base.get_luminance(), 0.0, 0.55)
-	var mod := Color(1.0 + flash, 1.0 + flash * 0.95, 1.0 + flash * 0.9, alpha)
-	draw_texture_rect(tex, rect, false, mod)
-
-
-func _rt_unit_id(rt: RtUnit) -> String:
-	if rt == null or rt.unit == null or rt.unit.unit_data == null:
-		return ""
-	return rt.unit.unit_data.id
-
-
 func _draw_body(
 	tile_pos: Vector2,
 	body_radius: float,
@@ -861,16 +780,10 @@ func _draw_body(
 	px: float,
 	show_foot: bool,
 	pixel_offset: Vector2 = Vector2.ZERO,
-	is_player: bool = true,
-	unit_id: String = "",
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
 	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
-	var sticker := _sticker_texture(PaperArchetype.from_unit_id(unit_id), is_player)
-	if sticker != null:
-		_draw_sticker(center, rx, ry, sticker, alpha, color, is_player)
-		return
 	var fill := Color(color, alpha)
 	_draw_ellipse_filled(center, rx, ry, fill)
 	_draw_ellipse_outline(center, rx, ry, Color(0, 0, 0, 0.45 * alpha), 1.5)
@@ -1095,5 +1008,4 @@ func _draw_ghost(px: float, mid: int) -> void:
 		draw_line(center + Vector2(-d, d), center + Vector2(d, -d), Color(1, 1, 1, 0.9), 2.0)
 		return
 	draw_rect(cell_rect, Color(1, 1, 1, 0.25))
-	var uid := _drag_unit_id if _drag_active else ghost_unit_id
-	_draw_body(center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true, Vector2.ZERO, true, uid)
+	_draw_body(center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true)
