@@ -397,20 +397,40 @@ func _complete_continue(won: bool) -> void:
 	_slots.clear()
 	_enemy_slots.clear()
 	_enemy_spawns.clear()
-	_rebuild_cards()
-	_set_phase(Phase.IDLE)
 	if _arena != null:
-		if _preserve_half_slide_for_recruit and won:
-			## 保持退场终点：上半向上、下半向下；草地/边框仍在。
+		_arena.sim = null
+		_arena.enemy_previews = []
+		_arena.prepare_slots = null
+		_arena.enemy_slots = null
+		_arena.placement_active = false
+	if _preserve_half_slide_for_recruit and won:
+		## 衔接到招募：不闪准备手牌/Dock；半场停在屏外，草地与外框仍在。
+		_hide_combat_chrome_for_recruit()
+		_set_phase(Phase.IDLE)
+		## 顶栏提前切到招募语义，避免「等待 / 入座 0」闪一下。
+		if _encounter_label != null:
+			_encounter_label.text = "招募"
+		if _phase_label != null:
+			_phase_label.text = "招募"
+			_phase_label.modulate = Color.WHITE
+		if _pop_label != null:
+			_pop_label.text = ""
+		if _arena != null:
 			var travel := _half_slide_travel()
 			_arena.set_half_slide_offscreen(travel)
-		else:
+			_arena.queue_redraw()
+	else:
+		_rebuild_cards()
+		_set_phase(Phase.IDLE)
+		if _arena != null:
 			_arena.reset_half_slide()
 			_arena.clear_recruit_mode()
 	encounter_completed.emit(won)
 
 
 func _play_half_field_exit_then_continue(won: bool, seconds: float) -> void:
+	## 退场开始即收起战斗 Dock，只留外框+草地+半场内容在变。
+	_hide_combat_chrome_for_recruit()
 	_arena.reset_half_slide()
 	var travel := _half_slide_travel()
 	var tween := create_tween()
@@ -474,17 +494,21 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
 	_bind_recruit_session()
-	_sync_recruit_arena()
-	_show_recruit_hud()
-	_refresh_recruit_hud()
 	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
+	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
 	if _arena != null:
 		var travel := _half_slide_travel()
 		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
 		if not already_out:
 			_arena.set_half_slide_offscreen(travel)
+	_sync_recruit_arena()
+	_show_recruit_hud()
+	_refresh_recruit_hud()
+	if _arena != null:
+		_arena.queue_redraw()
 	await _play_half_field_enter_animation(seconds)
 	_recruit_animating = false
+	_sync_recruit_arena()
 	_refresh_recruit_hud()
 
 
