@@ -18,6 +18,7 @@ runners=(
   "res://scripts/ui/realtime/recruit_arena_transition_test_runner.gd"
   "res://scripts/ui/realtime/opening_recruit_flow_test_runner.gd"
   "res://scripts/ui/realtime/realtime_combat_feedback_test_runner.gd"
+  "res://scripts/ui/realtime/unit_art_catalog_test_runner.gd"
   "res://scripts/core/board_grid_distance_test_runner.gd"
   "res://scripts/core/draw_service_test_runner.gd"
   "res://scripts/core/run/map_generator_test_runner.gd"

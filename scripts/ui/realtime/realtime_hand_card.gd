@@ -91,6 +91,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 		"visual_half_width": vwx,
 		"visual_half_height": vhy,
 		"label": entry.get_display_name(),
+		"unit_id": entry.get_unit_id(),
 	}
 
 

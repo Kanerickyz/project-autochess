@@ -1,9 +1,7 @@
-# 旧纸剪贴涂鸦风 — 美术简报（L0）
+# 旧纸剪贴涂鸦风 — 美术简报
 
-> **状态：未实装。** 本文是用户定稿风格的可落地简报，供 `technical-artist` 做 Run 战场环境 + 少量 archetype 贴纸单位。  
-> **禁止**将本文写成已实现；As-Is 主路径仍为椭圆色块占位（见 §8）。  
-> **范围 C**：环境 + 少量 archetype（非整库）。不扩二十四人全角色库贴图。  
-> 目标等级：L0（简报）。验收方式：完全（本职只交简报；实现另切片）。
+> **状态：Run 战场已接入。** 场景背景与 8 个角色造型（蓝 / 红各一）由效果图编辑、二次创作而来，见 §6–§7。  
+> 范围：战场场景 + 角色；UI 层（血条、攻血标、座位框、手牌卡面）不在本切片。
 
 ---
 
@@ -17,8 +15,8 @@
 
 | 项 | 说明 |
 | --- | --- |
-| 风格共识参考图 | `/home/ubuntu/.cursor/projects/workspace/assets/C5C72000-44C8-4A42-BE27-CA926E9CDEA1_L0_001.jpg`（工作区外参考；**未**入库 `assets/`） |
-| 主路径绘制（As-Is） | `scripts/ui/realtime/realtime_arena_view.gd`：棋盘格 + 半场色调 + **椭圆单位占位** |
+| 风格共识参考图 | `art_source/paper_cutout/concept_reference.jpg`（`.gdignore`，不进游戏包） |
+| 主路径绘制 | `scripts/ui/realtime/realtime_arena_view.gd`：背景图 + 角色贴图；映射见 `resources/ui/paper_unit_art.tres` |
 | 主题约束 | 中世纪幻想 2D；剪影可读优先（与 `GAME_VISION` 一致） |
 | 本切片不做 | 全角色库换皮、写实/3D 管线、羁绊视觉、UI 整套换皮 |
 
@@ -102,51 +100,42 @@
 
 ---
 
-## 6. Archetype 清单（范围 C · 建议首批）
+## 6. 角色造型与兵种映射
 
-非整库。每类做 **蓝（我）/ 红（敌）** 各一，共 **8** 张单位贴纸。名称仅为视觉 archetype，不绑定技能 ID。
+8 个造型，每个蓝（我）/ 红（敌）各一张。造型只管外观，不绑定技能。敌方资源 id 去掉 `enemy_` 前缀后共用同一张表；未登记的 id 落到 `spear`，场上不出现无图单位。
 
-| ID 建议 | 中文 | 剪影要点 | 蓝版 | 红版 |
-| --- | --- | --- | --- | --- |
-| `knight_shield` | 骑士盾剑 | 尖盔 + 竖盾（可带简单十字）+ 短剑；盾面大块 | 钴蓝袍 | 砖红袍 |
-| `archer` | 弓手 | 侧身弓形 + 箭囊暗示；头巾/兜帽可选 | 钴蓝衣 | 砖红衣/帽 |
-| `heavy_axe` | 重斧 | 大双刃斧或宽斧头占剪影；体块略厚 | 钴蓝巾 | 砖红巾 |
-| `captain_cape` | 队长披风剑 | **大披风**为第一识别；举剑或持剑；尖盔 | 钴蓝披风（最抢眼） | 砖红披风 |
+| 造型 | 剪影要点 | 兵种（资源 id） |
+| --- | --- | --- |
+| `shield` 盾卫 | 尖盔 + 十字竖盾 + 短剑 | knight、spike_shield、rune_plate、relic_aegis、mirror_warden |
+| `archer` 弓手 | 兜帽 + 反曲弓 + 箭囊 | archer、crossbow、horsebow |
+| `axe` 重斧 | 厚甲 + 双刃大斧 | barbarian、maul、giant_knight、valkyrie |
+| `captain` 披风剑 | 大披风 + 举大剑 | mini_pekka、hunter、rider |
+| `spear` 投枪 | 敞盔 + 举标枪 + 小盾 | spear_goblin、echo_spear（默认造型） |
+| `musket` 火铳 | 羽毛宽檐帽 + 长火铳 | musketeer |
+| `banner` 旗鼓 | 高旗 + 腰鼓 | banner、dirge_horn、wardrum |
+| `skeleton` 亡灵 | 骷髅 + 破兜帽 + 锈剑 | skeleton、goblin、gravewright、soulcaller |
 
-**制作优先级**：`captain_cape`（阵营旗舰）→ `knight_shield` → `heavy_axe` → `archer`。  
-**未列入本切片**：法师、枪兵、召唤物、坐骑、Boss 异形等（需另开合同）。
+改映射只改 `resources/ui/paper_unit_art.tres`。
 
 ---
 
-## 7. 资产文件命名建议
-
-根目录建议（由 technical-artist 建目录与导入；**本 L0 不创建文件**）：
+## 7. 资产与制作流程
 
 ```text
+art_source/paper_cutout/          # 源图，.gdignore
+  concept_reference.jpg           # 效果图
+  arena_background.jpg            # 去掉士兵、收窄树林的空场景
+  units_sheet_a.jpg               # 盾卫 / 弓手 / 重斧 / 披风剑（蓝）
+  units_sheet_b.jpg               # 投枪 / 火铳 / 旗鼓 / 亡灵（蓝）
 assets/sprites/paper_cutout/
-  env/
-    arena_paper_base.png          # 纸基（或 .webp；导入侧决定）
-    arena_border_trees_left.png
-    arena_border_trees_right.png
-    arena_border_rocks_*.png      # 可多片层叠
-    arena_ground_doodles.png      # 稀疏草叶；透明底
-  units/
-    unit_knight_shield_blue.png
-    unit_knight_shield_red.png
-    unit_archer_blue.png
-    unit_archer_red.png
-    unit_heavy_axe_blue.png
-    unit_heavy_axe_red.png
-    unit_captain_cape_blue.png
-    unit_captain_cape_red.png
+  env/arena_background.jpg
+  units/unit_<造型>_{blue,red}.png
 ```
 
-约定：
-
-- 前缀 `unit_` / `arena_`；阵营后缀 `_blue` / `_red`。
-- 透明底 PNG；**白边与墨线画进贴图**（勿依赖运行时描边冒充剪纸边，除非 TA 合同明确用 shader 且能复现不规则磨损）。
-- 单位画布建议正方形，角色脚底略偏画布垂直中心以下，便于锚点对准格心。
-- Godot 导入：2D 像素/过滤策略由 TA 定；须保留透明；避免把米白边压成脏边。
+- 源图由图像生成以效果图为参考编辑而来；角色画在纯品红底上。
+- `tools/process_paper_cutout_art.py` 抠掉品红底、每格只留最大连通块、裁边，红版只把钴蓝布料换成砖红，蓝红剪影一致。
+- 米白纸边与墨线都画在贴图里；运行时只加脚下短接触阴影。
+- 背景按铺满缩放；左右树林约占原图宽度 15%，棋盘压进树林内缘 40%，其余作为两侧留白。
 
 ---
 
@@ -155,24 +144,22 @@ assets/sprites/paper_cutout/
 | 距离 / 情境 | 必须可读 | 可牺牲 |
 | --- | --- | --- |
 | 竖屏全板（单位占格约拇指盖大小） | 阵营色（蓝/红布料）、大件（盾/斧/披风/弓） | 面容、纹章细节、排线 |
-| 半板 / 聚焦观战 | archetype 辨认（四类互不混淆） | 纸纤维、污渍 |
-| 色盲 / 降饱和 | 剪影形状仍分四类；阵营除颜色外可靠朝向分区（我下敌上） | 单靠色相的装饰 |
+| 半板 / 聚焦观战 | 造型辨认（八类互不混淆） | 纸纤维、污渍 |
+| 色盲 / 降饱和 | 剪影形状区分造型；阵营除颜色外可靠朝向分区（我下敌上） | 单靠色相的装饰 |
 | 重叠 / 混战 | 米白边帮助分离单体；阴影勿糊成一团 | 多层树丛细节 |
 
-**剪影验收口诀**：缩小到约 **48–64 px 高** 仍能分出「有盾 / 有弓 / 有大斧 / 有大披风」，且能分蓝红。
+**剪影验收口诀**：缩小到约 **48–64 px 高** 仍能分出盾、弓、大斧、披风、标枪、火铳、旗鼓、骷髅，且能分蓝红。
 
 ---
 
-## 9. 缺失回退（必须）
+## 9. 缺失回退
 
-| 条件 | 回退 |
+| 条件 | 行为 |
 | --- | --- |
-| 无单位贴图 / 加载失败 | 保持 As-Is：**椭圆色块** + 短名（`realtime_arena_view.gd` 现有 `_draw_body`） |
-| 无环境贴图 | 保持 As-Is：棋盘格草皮色 + 半场淡 tint；不阻塞开局 |
-| 仅有单阵营贴图 | 缺侧用椭圆；禁止静默用错色贴纸 |
-| 部分 archetype 未交付 | 未交付者椭圆；已交付者贴纸；允许混用 |
+| 兵种 id 未登记 | 用默认造型 `spear` |
+| 美术目录资源加载失败 | 仅作兜底：画椭圆色块 + 短名，不阻塞开局 |
 
-回退路径由 technical-artist / gameplay 接线；本简报只定**行为预期**。
+`unit_art_catalog_test_runner.gd` 断言所有 Run 友方 / 敌方资源都能拿到蓝红两张贴图。
 
 ---
 
@@ -183,29 +170,4 @@ assets/sprites/paper_cutout/
 - 过度规整矢量、完美对称描边冒充手作  
 - 用盔甲色代替阵营色；蓝红布料不清晰  
 - 中央战场堆满装饰导致单位难认  
-- 将本简报或参考图路径写成「已入库 / 已实装」  
-- 本切片扩做整库二十四人、UI 全套、音效、玩法脚本  
-
----
-
-## 11. 交付边界与下一级
-
-| 等级 | 本职出口 | 本切片 |
-| --- | --- | --- |
-| **L0** | 风格、调色板、贴纸要点、分层、archetype、命名、可读距离、回退、禁止项 | **本文件** |
-| L1 | 概念或灰盒：环境分层示意图 / 单 archetype 线稿或色块稿 | 未做 |
-| L2 | 占位可辨认单位/阵营（可临时色块贴纸）进主路径 | 未做 |
-| L3 | 合同 8 单位 + 环境层资产到位，或明确走 §9 回退 | 未做 |
-| L4 | 展示距离 GUI 证据：全板阵营/archetype 可读 | 另切片 |
-| L5 | 只修资产缺陷，不扩题材 | — |
-
-**实现另切片**：`technical-artist` 出图与导入；主路径替换挂在 `realtime_arena_view.gd`（或 TA 指定的精灵节点）；程序只接资源引用与回退，不改战斗规则。
-
----
-
-## 12. 主代理待处理项（交接）
-
-1. 开实现切片（建议目标 L3）：派 `technical-artist` 按 §6–§7 出环境 + 8 贴纸；必要时 `gameplay-engineer` 接线贴图与椭圆回退。  
-2. 参考图是否复制进仓库 `Documents/Reference/` 或设计附件区：需主代理决定（当前在 Cursor 项目 assets，**非**游戏 `assets/`）。  
-3. archetype ↔ 角色库映射（谁用骑士盾剑皮、谁用队长皮）留给内容/程序，不在本 L0 锁定。  
-4. 勿改 `GAME_VISION` / Features 大改；本文件仅 Content 简报。
+- 本切片扩做 UI 全套、音效、玩法脚本  

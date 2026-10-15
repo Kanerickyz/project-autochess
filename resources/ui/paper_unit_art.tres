@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="UnitArtCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_art_catalog.gd" id="1_cat"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_blue.png" id="b_shield"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_blue.png" id="b_archer"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_blue.png" id="b_axe"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_captain_blue.png" id="b_captain"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_blue.png" id="b_spear"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_musket_blue.png" id="b_musket"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_banner_blue.png" id="b_banner"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_skeleton_blue.png" id="b_skeleton"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_captain_red.png" id="r_captain"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_red.png" id="r_spear"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_musket_red.png" id="r_musket"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_banner_red.png" id="r_banner"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_skeleton_red.png" id="r_skeleton"]
+
+[resource]
+script = ExtResource("1_cat")
+archetype_by_unit_id = {
+"archer": &"archer",
+"banner": &"banner",
+"barbarian": &"axe",
+"crossbow": &"archer",
+"dirge_horn": &"banner",
+"echo_spear": &"spear",
+"giant_knight": &"axe",
+"goblin": &"skeleton",
+"gravewright": &"skeleton",
+"horsebow": &"archer",
+"hunter": &"captain",
+"knight": &"shield",
+"maul": &"axe",
+"mini_pekka": &"captain",
+"mirror_warden": &"shield",
+"musketeer": &"musket",
+"relic_aegis": &"shield",
+"rider": &"captain",
+"rune_plate": &"shield",
+"skeleton": &"skeleton",
+"soulcaller": &"skeleton",
+"spear_goblin": &"spear",
+"spike_shield": &"shield",
+"valkyrie": &"axe",
+"wardrum": &"banner"
+}
+default_archetype = &"spear"
+player_textures = {
+&"archer": ExtResource("b_archer"),
+&"axe": ExtResource("b_axe"),
+&"banner": ExtResource("b_banner"),
+&"captain": ExtResource("b_captain"),
+&"musket": ExtResource("b_musket"),
+&"shield": ExtResource("b_shield"),
+&"skeleton": ExtResource("b_skeleton"),
+&"spear": ExtResource("b_spear")
+}
+enemy_textures = {
+&"archer": ExtResource("r_archer"),
+&"axe": ExtResource("r_axe"),
+&"banner": ExtResource("r_banner"),
+&"captain": ExtResource("r_captain"),
+&"musket": ExtResource("r_musket"),
+&"shield": ExtResource("r_shield"),
+&"skeleton": ExtResource("r_skeleton"),
+&"spear": ExtResource("r_spear")
+}
