@@ -190,7 +190,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | `RealtimeDamagePipeline` | 唯一扣血处；经 `CombatEventBus` 发 `ON_ATTACK_HIT` / `ON_DAMAGE_TAKEN` / `ON_DEATH` 等 |
 | `RealtimeBattleController`（`scripts/ui/realtime/`） | **As-Is**：进遭遇即开战、抽打弃 + 号令出牌。**To-Be**：准备入槽 / 刷新 / 开战观战（见玩家篇） |
 
-按行动队列轮到单位 → 一动内：决策 → 落格顿步靠近 → 能打则出手一次 → 该动技能尾巴 → 胜负检查 → 下一名（见战斗篇）。属性读 `UnitStats` 的 Realtime 组（`move_speed` 映射为一动步数，见单位篇）。
+按行动队列轮到单位 → 一动内：决策 → 落格顿步靠近（预算=`steps_per_turn`）→ 能打则出手一次 → 该动技能尾巴 → 胜负检查 → 下一名（见战斗篇）。属性读 `UnitStats`（见单位篇）。
 
 `CombatEventBus` 生命周期：进入遭遇时由控制器创建，准备阶段不发战斗事件；结算后「继续」时随模拟一起释放。
 

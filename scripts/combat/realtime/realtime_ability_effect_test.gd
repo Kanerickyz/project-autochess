@@ -135,7 +135,7 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 			{
 				"attack": 10,
 				"max_hp": 100000,
-				"move_speed": 0.0,
+				"steps_per_turn": 0,
 				"attack_windup": 0.0,
 				"attack_interval": 0.5,
 				"attack_reach": 2.0,
@@ -178,7 +178,7 @@ static func _test_deal_damage_gain_atk() -> bool:
 	# 强制近身出手；关掉溅射避免单次出手多段 ON_DEAL_DAMAGE
 	flail.unit.stats.attack_windup = 0.0
 	flail.unit.stats.attack_interval = 0.4
-	flail.unit.stats.move_speed = 0.0
+	flail.unit.stats.steps_per_turn = 0
 	flail.unit.stats.attack_reach = 2.0
 	flail.unit.stats.sight_range = 10.0
 	flail.unit.stats.splash_radius = 0.0
@@ -214,7 +214,7 @@ static func _test_crit_extra_damage_mid() -> bool:
 	sim.configure(ARENA, 99)
 	var gun := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
 	var enemy := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 500, {"move_speed": 0.0, "sight_range": 0.0, "attack_reach": 0.0}),
+		_dummy(UnitInstance.Team.ENEMY, 500, {"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0}),
 		Vector2(9.5, 18.5),
 	)
 	# 强制必暴，验证 OnCrit → DEAL_DAMAGE 55
@@ -223,7 +223,7 @@ static func _test_crit_extra_damage_mid() -> bool:
 	gun.unit.stats.attack_windup = 0.0
 	gun.unit.stats.attack_interval = 0.3
 	gun.unit.stats.attack_reach = 3.0
-	gun.unit.stats.move_speed = 0.0
+	gun.unit.stats.steps_per_turn = 0
 	var hp_before := enemy.unit.current_hp
 	var guard := 0
 	while enemy.unit.current_hp > hp_before - 55 and guard < 200:
@@ -246,14 +246,14 @@ static func _test_kill_gain_atk_mid() -> bool:
 	sim.configure(ARENA, 13)
 	var sword := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
 	sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 50, {"move_speed": 0.0, "body_radius": 0.3}),
+		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "body_radius": 0.3}),
 		Vector2(9.5, 20.0),
 	)
 	# 远处再挂一个敌方，避免杀光立刻结束
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"move_speed": 0.0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
 	sword.unit.stats.attack_windup = 0.0
 	sword.unit.stats.attack_interval = 0.3
-	sword.unit.stats.move_speed = 0.0
+	sword.unit.stats.steps_per_turn = 0
 	sword.unit.stats.attack_reach = 2.0
 	var base_atk := sword.unit.get_effective_attack()
 	var guard := 0
@@ -278,7 +278,7 @@ static func _test_ally_death_self_atk_mid() -> bool:
 	var fodder := sim.add_unit(
 		RealtimeCombatSimTest.make_unit(
 			UnitInstance.Team.PLAYER,
-			{"max_hp": 20, "attack": 1, "move_speed": 0.0, "sight_range": 0.0, "attack_reach": 0.0},
+			{"max_hp": 20, "attack": 1, "steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
 		),
 		Vector2(9.5, 20.5),
 	)
@@ -288,7 +288,7 @@ static func _test_ally_death_self_atk_mid() -> bool:
 			{
 				"attack": 500,
 				"max_hp": 100000,
-				"move_speed": 0.0,
+				"steps_per_turn": 0,
 				"attack_windup": 0.0,
 				"attack_interval": 0.2,
 				"attack_reach": 2.0,
@@ -318,13 +318,13 @@ static func _test_ally_deploy_self_atk_small() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 19)
 	var archer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"move_speed": 0.0, "sight_range": 0.0}), Vector2(9.5, 4.5))
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(9.5, 4.5))
 	sim.begin_combat()
 	var base_atk := archer.unit.get_effective_attack()
 	# 战中补人：走 deploy，结束时发 ON_FRIEND_SUMMONED
 	var reinforce := RealtimeCombatSimTest.make_unit(
 		UnitInstance.Team.PLAYER,
-		{"max_hp": 100, "attack": 1, "deploy_time": 0.1, "move_speed": 0.0, "sight_range": 0.0},
+		{"max_hp": 100, "attack": 1, "deploy_time": 0.1, "steps_per_turn": 0, "sight_range": 0.0},
 	)
 	sim.add_unit(reinforce, Vector2(8.5, 24.5))
 	var guard := 0
@@ -353,7 +353,7 @@ static func _test_death_spawn_pack() -> bool:
 			{
 				"attack": 500,
 				"max_hp": 100000,
-				"move_speed": 0.0,
+				"steps_per_turn": 0,
 				"attack_windup": 0.0,
 				"attack_interval": 0.2,
 				"attack_reach": 2.0,
@@ -363,7 +363,7 @@ static func _test_death_spawn_pack() -> bool:
 		Vector2(9.5, 20.0),
 	)
 	# 保留一个远处木桩，避免杀光后立刻结束战斗
-	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 100000, {"move_speed": 0.0, "sight_range": 0.0}), Vector2(2.5, 28.5))
+	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 28.5))
 	var guard := 0
 	while light.is_alive() and guard < 300:
 		sim.advance_fixed_step()
@@ -392,7 +392,7 @@ static func _test_death_aoe_deal_damage() -> bool:
 	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
 	# 远处唯一敌方，死亡 AOE 的 RANDOM_ENEMY 必打到它
 	var enemy := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 200, {"move_speed": 0.0, "sight_range": 0.0, "attack_reach": 0.0}),
+		_dummy(UnitInstance.Team.ENEMY, 200, {"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0}),
 		Vector2(15.5, 4.5),
 	)
 	sim.begin_combat()
