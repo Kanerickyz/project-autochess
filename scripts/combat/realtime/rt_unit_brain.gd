@@ -276,14 +276,17 @@ static func grid_reach(reach: float) -> float:
 	return reach
 
 
-## sight_range 内格距最近敌人；没有则全场最近。平局取较小 instance_id。
+## sight_range 内格距最近敌人；没有则全场最近。
+## 平局：先比曼哈顿（避免同切比雪夫时全体锁左侧先生成单位），再比 instance_id。
 static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 	var sight := unit.get_stats().sight_range
 	var best_in_sight: RtUnit = null
 	var best_in_sight_dist := 999999
+	var best_in_sight_man := 999999
 	var best_in_sight_id := 0x7fffffff
 	var best_any: RtUnit = null
 	var best_any_dist := 999999
+	var best_any_man := 999999
 	var best_any_id := 0x7fffffff
 	for item in units:
 		var other := item as RtUnit
@@ -292,16 +295,41 @@ static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 		if other.get_team() == unit.get_team():
 			continue
 		var d := unit.cell_distance_to(other)
+		var man := _footprint_manhattan(unit, other, Vector2i.ZERO)
 		var oid := other.get_id()
-		if d < best_any_dist or (d == best_any_dist and oid < best_any_id):
+		if _is_better_target(d, man, oid, best_any_dist, best_any_man, best_any_id):
 			best_any_dist = d
+			best_any_man = man
 			best_any_id = oid
 			best_any = other
-		if float(d) <= sight and (d < best_in_sight_dist or (d == best_in_sight_dist and oid < best_in_sight_id)):
+		if float(d) <= sight and _is_better_target(
+			d, man, oid, best_in_sight_dist, best_in_sight_man, best_in_sight_id
+		):
 			best_in_sight_dist = d
+			best_in_sight_man = man
 			best_in_sight_id = oid
 			best_in_sight = other
 	return best_in_sight if best_in_sight != null else best_any
+
+
+## 切比雪夫更近优先；同距再比曼哈顿；再平局取较小 instance_id。
+static func _is_better_target(
+	d: int,
+	man: int,
+	oid: int,
+	best_d: int,
+	best_man: int,
+	best_id: int,
+) -> bool:
+	if d < best_d:
+		return true
+	if d > best_d:
+		return false
+	if man < best_man:
+		return true
+	if man > best_man:
+		return false
+	return oid < best_id
 
 
 ## 八向贪心：优先减小切比雪夫；同距再减曼哈顿；目标格被占则改道或返回 ZERO（短等）。
