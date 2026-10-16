@@ -35,3 +35,5 @@ skill_alpha_default = 1.0
 rejection_attempts = 64
 hill_climb_swaps = 32
 n_min = 1
+combat_plus_one_chance = 0.25
+elite_plus_two_chance = 0.5

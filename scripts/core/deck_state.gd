@@ -3,16 +3,22 @@ extends RefCounted
 
 signal deck_changed
 
+## 队伍席位上限硬顶（旗帜扩容上限；与座位网格 2×5=10 对齐）。
+const SEAT_CAP_HARD_MAX := 10
+
 var _config: DeckConfig
 var _level_config: LevelConfig
 var _entries: Array[DeckEntry] = []
 var _next_entry_id: int = 0
 ## 全局落座时间计数；每次成功 assign/swap 递增。
 var _next_seat_seq: int = 0
+## 运行时席位上限；-1 表示沿用 DeckConfig.max_size（旗帜写入此字段，避免污染共享 .tres）。
+var _seat_cap_override: int = -1
 
 
 func configure(config: DeckConfig) -> void:
 	_config = config
+	_seat_cap_override = -1
 	if config != null and config.level_config != null:
 		_level_config = config.level_config
 	else:
@@ -27,6 +33,7 @@ func reset_from_config() -> void:
 	_entries.clear()
 	_next_entry_id = 0
 	_next_seat_seq = 0
+	_seat_cap_override = -1
 	if _config == null:
 		deck_changed.emit()
 		return
@@ -58,9 +65,7 @@ func size() -> int:
 
 
 func is_full() -> bool:
-	if _config == null:
-		return false
-	return _entries.size() >= _config.max_size
+	return _entries.size() >= get_max_size()
 
 
 func can_add() -> bool:
@@ -68,9 +73,33 @@ func can_add() -> bool:
 
 
 func get_max_size() -> int:
+	if _seat_cap_override >= 0:
+		return _seat_cap_override
 	if _config == null:
 		return 0
 	return _config.max_size
+
+
+func get_seat_cap_hard_max() -> int:
+	return SEAT_CAP_HARD_MAX
+
+
+func is_seat_cap_maxed() -> bool:
+	return get_max_size() >= SEAT_CAP_HARD_MAX
+
+
+## 旗帜：席位上限 +delta，封顶 SEAT_CAP_HARD_MAX。已满则失败。
+func try_increase_seat_cap(delta: int = 1) -> bool:
+	if delta <= 0:
+		return false
+	var current := get_max_size()
+	if current >= SEAT_CAP_HARD_MAX:
+		return false
+	if _seat_cap_override < 0:
+		_seat_cap_override = current
+	_seat_cap_override = mini(SEAT_CAP_HARD_MAX, _seat_cap_override + delta)
+	deck_changed.emit()
+	return true
 
 
 func get_max_board_units() -> int:

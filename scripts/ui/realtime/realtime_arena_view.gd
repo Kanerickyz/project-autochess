@@ -6,6 +6,8 @@ extends Control
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
+## 准备商店：道具拖到棋盘（tile 坐标）；控制器解析己方座位目标。
+signal prepare_item_dropped(item_slot: int, tile_pos: Vector2)
 ## 招募：候选人拖放到上半场；replace_entry_id≥0 为替换；seat_index≥0 为指定空座。
 signal recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int)
 signal recruit_candidate_pressed(candidate_index: int)
@@ -17,6 +19,7 @@ signal recruit_team_seat_drop(entry_id: int, target_seat: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
+const PREPARE_ITEM_KEY := "rt_prepare_item_slot"
 const NO_CELL := Vector2i(-1, -1)
 const ARENA_BACKGROUND := preload("res://assets/sprites/paper_cutout/env/arena_background.jpg")
 ## 背景图左右树林各占原图宽度的比例；棋盘只压进树林内缘这部分，避免座位被树盖住。
@@ -796,6 +799,9 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		_drag_unit_id = String(dict.get("unit_id", ""))
 		_hover_cell = tile_to_cell(local_to_tile(at_position))
 		return true
+	if dict.has(PREPARE_ITEM_KEY) or dict.has(PrepareShopPanel.ITEM_DRAG_KEY):
+		_hover_cell = tile_to_cell(local_to_tile(at_position))
+		return true
 	if not dict.has(DRAG_KEY):
 		return false
 	_drag_active = true
@@ -830,6 +836,12 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			elif seat_i < 0 and recruit_team_slots != null:
 				seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 			recruit_drop.emit(index, -1, seat_i)
+		return
+	var item_key := PREPARE_ITEM_KEY
+	if not dict.has(item_key) and dict.has(PrepareShopPanel.ITEM_DRAG_KEY):
+		item_key = PrepareShopPanel.ITEM_DRAG_KEY
+	if dict.has(item_key):
+		prepare_item_dropped.emit(int(dict[item_key]), local_to_tile(at_position))
 		return
 	card_dropped.emit(int(dict[DRAG_KEY]), local_to_tile(at_position))
 

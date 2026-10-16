@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="PrepareShopConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/prepare_shop_config.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="2_unit"]
+[ext_resource type="Script" path="res://scripts/data/prepare_item_data.gd" id="3_item"]
+[ext_resource type="Resource" path="res://resources/items/hp_potion.tres" id="i_hp"]
+[ext_resource type="Resource" path="res://resources/items/atk_potion.tres" id="i_atk"]
+[ext_resource type="Resource" path="res://resources/items/banner.tres" id="i_banner"]
+[ext_resource type="Resource" path="res://resources/units/realtime/skeleton.tres" id="u_skel"]
+[ext_resource type="Resource" path="res://resources/units/realtime/archer.tres" id="u_archer"]
+[ext_resource type="Resource" path="res://resources/units/realtime/barbarian.tres" id="u_barbarian"]
+[ext_resource type="Resource" path="res://resources/units/realtime/goblin.tres" id="u_goblin"]
+[ext_resource type="Resource" path="res://resources/units/realtime/spear_goblin.tres" id="u_spear"]
+[ext_resource type="Resource" path="res://resources/units/realtime/knight.tres" id="u_knight"]
+[ext_resource type="Resource" path="res://resources/units/realtime/musketeer.tres" id="u_musket"]
+[ext_resource type="Resource" path="res://resources/units/realtime/rider.tres" id="u_rider"]
+[ext_resource type="Resource" path="res://resources/units/realtime/valkyrie.tres" id="u_valk"]
+[ext_resource type="Resource" path="res://resources/units/realtime/mini_pekka.tres" id="u_pekka"]
+[ext_resource type="Resource" path="res://resources/units/realtime/spike_shield.tres" id="u_spike"]
+[ext_resource type="Resource" path="res://resources/units/realtime/rune_plate.tres" id="u_rune"]
+[ext_resource type="Resource" path="res://resources/units/realtime/banner.tres" id="u_banner"]
+[ext_resource type="Resource" path="res://resources/units/realtime/relic_aegis.tres" id="u_relic"]
+[ext_resource type="Resource" path="res://resources/units/realtime/dirge_horn.tres" id="u_dirge"]
+[ext_resource type="Resource" path="res://resources/units/realtime/wardrum.tres" id="u_drum"]
+[ext_resource type="Resource" path="res://resources/units/realtime/crossbow.tres" id="u_xbow"]
+[ext_resource type="Resource" path="res://resources/units/realtime/hunter.tres" id="u_hunter"]
+[ext_resource type="Resource" path="res://resources/units/realtime/maul.tres" id="u_maul"]
+[ext_resource type="Resource" path="res://resources/units/realtime/gravewright.tres" id="u_grave"]
+[ext_resource type="Resource" path="res://resources/units/realtime/soulcaller.tres" id="u_soul"]
+[ext_resource type="Resource" path="res://resources/units/realtime/echo_spear.tres" id="u_echo"]
+[ext_resource type="Resource" path="res://resources/units/realtime/mirror_warden.tres" id="u_mirror"]
+[ext_resource type="Resource" path="res://resources/units/realtime/horsebow.tres" id="u_hbow"]
+
+[resource]
+script = ExtResource("1")
+character_slot_count = 5
+character_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_archer"), ExtResource("u_barbarian"), ExtResource("u_goblin"), ExtResource("u_spear"), ExtResource("u_knight"), ExtResource("u_musket"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunter"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow")])
+item_pool = Array[ExtResource("3_item")]([ExtResource("i_hp"), ExtResource("i_atk"), ExtResource("i_banner")])
+default_potion_cost = 1
+default_banner_cost = 2

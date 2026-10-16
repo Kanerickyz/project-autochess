@@ -19,6 +19,10 @@ static func run_all() -> bool:
 	ok = _check("disabled_keeps_legacy_path_marker", _test_config_disabled_flag()) and ok
 	ok = _check("team_target_with_floor_guards", _test_team_target_with_floor_guards()) and ok
 	ok = _check("overflow_melee_to_back", _test_overflow_melee_to_back()) and ok
+	ok = _check("combat_count_n_or_n_plus_1", _test_combat_count_n_or_n_plus_1()) and ok
+	ok = _check("elite_count_n_or_n_plus_2", _test_elite_count_n_or_n_plus_2()) and ok
+	ok = _check("boss_ignores_roster_count", _test_boss_ignores_roster_count()) and ok
+	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
 	if ok:
 		print("EnemyBudgetSpawnerTest: all passed")
 	else:
@@ -327,6 +331,90 @@ static func _test_team_target_with_floor_guards() -> bool:
 	cfg.floor_e_max = maxs
 	var e_table := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 40.0)
 	return is_equal_approx(e_table, 50.0)
+
+
+static func _test_combat_count_n_or_n_plus_1() -> bool:
+	var pool: Array[UnitData] = []
+	for i in 6:
+		pool.append(_make_unit("p%d" % i, 10, 3, 1.0, 1, 0.0, 0.0, true))
+	var cfg := _make_config(pool)
+	cfg.combat_plus_one_chance = 0.0
+	var wave := _make_wave(8)
+	var team: Array = []
+	for i in 3:
+		team.append(_make_entry(pool[i]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+	)
+	if seated.size() != 3:
+		return false
+	cfg.combat_plus_one_chance = 1.0
+	rng.seed = 12
+	seated = EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+	)
+	return seated.size() == 4
+
+
+static func _test_elite_count_n_or_n_plus_2() -> bool:
+	var pool: Array[UnitData] = []
+	for i in 8:
+		pool.append(_make_unit("e%d" % i, 10, 3, 1.0, 1, 0.0, 0.0, true))
+	var cfg := _make_config(pool)
+	cfg.elite_plus_two_chance = 0.0
+	var wave := _make_wave(8)
+	var team: Array = []
+	for i in 2:
+		team.append(_make_entry(pool[i]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, 1, MapNodeType.Type.ELITE, 2, 5, rng, team
+	)
+	if seated.size() != 2:
+		return false
+	cfg.elite_plus_two_chance = 1.0
+	rng.seed = 22
+	seated = EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, 1, MapNodeType.Type.ELITE, 2, 5, rng, team
+	)
+	return seated.size() == 4
+
+
+static func _test_boss_ignores_roster_count() -> bool:
+	var boss := _make_unit("boss", 40, 8, 1.5, 3, 0.0, 0.0, true)
+	boss.is_boss_leader = true
+	var fodder := _make_unit("fodder", 8, 2, 1.0, 1, 0.0, 0.0, true)
+	var cfg := _make_config([fodder, boss])
+	var wave := _make_wave(5, [boss])
+	var team: Array = []
+	for i in 5:
+		team.append(_make_entry(_make_unit("t%d" % i, 12, 3, 1.0, 1, 0.0, 0.0, true)))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 2, 1, MapNodeType.Type.BOSS, 2, 5, rng, team
+	)
+	return seated.size() == 1
+
+
+static func _test_roll_enemy_count_config() -> bool:
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.combat_plus_one_chance = 0.0
+	cfg.elite_plus_two_chance = 1.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 4, rng) != 4:
+		return false
+	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 4, rng) != 6:
+		return false
+	if cfg.roll_enemy_count(MapNodeType.Type.BOSS, 4, rng) != -1:
+		return false
+	## 空队保底 N=1
+	cfg.combat_plus_one_chance = 0.0
+	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 0, rng) == 1
 
 
 static func _test_overflow_melee_to_back() -> bool:

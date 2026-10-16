@@ -61,6 +61,35 @@ enum FormationTag {
 @export_range(0, 100, 1) var hill_climb_swaps: int = 32
 @export_range(1, 10, 1) var n_min: int = 1
 
+@export_group("Roster Count")
+## 普通：在人数＝N 的基础上，以该概率改为 N＋1。
+@export_range(0.0, 1.0, 0.01) var combat_plus_one_chance: float = 0.25
+## 精英：以该概率选 N＋2，否则＝N。
+@export_range(0.0, 1.0, 0.01) var elite_plus_two_chance: float = 0.5
+
+
+## 按节点类型与玩家阵容人数 N 掷敌方目标人数（不含座位硬顶裁切）。
+## Boss 返回 -1（调用方应跳过人数规则）。空队时 N 按 1 保底。
+func roll_enemy_count(
+	node_type: MapNodeType.Type,
+	player_roster_n: int,
+	rng: RandomNumberGenerator,
+) -> int:
+	if node_type == MapNodeType.Type.BOSS:
+		return -1
+	var n := maxi(1, player_roster_n)
+	if rng == null:
+		return n
+	match node_type:
+		MapNodeType.Type.ELITE:
+			if rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
+				return n + 2
+			return n
+		_:
+			if rng.randf() < clampf(combat_plus_one_chance, 0.0, 1.0):
+				return n + 1
+			return n
+
 
 static func load_or_default() -> SpawnBudgetConfig:
 	if ResourceLoader.exists(DEFAULT_PATH):
