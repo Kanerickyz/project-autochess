@@ -100,24 +100,41 @@
 
 ---
 
-## 6. 角色造型与兵种映射
+## 6. 角色贴图与兵种映射
 
-8 个造型，每个蓝（我）/ 红（敌）各一张。造型只管外观，不绑定技能。敌方资源 id 去掉 `enemy_` 前缀后共用同一张表；未登记的 id 落到 `spear`，场上不出现无图单位。
+主兵种（`resources/units/realtime/`）**一兵种一张贴图**，各有蓝（我）/ 红（敌）两版；贴图只管外观，不绑定技能。敌方资源 id 去掉 `enemy_` 前缀后共用同一张表；未登记的 id 落到 `spear`，场上不出现无图单位。
 
-| 造型 | 剪影要点 | 兵种（资源 id） |
+| 贴图键 | 辨识要点 | 兵种 |
 | --- | --- | --- |
-| `shield` 盾卫 | 尖盔 + 十字竖盾 + 短剑 | knight、spike_shield、rune_plate、relic_aegis、mirror_warden |
-| `archer` 弓手 | 兜帽 + 反曲弓 + 箭囊 | archer、crossbow、horsebow |
-| `axe` 重斧 | 厚甲 + 双刃大斧 | barbarian、maul、giant_knight、valkyrie |
-| `captain` 披风剑 | 大披风 + 举大剑 | mini_pekka、hunter、rider |
-| `spear` 投枪 | 敞盔 + 举标枪 + 小盾 | spear_goblin、echo_spear（默认造型） |
-| `musket` 火铳 | 羽毛宽檐帽 + 长火铳 | musketeer |
-| `banner` 旗鼓 | 高旗 + 腰鼓 | banner、dirge_horn、wardrum |
-| `skeleton` 亡灵 | 骷髅 + 破兜帽 + 锈剑 | skeleton、goblin、gravewright、soulcaller |
+| `shield` | 尖盔 + 十字竖盾 + 短剑 | knight 盾卫 |
+| `archer` | 兜帽 + 反曲弓 + 箭囊 | archer 游侠 |
+| `axe` | 厚甲 + 双刃大斧 | barbarian 蛮斧 |
+| `captain` | 大披风 + 举大剑 | mini_pekka 大剑 |
+| `musket` | 羽毛宽檐帽 + 长火铳 | musketeer 火铳 |
+| `banner` | 高旗 + 腰鼓 | banner 旗手 |
+| `skeleton` | 骷髅 + 破兜帽 + 锈剑 | skeleton 枯骨 |
+| `crossbow` | 宽檐铁盔 + 横持重弩 | crossbow 弩手 |
+| `horsebow` | 骑小马 + 拉短弓 | horsebow 骑弓 |
+| `rider` | 骑白马 + 平端长枪小旗 | rider 骑手 |
+| `hunter` | 宽檐皮帽 + 狼皮斗篷 + 双匕 | hunter 猎手 |
+| `maul` | 光头大胡子 + 扛方头巨锤 | maul 巨锤 |
+| `valkyrie` | 翼盔金辫 + 甩链枷 + 圆盾 | valkyrie 链枷 |
+| `giant_knight` | 高大全身甲 + 蓝羽冠 + 拄巨剑 | giant_knight 铁甲统领 |
+| `spike_shield` | 全身藏在尖刺塔盾后 | spike_shield 刺盾 |
+| `rune_plate` | 石板身躯 + 发光符文 | rune_plate 石甲 |
+| `relic_aegis` | 光环 + 高举圣骸匣 + 太阳盾 | relic_aegis 圣骸 |
+| `mirror_warden` | 羽饰高盔 + 长戟 + 镜面圆盾 | mirror_warden 禁卫 |
+| `dirge_horn` | 兜帽 + 吹大号角 | dirge_horn 号手 |
+| `wardrum` | 胸前大鼓 + 双鼓槌（无旗） | wardrum 鼓手 |
+| `echo_spear` | 骷髅面长枪兵 + 青色残影 | echo_spear 残影 |
+| `spear_goblin` | 皮帽 + 投掷姿势 + 背后标枪束 | spear_goblin 标枪 |
+| `goblin` | 火纹长袍 + 提炭火吊炉 | goblin 余烬 |
+| `gravewright` | 驼背老人 + 铁锹 + 提灯 | gravewright 掘墓 |
+| `soulcaller` | 黑面兜帽 + 骷髅杖 + 鬼火 | soulcaller 召魂 |
 
-召唤代理也须显式映射：bus、ram、token_thick_copy → `shield`；token_ember → `spear`；chick、slime_split、token_weak、token_weak_copy、zombie_fly → `skeleton`。
+召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
-改映射只改 `resources/ui/paper_unit_art.tres`；`unit_art_catalog_test_runner.gd` 校验 realtime / enemies / tokens 下每个单位都有显式映射。
+改映射只改 `resources/ui/paper_unit_art.tres`；`unit_art_catalog_test_runner.gd` 校验 realtime / enemies / tokens 下每个单位都有显式映射，且主兵种之间不共用贴图。
 
 ---
 
@@ -146,11 +163,11 @@ assets/sprites/paper_cutout/
 | 距离 / 情境 | 必须可读 | 可牺牲 |
 | --- | --- | --- |
 | 竖屏全板（单位占格约拇指盖大小） | 阵营色（蓝/红布料）、大件（盾/斧/披风/弓） | 面容、纹章细节、排线 |
-| 半板 / 聚焦观战 | 造型辨认（八类互不混淆） | 纸纤维、污渍 |
+| 半板 / 聚焦观战 | 兵种辨认（主兵种互不混淆，靠武器 / 坐骑 / 头饰） | 纸纤维、污渍 |
 | 色盲 / 降饱和 | 剪影形状区分造型；阵营除颜色外可靠朝向分区（我下敌上） | 单靠色相的装饰 |
 | 重叠 / 混战 | 米白边帮助分离单体；阴影勿糊成一团 | 多层树丛细节 |
 
-**剪影验收口诀**：缩小到约 **48–64 px 高** 仍能分出盾、弓、大斧、披风、标枪、火铳、旗鼓、骷髅，且能分蓝红。
+**剪影验收口诀**：缩小到约 **48–64 px 高** 仍能靠标志性道具（弩、骑马、巨锤、链枷、塔盾、号角、大鼓、炭炉、铁锹、骷髅杖等）分出各兵种，且能分蓝红。
 
 ---
 
