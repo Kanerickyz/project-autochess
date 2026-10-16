@@ -1399,11 +1399,8 @@ func _on_combat_event_for_economy(
 ) -> void:
 	if payload.target == null:
 		return
-	if event_type == CombatEvents.ON_KILL:
-		if payload.target.team != UnitInstance.Team.ENEMY:
-			return
-		run_economy.grant_kill_gold(payload.target.unit_data)
-		return
+	## 击杀敌方不掉金（愿景定稿）；不再调用 grant_kill_gold。
+	## 友方 death_grant_gold（增益亡者遗金）若仍挂载则保留。
 	if event_type == CombatEvents.ON_DEATH:
 		if payload.target.team != UnitInstance.Team.PLAYER:
 			return

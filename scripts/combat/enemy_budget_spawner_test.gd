@@ -1,6 +1,6 @@
 class_name EnemyBudgetSpawnerTest
 extends RefCounted
-## 层预算抽阵：U 公式、带宽、落座、开关、Boss 固定单位。
+## 队伍强度抽阵：U 公式、真队 E、护栏、落座、开关、Boss 固定单位。
 
 
 static func run_all() -> bool:
@@ -8,14 +8,16 @@ static func run_all() -> bool:
 	ok = _check("unit_power_formula", _test_unit_power_formula()) and ok
 	ok = _check("skill_alpha_defaults", _test_skill_alpha_defaults()) and ok
 	ok = _check("splash_body_mult", _test_splash_body_mult()) and ok
+	ok = _check("entry_star_body_power", _test_entry_star_body_power()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
 	ok = _check("tier_filter_hard", _test_tier_filter_hard()) and ok
 	ok = _check("boss_fixed_only_no_fill", _test_boss_fixed_only_no_fill()) and ok
+	ok = _check("boss_ignores_team_power", _test_boss_ignores_team_power()) and ok
 	ok = _check("boss_front_center_seat", _test_boss_front_center_seat()) and ok
 	ok = _check("disabled_keeps_legacy_path_marker", _test_config_disabled_flag()) and ok
-	ok = _check("p_mid_not_player_team", _test_p_mid_from_config_only()) and ok
+	ok = _check("team_target_with_floor_guards", _test_team_target_with_floor_guards()) and ok
 	ok = _check("overflow_melee_to_back", _test_overflow_melee_to_back()) and ok
 	if ok:
 		print("EnemyBudgetSpawnerTest: all passed")
@@ -56,6 +58,15 @@ static func _make_unit(
 	if with_ability:
 		data.ability = AbilityData.new()
 	return data
+
+
+static func _make_entry(unit: UnitData, bonus_hp: int = 0, bonus_atk: int = 0, level: int = 1) -> DeckEntry:
+	var entry := DeckEntry.new()
+	entry.unit = unit
+	entry.bonus_max_hp = bonus_hp
+	entry.bonus_attack = bonus_atk
+	entry.level = level
+	return entry
 
 
 static func _make_config(pool: Array[UnitData]) -> SpawnBudgetConfig:
@@ -113,6 +124,21 @@ static func _test_splash_body_mult() -> bool:
 	return is_equal_approx(u_splash / u_plain, 1.05)
 
 
+static func _test_entry_star_body_power() -> bool:
+	var unit := _make_unit("star", 10, 4, 1.0, 1, 0.0, 0.0, true)
+	var base_u := UnitPowerScore.compute_u(unit)
+	var entry := _make_entry(unit, 10, 2, 2)
+	var starred := UnitPowerScore.compute_u_from_entry(entry)
+	## 星级身体应高于裸 UnitData。
+	if starred <= base_u:
+		return false
+	var hp := 20.0
+	var atk := 6.0
+	var dps := atk / 1.0
+	var body := hp + 1.5 * atk + 0.5 * dps
+	return is_equal_approx(starred, body * 1.0)
+
+
 static func _test_budget_roll_within_band() -> bool:
 	var pool: Array[UnitData] = [
 		_make_unit("m1", 12, 3, 1.2, 1, 0.0, 0.0, true),
@@ -127,15 +153,21 @@ static func _test_budget_roll_within_band() -> bool:
 	var wave := _make_wave(3)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
+	## 真队 S≈55 → E＝κ×S 落在护栏内。
+	var team: Array = [_make_entry(_make_unit("ally", 20, 6, 1.0, 1, 0.0, 0.0, true))]
+	## ally U = (20+1.5*6+0.5*6)*1 = 32；补第二人以抬高 S。
+	team.append(_make_entry(_make_unit("ally2", 14, 4, 1.0, 1, 0.0, 0.0, true)))
+	## ally2 U = (14+6+2)=22；S=54 接近 55。
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 0, MapNodeType.Type.COMBAT, 2, 5, rng
+		wave, cfg, [], 0, 0, MapNodeType.Type.COMBAT, 2, 5, rng, team
 	)
 	if seated.is_empty():
 		return false
 	var power := 0.0
 	for item in seated:
 		power += float(item.get("power_u", 0.0))
-	var target := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT)
+	var team_s := UnitPowerScore.team_power_from_entries(team)
+	var target := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, team_s)
 	var band := cfg.get_band(MapNodeType.Type.COMBAT) + cfg.band_widen_step
 	var lo := target * (1.0 - band)
 	var hi := target * (1.0 + band)
@@ -194,9 +226,10 @@ static func _test_tier_filter_hard() -> bool:
 	var wave := _make_wave(4)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
+	var team: Array = [_make_entry(low)]
 	## tier_index=0 → max_tier=1，高品阶不得出现
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 0, MapNodeType.Type.COMBAT, 2, 5, rng
+		wave, cfg, [], 0, 0, MapNodeType.Type.COMBAT, 2, 5, rng, team
 	)
 	for item in seated:
 		var ud: UnitData = item.get("unit_data") as UnitData
@@ -216,14 +249,27 @@ static func _test_boss_fixed_only_no_fill() -> bool:
 	var wave := _make_wave(2, [boss])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
+	## 即使传入强队，Boss 仍只出固定首领。
+	var strong_team: Array = []
+	for _i in 5:
+		strong_team.append(_make_entry(_make_unit("t%d" % _i, 40, 10, 1.0, 1, 0.0, 0.0, true)))
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 4, 0, MapNodeType.Type.BOSS, 2, 5, rng
+		wave, cfg, [], 4, 0, MapNodeType.Type.BOSS, 2, 5, rng, strong_team
 	)
 	## Boss：只固定首领，不填杂兵。
 	if seated.size() != 1:
 		return false
 	var ud: UnitData = seated[0].get("unit_data") as UnitData
 	return ud != null and ud.id == "boss"
+
+
+static func _test_boss_ignores_team_power() -> bool:
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.kappa_boss = 2.0
+	var mid: Array[float] = [100.0]
+	cfg.floor_mid_power = mid
+	## Boss 目标恒为 0，与队伍强度无关。
+	return is_equal_approx(cfg.get_target_pressure(0, MapNodeType.Type.BOSS, 999.0), 0.0)
 
 
 static func _test_boss_front_center_seat() -> bool:
@@ -234,7 +280,7 @@ static func _test_boss_front_center_seat() -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 1, 0, MapNodeType.Type.BOSS, 2, 5, rng
+		wave, cfg, [], 1, 0, MapNodeType.Type.BOSS, 2, 5, rng, []
 	)
 	if seated.size() != 1:
 		return false
@@ -248,14 +294,39 @@ static func _test_config_disabled_flag() -> bool:
 	return cfg.enabled == false
 
 
-static func _test_p_mid_from_config_only() -> bool:
+static func _test_team_target_with_floor_guards() -> bool:
 	var cfg := SpawnBudgetConfig.make_code_defaults()
 	var mid_pair: Array[float] = [40.0, 80.0]
 	cfg.floor_mid_power = mid_pair
 	cfg.kappa_combat = 1.25
-	var e0 := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT)
-	var e1 := cfg.get_target_pressure(1, MapNodeType.Type.COMBAT)
-	return is_equal_approx(e0, 50.0) and is_equal_approx(e1, 100.0)
+	## 无显式护栏表：min≈0.5×mid，max≈1.5×mid
+	if not is_equal_approx(cfg.get_floor_e_min(0), 20.0):
+		return false
+	if not is_equal_approx(cfg.get_floor_e_max(0), 60.0):
+		return false
+	if not is_equal_approx(cfg.get_floor_e_min(1), 40.0):
+		return false
+	if not is_equal_approx(cfg.get_floor_e_max(1), 120.0):
+		return false
+	## E＝κ×S 再夹紧：S=40 → 50（落在 [20,60]）
+	var e_mid := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 40.0)
+	if not is_equal_approx(e_mid, 50.0):
+		return false
+	## S=100 → 125 夹到 max=60
+	var e_hi := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 100.0)
+	if not is_equal_approx(e_hi, 60.0):
+		return false
+	## S=0 → 夹到 min
+	var e_lo := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 0.0)
+	if not is_equal_approx(e_lo, 20.0):
+		return false
+	## 显式护栏表优先
+	var mins: Array[float] = [30.0]
+	var maxs: Array[float] = [50.0]
+	cfg.floor_e_min = mins
+	cfg.floor_e_max = maxs
+	var e_table := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 40.0)
+	return is_equal_approx(e_table, 50.0)
 
 
 static func _test_overflow_melee_to_back() -> bool:

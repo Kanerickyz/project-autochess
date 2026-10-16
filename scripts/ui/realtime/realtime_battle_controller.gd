@@ -735,6 +735,10 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 	var fallback: Array[UnitData] = []
 	if _level != null:
 		fallback = _level.enemy_pool
+	## 进点瞬间整局队伍快照；准备换座不得重抽（本函数仅 start_encounter 调用一次）。
+	var team_snap: Array = []
+	if _deck_state != null:
+		team_snap = _deck_state.get_entries()
 	var seated := EnemyBudgetSpawner.roll(
 		_encounter.wave,
 		budget_cfg,
@@ -745,6 +749,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		_enemy_slots.seat_rows,
 		_enemy_slots.seat_cols,
 		rng,
+		team_snap,
 	)
 	var result: Array = []
 	for item in seated:
@@ -1404,9 +1409,9 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 		return
 	if event_type != CombatEvents.ON_DEATH or payload.target == null or _economy == null:
 		return
-	if payload.target.team == UnitInstance.Team.ENEMY:
-		_economy.grant_kill_gold(payload.target.unit_data)
-	elif payload.target.death_grant_gold > 0:
+	## 击杀敌方不掉金（愿景定稿）；波次结算金另走 grant_wave_gold。
+	## 友方 death_grant_gold（增益亡者遗金）若仍挂载则保留。
+	if payload.target.team == UnitInstance.Team.PLAYER and payload.target.death_grant_gold > 0:
 		_economy.grant(payload.target.death_grant_gold)
 
 

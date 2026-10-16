@@ -1,12 +1,15 @@
 class_name EnemyBudgetSpawner
 extends RefCounted
-## 层预算抽阵：拒采样贴带宽 → 放宽一档 → 最近解爬山 → 贪心保底。禁止静默纯随机。
+## 队伍强度抽阵：普通/精英按整局队伍 S 定 E＝κ×S（层护栏夹紧）；
+## 拒采样贴带宽 → 放宽一档 → 最近解爬山 → 贪心保底。禁止静默纯随机。
+## Boss 不吃真队目标：只出固定位，不预算填杂兵。
 
 const MAX_SEATS_HARD := 10
 
 
 ## 返回书写顺序（前排左→右，再后排）的字典数组：
 ## { "unit_data": UnitData, "seat_index": int, "power_u": float }
+## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略。
 static func roll(
 	wave: WaveData,
 	config: SpawnBudgetConfig,
@@ -17,6 +20,7 @@ static func roll(
 	seat_rows: int,
 	seat_cols: int,
 	rng: RandomNumberGenerator,
+	team_entries: Array = [],
 ) -> Array:
 	if wave == null:
 		return []
@@ -33,7 +37,15 @@ static func roll(
 		push_warning("EnemyBudgetSpawner: filtered enemy pool empty (tier_index=%d)" % tier_index)
 		return _seat_units(_collect_fixed_units(wave), cols, seat_count, cfg)
 
-	var target_e := cfg.get_target_pressure(floor_index, node_type)
+	var team_s := 0.0
+	if node_type != MapNodeType.Type.BOSS:
+		team_s = UnitPowerScore.team_power_from_entries(
+			team_entries,
+			cfg.skill_alpha_by_unit_id,
+			cfg.skill_alpha_no_ability,
+			cfg.skill_alpha_default,
+		)
+	var target_e := cfg.get_target_pressure(floor_index, node_type, team_s)
 	var fixed_units := _collect_fixed_units(wave)
 	## 人数不超过敌座：固定单位优先裁切。
 	if fixed_units.size() > seat_count:

@@ -40,6 +40,7 @@ func grant(amount: int) -> void:
 	gold_changed.emit(gold)
 
 
+## 【已否决主路径】击杀敌方不掉金；保留 API 兼容旧调用/编辑器，战斗主路径勿再调用。
 func grant_kill_gold(unit_data: UnitData) -> void:
 	var amount := _resolve_kill_gold(unit_data)
 	grant(amount)
