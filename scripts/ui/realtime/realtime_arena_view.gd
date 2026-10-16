@@ -162,7 +162,9 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_DRAG_BEGIN:
+	if what == NOTIFICATION_DRAG_BEGIN or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_cancel_press()
+	if what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree():
 		_cancel_press()
 	if what == NOTIFICATION_DRAG_END:
 		_drag_active = false
@@ -301,6 +303,7 @@ func clear_fx() -> void:
 	_fx.clear()
 	_feedback.clear()
 	_motion.clear()
+	_cancel_press()
 
 
 ## 死亡残影：闪白后侧倒、缩小淡出（纯表现，单位已从模拟移除）。
@@ -388,8 +391,8 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
 		_track_press_motion(motion.position)
 		if _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
-			## 按下后略移即进入拖拽。
-			if motion.relative.length() > 2.0:
+			## 离开按下点超过容差即进入拖拽（触屏抖动不误触发）。
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_recruit_drag(_recruit_press_index)
 		accept_event()
@@ -432,6 +435,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 
 
 func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
+	_cancel_press()
 	_press_active = true
 	_press_pos = pos
 	_press_info = info
@@ -726,6 +730,7 @@ func reset_half_slide() -> void:
 
 
 func clear_recruit_mode() -> void:
+	_cancel_press()
 	recruit_active = false
 	recruit_team_slots = null
 	recruit_candidates.clear()

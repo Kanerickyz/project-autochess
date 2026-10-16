@@ -33,6 +33,10 @@ class Pose:
 	var flash := 0.0
 	var alpha := 1.0
 	var tween: Tween
+	## 闪白独立淡出，不会被后续蓄力 / 冲撞 tween 打断而卡白。
+	var flash_tween: Tween
+	## 冲刺途中受击（反伤等同帧结算）只闪白震屏，不打断冲撞位移。
+	var lunging := false
 
 
 class Tracked:
@@ -64,10 +68,10 @@ var _shake_tween: Tween
 
 func clear() -> void:
 	for tracked: Tracked in _tracked.values():
-		_kill(tracked.pose)
+		_kill_all(tracked.pose)
 	_tracked.clear()
 	for corpse in _corpses:
-		_kill(corpse.pose)
+		_kill_all(corpse.pose)
 	_corpses.clear()
 	if _shake_tween != null:
 		_shake_tween.kill()
@@ -105,14 +109,15 @@ func sync_units(units: Array) -> void:
 			_tracked[key] = fresh
 	for key in _tracked.keys():
 		if not seen.has(key):
-			_kill((_tracked[key] as Tracked).pose)
+			_kill_all((_tracked[key] as Tracked).pose)
 			_tracked.erase(key)
 	for item in units:
 		var rt := item as RtUnit
 		if rt == null:
 			continue
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
-		var winding := rt.state == RtUnit.State.ATTACKING and rt.target != null
+		## 出手后 state 仍停在 ATTACKING（计时器 ≤ 0），只把计时中的前摇视为蓄力。
+		var winding := rt.state == RtUnit.State.ATTACKING and rt.target != null and rt.attack_timer > 0.0
 		if winding and not tracked.winding:
 			_play_windup(rt, tracked)
 		tracked.winding = winding
@@ -179,7 +184,7 @@ func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
 	## 近战目标同步蓄力迎击，形成「双方对冲」。
 	if _is_melee(rt) and rt.target != null and rt.target.is_alive():
 		var target_tracked: Tracked = _tracked.get(rt.target.get_instance_id())
-		if target_tracked != null and not target_tracked.winding:
+		if target_tracked != null and not target_tracked.winding and not _is_busy(target_tracked.pose):
 			var tpose := target_tracked.pose
 			var ttween := _new_tween(tpose)
 			ttween.tween_property(tpose, "offset", dir * WINDUP_PULL_TILES * 0.6, windup * 0.8) \
@@ -199,9 +204,11 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 		_tween_home(recoil, pose)
 		return
 	var lunge := _new_tween(pose)
+	pose.lunging = true
 	lunge.tween_property(pose, "offset", dir * LUNGE_ATTACKER_TILES, LUNGE_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	lunge.parallel().tween_property(pose, "scale", Vector2(0.9, 1.12), LUNGE_SECONDS)
+	lunge.tween_callback(func() -> void: pose.lunging = false)
 	_tween_home(lunge, pose)
 	if target == null:
 		return
@@ -221,16 +228,28 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 
 ## 受击：闪白 + 沿来向小幅击退 + 镜头震动。
 func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
-	pose.flash = 1.0
+	_flash(pose)
+	if pose.lunging and _is_busy(pose):
+		_shake(shake_px)
+		return
 	var tween := _new_tween(pose)
 	tween.tween_property(pose, "offset", pose.offset + knock_dir * HIT_KNOCK_TILES, 0.05)
 	tween.parallel().tween_property(pose, "scale", Vector2(1.12, 0.9), 0.05)
-	tween.tween_property(pose, "flash", 0.0, HIT_FLASH_SECONDS)
-	tween.parallel().tween_property(pose, "offset", Vector2.ZERO, RECOVER_SECONDS) \
+	tween.tween_property(pose, "offset", Vector2.ZERO, RECOVER_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(pose, "scale", Vector2.ONE, RECOVER_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_shake(shake_px)
+
+
+func _flash(pose: Pose) -> void:
+	if pose.flash_tween != null:
+		pose.flash_tween.kill()
+	pose.flash = 1.0
+	pose.flash_tween = create_tween()
+	pose.flash_tween.set_speed_scale(maxf(0.25, speed_scale))
+	pose.flash_tween.tween_interval(0.05)
+	pose.flash_tween.tween_property(pose, "flash", 0.0, HIT_FLASH_SECONDS)
 
 
 func _tween_home(tween: Tween, pose: Pose) -> void:
@@ -261,6 +280,19 @@ func _kill(pose: Pose) -> void:
 	if pose != null and pose.tween != null:
 		pose.tween.kill()
 		pose.tween = null
+	if pose != null:
+		pose.lunging = false
+
+
+func _is_busy(pose: Pose) -> bool:
+	return pose.tween != null and pose.tween.is_valid() and pose.tween.is_running()
+
+
+func _kill_all(pose: Pose) -> void:
+	_kill(pose)
+	if pose != null and pose.flash_tween != null:
+		pose.flash_tween.kill()
+		pose.flash_tween = null
 
 
 func _prune_corpses() -> void:

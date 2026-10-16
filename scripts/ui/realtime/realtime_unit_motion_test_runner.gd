@@ -22,6 +22,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _test_long_press_info()
+	await _test_recruit_input()
 	await _test_combat_motion()
 	if _failures == 0:
 		print("RealtimeUnitMotionTest: all passed")
@@ -119,11 +120,55 @@ func _test_long_press_info() -> void:
 	await process_frame
 
 
+func _test_recruit_input() -> void:
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	await process_frame
+	var unit := load(UNIT_PATHS[0]) as UnitData
+	var cell := Vector2i(4, 11)
+	arena.recruit_active = true
+	arena.recruit_candidates = [{"index": 0, "unit": unit, "cell": cell, "cost": 3, "affordable": true}]
+	var pressed: Array[int] = []
+	arena.recruit_candidate_pressed.connect(func(i: int) -> void: pressed.append(i))
+	var center := arena.tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
+
+	_press(arena, center, true)
+	_press(arena, center, false)
+	_expect(pressed == [0], "recruit candidate tap emits on release")
+
+	pressed.clear()
+	_press(arena, center, true)
+	var until := Time.get_ticks_msec() + RealtimeArenaView.LONG_PRESS_MS + 120
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	_expect(arena.is_info_card_visible(), "recruit candidate long press opens card")
+	_press(arena, center, false)
+	_expect(pressed.is_empty(), "recruit candidate long press does not pick")
+	_expect(not arena.is_info_card_visible(), "recruit card hides on release")
+
+	arena.recruit_selected_candidate = -1
+	_press(arena, center, true)
+	var jitter := InputEventMouseMotion.new()
+	jitter.position = center + Vector2(4, 0)
+	jitter.relative = Vector2(4, 0)
+	arena._gui_input(jitter)
+	_expect(arena.recruit_selected_candidate == -1, "small jitter does not start a drag")
+	var move := InputEventMouseMotion.new()
+	move.position = center + Vector2(30, 0)
+	move.relative = Vector2(26, 0)
+	arena._gui_input(move)
+	_expect(arena.recruit_selected_candidate == 0, "moving past slop starts the recruit drag")
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
 func _test_combat_motion() -> void:
 	var battle := _make_battle(23)
 	await process_frame
 	var arena := _arena(battle)
-	battle.time_scale = 4.0
+	battle.time_scale = 1.0
 	_expect(battle.try_start_combat(), "start combat")
 	var motion := arena.find_child("UnitMotion", false, false) as RealtimeUnitMotion
 	_expect(motion != null, "motion node attached")
@@ -135,6 +180,8 @@ func _test_combat_motion() -> void:
 	var saw_shake := false
 	var saw_walk := false
 	var saw_corpse := false
+	var saw_lunge := false
+	var saw_clash_flash := false
 	var deadline := Time.get_ticks_msec() + 15000
 	while Time.get_ticks_msec() < deadline and battle.get_phase() == RealtimeBattleController.Phase.COMBAT:
 		await process_frame
@@ -147,15 +194,38 @@ func _test_combat_motion() -> void:
 			if pose != null:
 				saw_offset = saw_offset or pose.offset.length() > 0.05
 				saw_flash = saw_flash or pose.flash > 0.2
+				## 近战冲撞：沿目标方向前冲，且目标在撞击时闪白。
+				var melee := rt.get_stats() != null and rt.get_stats().projectile_speed <= 0.0
+				if melee and rt.target != null and rt.target.is_alive():
+					var dir := rt.position.direction_to(rt.target.position)
+					if pose.offset.dot(dir) > 0.2:
+						saw_lunge = true
+					var tpose := motion.get_pose(rt.target)
+					if tpose != null and pose.offset.dot(dir) > 0.05 and tpose.flash > 0.2:
+						saw_clash_flash = true
 			saw_walk = saw_walk or absf(motion.walk_pose(rt).x) > 0.01
 		saw_shake = saw_shake or motion.shake_strength > 0.5
 		saw_corpse = saw_corpse or not motion.get_corpses().is_empty()
-		if saw_offset and saw_flash and saw_shake and saw_walk and saw_corpse:
+		if saw_offset and saw_flash and saw_shake and saw_walk and saw_corpse and saw_lunge and saw_clash_flash:
 			break
 	_expect(saw_walk, "walking tilts the sprite")
 	_expect(saw_offset, "windup / lunge offsets the sprite")
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
 	_expect(saw_corpse, "death leaves a falling corpse")
+	_expect(saw_lunge, "melee attacker lunges toward its target")
+	_expect(saw_clash_flash, "melee target flashes white on impact")
+	## 动画结束后回到原位、不卡白。
+	battle.time_scale = 0.0
+	var settle_until := Time.get_ticks_msec() + 900
+	while Time.get_ticks_msec() < settle_until:
+		await process_frame
+	var settled := true
+	if arena.sim != null:
+		for item in arena.sim.get_units():
+			var pose := motion.get_pose(item as RtUnit)
+			if pose != null and (pose.offset.length() > 0.03 or pose.flash > 0.05):
+				settled = false
+	_expect(settled, "poses settle back home without lingering flash")
 	battle.queue_free()
 	await process_frame
