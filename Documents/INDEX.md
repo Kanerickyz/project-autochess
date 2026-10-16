@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制）· Godot 4.6 · 最后更新：2026-10-16
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物与准备布阵 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（含出售腾位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 仍为战中号令出牌与牌库/手牌中介，招募出售与三合一未落地）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）；As-Is 仍为实时并行。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 
 ## 快速导航
 
