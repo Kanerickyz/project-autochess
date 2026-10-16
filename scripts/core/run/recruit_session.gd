@@ -190,6 +190,27 @@ func try_refresh() -> bool:
 	return true
 
 
+## 出售上区队伍成员：正常退金并腾位；变动计入快照，可 reset。
+func try_sell(entry_id: int) -> Dictionary:
+	var result := {"ok": false, "reason": "inactive", "gold": 0, "entry_id": entry_id}
+	if not is_active or deck == null or economy == null:
+		return result
+	var entry := deck.get_entry(entry_id)
+	if entry == null:
+		result["reason"] = "bad_entry"
+		return result
+	var price := DeckUpgradeService.get_sell_price(entry)
+	if not deck.remove_entry(entry_id):
+		result["reason"] = "remove_failed"
+		return result
+	economy.grant(price)
+	result["ok"] = true
+	result["reason"] = "sold"
+	result["gold"] = price
+	session_changed.emit()
+	return result
+
+
 func reset() -> void:
 	if not is_active or deck == null or economy == null:
 		return

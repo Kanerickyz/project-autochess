@@ -95,6 +95,7 @@ func _ready() -> void:
 	_arena.recruit_drop.connect(_on_recruit_drop)
 	_arena.recruit_candidate_pressed.connect(_on_recruit_candidate_pressed)
 	_arena.recruit_team_pressed.connect(_on_recruit_team_pressed)
+	_arena.recruit_sell.connect(_on_recruit_sell)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
@@ -956,6 +957,7 @@ func _sync_recruit_arena() -> void:
 	_arena.recruit_selected_candidate = _recruit_selected_candidate
 	_arena.recruit_selected_replace_id = _recruit_selected_replace_id
 	_arena.recruit_needs_replace = _recruit_session.needs_replace()
+	_arena.recruit_sell_cell = _build_recruit_sell_cell()
 	_arena.prepare_slots = null
 	_arena.enemy_slots = null
 	_arena.enemy_previews = []
@@ -1023,6 +1025,23 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
+## 出售落点：候选人行下方居中，不与候选人槽重叠。
+func _build_recruit_sell_cell() -> Vector2i:
+	var mid := BoardHalf.midline_row(_board_size.y)
+	var cand := _build_recruit_candidate_cells(RecruitSession.CANDIDATE_COUNT)
+	var y := mid + 2
+	if not cand.is_empty():
+		y = cand[0].y + 2
+	y = clampi(y, mid, maxi(mid, _board_size.y - 1))
+	var x := int(_board_size.x / 2)
+	var cell := Vector2i(x, y)
+	for c in cand:
+		if c == cell:
+			cell.x = clampi(x + 1, 0, maxi(0, _board_size.x - 1))
+			break
+	return cell
+
+
 func _refresh_recruit_hud() -> void:
 	if _recruit_session == null:
 		return
@@ -1037,9 +1056,9 @@ func _refresh_recruit_hud() -> void:
 		if _recruit_session.require_nonempty_roster and seats < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
-			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）"
+			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）；或拖成员到出售槽腾位"
 		else:
-			_recruit_hint.text = "将下半场候选人拖到上半场队伍（空位加入）"
+			_recruit_hint.text = "将下半场候选人拖到上半场队伍；上区成员可拖到出售槽退金"
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
@@ -1065,6 +1084,19 @@ func _on_recruit_drop(candidate_index: int, replace_entry_id: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
 	_try_recruit(candidate_index, replace_entry_id)
+
+
+func _on_recruit_sell(entry_id: int) -> void:
+	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
+		return
+	var result := _recruit_session.try_sell(entry_id)
+	if result.get("ok", false):
+		_recruit_selected_replace_id = -1
+		if _recruit_hint != null:
+			_recruit_hint.text = "已出售，获得 %d 金" % int(result.get("gold", 0))
+		return
+	if _recruit_hint != null:
+		_recruit_hint.text = "无法出售（%s）" % String(result.get("reason", "unknown"))
 
 
 func _on_recruit_candidate_pressed(candidate_index: int) -> void:
@@ -1183,6 +1215,25 @@ func _on_card_pressed(entry_id: int) -> void:
 	if not _card_flow.is_in_hand(entry_id):
 		return
 	_set_selected(-1 if _selected_entry_id == entry_id else entry_id)
+
+
+func _on_hand_card_long_press(entry_id: int) -> void:
+	if _phase != Phase.PREPARE or _arena == null:
+		return
+	var entry := _find_hand_entry(entry_id)
+	if entry == null:
+		return
+	var card := _find_hand_card(entry_id)
+	var anchor := Vector2(_arena.size.x * 0.5, _arena.size.y * 0.35)
+	if card != null and is_instance_valid(card):
+		var global_center := card.get_global_rect().get_center()
+		anchor = _arena.get_global_transform_with_canvas().affine_inverse() * global_center
+	_arena.show_deck_entry_info(entry, anchor)
+
+
+func _on_hand_card_long_press_ended(_entry_id: int) -> void:
+	if _arena != null:
+		_arena.hide_unit_info()
 
 
 func _on_start_pressed() -> void:
@@ -1348,7 +1399,16 @@ func _find_hand_entry(entry_id: int) -> DeckEntry:
 	return null
 
 
+func _find_hand_card(entry_id: int) -> RealtimeHandCard:
+	for card in _cards:
+		if card != null and is_instance_valid(card) and card.get_entry_id() == entry_id:
+			return card
+	return null
+
+
 func _rebuild_cards() -> void:
+	if _arena != null and _arena.is_info_card_visible():
+		_arena.hide_unit_info()
 	for card in _cards:
 		card.queue_free()
 	_cards.clear()
@@ -1357,6 +1417,8 @@ func _rebuild_cards() -> void:
 		_hand_row.add_child(card)
 		card.setup(entry)
 		card.card_pressed.connect(_on_card_pressed)
+		card.card_long_press.connect(_on_hand_card_long_press)
+		card.card_long_press_ended.connect(_on_hand_card_long_press_ended)
 		_cards.append(card)
 	_refresh_cards()
 

@@ -23,6 +23,8 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_long_press_info()
 	await _test_recruit_input()
+	await _test_recruit_team_sell_drag()
+	await _test_hand_card_long_press()
 	await _test_combat_motion()
 	if _failures == 0:
 		print("RealtimeUnitMotionTest: all passed")
@@ -160,6 +162,140 @@ func _test_recruit_input() -> void:
 	arena._gui_input(move)
 	_expect(arena.recruit_selected_candidate == 0, "moving past slop starts the recruit drag")
 	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _test_recruit_team_sell_drag() -> void:
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	await process_frame
+	var unit := load(UNIT_PATHS[0]) as UnitData
+	var entry := DeckEntry.new()
+	entry.entry_id = 7
+	entry.unit = unit
+	entry.level = 2
+	var team := PrepareSlotBoard.new()
+	team.configure_grid(2, 5, Vector2i(9, 16), true)
+	team.try_assign(0, entry)
+	arena.recruit_active = true
+	arena.recruit_team_slots = team
+	arena.recruit_sell_cell = Vector2i(4, 12)
+	arena.recruit_candidates = [{
+		"index": 0,
+		"unit": load(UNIT_PATHS[2]) as UnitData,
+		"cell": Vector2i(1, 11),
+		"cost": 3,
+		"affordable": true,
+	}]
+	var sold: Array[int] = []
+	var drops: Array = []
+	arena.recruit_sell.connect(func(id: int) -> void: sold.append(id))
+	arena.recruit_drop.connect(func(i: int, r: int) -> void: drops.append([i, r]))
+	var team_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
+	var sell_center := arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
+
+	_press(arena, team_center, true)
+	var until := Time.get_ticks_msec() + RealtimeArenaView.LONG_PRESS_MS + 120
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	_expect(arena.is_info_card_visible(), "team long press opens info, not sell")
+	_press(arena, team_center, false)
+	_expect(sold.is_empty(), "long press does not sell")
+	_expect(not arena.is_info_card_visible(), "team info hides on release")
+
+	_press(arena, team_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = team_center + Vector2(0, 40)
+	move.relative = Vector2(0, 40)
+	arena._gui_input(move)
+	_hover_to(arena, sell_center)
+	_press(arena, sell_center, false)
+	_expect(sold == [7], "drag team to sell slot emits recruit_sell")
+	_expect(drops.is_empty(), "team sell does not emit recruit_drop")
+
+	## 候选人拖到出售槽不成交招入
+	sold.clear()
+	var cand_center := arena.tile_to_local(Vector2(1, 11) + Vector2(0.5, 0.5))
+	_press(arena, cand_center, true)
+	var move2 := InputEventMouseMotion.new()
+	move2.position = cand_center + Vector2(40, 0)
+	move2.relative = Vector2(40, 0)
+	arena._gui_input(move2)
+	_hover_to(arena, sell_center)
+	_press(arena, sell_center, false)
+	_expect(drops.is_empty(), "candidate drop on sell slot does not recruit")
+
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _hover_to(arena: RealtimeArenaView, pos: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = pos
+	arena._gui_input(motion)
+
+
+func _test_hand_card_long_press() -> void:
+	## 独立卡面 + 场上信息卡：不依赖入座后是否仍有手牌。
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	var card := RealtimeHandCard.new()
+	card.size = Vector2(64, 88)
+	root.add_child(card)
+	await process_frame
+	var entry := DeckEntry.new()
+	entry.entry_id = 3
+	entry.unit = load(UNIT_PATHS[0]) as UnitData
+	card.setup(entry)
+	var pressed: Array[int] = []
+	card.card_pressed.connect(func(id: int) -> void: pressed.append(id))
+	card.card_long_press.connect(
+		func(_id: int) -> void:
+			arena.show_deck_entry_info(entry, Vector2(120, 160))
+	)
+	card.card_long_press_ended.connect(func(_id: int) -> void: arena.hide_unit_info())
+
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = card.size * 0.5
+	card._gui_input(press)
+	var until := Time.get_ticks_msec() + RealtimeHandCard.LONG_PRESS_MS + 120
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	_expect(arena.is_info_card_visible(), "hand card long press opens shared info card")
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = card.size * 0.5
+	card._gui_input(release)
+	_expect(not arena.is_info_card_visible(), "hand card release closes info card")
+	_expect(pressed.is_empty(), "hand long press does not emit card_pressed")
+
+	## 短按仍发 card_pressed
+	card._gui_input(press)
+	card._gui_input(release)
+	_expect(pressed == [3], "hand short press still emits card_pressed")
+
+	## 移动超 slop 取消长按
+	pressed.clear()
+	card._gui_input(press)
+	var move := InputEventMouseMotion.new()
+	move.position = card.size * 0.5 + Vector2(20, 0)
+	move.relative = Vector2(20, 0)
+	card._gui_input(move)
+	until = Time.get_ticks_msec() + RealtimeHandCard.LONG_PRESS_MS + 120
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	_expect(not arena.is_info_card_visible(), "slop cancel prevents hand long press info")
+	card._gui_input(release)
+	_expect(pressed == [3], "after slop cancel, release still counts as press")
+
+	card.queue_free()
 	arena.queue_free()
 	await process_frame
 

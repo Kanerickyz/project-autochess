@@ -146,8 +146,9 @@ func add_entry(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> DeckEntry:
 	var entry := _create_entry(unit_data)
 	entry.bonus_max_hp += shop_bonus_max_hp
 	_entries.append(entry)
+	var survivor := _resolve_after_auto_merge(entry)
 	deck_changed.emit()
-	return entry
+	return survivor
 
 
 func replace_entry(
@@ -163,8 +164,18 @@ func replace_entry(
 	var entry := _create_entry(unit_data)
 	entry.bonus_max_hp += shop_bonus_max_hp
 	_entries[index] = entry
+	var survivor := _resolve_after_auto_merge(entry)
 	deck_changed.emit()
-	return entry
+	return survivor
+
+
+## 队伍自动三合一：同 unit.id + 同 level 满 3 且 level < 3 立刻合成。
+## 可在外部改队伍后手动调用；add/replace 末尾已统一触发。
+func try_auto_merge() -> bool:
+	var changed := _run_auto_merges()
+	if changed:
+		deck_changed.emit()
+	return changed
 
 
 func attach_buff(entry_id: int, buff: BuffCardData) -> bool:
@@ -232,6 +243,141 @@ func _find_index(entry_id: int) -> int:
 		if _entries[i].entry_id == entry_id:
 			return i
 	return -1
+
+
+func _resolve_after_auto_merge(seed: DeckEntry) -> DeckEntry:
+	if seed == null:
+		return null
+	var track_id := seed.entry_id
+	var track_unit := seed.get_unit_id()
+	_run_auto_merges()
+	var still := get_entry(track_id)
+	if still != null:
+		return still
+	var best: DeckEntry = null
+	for entry in _entries:
+		if entry == null or entry.get_unit_id() != track_unit:
+			continue
+		if best == null or entry.level > best.level or (
+			entry.level == best.level and entry.entry_id > best.entry_id
+		):
+			best = entry
+	return best if best != null else seed
+
+
+func _run_auto_merges() -> bool:
+	var changed := false
+	while true:
+		var group := _find_mergeable_triple()
+		if group.is_empty():
+			break
+		_apply_triple_merge(group)
+		changed = true
+	return changed
+
+
+## 返回可合成的三只 DeckEntry（同 id 同星且未满 3 星）；无可合则空数组。
+func _find_mergeable_triple() -> Array[DeckEntry]:
+	var buckets: Dictionary = {}
+	for entry in _entries:
+		if entry == null or entry.unit == null:
+			continue
+		if entry.level >= 3:
+			continue
+		var key := "%s#%d" % [entry.get_unit_id(), entry.level]
+		if not buckets.has(key):
+			buckets[key] = []
+		(buckets[key] as Array).append(entry)
+	for key in buckets.keys():
+		var group: Array = buckets[key]
+		if group.size() < 3:
+			continue
+		var out: Array[DeckEntry] = []
+		out.append(group[0] as DeckEntry)
+		out.append(group[1] as DeckEntry)
+		out.append(group[2] as DeckEntry)
+		return out
+	return []
+
+
+func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
+	if group.size() < 3:
+		return null
+	var a := group[0]
+	var b := group[1]
+	var c := group[2]
+	if a == null or b == null or c == null or a.unit == null:
+		return null
+	var base_atk := 0
+	var base_hp := 0
+	if a.unit.stats != null:
+		base_atk = a.unit.stats.attack
+		base_hp = a.unit.stats.max_hp
+	var sum_atk := (
+		DeckUpgradeService.get_display_attack(a)
+		+ DeckUpgradeService.get_display_attack(b)
+		+ DeckUpgradeService.get_display_attack(c)
+	)
+	var sum_hp := (
+		DeckUpgradeService.get_display_max_hp(a)
+		+ DeckUpgradeService.get_display_max_hp(b)
+		+ DeckUpgradeService.get_display_max_hp(c)
+	)
+	var product := _create_entry(a.unit)
+	product.level = a.level + 1
+	product.experience = 0
+	product.bonus_attack = sum_atk - base_atk
+	product.bonus_max_hp = sum_hp - base_hp
+	product.bonus_crit_rate_percent = (
+		a.bonus_crit_rate_percent + b.bonus_crit_rate_percent + c.bonus_crit_rate_percent
+	)
+	_merge_attached_buffs(product, [a, b, c])
+	_merge_attached_abilities(product, [a, b, c])
+	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
+	_entries.append(product)
+	return product
+
+
+func _merge_attached_buffs(product: DeckEntry, sources: Array) -> void:
+	var seen: Dictionary = {}
+	for source in sources:
+		var entry := source as DeckEntry
+		if entry == null:
+			continue
+		for buff in entry.attached_buffs:
+			if buff == null:
+				continue
+			var key := buff.id if not buff.id.is_empty() else str(buff.get_instance_id())
+			if seen.has(key):
+				continue
+			seen[key] = true
+			product.attached_buffs.append(buff)
+
+
+func _merge_attached_abilities(product: DeckEntry, sources: Array) -> void:
+	var seen: Dictionary = {}
+	if product.unit != null and product.unit.ability != null and not product.unit.ability.id.is_empty():
+		seen[product.unit.ability.id] = true
+	for source in sources:
+		var entry := source as DeckEntry
+		if entry == null:
+			continue
+		for ability in entry.attached_abilities:
+			if ability == null or ability.id.is_empty() or seen.has(ability.id):
+				continue
+			seen[ability.id] = true
+			product.attached_abilities.append(ability)
+
+
+func _remove_entries_by_ids(ids: Array) -> void:
+	var remove_set: Dictionary = {}
+	for entry_id in ids:
+		remove_set[int(entry_id)] = true
+	var kept: Array[DeckEntry] = []
+	for entry in _entries:
+		if entry != null and not remove_set.has(entry.entry_id):
+			kept.append(entry)
+	_entries = kept
 
 
 ## 招募进门快照：深拷贝条目（含 entry_id / 等级 / 增益）。
