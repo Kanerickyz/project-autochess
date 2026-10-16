@@ -17,7 +17,8 @@
 | 衍生小兵 | 复用 **枯骨**（`skeleton`）基础身体 → 敌方代理；无主技能 |
 | 实现资源 | `resources/units/realtime/giant_knight.tres`（`is_boss_leader`、2×2、`summon_unit`=枯骨） |
 | 开场 | `rt_wave_boss` 仅首领；Boss 节点预算不填杂 |
-| 数值占位 | 小兵上限 3 / 每动召 1 / `steps_per_turn=1`；攻距与溅射 1.5（可再调） |
+| 数值 | 生命 **75** / 攻击 **15**；小兵上限 3 / 每动召 1 / Boss `steps_per_turn=1`；攻距与溅射 1.5 |
+| 召唤体 | 枯骨壳；战中强制可移动（`steps_per_turn≥2`、攻距≥1、无部署等待） |
 
 ### 数值填空（交 balance；本表只列旋钮）
 

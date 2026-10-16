@@ -95,6 +95,10 @@ static func decide_turn(
 	if steps_left <= 0:
 		decision.turn_done = true
 		return decision
+	## 规则锁死不可移动时本动结束（Boss 召唤体会强制 cannot_move=false）
+	if unit.unit != null and unit.unit.cannot_move:
+		decision.turn_done = true
+		return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	if decision.step == Vector2i.ZERO:
 		## 被挡或无法靠近：本动结束（不空挥）
@@ -301,11 +305,12 @@ static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 
 
 ## 八向贪心：优先减小切比雪夫；同距再减曼哈顿；目标格被占则改道或返回 ZERO（短等）。
+## 目标若为足迹单位，以「当前格 → 目标足迹最近格」为靠近目标（勿只认锚点）。
 static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> Vector2i:
 	if unit == null or target == null:
 		return Vector2i.ZERO
 	var cur := unit.cell
-	var goal := target.cell
+	var goal := _nearest_footprint_cell(cur, target)
 	var cur_d := RtUnit.chebyshev(cur, goal)
 	var cur_man := absi(cur.x - goal.x) + absi(cur.y - goal.y)
 	var best_dir := Vector2i.ZERO
@@ -316,8 +321,9 @@ static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> V
 		var nxt: Vector2i = cur + dir
 		if not bool(is_cell_free.call(nxt)):
 			continue
-		var d := RtUnit.chebyshev(nxt, goal)
-		var man := absi(nxt.x - goal.x) + absi(nxt.y - goal.y)
+		var nxt_goal := _nearest_footprint_cell(nxt, target)
+		var d := RtUnit.chebyshev(nxt, nxt_goal)
+		var man := absi(nxt.x - nxt_goal.x) + absi(nxt.y - nxt_goal.y)
 		if not found or d < best_d or (d == best_d and man < best_man):
 			found = true
 			best_d = d
@@ -331,6 +337,22 @@ static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> V
 	if best_d == cur_d and best_man >= cur_man:
 		return Vector2i.ZERO
 	return best_dir
+
+
+static func _nearest_footprint_cell(from: Vector2i, target: RtUnit) -> Vector2i:
+	if target == null:
+		return from
+	var cells := target.get_footprint_cells(target.cell)
+	if cells.is_empty():
+		return target.cell
+	var best := cells[0]
+	var best_d := RtUnit.chebyshev(from, best)
+	for c in cells:
+		var d := RtUnit.chebyshev(from, c)
+		if d < best_d:
+			best_d = d
+			best = c
+	return best
 
 
 static func _drop_target(unit: RtUnit) -> void:

@@ -789,7 +789,7 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		if cell == Vector2i(-1, -1):
 			break
 		var minion := UnitInstance.from_unit_data(data.summon_unit, cell, UnitInstance.Team.ENEMY)
-		## 敌方代理：无主技能
+		## 敌方代理：无主技能；保证可移动可接敌（商店枯骨攻距/部署原值不适合作战中召唤）
 		if minion.unit_data != null:
 			var body := minion.unit_data.duplicate(true) as UnitData
 			body.ability = null
@@ -799,12 +799,18 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 			body.summon_max_alive = 0
 			minion.unit_data = body
 		minion.is_combat_summon = true
+		minion.cannot_move = false
 		if minion.stats != null:
 			minion.stats.deploy_time = 0.0
+			minion.stats.steps_per_turn = maxi(2, minion.stats.steps_per_turn)
+			minion.stats.attack_reach = maxf(1.0, minion.stats.attack_reach)
+			minion.stats.sight_range = maxf(8.0, minion.stats.sight_range)
 		var rt := add_unit(minion, Vector2(cell) + Vector2(0.5, 0.5))
 		if rt == null:
 			break
 		rt.skip_deploy()
+		if rt.state == RtUnit.State.DEPLOYING:
+			rt.state = RtUnit.State.MOVING
 		spawned += 1
 
 

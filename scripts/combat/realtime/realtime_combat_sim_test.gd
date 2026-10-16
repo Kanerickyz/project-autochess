@@ -37,6 +37,7 @@ static func run_all() -> bool:
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
 	ok = _check("boss_push_ally_on_step", _test_boss_push_ally_on_step()) and ok
+	ok = _check("boss_summon_minions_advance", _test_boss_summon_minions_advance()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -1198,5 +1199,57 @@ static func _test_boss_push_ally_on_step() -> bool:
 		return false
 	if boss2.cell != origin2 or a.cell != Vector2i(2, 3):
 		push_error("push_fail: positions should roll back / stay")
+		return false
+	return true
+
+
+## 首领召唤的枯骨代理须朝远离出生点的方向推进（不能卡死不动）。
+static func _test_boss_summon_minions_advance() -> bool:
+	var sim := _new_sim()
+	sim.configure(Vector2i(9, 16), 61)
+	var boss_data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
+	if boss_data == null or boss_data.summon_unit == null:
+		push_error("summon_advance: giant_knight missing summon_unit")
+		return false
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"sight_range": 0.0, "attack_reach": 0.0, "id": "far_player",
+			"steps_per_turn": 0,
+		}),
+		Vector2(4.5, 14.5),
+	)
+	var boss_u := UnitInstance.from_unit_data(boss_data, Vector2i(3, 1), UnitInstance.Team.ENEMY)
+	var boss := sim.add_unit(boss_u, Vector2(3.5, 1.5))
+	if boss == null:
+		push_error("summon_advance: boss null")
+		return false
+	sim.begin_combat()
+	var first_cell := Vector2i(-999, -999)
+	var saw_move := false
+	var guard := 0
+	while guard < 500 and not sim.is_finished():
+		sim.advance_fixed_step()
+		guard += 1
+		for item in sim.get_units():
+			var rt := item as RtUnit
+			if rt == null or not rt.is_alive() or rt.unit == null or not rt.unit.is_combat_summon:
+				continue
+			if rt.get_stats().steps_per_turn < 1:
+				push_error("summon_advance: steps_per_turn<%d" % rt.get_stats().steps_per_turn)
+				return false
+			if rt.is_deploying():
+				push_error("summon_advance: still deploying")
+				return false
+			if first_cell.x == -999:
+				first_cell = rt.cell
+			elif rt.cell != first_cell:
+				## 须朝玩家半场推进（y 增大）或至少离开出生格
+				if rt.cell.y > first_cell.y or rt.cell != first_cell:
+					saw_move = true
+					break
+		if saw_move:
+			break
+	if not saw_move:
+		push_error("summon_advance: minion never left spawn cell %s" % str(first_cell))
 		return false
 	return true
