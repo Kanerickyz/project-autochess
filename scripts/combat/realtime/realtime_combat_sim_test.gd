@@ -40,6 +40,8 @@ static func run_all() -> bool:
 	ok = _check("boss_summon_minions_advance", _test_boss_summon_minions_advance()) and ok
 	ok = _check("boss_footprint_horiz_centered", _test_boss_footprint_horiz_centered()) and ok
 	ok = _check("boss_visual_centers_in_footprint", _test_boss_visual_centers_in_footprint()) and ok
+	ok = _check("acquire_prefers_lane_on_chebyshev_tie", _test_acquire_prefers_lane_on_chebyshev_tie()) and ok
+	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -1283,6 +1285,90 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 	var board_cx := 4.0
 	if absf(fp_cx - board_cx) > 0.51:
 		push_error("footprint_center: fp_cx=%s not near board center" % fp_cx)
+		return false
+	return true
+
+
+## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
+static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
+	var sim := _new_sim()
+	sim.configure(Vector2i(9, 16), 11)
+	var p_right := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"steps_per_turn": 0, "attack_reach": 1.0, "sight_range": 99.0,
+		}),
+		Vector2(8.5, 12.5),
+	)
+	## 先生成左侧敌人（更小 instance_id），再生成同列敌人；切比雪夫同为 9。
+	var e_left := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"steps_per_turn": 0, "attack_reach": 1.0}),
+		Vector2(0.5, 3.5),
+	)
+	var e_right := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"steps_per_turn": 0, "attack_reach": 1.0}),
+		Vector2(8.5, 3.5),
+	)
+	if p_right.cell_distance_to(e_left) != p_right.cell_distance_to(e_right):
+		push_error("lane_tie: expected equal chebyshev")
+		return false
+	if e_left.get_id() >= e_right.get_id():
+		push_error("lane_tie: left enemy should have smaller id")
+		return false
+	var acquired := RtUnitBrain.acquire_target(p_right, sim.get_units())
+	if acquired != e_right:
+		push_error(
+			"lane_tie: expected same-column enemy id=%d got id=%d cell=%s"
+			% [e_right.get_id(), acquired.get_id() if acquired else -1, acquired.cell if acquired else Vector2i(-1, -1)]
+		)
+		return false
+	return true
+
+
+## 左右两路对位时，右路不应被索敌平局拖去左半场。
+static func _test_flanks_do_not_collapse_left() -> bool:
+	var sim := _new_sim()
+	sim.configure(Vector2i(9, 16), 13)
+	var p_left := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
+		}),
+		Vector2(0.5, 12.5),
+	)
+	var p_right := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
+		}),
+		Vector2(8.5, 12.5),
+	)
+	var e_left := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
+		}),
+		Vector2(0.5, 3.5),
+	)
+	var e_right := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
+		}),
+		Vector2(8.5, 3.5),
+	)
+	for _i in 48:
+		sim.step(0.25)
+		if sim.is_finished():
+			break
+	## 右路单位应仍在右半（x>=5），证明未全体涌向左中。
+	if p_right.is_alive() and p_right.cell.x < 5:
+		push_error("flanks: player right collapsed left to %s" % p_right.cell)
+		return false
+	if e_right.is_alive() and e_right.cell.x < 5:
+		push_error("flanks: enemy right collapsed left to %s" % e_right.cell)
+		return false
+	## 左路也不应跑到右半（对称健全性）。
+	if p_left.is_alive() and p_left.cell.x > 3:
+		push_error("flanks: player left drifted right to %s" % p_left.cell)
+		return false
+	if e_left.is_alive() and e_left.cell.x > 3:
+		push_error("flanks: enemy left drifted right to %s" % e_left.cell)
 		return false
 	return true
 
