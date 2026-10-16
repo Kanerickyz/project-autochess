@@ -2,7 +2,7 @@
 
 > Content · 2026-10-15  
 > 功能规则见 [Features/UNITS.md](../Features/UNITS.md)、[Features/PLAYER.md](../Features/PLAYER.md)；本篇写**显示名、定位、数值草案与主技能挂载**。  
-> **本版不写**：被动挂载；敌方 Boss 高威胁位（另册）。技能效果正文见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)，本篇只写挂载关系。  
+> **本版不写**：被动挂载；敌方 Boss 高威胁位见 [BOSS_ROSTER.md](./BOSS_ROSTER.md) / [Features/BOSS.md](../Features/BOSS.md)。技能效果正文见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)，本篇只写挂载关系。  
 > **【主题】** 中世纪魔幻（可含亡灵 / 王权 / 魔物佣兵 / 野兽坐骑）；剪影可读优先；显示名宜短（约 2～3 字）。  
 > **【1:1 挂载】** 除白板外，每条主技能恰好挂一名友方；技能池条目见技能库，挂载见 §6。  
 > **【资源】** 二十四人已写入 `resources/units/realtime/`（英文 id 见 §4）；显示名已对齐。技能绑槽见 §6（弩手掩护射击仍空，待管线）。资源若仍有 `command_cost`，主路径应忽略。
@@ -89,7 +89,7 @@
 | 禁卫 | 6 | 4 | 1.0 | 1.3 | 0.5 | 0.8 | 5.5 | 0.45 | 1.8 | 0 | 0 | 4 | 3 |
 | 骑弓 | 3 | 4 | 1.3 | 1.1 | 0.35 | 2.0 | 5.5 | 0.35 | 1.2 | 10 | 0 | 3 | 2 |
 
-> **刻度**：生命 / 攻击 **0–10（含）** 整数。Boss 占位 `giant_knight`（铁甲统领）**10 / 6**，细则另册。  
+> **刻度**：生命 / 攻击 **0–10（含）** 整数。Boss As-Is 占位 `giant_knight`（铁甲统领）**10 / 6**；机制 To-Be 见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。  
 > **移速**：慢 **1.0**；中 **1.3**；快 **2.0（仅骑手）**。  
 > **远程攻距**：游侠 / 标枪 / 弩手 / 骑弓 **2.0**；火铳 **3.0**。
 
@@ -138,7 +138,7 @@
 | 禁卫 | `mirror_warden.tres` | `mirror_warden` |
 | 骑弓 | `horsebow.tres` | `horsebow` |
 
-敌方遭遇可复用上表模板。Boss 占位 `giant_knight.tres`（铁甲统领），细则另册。
+敌方遭遇可复用上表模板。Boss As-Is 占位 `giant_knight.tres`（铁甲统领）；机制规格见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)（召唤统领 To-Be，未对齐占位）。
 
 ## 5. 起始牌库
 

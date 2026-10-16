@@ -1,7 +1,7 @@
 # Content — 内容库索引
 
 > 与 [Features/](../Features/) 并列：Features 写**规则与系统**，Content 写**具体角色/内容清单**。  
-> 最后更新：2026-10-15
+> 最后更新：2026-10-16
 
 ## 分工
 
@@ -19,7 +19,8 @@
 | 文档 | 说明 |
 |------|------|
 | [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；§6 与技能 1:1；枯骨白板；realtime 资源已写） |
+| [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（二十三条；挂载见角色库 §6；掩护射击待管线） |
 | [PAPER_CUTOUT_ART_BRIEF.md](./PAPER_CUTOUT_ART_BRIEF.md) | **旧纸剪贴涂鸦风**美术简报（Run 战场场景 + 8 造型角色已接入；兵种映射 §6） |
 
-敌方 Boss / 高威胁位另册，不进本版友方总表。
+敌方 Boss / 高威胁位见 [BOSS_ROSTER.md](./BOSS_ROSTER.md) 与 [Features/BOSS.md](../Features/BOSS.md)，不进本版友方总表。

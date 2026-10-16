@@ -27,10 +27,13 @@
 
 | 结果 | 条件 |
 |------|------|
-| **胜（遭遇）** | 清光本遭遇 **全部敌方单位** |
+| **胜（遭遇）** | 默认：**清光**本遭遇全部敌方单位（清波制） |
+| **胜（Boss 遭遇例外）** | **首领死亡即胜**（斩首）；其余敌方**溃散**清除。细则见 [Features/BOSS.md](./Features/BOSS.md) |
 | **败（遭遇）** | **己方单位全部阵亡**（含生成的代理角色；细则见战斗 / 玩家篇） |
 | **Run 通关** | 击败 Act Boss（及关卡完成条件） |
 | **Run 失败** | 任一战斗遭遇失败 → **整局重置** |
+
+普通 / 精英仍清波；**仅 Boss 节点**用斩首例外。
 
 ---
 
@@ -40,7 +43,7 @@
    地图商店做完整养成；普通 / 精英胜后招募做短名单拿人 / 换人 / 出售（上区即战斗占位）；进遭遇后载入持久占位并可换座；开战后天只观战。主乐趣是队伍取舍、养成与站位，不是抽牌或战中微操。
 
 2. **空间与敌压**【设计定稿】  
-   战场竖屏窄深、我下敌上、中线硬半场：双方在各自半场的**角色座位**上开战落点；开战后天按**固定混排行动队列**依次行动，每一动内八向靠近目标并可出手（一动内落格顿步、一格一体，可越线；非钉座对撞）。友方准备只入我半场空座位（席位内全体上场）；敌方按关卡占敌半场座位一次出齐。压力来自阵型、行动先后与越线。Boss：超高单体威胁。细则见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)、[Features/COMBAT.md](./Features/COMBAT.md)。
+   战场竖屏窄深、我下敌上、中线硬半场：双方在各自半场的**角色座位**上开战落点；开战后天按**固定混排行动队列**依次行动，每一动内八向靠近目标并可出手（一动内落格顿步、一格一体，可越线；非钉座对撞）。友方准备只入我半场空座位（席位内全体上场）；敌方按关卡占敌半场座位一次出齐。压力来自阵型、行动先后与越线。Boss：超高单体威胁；可有**足迹单位**（逻辑多格）与斩首胜负，见 [Features/BOSS.md](./Features/BOSS.md)。细则见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)、[Features/COMBAT.md](./Features/COMBAT.md)。
 
 3. **中世纪幻想主题**【设定定稿】  
    兵种/魔物剪影可读；特效服务技能因果（观战以**当前行动者**串行演出为主，见 [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md)）。表现迁移待实现。
@@ -170,9 +173,10 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 | 类型 | 体验 | 压力 |
 |------|------|------|
 | 小怪 | 清杂 + 验证队伍/站位 | 敌方占座阵型与越线压迫 |
-| Boss / 精英 | 攻坚 | 超高单体威胁 |
+| 精英 | 攻坚 | 超高单体威胁；胜负仍清波 |
+| Boss | 通关战 | 超高单体威胁；**斩首**胜负 + 机制差异（见 [Features/BOSS.md](./Features/BOSS.md)） |
 
-胜负只看敌方是否清空 / 己方是否全灭。
+普通 / 精英：敌方清空胜 / 己方全灭败。Boss：首领死亡胜（溃散其余敌方）/ 己方全灭败。
 
 ---
 
@@ -195,9 +199,11 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 | Tier | 商店强度档 1–6 |
 | 联动技能 | Trigger + 目标 + Effect |
 | 流派 | 以触发链与站位为核心的构筑方向 |
-| 清波制 | 敌全灭胜 / 己全灭败 |
+| 清波制 | 敌全灭胜 / 己全灭败（普通 / 精英） |
+| 斩首制 | Boss 遭遇：首领死亡即胜，其余敌方溃散（见 Boss 篇） |
+| 足迹单位 | 可逻辑占用多格的单位（本版仅 Boss 2×2）；默认仍一格一体 |
 | 行动队列 | 开战排一次的敌我混排固定序；每回合同序依次行动（见战斗篇） |
-| 一动 | 轮到某单位时尽量「靠近并出手」演完的一段自动行动 |
+| 一动 | 轮到某单位时尽量「靠近并出手」演完的一段自动行动；Boss 可为策略三选一（见 Boss 篇） |
 
 ---
 
@@ -240,4 +246,4 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 ---
 
-相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/PLAYER.md](./Features/PLAYER.md) · [Features/RECRUIT.md](./Features/RECRUIT.md) · [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [INDEX.md](./INDEX.md)
+相关文档：[ARCHITECTURE.md](./ARCHITECTURE.md) · [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) · [Features/PLAYER.md](./Features/PLAYER.md) · [Features/RECRUIT.md](./Features/RECRUIT.md) · [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) · [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) · [Features/COMBAT.md](./Features/COMBAT.md) · [Features/BOSS.md](./Features/BOSS.md) · [INDEX.md](./INDEX.md)
