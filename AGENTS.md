@@ -34,4 +34,5 @@
 
 ## Git
 - `main` 保持可验证；新工作使用 `feat/`、`fix/`、`docs/` 或 `chore/` 分支，按功能拆提交。
+- **玩家可见改动合入时须 bump** `project.godot` 的 `application/config/version`（主菜单下方显示 `v…`）；纯文档/工具链除外。细则见 [CONTRIBUTING.md](CONTRIBUTING.md)「应用版本号」。
 - 不改全局身份、不强推、不重置用户修改。发布、可见性改变和版本打标按用户任务授权执行。

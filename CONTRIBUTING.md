@@ -6,6 +6,15 @@
 
 项目使用 UTF-8。保留 `.uid` 和资产 `.import` 侧车，不提交 `.godot/`、`.artifacts/`、凭据或导出包。大文件接近 GitHub 单文件限制前评估 LFS，不只提交指针而遗漏对象。
 
+### 应用版本号（主菜单可见）
+
+主菜单下方显示的版本来自 `project.godot` 的 `application/config/version`（文案形如 `v0.2.0`）。
+
+- **有玩家可见功能或行为合入**（玩法、UI、内容资源、影响试玩的修复）时：在**同一 PR** 内 bump 该字段，使合并进 `main` 后主菜单版本立刻可辨认。
+- **纯文档 / 纯工具链 / 不影响玩家画面与规则的改动**：不必 bump。
+- 建议语义：小修复 → patch（`0.2.0` → `0.2.1`）；可见功能 → minor（`0.2.0` → `0.3.0`）。不必为每次 bump 单独开 PR。
+- Cloud Agent / 主代理交付玩家可见切片时：集成提交须包含版本 bump；未 bump 视为交付不完整。
+
 ## GDScript
 
 - 遵循现有代码：tab 缩进；文件/函数/变量 `snake_case`，`class_name` PascalCase，常量/枚举 `UPPER_SNAKE_CASE`，私有成员前缀 `_`。
