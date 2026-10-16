@@ -14,9 +14,14 @@ signal recruit_team_pressed(entry_id: int)
 signal recruit_sell(entry_id: int)
 ## 招募：上区成员拖到空座或另一成员座位换座。
 signal recruit_team_seat_drop(entry_id: int, target_seat: int)
+## 招募道具行：点击道具槽。
+signal recruit_item_pressed(item_slot: int)
+## 招募道具行：药水拖到上区队伍成员。
+signal recruit_item_drop(item_slot: int, entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
+const RECRUIT_ITEM_KEY := "rt_recruit_item_slot"
 const NO_CELL := Vector2i(-1, -1)
 const ARENA_BACKGROUND := preload("res://assets/sprites/paper_cutout/env/arena_background.jpg")
 ## 背景图左右树林各占原图宽度的比例；棋盘只压进树林内缘这部分，避免座位被树盖住。
@@ -89,10 +94,14 @@ var recruit_active: bool = false
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
+## Array[Dictionary]：{index, item, cell, cost?, affordable?, label?}
+var recruit_items: Array = []
 var recruit_selected_candidate: int = -1
 var recruit_selected_replace_id: int = -1
 var recruit_needs_replace: bool = false
-## 下区出售落点格；与候选人槽分离，避免混手势。
+## 待用药水槽；≥0 时点上区队伍成员结算。
+var recruit_pending_item_slot: int = -1
+## 下区出售落点格；与候选人/道具槽分离，避免混手势。
 var recruit_sell_cell: Vector2i = NO_CELL
 ## 拖到出售落点时预览退金（由控制器写入）。
 var recruit_sell_preview_gold: int = 0
@@ -111,6 +120,8 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
+var _recruit_item_drag_index: int = -1
+var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
 var _recruit_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
@@ -135,6 +146,9 @@ const RECRUIT_TEAM_BORDER := Color(0.75, 0.90, 1.0, 0.95)
 const RECRUIT_CAND_EMPTY := Color(0.95, 0.78, 0.35, 0.28)
 const RECRUIT_CAND_FILL := Color(0.95, 0.70, 0.25, 0.48)
 const RECRUIT_CAND_BORDER := Color(1.0, 0.92, 0.45, 0.95)
+const RECRUIT_ITEM_EMPTY := Color(0.55, 0.85, 0.70, 0.28)
+const RECRUIT_ITEM_FILL := Color(0.35, 0.78, 0.60, 0.48)
+const RECRUIT_ITEM_BORDER := Color(0.70, 0.95, 0.85, 0.95)
 const RECRUIT_SELECT := Color(1.0, 0.95, 0.35, 0.55)
 const RECRUIT_SELL_EMPTY := Color(0.55, 0.35, 0.55, 0.28)
 const RECRUIT_SELL_HOT := Color(0.85, 0.35, 0.75, 0.45)
@@ -183,6 +197,8 @@ func _notification(what: int) -> void:
 		_drag_active = false
 		_recruit_drag_index = -1
 		_recruit_press_index = -1
+		_recruit_item_drag_index = -1
+		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
 		_recruit_team_press_id = -1
 		_hover_cell = NO_CELL
@@ -410,6 +426,10 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_recruit_drag(_recruit_press_index)
+		elif _recruit_item_press_index >= 0 and _recruit_item_drag_index < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_recruit_item_drag(_recruit_item_press_index)
 		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
@@ -426,20 +446,31 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			var cand := _find_recruit_candidate_at(cell)
 			if cand >= 0:
 				_recruit_press_index = cand
+				_recruit_item_press_index = -1
 				_recruit_team_press_id = -1
 				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+				return
+			var item_i := _find_recruit_item_at(cell)
+			if item_i >= 0:
+				_recruit_item_press_index = item_i
+				_recruit_press_index = -1
+				_recruit_team_press_id = -1
+				_begin_press(mb.position, {}, Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(cell)
 			if entry_id >= 0:
 				_recruit_team_press_id = entry_id
 				_recruit_press_index = -1
+				_recruit_item_press_index = -1
 				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 			return
 		## 松开
 		if _info_shown:
 			_recruit_press_index = -1
+			_recruit_item_press_index = -1
 			_recruit_team_press_id = -1
 			_end_press()
 			accept_event()
@@ -454,10 +485,19 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			_finish_recruit_drag(cell)
 			accept_event()
 			return
+		if _recruit_item_drag_index >= 0:
+			_finish_recruit_item_drag(cell)
+			accept_event()
+			return
 		if _recruit_press_index >= 0:
 			var pressed := _recruit_press_index
 			_recruit_press_index = -1
 			recruit_candidate_pressed.emit(pressed)
+			accept_event()
+		elif _recruit_item_press_index >= 0:
+			var item_pressed := _recruit_item_press_index
+			_recruit_item_press_index = -1
+			recruit_item_pressed.emit(item_pressed)
 			accept_event()
 		_recruit_team_press_id = -1
 
@@ -650,6 +690,8 @@ func _begin_recruit_drag(index: int) -> void:
 		return
 	_recruit_drag_index = index
 	_recruit_press_index = -1
+	_recruit_item_drag_index = -1
+	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
 	recruit_selected_candidate = index
@@ -661,6 +703,50 @@ func _begin_recruit_drag(index: int) -> void:
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = unit.display_name if unit != null else String(info.get("label", ""))
 	_drag_unit_id = unit.id if unit != null else ""
+	queue_redraw()
+
+
+func _begin_recruit_item_drag(index: int) -> void:
+	if index < 0 or index >= recruit_items.size():
+		return
+	var info: Dictionary = recruit_items[index]
+	var item: PrepareItemData = info.get("item") as PrepareItemData
+	if item == null or not item.needs_target():
+		## 旗帜不拖，走点击购买。
+		return
+	_recruit_item_drag_index = index
+	_recruit_item_press_index = -1
+	_recruit_drag_index = -1
+	_recruit_press_index = -1
+	_recruit_team_drag_id = -1
+	_recruit_team_press_id = -1
+	recruit_pending_item_slot = index
+	_drag_active = true
+	_drag_radius = 0.55
+	_drag_visual_half_width = 0.0
+	_drag_visual_half_height = 0.0
+	_drag_label = String(info.get("label", item.get_display_name()))
+	_drag_unit_id = ""
+	queue_redraw()
+
+
+func _finish_recruit_item_drag(cell: Vector2i) -> void:
+	var index := _recruit_item_drag_index
+	_recruit_item_drag_index = -1
+	_recruit_item_press_index = -1
+	_drag_active = false
+	if index < 0:
+		queue_redraw()
+		return
+	var mid := BoardHalf.midline_row(board_size.y)
+	if cell == NO_CELL or cell.y >= mid:
+		queue_redraw()
+		return
+	var entry_id := _find_recruit_team_entry_at(cell)
+	if entry_id < 0:
+		queue_redraw()
+		return
+	recruit_item_drop.emit(index, entry_id)
 	queue_redraw()
 
 
@@ -764,6 +850,18 @@ func _find_recruit_candidate_at(cell: Vector2i) -> int:
 	return -1
 
 
+func _find_recruit_item_at(cell: Vector2i) -> int:
+	if cell == NO_CELL:
+		return -1
+	for info in recruit_items:
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = info.get("cell", NO_CELL)
+		if c == cell:
+			return int(info.get("index", -1))
+	return -1
+
+
 func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 	if recruit_team_slots == null or cell == NO_CELL:
 		return -1
@@ -848,13 +946,17 @@ func clear_recruit_mode() -> void:
 	recruit_active = false
 	recruit_team_slots = null
 	recruit_candidates.clear()
+	recruit_items.clear()
 	recruit_selected_candidate = -1
 	recruit_selected_replace_id = -1
 	recruit_needs_replace = false
+	recruit_pending_item_slot = -1
 	recruit_sell_cell = NO_CELL
 	recruit_sell_preview_gold = 0
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
+	_recruit_item_drag_index = -1
+	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
 	queue_redraw()
@@ -896,9 +998,12 @@ func _draw() -> void:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
 		_draw_recruit_candidates(px, ally_off)
+		_draw_recruit_items(px, ally_off)
 		_draw_recruit_sell_slot(px, ally_off)
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
+		elif _recruit_item_drag_index >= 0 and _hover_cell != NO_CELL:
+			_draw_recruit_item_drop_hint(px, mid)
 		elif _recruit_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			if _is_recruit_sell_cell(_hover_cell):
 				_draw_recruit_team_sell_hint(px)
@@ -944,7 +1049,7 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-	draw_string(font, bot_pos, "候选人", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_recruit_sell_slot(px: float, off: Vector2) -> void:
@@ -1094,6 +1199,69 @@ func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: fl
 	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.85)
 	var color := Color(1.0, 0.9, 0.35, 0.95) if affordable else Color(1.0, 0.35, 0.3, 0.95)
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
+
+func _draw_recruit_items(px: float, off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	for info in recruit_items:
+		if not (info is Dictionary):
+			continue
+		var cell: Vector2i = info.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var index := int(info.get("index", -1))
+		var item: PrepareItemData = info.get("item") as PrepareItemData
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_ITEM_FILL if item != null else RECRUIT_ITEM_EMPTY)
+		var border := RECRUIT_ITEM_BORDER
+		if index == recruit_pending_item_slot or index == _recruit_item_drag_index:
+			draw_rect(cell_rect, RECRUIT_SELECT)
+			border = Color(1.0, 0.95, 0.4, 1.0)
+		draw_rect(cell_rect, border, false, 2.0)
+		if item == null:
+			continue
+		var label := String(info.get("label", item.get_display_name()))
+		var font_size := clampi(int(px * 0.28), 8, 12)
+		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var text_pos := cell_rect.position + Vector2(
+			(cell_rect.size.x - text_size.x) * 0.5,
+			cell_rect.size.y * 0.42,
+		)
+		var alpha := 0.4 if index == _recruit_item_drag_index else 1.0
+		draw_string(
+			font,
+			text_pos,
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			Color(0.95, 1.0, 0.95, alpha),
+		)
+		var cost := int(info.get("cost", 0))
+		var affordable := bool(info.get("affordable", true))
+		_draw_recruit_cost_tag(tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off, cost, affordable, px)
+
+
+func _draw_recruit_item_drop_hint(px: float, mid: int) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	if cell.y >= mid:
+		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
+		return
+	var ok := _find_recruit_team_entry_at(cell) >= 0
+	draw_rect(cell_rect, Color(0.35, 0.95, 0.65, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.3))
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.32), 9, 14)
+	var label := _drag_label if not _drag_label.is_empty() else "药水"
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := cell_rect.position + Vector2(
+		(cell_rect.size.x - text_size.x) * 0.5,
+		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+	)
+	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.9))
 
 
 func _draw_recruit_drop_hint(px: float, mid: int) -> void:

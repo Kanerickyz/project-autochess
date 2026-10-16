@@ -31,7 +31,7 @@
 script = ExtResource("1")
 refresh_cost = 1
 default_unit_cost = 3
-candidate_count = 3
+candidate_count = 5
 half_exit_seconds = 0.5
 panel_enter_seconds = 0.45
 unit_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_archer"), ExtResource("u_barbarian"), ExtResource("u_goblin"), ExtResource("u_spear"), ExtResource("u_knight"), ExtResource("u_musket"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunter"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow")])

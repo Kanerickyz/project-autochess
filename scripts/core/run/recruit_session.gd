@@ -1,12 +1,13 @@
 class_name RecruitSession
 extends RefCounted
-## 招募阶段逻辑：进门快照、抽三人、招募/替换、刷新、重置、跳过/完成。
+## 招募阶段逻辑：进门快照、抽候选人、招募/替换、刷新、重置、跳过/完成。
 ## 不拥有 UI；只改 DeckState（队伍 As-Is）与 RunEconomy 金币。
+## 候选人默认 5 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
 
 signal session_changed
 signal session_finished(kept_changes: bool)
 
-const CANDIDATE_COUNT := 3
+const CANDIDATE_COUNT := 5
 
 var config: RecruitConfig
 var deck: DeckState
@@ -55,6 +56,12 @@ func begin(p_progress_ratio: float = 0.0) -> void:
 
 func get_candidates() -> Array[UnitData]:
 	return candidates.duplicate()
+
+
+func get_candidate_slot_count() -> int:
+	if config != null:
+		return config.get_candidate_count()
+	return CANDIDATE_COUNT
 
 
 func get_candidate(index: int) -> UnitData:
@@ -315,9 +322,7 @@ func _restore_snapshot() -> void:
 
 
 func _roll_candidates() -> void:
-	var count := CANDIDATE_COUNT
-	if config != null:
-		count = config.get_candidate_count()
+	var count := get_candidate_slot_count()
 	candidates.clear()
 	var preferred := get_preferred_tier()
 	for _i in count:

@@ -40,12 +40,27 @@ func grant(amount: int) -> void:
 	gold_changed.emit(gold)
 
 
-## 【已否决主路径】击杀敌方不掉金；保留 API 兼容旧调用/编辑器，战斗主路径勿再调用。
-func grant_kill_gold(unit_data: UnitData) -> void:
-	var amount := _resolve_kill_gold(unit_data)
+## 【已否决】击杀敌方不掉金；保留签名兼容旧调用/编辑器，恒为无操作。
+func grant_kill_gold(_unit_data: UnitData) -> void:
+	return
+
+
+## 层结算金：第 n 层胜利发 n 金（取代波次金主路径）。
+## floor_index：地图层号（1=第1层）；若传入 0-based 下标 0，按第 1 层发 1 金。
+func grant_floor_gold(floor_index: int) -> int:
+	var amount := resolve_floor_gold_amount(floor_index)
 	grant(amount)
+	return amount
 
 
+static func resolve_floor_gold_amount(floor_index: int) -> int:
+	if floor_index < 0:
+		return 0
+	## 1-based 层号直接作金额；0 视为第 1 层（0-based 兼容）。
+	return floor_index if floor_index >= 1 else 1
+
+
+## 【遗留】旧网格/编辑器波次金；实时主路径请用 grant_floor_gold。
 func grant_wave_gold(wave: WaveData) -> int:
 	var amount := _resolve_wave_gold(wave)
 	grant(amount)

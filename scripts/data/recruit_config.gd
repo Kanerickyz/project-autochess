@@ -4,13 +4,13 @@ extends Resource
 
 const DEFAULT_REFRESH_COST := 1
 const DEFAULT_UNIT_COST := 3
-const DEFAULT_CANDIDATE_COUNT := 3
+const DEFAULT_CANDIDATE_COUNT := 5
 const DEFAULT_EXIT_SECONDS := 0.5
 const DEFAULT_ENTER_SECONDS := 0.45
 
 @export_range(0, 20, 1) var refresh_cost: int = DEFAULT_REFRESH_COST
 @export_range(1, 20, 1) var default_unit_cost: int = DEFAULT_UNIT_COST
-@export_range(1, 6, 1) var candidate_count: int = DEFAULT_CANDIDATE_COUNT
+@export_range(1, 8, 1) var candidate_count: int = DEFAULT_CANDIDATE_COUNT
 @export_range(0.1, 2.0, 0.05) var half_exit_seconds: float = DEFAULT_EXIT_SECONDS
 @export_range(0.1, 2.0, 0.05) var panel_enter_seconds: float = DEFAULT_ENTER_SECONDS
 ## 友方可购单位池；空则回退 character_pool / pool。

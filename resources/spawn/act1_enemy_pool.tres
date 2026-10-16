@@ -17,3 +17,5 @@
 script = ExtResource("1_cfg")
 enabled = false
 enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka")])
+combat_plus_one_chance = 0.25
+elite_plus_two_chance = 0.5

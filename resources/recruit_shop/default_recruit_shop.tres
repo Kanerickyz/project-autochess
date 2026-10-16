@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RecruitShopConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/recruit_shop_config.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/data/prepare_item_data.gd" id="3_item"]
+[ext_resource type="Resource" path="res://resources/items/hp_potion.tres" id="i_hp"]
+[ext_resource type="Resource" path="res://resources/items/atk_potion.tres" id="i_atk"]
+[ext_resource type="Resource" path="res://resources/items/banner.tres" id="i_banner"]
+
+[resource]
+script = ExtResource("1")
+item_pool = Array[ExtResource("3_item")]([ExtResource("i_hp"), ExtResource("i_atk"), ExtResource("i_banner")])
+default_potion_cost = 1
+default_banner_cost = 2
