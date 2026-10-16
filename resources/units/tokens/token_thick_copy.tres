@@ -5,8 +5,8 @@
 
 [sub_resource type="Resource" id="UnitStats_token_thick_copy"]
 script = ExtResource("2_stats")
-max_hp = 110
-attack = 45
+max_hp = 5
+attack = 3
 steps_per_turn = 2
 crit_rate_percent = 0
 attack_interval = 1.0
