@@ -739,6 +739,7 @@ func _build_enemy_previews(spawns: Array) -> Array:
 			"visual_half_height": stats.get_visual_half_height() if stats != null else 0.0,
 			"label": label,
 			"unit_id": unit.unit_data.id if unit != null and unit.unit_data != null else "",
+			"unit": unit,
 			"seat_index": int(spawn.get("seat_index", -1)),
 			"attack": unit.get_effective_attack() if unit != null else 0,
 			"hp": unit.current_hp if unit != null else 0,
@@ -1198,6 +1199,7 @@ func _on_continue_pressed() -> void:
 
 func _on_unit_died(rt: RtUnit) -> void:
 	_arena.add_death_fx(rt.position, maxf(rt.get_visual_half_width(), rt.get_visual_half_height()), rt.is_player())
+	_arena.play_unit_death(rt)
 
 
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:

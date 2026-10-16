@@ -50,6 +50,13 @@ const STAT_BADGE_MAX_HEIGHT := 28.0
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
 const STAT_NUMBER_MAX_WIDTH := 0.42
+## 受击闪白：modulate 拉高到接近纯白，墨线仍保留轮廓。
+const SPRITE_FLASH_MUL := 5.0
+## 镜头震动时背景外扩，避免露边。
+const SHAKE_BLEED_PX := 8.0
+## 长按查看单位信息（SAP 式）：按住超过阈值弹卡，松手收起且不触发点按。
+const LONG_PRESS_MS := 380
+const LONG_PRESS_SLOP_PX := 10.0
 
 var board_size: Vector2i = Vector2i(9, 16)
 var sim: RealtimeCombatSim
@@ -96,6 +103,15 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
+var _motion := RealtimeUnitMotion.new()
+var _frame_shake := Vector2.ZERO
+var _info_card := RealtimeUnitInfoCard.new()
+var _press_active := false
+var _press_pos := Vector2.ZERO
+var _press_ms: int = -1
+var _press_info: Dictionary = {}
+var _press_tap: Callable
+var _info_shown := false
 
 const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
 const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
@@ -116,10 +132,19 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	resized.connect(queue_redraw)
+	_motion.name = "UnitMotion"
+	add_child(_motion)
+	_info_card.name = "UnitInfoCard"
+	add_child(_info_card)
 
 
 func _process(delta: float) -> void:
 	_fx_clock += delta
+	if sim != null and sim.has_started():
+		_motion.speed_scale = presentation_time_scale
+		_motion.sync_units(sim.get_units())
+	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
+		_show_info_card(_press_info)
 	if not _fx.is_empty():
 		var alive: Array = []
 		for fx in _fx:
@@ -137,6 +162,8 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_cancel_press()
 	if what == NOTIFICATION_DRAG_END:
 		_drag_active = false
 		_recruit_drag_index = -1
@@ -273,6 +300,15 @@ func get_feedback_entries() -> Array:
 func clear_fx() -> void:
 	_fx.clear()
 	_feedback.clear()
+	_motion.clear()
+
+
+## 死亡残影：闪白后侧倒、缩小淡出（纯表现，单位已从模拟移除）。
+func play_unit_death(rt: RtUnit) -> void:
+	if rt == null:
+		return
+	var half := _resolve_visual_half(rt.get_visual_half_height(), rt.get_radius(), 1.6)
+	_motion.play_death(rt, _rt_unit_id(rt), half)
 
 
 func _feedback_duration_for_scale(scale: float) -> float:
@@ -327,11 +363,22 @@ func _gui_input(event: InputEvent) -> void:
 		_gui_input_recruit(event)
 		return
 	if event is InputEventMouseMotion:
-		_hover_cell = tile_to_cell(local_to_tile((event as InputEventMouseMotion).position))
+		var motion_pos := (event as InputEventMouseMotion).position
+		_hover_cell = tile_to_cell(local_to_tile(motion_pos))
+		_track_press_motion(motion_pos)
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			board_pressed.emit(local_to_tile(mb.position))
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			var info := inspect_at(mb.position)
+			if not info.is_empty():
+				## 按在单位上：点按动作推迟到松手，按住则改为看信息。
+				_begin_press(mb.position, info, board_pressed.emit.bind(local_to_tile(mb.position)))
+			else:
+				board_pressed.emit(local_to_tile(mb.position))
+			accept_event()
+		elif _end_press():
 			accept_event()
 
 
@@ -339,9 +386,11 @@ func _gui_input_recruit(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		if _recruit_press_index >= 0 and _recruit_drag_index < 0:
+		_track_press_motion(motion.position)
+		if _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
 			## 按下后略移即进入拖拽。
 			if motion.relative.length() > 2.0:
+				_cancel_press()
 				_begin_recruit_drag(_recruit_press_index)
 		accept_event()
 		return
@@ -355,14 +404,22 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			var cand := _find_recruit_candidate_at(cell)
 			if cand >= 0:
 				_recruit_press_index = cand
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(cell)
 			if entry_id >= 0:
-				recruit_team_pressed.emit(entry_id)
+				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 			return
 		## 松开
+		if _info_shown:
+			_recruit_press_index = -1
+			_end_press()
+			accept_event()
+			return
+		if _end_press():
+			accept_event()
 		if _recruit_drag_index >= 0:
 			_finish_recruit_drag(cell)
 			accept_event()
@@ -372,6 +429,177 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			_recruit_press_index = -1
 			recruit_candidate_pressed.emit(pressed)
 			accept_event()
+
+
+func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
+	_press_active = true
+	_press_pos = pos
+	_press_info = info
+	_press_tap = tap
+	_press_ms = Time.get_ticks_msec() if not info.is_empty() else -1
+	_info_shown = false
+
+
+func _track_press_motion(pos: Vector2) -> void:
+	if _press_ms >= 0 and not _info_shown and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+		_press_ms = -1
+
+
+## 松手：信息卡已弹出则只收起；否则执行推迟的点按。返回是否有待处理的按下。
+func _end_press() -> bool:
+	if not _press_active:
+		return false
+	var shown := _info_shown
+	var tap := _press_tap
+	_cancel_press()
+	if not shown and tap.is_valid():
+		tap.call()
+	return true
+
+
+func _cancel_press() -> void:
+	_press_active = false
+	_press_ms = -1
+	_press_info = {}
+	_press_tap = Callable()
+	_info_shown = false
+	_info_card.hide_info()
+
+
+func is_info_card_visible() -> bool:
+	return _info_card.visible
+
+
+## 测试与无障碍入口：直接弹出指定位置单位的信息卡。
+func show_unit_info_at(local_pos: Vector2) -> bool:
+	var info := inspect_at(local_pos)
+	if info.is_empty():
+		return false
+	_show_info_card(info)
+	return true
+
+
+func hide_unit_info() -> void:
+	_cancel_press()
+
+
+func _show_info_card(info: Dictionary) -> void:
+	if info.is_empty():
+		return
+	_info_shown = true
+	var center: Vector2 = info["center"]
+	var px := get_cell_px()
+	var head := center + Vector2(0.0, px * (0.38 - 1.7))
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size))
+
+
+## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
+func inspect_at(local_pos: Vector2) -> Dictionary:
+	var px := get_cell_px()
+	var best: Dictionary = {}
+	var best_d := INF
+	for info: Dictionary in _collect_inspectables():
+		var center: Vector2 = info["center"]
+		var feet_y := center.y + px * 0.38
+		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + get_stat_badge_size(px).y * 1.2)
+		if not hit.has_point(local_pos):
+			continue
+		var d := local_pos.distance_squared_to(center)
+		if d < best_d:
+			best_d = d
+			best = info
+	return best
+
+
+func _collect_inspectables() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ally_off := Vector2(0.0, ally_half_slide_y)
+	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	if recruit_active:
+		if recruit_team_slots != null:
+			for i in recruit_team_slots.cells.size():
+				var entry := recruit_team_slots.get_entry(i)
+				if entry != null:
+					var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					out.append(_info_from_entry(entry, tile_to_local(tile) + enemy_off))
+		for cand in recruit_candidates:
+			if not (cand is Dictionary):
+				continue
+			var unit: UnitData = cand.get("unit") as UnitData
+			var cell: Vector2i = cand.get("cell", NO_CELL)
+			if unit != null and cell != NO_CELL:
+				var tile := Vector2(cell) + Vector2(0.5, 0.5)
+				out.append(_info_from_unit_data(unit, tile_to_local(tile) + ally_off))
+		return out
+	if sim != null and sim.has_started():
+		for item in sim.get_units():
+			var rt := item as RtUnit
+			if rt == null or rt.unit == null:
+				continue
+			var off := ally_off if rt.is_player() else enemy_off
+			out.append(_info_from_instance(
+				rt.unit, rt.is_player(), rt.get_effective_attack(), rt.get_current_hp(), tile_to_local(rt.position) + off
+			))
+		return out
+	if prepare_slots != null:
+		for i in prepare_slots.cells.size():
+			var entry := prepare_slots.get_entry(i)
+			if entry != null:
+				var tile := Vector2(prepare_slots.cells[i]) + Vector2(0.5, 0.5)
+				out.append(_info_from_entry(entry, tile_to_local(tile) + ally_off))
+	for preview in enemy_previews:
+		if not (preview is Dictionary):
+			continue
+		var unit := preview.get("unit") as UnitInstance
+		if unit == null:
+			continue
+		out.append(_info_from_instance(
+			unit, false, int(preview.get("attack", 0)), int(preview.get("hp", 0)),
+			tile_to_local(preview["position"]) + enemy_off,
+		))
+	return out
+
+
+func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
+	var stats := entry.unit.stats if entry.unit != null else null
+	return {
+		"center": center,
+		"name": entry.get_display_name(),
+		"side_player": true,
+		"tier": entry.unit.tier if entry.unit != null else 0,
+		"attack": maxi(1, stats.attack + entry.bonus_attack) if stats != null else 0,
+		"hp": maxi(1, stats.max_hp + entry.bonus_max_hp) if stats != null else 0,
+		"skills": UnitInfoText.get_skills_block_from_entry(entry),
+		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
+	}
+
+
+func _info_from_unit_data(data: UnitData, center: Vector2) -> Dictionary:
+	return {
+		"center": center,
+		"name": UnitInfoText.get_display_name_from_unit_data(data),
+		"side_player": true,
+		"tier": data.tier,
+		"attack": data.stats.attack if data.stats != null else 0,
+		"hp": data.stats.max_hp if data.stats != null else 0,
+		"skills": UnitInfoText.get_skills_block_from_unit_data(data),
+		"texture": _art.get_texture(data.id, true) if _art != null else null,
+	}
+
+
+func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
+	var unit_id := unit.unit_data.id if unit.unit_data != null else ""
+	return {
+		"center": center,
+		"name": UnitInfoText.get_display_name(unit),
+		"side_player": is_player,
+		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
+		"attack": attack,
+		"hp": hp,
+		"skills": UnitInfoText.get_skills_block(unit),
+		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
+	}
 
 
 func _begin_recruit_drag(index: int) -> void:
@@ -521,8 +749,10 @@ func _draw() -> void:
 	var mid := BoardHalf.midline_row(board_size.y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	var ally_off := Vector2(0.0, ally_half_slide_y)
+	_frame_shake = _motion.get_shake_offset()
+	draw_set_transform(_frame_shake)
 	## 背景不随半场 slide，保证胜→招募同屏背景不断。
-	draw_texture_rect(ARENA_BACKGROUND, _get_background_rect(), false)
+	draw_texture_rect(ARENA_BACKGROUND, _get_background_rect().grow(SHAKE_BLEED_PX), false)
 	## 半场色调与单位/座位随内容滑动。
 	draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
 	draw_rect(
@@ -753,7 +983,10 @@ func _draw_units(px: float) -> void:
 	var actor: RtUnit = sim.get_current_actor() if started else null
 	## 先画全部单位再画全部攻血标，避免相邻贴图盖住标签。
 	var badges: Array[Dictionary] = []
-	for item in sim.get_units():
+	## 按纵向排序绘制，冲撞时靠下的单位压在上面。
+	var ordered := sim.get_units().duplicate()
+	ordered.sort_custom(func(a: RtUnit, b: RtUnit) -> bool: return a.position.y < b.position.y)
+	for item in ordered:
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR
 		var alpha := 1.0
@@ -775,7 +1008,7 @@ func _draw_units(px: float) -> void:
 		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
 		_draw_body(
 			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off,
-			rt.is_player(), _rt_unit_id(rt),
+			rt.is_player(), _rt_unit_id(rt), _motion.get_pose(rt), _motion.walk_pose(rt),
 		)
 		var center := tile_to_local(rt.position) + off
 		var silhouette_r_px := maxf(vwx, vhy) * scale * px
@@ -787,8 +1020,20 @@ func _draw_units(px: float) -> void:
 		badges.append({
 			"center": center, "attack": rt.get_effective_attack(), "hp": rt.get_current_hp(), "alpha": alpha,
 		})
+	_draw_corpses(px)
 	for badge in badges:
 		_draw_stat_badges(badge["center"], badge["attack"], badge["hp"], badge["alpha"], px)
+
+
+func _draw_corpses(px: float) -> void:
+	for corpse in _motion.get_corpses():
+		var tex: Texture2D = _art.get_texture(corpse.unit_id, corpse.is_player) if _art != null else null
+		if tex == null:
+			continue
+		var off := Vector2(0.0, ally_half_slide_y if corpse.is_player else enemy_half_slide_y)
+		var center := tile_to_local(corpse.position) + off
+		var base := PLAYER_COLOR if corpse.is_player else ENEMY_COLOR
+		_draw_unit_sprite(center, corpse.half_height * px, px, tex, base, 1.0, corpse.is_player, corpse.pose)
 
 
 func _draw_body(
@@ -804,13 +1049,15 @@ func _draw_body(
 	pixel_offset: Vector2 = Vector2.ZERO,
 	is_player: bool = true,
 	unit_id: String = "",
+	pose: RealtimeUnitMotion.Pose = null,
+	walk: Vector2 = Vector2.ZERO,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
 	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
 	var tex: Texture2D = _art.get_texture(unit_id, is_player) if _art != null else null
 	if tex != null:
-		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player)
+		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
 	var fill := Color(color, alpha)
@@ -832,6 +1079,7 @@ func _draw_body(
 
 
 ## 贴图脚底落在格心略下方；高亮/受击用整体提亮，不改阵营色。
+## pose / walk 为纯表现动画：以脚底为轴旋转缩放，偏移以格为单位。
 func _draw_unit_sprite(
 	center: Vector2,
 	half_height_px: float,
@@ -840,17 +1088,35 @@ func _draw_unit_sprite(
 	tint: Color,
 	alpha: float,
 	is_player: bool,
+	pose: RealtimeUnitMotion.Pose = null,
+	walk: Vector2 = Vector2.ZERO,
 ) -> void:
 	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, px * 1.9)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
 	var feet := center + Vector2(0.0, px * 0.38)
-	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * alpha)
-	_draw_ellipse_filled(feet + Vector2(px * 0.06, px * 0.02), w * 0.30, maxf(2.0, px * 0.12), shadow)
+	var offset := Vector2(0.0, walk.y * px)
+	var rot := walk.x
+	var scl := Vector2.ONE
+	var flash := 0.0
+	var a := alpha
+	if pose != null:
+		offset += pose.offset * px
+		rot += pose.rotation
+		scl = pose.scale
+		flash = pose.flash
+		a *= pose.alpha
+	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a)
+	var shadow_pos := feet + Vector2(offset.x + px * 0.06, px * 0.02 + maxf(0.0, offset.y))
+	_draw_ellipse_filled(shadow_pos, w * 0.30 * scl.x, maxf(2.0, px * 0.12), shadow)
 	var base := PLAYER_COLOR if is_player else ENEMY_COLOR
-	var lift := clampf(tint.get_luminance() - base.get_luminance(), 0.0, 0.5)
-	var modulate_color := Color(1.0 + lift, 1.0 + lift, 1.0 + lift, alpha)
-	draw_texture_rect(tex, Rect2(feet.x - w * 0.5, feet.y - h, w, h), false, modulate_color)
+	var lift := 1.0 + clampf(tint.get_luminance() - base.get_luminance(), 0.0, 0.5)
+	var modulate_color := Color(lift, lift, lift, a).lerp(
+		Color(SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, a), clampf(flash, 0.0, 1.0)
+	)
+	draw_set_transform(_frame_shake + feet + offset, rot, scl)
+	draw_texture_rect(tex, Rect2(-w * 0.5, -h, w, h), false, modulate_color)
+	draw_set_transform(_frame_shake)
 
 
 func _rt_unit_id(rt: RtUnit) -> String:
