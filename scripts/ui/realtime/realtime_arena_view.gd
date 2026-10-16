@@ -155,7 +155,7 @@ func _process(delta: float) -> void:
 	_fx_clock += delta
 	if sim != null and sim.has_started():
 		_motion.speed_scale = presentation_time_scale
-		_motion.sync_units(sim.get_units())
+		_motion.sync_units(sim.get_units(), sim.get_current_actor())
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
 	if not _fx.is_empty():
@@ -1318,9 +1318,9 @@ func _draw_unit_sprite(
 	var flash := 0.0
 	var a := alpha
 	if pose != null:
-		offset += pose.offset * px
+		offset += (pose.offset + pose.idle_offset) * px
 		rot += pose.rotation
-		scl = pose.scale
+		scl = pose.scale * pose.idle_scale
 		flash = pose.flash
 		a *= pose.alpha
 	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a)

@@ -7,6 +7,11 @@ extends Node
 ## 一格步进内左右各摆一次；脚底为旋转轴。
 const WALK_TILT := 0.13
 const WALK_HOP_TILES := 0.07
+## 非行动者待机：轻呼吸起伏（独立 idle_tween，不占用出手 tween）。
+const IDLE_BOB_TILES := 0.035
+const IDLE_SQUASH := Vector2(1.035, 0.965)
+const IDLE_CYCLE := 1.15
+const IDLE_PHASE_STEP := 0.07
 ## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
 const WINDUP_PULL_TILES := 0.16
 const WINDUP_SQUASH := Vector2(1.1, 0.88)
@@ -35,6 +40,11 @@ class Pose:
 	var tween: Tween
 	## 闪白独立淡出，不会被后续蓄力 / 冲撞 tween 打断而卡白。
 	var flash_tween: Tween
+	## 待机呼吸：与出手 tween 分离，避免被蓄力/冲撞打断后卡在非零偏移。
+	var idle_offset := Vector2.ZERO
+	var idle_scale := Vector2.ONE
+	var idle_tween: Tween
+	var idle_requested := false
 	## 冲刺途中受击（反伤等同帧结算）只闪白震屏，不打断冲撞位移。
 	var lunging := false
 
@@ -94,7 +104,8 @@ func get_shake_offset() -> Vector2:
 
 
 ## 每帧由战场视图调用：同步场上单位，识别蓄力 / 出手 / 受击，并更新行走摆动。
-func sync_units(units: Array) -> void:
+## current_actor：当前行动者不播待机；其余存活单位在未出手/未步进时进入呼吸待机。
+func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	var seen: Dictionary = {}
 	for item in units:
 		var rt := item as RtUnit
@@ -133,6 +144,7 @@ func sync_units(units: Array) -> void:
 		if rt.last_hit_time != tracked.last_hit:
 			tracked.last_hit = rt.last_hit_time
 			_play_hit(tracked.pose, Vector2.ZERO, SHAKE_RANGED_PX)
+	_sync_idle_states(units, current_actor)
 	_prune_corpses()
 
 
@@ -269,7 +281,100 @@ func _shake(strength_px: float) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
+func _sync_idle_states(units: Array, current_actor: RtUnit) -> void:
+	for item in units:
+		var rt := item as RtUnit
+		if rt == null:
+			continue
+		var tracked: Tracked = _tracked.get(rt.get_instance_id())
+		if tracked == null:
+			continue
+		if _should_idle(rt, tracked, current_actor):
+			_ensure_idle(rt, tracked.pose)
+		else:
+			_stop_idle(tracked.pose)
+
+
+func _should_idle(rt: RtUnit, tracked: Tracked, current_actor: RtUnit) -> bool:
+	if rt == null or not rt.is_alive():
+		return false
+	if rt.is_deploying():
+		return false
+	if current_actor != null and rt == current_actor:
+		return false
+	if rt.is_stepping():
+		return false
+	if tracked.winding:
+		return false
+	if _is_busy(tracked.pose):
+		return false
+	return true
+
+
+func _ensure_idle(rt: RtUnit, pose: Pose) -> void:
+	if pose == null:
+		return
+	if pose.idle_requested and pose.idle_tween != null and pose.idle_tween.is_valid() and pose.idle_tween.is_running():
+		pose.idle_tween.set_speed_scale(maxf(0.25, speed_scale))
+		return
+	_start_idle(rt, pose)
+
+
+func _start_idle(rt: RtUnit, pose: Pose) -> void:
+	_kill_idle_tween(pose)
+	pose.idle_requested = true
+	pose.idle_offset = Vector2.ZERO
+	pose.idle_scale = Vector2.ONE
+	var phase := 0.0
+	if rt != null:
+		phase = float(abs(rt.get_instance_id()) % 17) * IDLE_PHASE_STEP
+	if phase > 0.0:
+		pose.idle_tween = create_tween()
+		pose.idle_tween.set_speed_scale(maxf(0.25, speed_scale))
+		pose.idle_tween.tween_interval(phase)
+		pose.idle_tween.tween_callback(_begin_idle_loop.bind(pose))
+	else:
+		_begin_idle_loop(pose)
+
+
+func _begin_idle_loop(pose: Pose) -> void:
+	if pose == null or not pose.idle_requested:
+		return
+	_kill_idle_tween(pose)
+	var peak_offset := Vector2(0.0, -IDLE_BOB_TILES)
+	var peak_scale := IDLE_SQUASH
+	var half := IDLE_CYCLE * 0.5
+	pose.idle_tween = create_tween().set_loops()
+	pose.idle_tween.set_speed_scale(maxf(0.25, speed_scale))
+	pose.idle_tween.tween_property(pose, "idle_offset", peak_offset, half) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pose.idle_tween.parallel().tween_property(pose, "idle_scale", peak_scale, half) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pose.idle_tween.tween_property(pose, "idle_offset", Vector2.ZERO, half) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pose.idle_tween.parallel().tween_property(pose, "idle_scale", Vector2.ONE, half) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _stop_idle(pose: Pose) -> void:
+	if pose == null:
+		return
+	pose.idle_requested = false
+	_kill_idle_tween(pose)
+	pose.idle_offset = Vector2.ZERO
+	pose.idle_scale = Vector2.ONE
+
+
+func _kill_idle_tween(pose: Pose) -> void:
+	if pose == null:
+		return
+	if pose.idle_tween != null and pose.idle_tween.is_valid():
+		pose.idle_tween.kill()
+	pose.idle_tween = null
+
+
 func _new_tween(pose: Pose) -> Tween:
+	_stop_idle(pose)
 	_kill(pose)
 	pose.tween = create_tween()
 	pose.tween.set_speed_scale(maxf(0.25, speed_scale))
@@ -290,6 +395,7 @@ func _is_busy(pose: Pose) -> bool:
 
 func _kill_all(pose: Pose) -> void:
 	_kill(pose)
+	_stop_idle(pose)
 	if pose != null and pose.flash_tween != null:
 		pose.flash_tween.kill()
 		pose.flash_tween = null

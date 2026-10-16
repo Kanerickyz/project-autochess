@@ -341,12 +341,15 @@ func _test_combat_motion() -> void:
 	var saw_corpse := false
 	var saw_lunge := false
 	var saw_clash_flash := false
+	var saw_idle := false
+	var saw_actor_not_idle := false
 	var deadline := Time.get_ticks_msec() + 25000
 	while Time.get_ticks_msec() < deadline and battle.get_phase() == RealtimeBattleController.Phase.COMBAT:
 		await process_frame
 		var sim := arena.sim
 		if sim == null:
 			break
+		var actor := sim.get_current_actor()
 		for item in sim.get_units():
 			var rt := item as RtUnit
 			var pose := motion.get_pose(rt)
@@ -367,10 +370,17 @@ func _test_combat_motion() -> void:
 						tpose.flash > 0.15 or absf(tpose.offset.dot(dir)) > 0.04
 					):
 						saw_clash_flash = true
+				if actor != null and rt != actor and pose.idle_requested:
+					saw_idle = saw_idle or pose.idle_offset.length() > 0.01 or pose.idle_scale.distance_to(Vector2.ONE) > 0.01
+				if actor != null and rt == actor:
+					saw_actor_not_idle = saw_actor_not_idle or not pose.idle_requested
 			saw_walk = saw_walk or absf(motion.walk_pose(rt).x) > 0.01
 		saw_shake = saw_shake or motion.shake_strength > 0.5
 		saw_corpse = saw_corpse or not motion.get_corpses().is_empty()
-		if saw_offset and saw_flash and saw_shake and saw_walk and saw_corpse and saw_lunge and saw_clash_flash:
+		if (
+			saw_offset and saw_flash and saw_shake and saw_walk and saw_corpse
+			and saw_lunge and saw_clash_flash and saw_idle and saw_actor_not_idle
+		):
 			break
 	_expect(saw_walk, "walking tilts the sprite")
 	_expect(saw_offset, "windup / lunge offsets the sprite")
@@ -380,6 +390,8 @@ func _test_combat_motion() -> void:
 	## 回合制下近战接触帧可能极短；有轴向冲撞则严格通过，否则回退到通用 offset/flash。
 	_expect(saw_lunge or saw_offset, "melee attacker lunges toward its target")
 	_expect(saw_clash_flash or (saw_flash and saw_offset), "melee target flashes white on impact")
+	_expect(saw_idle, "non-actors play idle bob")
+	_expect(saw_actor_not_idle, "current actor does not idle")
 	## 动画结束后回到原位、不卡白。
 	battle.time_scale = 0.0
 	var settle_until := Time.get_ticks_msec() + 900
