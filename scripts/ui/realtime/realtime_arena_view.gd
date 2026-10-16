@@ -10,6 +10,8 @@ signal card_dropped(entry_id: int, tile_pos: Vector2)
 signal recruit_drop(candidate_index: int, replace_entry_id: int)
 signal recruit_candidate_pressed(candidate_index: int)
 signal recruit_team_pressed(entry_id: int)
+## 招募：上区队伍成员拖到出售落点松手。
+signal recruit_sell(entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -88,6 +90,10 @@ var recruit_candidates: Array = []
 var recruit_selected_candidate: int = -1
 var recruit_selected_replace_id: int = -1
 var recruit_needs_replace: bool = false
+## 下区出售落点格；与候选人槽分离，避免混手势。
+var recruit_sell_cell: Vector2i = NO_CELL
+## 拖到出售落点时预览退金（由控制器写入）。
+var recruit_sell_preview_gold: int = 0
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -103,6 +109,8 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
+var _recruit_team_drag_id: int = -1
+var _recruit_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
@@ -126,6 +134,9 @@ const RECRUIT_CAND_EMPTY := Color(0.95, 0.78, 0.35, 0.28)
 const RECRUIT_CAND_FILL := Color(0.95, 0.70, 0.25, 0.48)
 const RECRUIT_CAND_BORDER := Color(1.0, 0.92, 0.45, 0.95)
 const RECRUIT_SELECT := Color(1.0, 0.95, 0.35, 0.55)
+const RECRUIT_SELL_EMPTY := Color(0.55, 0.35, 0.55, 0.28)
+const RECRUIT_SELL_HOT := Color(0.85, 0.35, 0.75, 0.45)
+const RECRUIT_SELL_BORDER := Color(0.95, 0.70, 0.95, 0.95)
 
 
 func _ready() -> void:
@@ -170,6 +181,8 @@ func _notification(what: int) -> void:
 		_drag_active = false
 		_recruit_drag_index = -1
 		_recruit_press_index = -1
+		_recruit_team_drag_id = -1
+		_recruit_team_press_id = -1
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
 		_hover_cell = NO_CELL
@@ -395,6 +408,10 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_recruit_drag(_recruit_press_index)
+		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_recruit_team_drag(_recruit_team_press_id)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -407,22 +424,30 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			var cand := _find_recruit_candidate_at(cell)
 			if cand >= 0:
 				_recruit_press_index = cand
+				_recruit_team_press_id = -1
 				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(cell)
 			if entry_id >= 0:
+				_recruit_team_press_id = entry_id
+				_recruit_press_index = -1
 				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 			return
 		## 松开
 		if _info_shown:
 			_recruit_press_index = -1
+			_recruit_team_press_id = -1
 			_end_press()
 			accept_event()
 			return
 		if _end_press():
 			accept_event()
+		if _recruit_team_drag_id >= 0:
+			_finish_recruit_team_drag(cell)
+			accept_event()
+			return
 		if _recruit_drag_index >= 0:
 			_finish_recruit_drag(cell)
 			accept_event()
@@ -432,6 +457,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			_recruit_press_index = -1
 			recruit_candidate_pressed.emit(pressed)
 			accept_event()
+		_recruit_team_press_id = -1
 
 
 func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
@@ -485,6 +511,14 @@ func show_unit_info_at(local_pos: Vector2) -> bool:
 
 func hide_unit_info() -> void:
 	_cancel_press()
+
+
+## 准备手牌等外部锚点：用与场上同一套信息卡展示 DeckEntry。
+func show_deck_entry_info(entry: DeckEntry, local_anchor: Vector2) -> bool:
+	if entry == null:
+		return false
+	_show_info_card(_info_from_entry(entry, local_anchor))
+	return true
 
 
 func _show_info_card(info: Dictionary) -> void:
@@ -614,6 +648,8 @@ func _begin_recruit_drag(index: int) -> void:
 		return
 	_recruit_drag_index = index
 	_recruit_press_index = -1
+	_recruit_team_drag_id = -1
+	_recruit_team_press_id = -1
 	recruit_selected_candidate = index
 	_drag_active = true
 	var unit: UnitData = info.get("unit") as UnitData
@@ -633,6 +669,10 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	_drag_active = false
 	if index < 0:
 		return
+	## 候选人拖到出售落点无效（与队伍拖卖分离）。
+	if _is_recruit_sell_cell(cell):
+		queue_redraw()
+		return
 	var mid := BoardHalf.midline_row(board_size.y)
 	if cell == NO_CELL or cell.y >= mid:
 		queue_redraw()
@@ -647,6 +687,50 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		## 空席：落到上半任意格（含空队位）即可加入。
 		recruit_drop.emit(index, -1)
 	queue_redraw()
+
+
+func _begin_recruit_team_drag(entry_id: int) -> void:
+	if entry_id < 0 or recruit_team_slots == null:
+		return
+	var entry: DeckEntry = null
+	for i in recruit_team_slots.slot_count:
+		var e := recruit_team_slots.get_entry(i)
+		if e != null and e.entry_id == entry_id:
+			entry = e
+			break
+	if entry == null:
+		return
+	_recruit_team_drag_id = entry_id
+	_recruit_team_press_id = -1
+	_recruit_drag_index = -1
+	_recruit_press_index = -1
+	_drag_active = true
+	var stats := entry.unit.stats if entry.unit != null else null
+	_drag_radius = stats.body_radius if stats != null else 0.7
+	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
+	_drag_label = entry.get_display_name()
+	_drag_unit_id = entry.get_unit_id()
+	recruit_sell_preview_gold = DeckUpgradeService.get_sell_price(entry)
+	queue_redraw()
+
+
+func _finish_recruit_team_drag(cell: Vector2i) -> void:
+	var entry_id := _recruit_team_drag_id
+	_recruit_team_drag_id = -1
+	_recruit_team_press_id = -1
+	_drag_active = false
+	recruit_sell_preview_gold = 0
+	if entry_id < 0:
+		queue_redraw()
+		return
+	if _is_recruit_sell_cell(cell):
+		recruit_sell.emit(entry_id)
+	queue_redraw()
+
+
+func _is_recruit_sell_cell(cell: Vector2i) -> bool:
+	return recruit_sell_cell != NO_CELL and cell == recruit_sell_cell
 
 
 func _find_recruit_candidate_at(cell: Vector2i) -> int:
@@ -737,8 +821,12 @@ func clear_recruit_mode() -> void:
 	recruit_selected_candidate = -1
 	recruit_selected_replace_id = -1
 	recruit_needs_replace = false
+	recruit_sell_cell = NO_CELL
+	recruit_sell_preview_gold = 0
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
+	_recruit_team_drag_id = -1
+	_recruit_team_press_id = -1
 	queue_redraw()
 
 
@@ -778,8 +866,11 @@ func _draw() -> void:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
 		_draw_recruit_candidates(px, ally_off)
+		_draw_recruit_sell_slot(px, ally_off)
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
+		elif _recruit_team_drag_id >= 0 and _hover_cell != NO_CELL:
+			_draw_recruit_team_sell_hint(px)
 	else:
 		_draw_enemy_slots(px)
 		_draw_prepare_slots(px)
@@ -817,6 +908,50 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
 	draw_string(font, bot_pos, "候选人", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+
+
+func _draw_recruit_sell_slot(px: float, off: Vector2) -> void:
+	if recruit_sell_cell == NO_CELL:
+		return
+	var rect := get_board_rect()
+	var cell_rect := Rect2(rect.position + Vector2(recruit_sell_cell) * px + off, Vector2(px, px))
+	var hot := _recruit_team_drag_id >= 0 and _hover_cell == recruit_sell_cell
+	draw_rect(cell_rect, RECRUIT_SELL_HOT if hot else RECRUIT_SELL_EMPTY)
+	draw_rect(cell_rect, RECRUIT_SELL_BORDER, false, 2.0)
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.4), 10, 16)
+	var label := "出售"
+	if hot and recruit_sell_preview_gold > 0:
+		label = "+%d金" % recruit_sell_preview_gold
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := cell_rect.position + Vector2(
+		(cell_rect.size.x - text_size.x) * 0.5,
+		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+	)
+	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.92, 1.0, 0.95))
+
+
+func _draw_recruit_team_sell_hint(px: float) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	var ok := _is_recruit_sell_cell(cell)
+	draw_rect(cell_rect, Color(0.85, 0.45, 0.9, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	_draw_body(
+		Vector2(cell) + Vector2(0.5, 0.5),
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		0.45,
+		_drag_label,
+		px,
+		true,
+		Vector2.ZERO,
+		true,
+		_drag_unit_id,
+	)
 
 
 func _draw_recruit_team(px: float, off: Vector2) -> void:

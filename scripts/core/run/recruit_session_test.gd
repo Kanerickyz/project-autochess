@@ -18,6 +18,9 @@ static func run_all() -> bool:
 	passed = _test_replace_no_refund() and passed
 	passed = _test_skip_discards_finish_keeps() and passed
 	passed = _test_opening_require_nonempty_roster() and passed
+	passed = _test_auto_merge_three_same_level() and passed
+	passed = _test_auto_merge_skips_max_star() and passed
+	passed = _test_sell_refunds_and_reset_rolls_back() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -284,5 +287,148 @@ static func _test_opening_require_nonempty_roster() -> bool:
 		return false
 	if deck.size() < 1:
 		push_error("RecruitSessionTest: opening finish should keep recruited unit")
+		return false
+	return true
+
+
+static func _test_auto_merge_three_same_level() -> bool:
+	var deck := _make_deck([])
+	var a := deck.add_entry(ARCHER)
+	var b := deck.add_entry(ARCHER)
+	if a == null or b == null or deck.size() != 2:
+		push_error("RecruitSessionTest: merge fixture failed to add two archers")
+		return false
+	a.bonus_attack = 1
+	a.bonus_max_hp = 2
+	b.bonus_attack = 3
+	b.bonus_max_hp = 4
+	var base_atk := ARCHER.stats.attack
+	var base_hp := ARCHER.stats.max_hp
+	var expected_atk := (base_atk + 1) + (base_atk + 3) + base_atk
+	var expected_hp := (base_hp + 2) + (base_hp + 4) + base_hp
+	var c := deck.add_entry(ARCHER)
+	if c == null:
+		push_error("RecruitSessionTest: third archer should add then merge")
+		return false
+	if deck.size() != 1:
+		push_error("RecruitSessionTest: 3 same id/level should merge to 1, size=%d" % deck.size())
+		return false
+	var product := deck.get_entries()[0]
+	if product.level != 2:
+		push_error("RecruitSessionTest: merge product level should be 2, got %d" % product.level)
+		return false
+	if product.get_unit_id() != ARCHER.id:
+		push_error("RecruitSessionTest: merge product unit id mismatch")
+		return false
+	var got_atk := DeckUpgradeService.get_display_attack(product)
+	var got_hp := DeckUpgradeService.get_display_max_hp(product)
+	if got_atk != expected_atk:
+		push_error("RecruitSessionTest: merge atk sum expected %d got %d" % [expected_atk, got_atk])
+		return false
+	if got_hp != expected_hp:
+		push_error("RecruitSessionTest: merge hp sum expected %d got %d" % [expected_hp, got_hp])
+		return false
+	## 招募招入第 3 个也应合并
+	var economy := _make_economy(30)
+	var session := _make_session(_make_deck([KNIGHT, KNIGHT]), economy, 21, 0.0)
+	## 强制候选人为骑士以便招入触发三合一
+	session.candidates = [KNIGHT, ARCHER, ARCHER]
+	var before := session.deck.size()
+	var buy := session.try_recruit(0)
+	if not buy.get("ok", false):
+		push_error("RecruitSessionTest: recruit for merge failed: %s" % buy.get("reason"))
+		return false
+	if session.deck.size() != before - 1:
+		push_error(
+			"RecruitSessionTest: recruit merge should shrink by 1 (3→1), size=%d before=%d"
+			% [session.deck.size(), before]
+		)
+		return false
+	var merged := false
+	for entry in session.deck.get_entries():
+		if entry.get_unit_id() == KNIGHT.id and entry.level == 2:
+			merged = true
+	if not merged:
+		push_error("RecruitSessionTest: recruit should produce level-2 knight")
+		return false
+	return true
+
+
+static func _test_auto_merge_skips_max_star() -> bool:
+	## restore_roster 不触发三合一；三只 3 星保持并存且 try_auto_merge 无操作。
+	var deck := _make_deck([])
+	var e1 := DeckEntry.new()
+	e1.entry_id = 0
+	e1.unit = ARCHER
+	e1.level = 3
+	var e2 := DeckEntry.new()
+	e2.entry_id = 1
+	e2.unit = ARCHER
+	e2.level = 3
+	var e3 := DeckEntry.new()
+	e3.entry_id = 2
+	e3.unit = ARCHER
+	e3.level = 3
+	deck.restore_roster({"entries": [e1, e2, e3], "next_entry_id": 3})
+	if deck.size() != 3:
+		push_error("RecruitSessionTest: max-star fixture size should be 3")
+		return false
+	if deck.try_auto_merge():
+		push_error("RecruitSessionTest: three 3-star units must not merge")
+		return false
+	if deck.size() != 3:
+		push_error("RecruitSessionTest: max-star roster size changed unexpectedly")
+		return false
+	return true
+
+
+static func _test_sell_refunds_and_reset_rolls_back() -> bool:
+	var deck := _make_deck([ARCHER, KNIGHT])
+	var economy := _make_economy(10)
+	var session := _make_session(deck, economy, 33, 0.0)
+	var sell_target := deck.get_entries()[0]
+	var sell_id := sell_target.entry_id
+	var price := DeckUpgradeService.get_sell_price(sell_target)
+	var gold_before := economy.gold
+	var size_before := deck.size()
+	var sold := session.try_sell(sell_id)
+	if not sold.get("ok", false):
+		push_error("RecruitSessionTest: try_sell failed: %s" % sold.get("reason"))
+		return false
+	if int(sold.get("gold", 0)) != price:
+		push_error("RecruitSessionTest: sell gold mismatch")
+		return false
+	if economy.gold != gold_before + price:
+		push_error(
+			"RecruitSessionTest: sell should grant %d gold; gold=%d"
+			% [price, economy.gold]
+		)
+		return false
+	if deck.size() != size_before - 1:
+		push_error("RecruitSessionTest: sell should free a seat")
+		return false
+	if deck.get_entry(sell_id) != null:
+		push_error("RecruitSessionTest: sold entry should be gone")
+		return false
+	## 招入与出售互不串：出售落点逻辑由 UI 测；此处确认 sell 后仍可招入空席
+	var buy := session.try_recruit(0)
+	if not buy.get("ok", false):
+		push_error("RecruitSessionTest: recruit after sell should succeed: %s" % buy.get("reason"))
+		return false
+	session.reset()
+	if economy.gold != 10:
+		push_error("RecruitSessionTest: reset after sell should restore gold 10, got %d" % economy.gold)
+		return false
+	if deck.size() != 2:
+		push_error("RecruitSessionTest: reset after sell should restore team size 2")
+		return false
+	if deck.get_entry(sell_id) == null:
+		push_error("RecruitSessionTest: reset should restore sold entry id")
+		return false
+	## 非活跃不可卖
+	session.finish()
+	var inactive := session.try_sell(sell_id)
+	if inactive.get("ok", false):
+		push_error("RecruitSessionTest: inactive session must not sell")
 		return false
 	return true
