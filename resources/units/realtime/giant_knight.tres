@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/units/realtime/skeleton.tres" id="3_skeleton"]
 
 [sub_resource type="Resource" id="UnitStats_giant_knight"]
 script = ExtResource("2_stats")
@@ -11,22 +12,28 @@ steps_per_turn = 1
 crit_rate_percent = 0
 attack_interval = 1.8
 attack_windup = 0.85
-attack_reach = 1.2
+attack_reach = 1.5
 sight_range = 6.0
 body_radius = 1.05
 visual_half_width = 1.55
 visual_half_height = 1.65
 mass = 8.0
 projectile_speed = 0.0
-splash_radius = 1.2
+splash_radius = 1.5
 deploy_time = 1.0
 
 [resource]
 script = ExtResource("1_unit")
 id = "giant_knight"
-display_name = "铁甲统领"
+display_name = "召唤统领"
 cost = 6
 tier = 3
 command_cost = 6
 stats = SubResource("UnitStats_giant_knight")
 team_default = 1
+is_boss_leader = true
+footprint_w = 2
+footprint_h = 2
+summon_unit = ExtResource("3_skeleton")
+summon_max_alive = 3
+summon_per_action = 1

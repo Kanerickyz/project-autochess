@@ -89,7 +89,7 @@
 | 禁卫 | 6 | 4 | 1.0 | 1.3 | 0.5 | 0.8 | 5.5 | 0.45 | 1.8 | 0 | 0 | 4 | 3 |
 | 骑弓 | 3 | 4 | 1.3 | 1.1 | 0.35 | 2.0 | 5.5 | 0.35 | 1.2 | 10 | 0 | 3 | 2 |
 
-> **刻度**：生命 / 攻击 **0–10（含）** 整数。Boss As-Is 占位 `giant_knight`（铁甲统领）**10 / 6**；机制 To-Be 见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。  
+> **刻度**：生命 / 攻击 **0–10（含）** 整数。Boss `giant_knight`（召唤统领）**10 / 6**；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。  
 > **移速**：慢 **1.0**；中 **1.3**；快 **2.0（仅骑手）**。  
 > **远程攻距**：游侠 / 标枪 / 弩手 / 骑弓 **2.0**；火铳 **3.0**。
 
@@ -138,7 +138,7 @@
 | 禁卫 | `mirror_warden.tres` | `mirror_warden` |
 | 骑弓 | `horsebow.tres` | `horsebow` |
 
-敌方遭遇可复用上表模板。Boss As-Is 占位 `giant_knight.tres`（铁甲统领）；机制规格见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)（召唤统领 To-Be，未对齐占位）。
+敌方遭遇可复用上表模板。Boss 资源 `giant_knight.tres`（召唤统领）；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。
 
 ## 5. 起始牌库
 

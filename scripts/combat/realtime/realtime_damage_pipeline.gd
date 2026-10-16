@@ -106,12 +106,15 @@ func resolve_hit(
 
 
 ## 防守方能否对行动者反打：双方存活、防守方未在部署、行动者在其攻距内。
+## Boss 首领被打时不反打（友方打首领不对砍）；首领打友方时友方仍可反打。
 static func can_counterattack(defender: RtUnit, attacker: RtUnit) -> bool:
 	if defender == null or attacker == null:
 		return false
 	if not defender.is_alive() or not attacker.is_alive():
 		return false
 	if defender.is_deploying():
+		return false
+	if defender.is_boss_leader():
 		return false
 	var reach := RtUnitBrain.grid_reach(defender.get_stats().attack_reach)
 	var dist := float(defender.cell_distance_to(attacker))

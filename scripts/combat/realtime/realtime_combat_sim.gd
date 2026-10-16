@@ -54,6 +54,8 @@ var _current_actor: RtUnit = null
 var _actor_steps_left: int = 0
 var _actor_has_attacked: bool = false
 var _actor_turn_active: bool = false
+## 本场出现过 Boss 首领 → 启用斩首胜负（非清波）。
+var _had_boss_leader: bool = false
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -93,6 +95,7 @@ func dispose() -> void:
 	_action_queue.clear()
 	_current_actor = null
 	_actor_turn_active = false
+	_had_boss_leader = false
 	_teardown_effect_resolver()
 	if _bus != null and is_instance_valid(_bus):
 		if _bus.combat_event.is_connected(_on_bus_event):
@@ -126,7 +129,23 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	if existing != null:
 		return existing
 	var preferred := _clamp_cell(Vector2i(floori(position.x), floori(position.y)))
-	var cell := _find_free_cell(preferred)
+	var fp := unit.get_footprint_size()
+	var cell := Vector2i(-1, -1)
+	if fp.x > 1 or fp.y > 1:
+		cell = _find_free_footprint_origin(preferred, fp, unit.team)
+		if cell == Vector2i(-1, -1):
+			push_warning(
+				"RealtimeCombatSim.add_unit: footprint %dx%d failed for %s; fallback 1x1"
+				% [fp.x, fp.y, unit.id]
+			)
+			if unit.unit_data != null:
+				var body := unit.unit_data.duplicate(true) as UnitData
+				body.footprint_w = 1
+				body.footprint_h = 1
+				unit.unit_data = body
+			fp = Vector2i(1, 1)
+	if cell == Vector2i(-1, -1):
+		cell = _find_free_cell(preferred)
 	if cell == Vector2i(-1, -1):
 		push_warning("RealtimeCombatSim.add_unit: arena full, cannot place %s" % unit.id)
 		return null
@@ -141,8 +160,10 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	while index < _units.size() and _units[index].get_id() < rt.get_id():
 		index += 1
 	_units.insert(index, rt)
-	_set_occupancy(cell, rt)
+	_occupy_footprint(rt, cell)
 	_register_on_effect_grid(unit, rt.get_cell())
+	if unit.is_boss_leader():
+		_had_boss_leader = true
 	## 开战前：记录锁阵生成序。开战中：默认插到当前行动者之后（COMBAT §7.1 建议默认）。
 	if not _started:
 		_lock_spawn_order.append(rt)
@@ -210,6 +231,11 @@ func is_cell_occupied(cell: Vector2i) -> bool:
 
 func get_occupancy_owner(cell: Vector2i) -> RtUnit:
 	return _occupancy_owner(cell)
+
+
+## 测试/调试：尝试首领足迹刚性平移一步（含推开）。
+func try_boss_step_for_test(rt: RtUnit, dir: Vector2i) -> bool:
+	return _boss_try_step(rt, dir)
 
 
 ## 标记开战：广播游戏开始 → 排出敌我混排行动队列。未显式调用时首个固定步会自动调用。
@@ -416,9 +442,20 @@ func _advance_current_actor() -> void:
 		return
 
 	var free_fn := func(cell: Vector2i) -> bool:
-		return _is_cell_free(cell)
+		return _is_cell_free_for(rt, cell)
+	var can_summon_fn := func(actor: RtUnit) -> bool:
+		return _boss_can_summon(actor)
+	var can_boss_step_fn := func(actor: RtUnit, dir: Vector2i) -> bool:
+		return _boss_can_step(actor, dir)
 	var decision := RtUnitBrain.decide_turn(
-		rt, _units, FIXED_DT, free_fn, _actor_steps_left, _actor_has_attacked
+		rt,
+		_units,
+		FIXED_DT,
+		free_fn,
+		_actor_steps_left,
+		_actor_has_attacked,
+		can_summon_fn,
+		can_boss_step_fn,
 	)
 
 	if (
@@ -433,12 +470,23 @@ func _advance_current_actor() -> void:
 		_end_current_actor_turn()
 		return
 
+	if decision.summon:
+		_boss_perform_summon(rt)
+		_actor_has_attacked = true
+		_end_current_actor_turn()
+		return
+
 	if decision.step != Vector2i.ZERO and _actor_steps_left > 0:
-		var dest: Vector2i = rt.cell + decision.step
-		if _is_cell_free(dest) and _actor_steps_left > 0:
-			_move_unit_to_cell(rt, dest)
-			_actor_steps_left -= 1
-			return
+		if rt.is_boss_leader():
+			if _boss_try_step(rt, decision.step):
+				_actor_steps_left -= 1
+				return
+		else:
+			var dest: Vector2i = rt.cell + decision.step
+			if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
+				_move_unit_to_cell(rt, dest)
+				_actor_steps_left -= 1
+				return
 
 	if decision.turn_done:
 		_end_current_actor_turn()
@@ -497,8 +545,8 @@ func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
 	var from_cell := rt.cell
 	_clear_occupancy_of(rt)
 	rt.begin_step(from_cell, dest)
-	## 一格一体：迈步即预占 dest、释放 from；站立格待落稳后由 advance_step_visual 提交
-	_set_occupancy(dest, rt)
+	## 迈步即预占足迹、释放旧格；站立锚待落稳后由 advance_step_visual 提交
+	_occupy_footprint(rt, dest)
 
 
 func _sync_unit_grid_pos() -> void:
@@ -511,6 +559,14 @@ func _is_cell_free(cell: Vector2i) -> bool:
 	if not _in_arena(cell):
 		return false
 	return _occupancy_owner(cell) == null
+
+
+## 对 mover 而言 cell 是否可踏入（忽略自身足迹占格）。
+func _is_cell_free_for(mover: RtUnit, cell: Vector2i) -> bool:
+	if not _in_arena(cell):
+		return false
+	var owner := _occupancy_owner(cell)
+	return owner == null or owner == mover
 
 
 func _in_arena(cell: Vector2i) -> bool:
@@ -538,6 +594,11 @@ func _set_occupancy(cell: Vector2i, rt: RtUnit) -> void:
 	_occupancy[cell] = rt
 
 
+func _occupy_footprint(rt: RtUnit, origin: Vector2i) -> void:
+	for cell in rt.get_footprint_cells(origin):
+		_set_occupancy(cell, rt)
+
+
 func _clear_occupancy_of(rt: RtUnit) -> void:
 	if rt == null:
 		return
@@ -563,6 +624,67 @@ func _find_free_cell(origin: Vector2i) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## 2×2 等足迹：锚座为角，优先向中线/场内展开；失败返回 (-1,-1)。
+func _find_free_footprint_origin(
+	preferred: Vector2i,
+	size: Vector2i,
+	team: UnitInstance.Team,
+) -> Vector2i:
+	var start := _clamp_cell(preferred)
+	var candidates: Array[Vector2i] = [
+		start,
+		start - Vector2i(size.x - 1, 0),
+		start - Vector2i(0, size.y - 1),
+		start - Vector2i(size.x - 1, size.y - 1),
+	]
+	var mid_y := BoardHalf.midline_row(int(_arena_size.y))
+	var center_x := int(_arena_size.x) / 2
+	var best := Vector2i(-1, -1)
+	var best_score := -999999
+	for origin in candidates:
+		if not _footprint_fits(origin, size, null):
+			continue
+		var score := 0
+		for dy in size.y:
+			for dx in size.x:
+				var c := origin + Vector2i(dx, dy)
+				## 敌方向下（中线）、友方向上；并靠水平中线。
+				if team == UnitInstance.Team.ENEMY:
+					score += c.y
+				else:
+					score -= c.y
+				score -= absi(c.x - center_x)
+				score -= absi(c.y - mid_y) / 2
+		if score > best_score:
+			best_score = score
+			best = origin
+	if best != Vector2i(-1, -1):
+		return best
+	## 在 preferred 附近平移搜索
+	var max_r := maxi(int(_arena_size.x), int(_arena_size.y))
+	for radius in range(0, max_r + 1):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if radius > 0 and maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var origin2 := Vector2i(start.x + dx, start.y + dy)
+				if _footprint_fits(origin2, size, null):
+					return origin2
+	return Vector2i(-1, -1)
+
+
+func _footprint_fits(origin: Vector2i, size: Vector2i, ignore: RtUnit) -> bool:
+	for dy in size.y:
+		for dx in size.x:
+			var c := origin + Vector2i(dx, dy)
+			if not _in_arena(c):
+				return false
+			var owner := _occupancy_owner(c)
+			if owner != null and owner != ignore:
+				return false
+	return true
+
+
 func _remove_dead() -> void:
 	var alive: Array[RtUnit] = []
 	for rt in _units:
@@ -579,6 +701,15 @@ func _remove_dead() -> void:
 func _check_finished() -> void:
 	if _finished:
 		return
+	## Boss 斩首：首领死 → 胜 + 溃散其余敌方（优先于己方全灭）。
+	if _had_boss_leader:
+		if not _has_alive_boss_leader():
+			_rout_non_leader_enemies()
+			_finish(true)
+			return
+		if count_alive(UnitInstance.Team.PLAYER) == 0 and not suppress_player_wipe_loss:
+			_finish(false)
+		return
 	var player_alive := count_alive(UnitInstance.Team.PLAYER)
 	var enemy_alive := count_alive(UnitInstance.Team.ENEMY)
 	## 对砍同归于尽：同帧双方清空 → 清敌胜（见 COMBAT §7.2）
@@ -590,6 +721,244 @@ func _check_finished() -> void:
 			_finish(false)
 	elif enemy_alive == 0:
 		_finish(true)
+
+
+func _has_alive_boss_leader() -> bool:
+	for rt in _units:
+		if rt != null and rt.is_alive() and rt.is_boss_leader():
+			return true
+	return false
+
+
+## 溃散：移除非首领敌方；不发死亡/击杀事件、不掉金。
+func _rout_non_leader_enemies() -> void:
+	var kept: Array[RtUnit] = []
+	for rt in _units:
+		if rt == null:
+			continue
+		if (
+			rt.get_team() == UnitInstance.Team.ENEMY
+			and not rt.is_boss_leader()
+			and rt.is_alive()
+		):
+			rt.target = null
+			_clear_occupancy_of(rt)
+			if _effect_grid != null:
+				_effect_grid.remove_unit(rt.unit)
+			## 不标 DEAD、不 emit ON_DEATH / unit_died
+			continue
+		kept.append(rt)
+	_units = kept
+
+
+func _count_alive_boss_summons() -> int:
+	var n := 0
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		if rt.get_team() != UnitInstance.Team.ENEMY:
+			continue
+		if rt.unit != null and rt.unit.is_combat_summon:
+			n += 1
+	return n
+
+
+func _boss_can_summon(actor: RtUnit) -> bool:
+	if actor == null or not actor.is_boss_leader() or not actor.is_alive():
+		return false
+	var data := actor.unit.unit_data if actor.unit != null else null
+	if data == null or data.summon_unit == null:
+		return false
+	var cap := maxi(0, data.summon_max_alive)
+	if cap <= 0:
+		return false
+	if _count_alive_boss_summons() >= cap:
+		return false
+	return _find_boss_summon_cell(actor) != Vector2i(-1, -1)
+
+
+func _boss_perform_summon(actor: RtUnit) -> void:
+	if not _boss_can_summon(actor):
+		return
+	var data := actor.unit.unit_data
+	var per := maxi(1, data.summon_per_action)
+	var cap := maxi(0, data.summon_max_alive)
+	var spawned := 0
+	while spawned < per and _count_alive_boss_summons() < cap:
+		var cell := _find_boss_summon_cell(actor)
+		if cell == Vector2i(-1, -1):
+			break
+		var minion := UnitInstance.from_unit_data(data.summon_unit, cell, UnitInstance.Team.ENEMY)
+		## 敌方代理：无主技能
+		if minion.unit_data != null:
+			var body := minion.unit_data.duplicate(true) as UnitData
+			body.ability = null
+			body.passives = []
+			body.is_boss_leader = false
+			body.summon_unit = null
+			body.summon_max_alive = 0
+			minion.unit_data = body
+		minion.is_combat_summon = true
+		if minion.stats != null:
+			minion.stats.deploy_time = 0.0
+		var rt := add_unit(minion, Vector2(cell) + Vector2(0.5, 0.5))
+		if rt == null:
+			break
+		rt.skip_deploy()
+		spawned += 1
+
+
+## 足迹邻格空位优先 → 再敌半场空格。
+func _find_boss_summon_cell(actor: RtUnit) -> Vector2i:
+	if actor == null:
+		return Vector2i(-1, -1)
+	var footprint := actor.get_footprint_cells(actor.cell)
+	var neighbor_set: Dictionary = {}
+	for c in footprint:
+		for dir in RtUnitBrain.DIR8:
+			var n: Vector2i = c + dir
+			if footprint.has(n):
+				continue
+			neighbor_set[n] = true
+	var neighbors: Array[Vector2i] = []
+	for key in neighbor_set.keys():
+		neighbors.append(key as Vector2i)
+	neighbors.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y != b.y:
+			return a.y < b.y
+		return a.x < b.x
+	)
+	for n2 in neighbors:
+		if _is_cell_free(n2):
+			return n2
+	var height := int(_arena_size.y)
+	var half: Array[Vector2i] = []
+	for y in height:
+		for x in int(_arena_size.x):
+			var cell := Vector2i(x, y)
+			if BoardHalf.is_enemy_spawn_cell(cell, height) and _is_cell_free(cell):
+				half.append(cell)
+	half.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := RtUnit.chebyshev(a, actor.cell)
+		var db := RtUnit.chebyshev(b, actor.cell)
+		if da != db:
+			return da < db
+		if a.y != b.y:
+			return a.y < b.y
+		return a.x < b.x
+	)
+	if half.is_empty():
+		return Vector2i(-1, -1)
+	return half[0]
+
+
+func _boss_can_step(actor: RtUnit, dir: Vector2i) -> bool:
+	return not _plan_boss_step(actor, dir).is_empty()
+
+
+func _boss_try_step(actor: RtUnit, dir: Vector2i) -> bool:
+	var plan := _plan_boss_step(actor, dir)
+	if plan.is_empty():
+		return false
+	var pushes: Array = plan.get("pushes", [])
+	for entry in pushes:
+		var victim: RtUnit = entry["unit"]
+		var dest: Vector2i = entry["dest"]
+		if victim == null or not victim.is_alive():
+			return false
+		_move_unit_to_cell(victim, dest)
+	var new_origin: Vector2i = plan["origin"]
+	_move_unit_to_cell(actor, new_origin)
+	return true
+
+
+## 成功返回 { "origin": Vector2i, "pushes": [{unit, dest}] }；失败返回 {}。
+func _plan_boss_step(actor: RtUnit, dir: Vector2i) -> Dictionary:
+	var empty := {}
+	if actor == null or not actor.is_alive() or dir == Vector2i.ZERO:
+		return empty
+	var new_origin: Vector2i = actor.cell + dir
+	var new_cells: Array[Vector2i] = actor.get_footprint_cells(new_origin)
+	for c in new_cells:
+		if not _in_arena(c):
+			return empty
+	var push_targets: Array[RtUnit] = []
+	var seen: Dictionary = {}
+	for c2 in new_cells:
+		var owner := _occupancy_owner(c2)
+		if owner == null or owner == actor:
+			continue
+		if owner.get_team() != UnitInstance.Team.PLAYER:
+			return empty
+		if not seen.has(owner.get_id()):
+			seen[owner.get_id()] = true
+			push_targets.append(owner)
+	push_targets.sort_custom(func(a: RtUnit, b: RtUnit) -> bool:
+		return a.get_id() < b.get_id()
+	)
+	var vacated: Dictionary = {}
+	for c3 in actor.get_footprint_cells(actor.cell):
+		vacated[c3] = true
+	var claimed: Dictionary = {}
+	var pushes: Array = []
+	for victim in push_targets:
+		for vc in victim.get_footprint_cells(victim.cell):
+			vacated[vc] = true
+		var dest := _find_push_dest(victim, dir, new_cells, vacated, claimed, actor)
+		if dest == Vector2i(-1, -1):
+			return empty
+		claimed[dest] = true
+		pushes.append({"unit": victim, "dest": dest})
+	for c4 in new_cells:
+		if claimed.has(c4):
+			return empty
+		var owner2 := _occupancy_owner(c4)
+		if owner2 == null or owner2 == actor:
+			continue
+		var pushed_away := false
+		for p in pushes:
+			if p["unit"] == owner2:
+				pushed_away = true
+				break
+		if not pushed_away:
+			return empty
+	return {"origin": new_origin, "pushes": pushes}
+
+
+func _find_push_dest(
+	victim: RtUnit,
+	dir: Vector2i,
+	boss_new_cells: Array[Vector2i],
+	vacated: Dictionary,
+	claimed: Dictionary,
+	boss: RtUnit,
+) -> Vector2i:
+	## 优先正前，其次斜前。
+	var options: Array[Vector2i] = [dir]
+	if dir.x != 0 and dir.y != 0:
+		options.append(Vector2i(dir.x, 0))
+		options.append(Vector2i(0, dir.y))
+	else:
+		if dir.x != 0:
+			options.append(Vector2i(dir.x, 1))
+			options.append(Vector2i(dir.x, -1))
+		if dir.y != 0:
+			options.append(Vector2i(1, dir.y))
+			options.append(Vector2i(-1, dir.y))
+	var from := victim.cell
+	for d in options:
+		var dest: Vector2i = from + d
+		if not _in_arena(dest):
+			continue
+		if boss_new_cells.has(dest):
+			continue
+		if claimed.has(dest):
+			continue
+		var owner := _occupancy_owner(dest)
+		if owner != null and owner != victim and owner != boss and not vacated.has(dest):
+			continue
+		return dest
+	return Vector2i(-1, -1)
 
 
 func _finish(won: bool) -> void:

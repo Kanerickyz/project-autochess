@@ -97,6 +97,39 @@ func get_display_name() -> String:
 	return unit.id
 
 
+func is_boss_leader() -> bool:
+	return unit != null and unit.is_boss_leader()
+
+
+func get_footprint_size() -> Vector2i:
+	if unit == null:
+		return Vector2i(1, 1)
+	return unit.get_footprint_size()
+
+
+func has_multi_cell_footprint() -> bool:
+	var size := get_footprint_size()
+	return size.x > 1 or size.y > 1
+
+
+## 足迹锚点（左上角）对应的全部占格；步进中按 step_dest 预占。
+func get_footprint_cells(anchor: Vector2i = Vector2i(-99999, -99999)) -> Array[Vector2i]:
+	var origin := get_occupied_cell() if anchor == Vector2i(-99999, -99999) else anchor
+	var size := get_footprint_size()
+	var cells: Array[Vector2i] = []
+	for dy in size.y:
+		for dx in size.x:
+			cells.append(origin + Vector2i(dx, dy))
+	return cells
+
+
+## 足迹几何中心（表现坐标用）。
+func footprint_center(anchor: Vector2i = Vector2i(-99999, -99999)) -> Vector2:
+	var origin := cell if anchor == Vector2i(-99999, -99999) else anchor
+	var size := get_footprint_size()
+	return Vector2(origin) + Vector2(float(size.x) * 0.5, float(size.y) * 0.5)
+
+
 func get_hp_ratio() -> float:
 	return clampf(float(unit.current_hp) / float(unit.get_effective_max_hp()), 0.0, 1.0)
 
@@ -124,11 +157,17 @@ static func chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-## 切比雪夫格距（整数格；用双方站立格）。
+## 切比雪夫格距（整数格；足迹单位取双方占格之最近格）。
 func cell_distance_to(other: RtUnit) -> int:
 	if other == null:
 		return 999999
-	return chebyshev(cell, other.cell)
+	var mine := get_footprint_cells(cell)
+	var theirs := other.get_footprint_cells(other.cell)
+	var best := 999999
+	for a in mine:
+		for b in theirs:
+			best = mini(best, chebyshev(a, b))
+	return best
 
 
 ## 兼容旧调用：表现坐标间距（非出手主轴）。
@@ -145,20 +184,20 @@ func get_occupied_cell() -> Vector2i:
 	return step_dest if is_stepping() else cell
 
 
-## 将逻辑格设到 p_cell 并立刻对齐表现（无插值）。
+## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值）。
 func snap_to_cell(p_cell: Vector2i) -> void:
 	cell = p_cell
 	step_dest = p_cell
-	position = cell_center(cell)
+	position = footprint_center(cell)
 	step_t = 1.0
 	step_from = position
 	step_to = position
 
 
-## 开始一格步进：站立格留在 from，直到 step_t>=1 才提交到 dest；表现从 from 插值到 dest 格心。
+## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；表现从足迹中心插值。
 func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
-	step_from = cell_center(from_cell)
-	step_to = cell_center(dest_cell)
+	step_from = footprint_center(from_cell)
+	step_to = footprint_center(dest_cell)
 	cell = from_cell
 	step_dest = dest_cell
 	step_t = 0.0
@@ -172,7 +211,7 @@ const CELL_STEP_SECONDS := 0.2
 ## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
 func advance_step_visual(dt: float) -> void:
 	if not is_stepping():
-		position = cell_center(cell)
+		position = footprint_center(cell)
 		return
 	var duration := maxf(0.05, CELL_STEP_SECONDS)
 	var delta_t := dt / duration
@@ -187,6 +226,6 @@ func advance_step_visual(dt: float) -> void:
 func _commit_step() -> void:
 	cell = step_dest
 	step_t = 1.0
-	position = cell_center(cell)
+	position = footprint_center(cell)
 	step_from = position
 	step_to = position

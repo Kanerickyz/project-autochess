@@ -26,6 +26,8 @@ class Decision:
 	## 本步要踏入的邻格相对偏移；ZERO = 不移动（攻击中 / 等待占格）
 	var step: Vector2i = Vector2i.ZERO
 	var fire: bool = false
+	## Boss 首领：本动选择召唤（与出手/移动互斥）
+	var summon: bool = false
 	## 一动决策：true = 本动已无事可做（交给 sim 结束当前行动者）
 	var turn_done: bool = false
 
@@ -38,6 +40,8 @@ static func turn_step_budget(stats: UnitStats) -> int:
 
 
 ## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
+## Boss 首领走三选一策略机（出手 / 召唤 / 移动），不套普通「靠近并出手」。
+## can_summon / can_boss_step 由 sim 注入；空 Callable 时首领跳过对应分支。
 static func decide_turn(
 	unit: RtUnit,
 	units: Array,
@@ -45,7 +49,13 @@ static func decide_turn(
 	is_cell_free: Callable,
 	steps_left: int,
 	has_attacked: bool,
+	can_summon: Callable = Callable(),
+	can_boss_step: Callable = Callable(),
 ) -> Decision:
+	if unit != null and unit.is_boss_leader():
+		return decide_boss_leader_turn(
+			unit, units, dt, steps_left, has_attacked, can_summon, can_boss_step
+		)
 	var decision := Decision.new()
 	if not unit.is_alive():
 		decision.turn_done = true
@@ -90,6 +100,113 @@ static func decide_turn(
 		## 被挡或无法靠近：本动结束（不空挥）
 		decision.turn_done = true
 	return decision
+
+
+## 召唤统领一动三选一：已在攻距→出手；否则可召则召；否则可挪（含推开）则挪。
+static func decide_boss_leader_turn(
+	unit: RtUnit,
+	units: Array,
+	dt: float,
+	steps_left: int,
+	has_attacked: bool,
+	can_summon: Callable,
+	can_boss_step: Callable,
+) -> Decision:
+	var decision := Decision.new()
+	if not unit.is_alive():
+		decision.turn_done = true
+		return decision
+	if unit.state == RtUnit.State.DEPLOYING:
+		decision.turn_done = true
+		return decision
+	if has_attacked:
+		decision.turn_done = true
+		return decision
+	## 本动已挪过一步：不再出手/再召（三选一互斥）
+	var budget := turn_step_budget(unit.get_stats())
+	if budget > 0 and steps_left < budget:
+		decision.turn_done = true
+		return decision
+	if unit.is_stepping():
+		return decision
+
+	_refresh_target(unit, units)
+	var stats := unit.get_stats()
+	if unit.target != null:
+		var dist := float(unit.cell_distance_to(unit.target))
+		var reach := grid_reach(stats.attack_reach)
+		if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
+			if unit.state != RtUnit.State.ATTACKING:
+				unit.state = RtUnit.State.ATTACKING
+				unit.attack_timer = maxf(0.0, stats.attack_windup)
+			unit.attack_timer -= dt
+			if unit.attack_timer <= TIME_EPSILON:
+				decision.fire = true
+			return decision
+
+	if can_summon.is_valid() and bool(can_summon.call(unit)):
+		unit.state = RtUnit.State.MOVING
+		decision.summon = true
+		return decision
+
+	unit.state = RtUnit.State.MOVING
+	if steps_left <= 0 or unit.target == null:
+		decision.turn_done = true
+		return decision
+	decision.step = pick_boss_step(unit, unit.target, can_boss_step)
+	if decision.step == Vector2i.ZERO:
+		decision.turn_done = true
+	return decision
+
+
+## Boss 足迹刚性平移：选合法且缩短最近格距的一步（含推开由 can_boss_step 判定）。
+static func pick_boss_step(unit: RtUnit, target: RtUnit, can_boss_step: Callable) -> Vector2i:
+	if unit == null or target == null or not can_boss_step.is_valid():
+		return Vector2i.ZERO
+	var cur_d := unit.cell_distance_to(target)
+	var best_dir := Vector2i.ZERO
+	var best_d := cur_d
+	var best_man := _footprint_manhattan(unit, target, Vector2i.ZERO)
+	var found := false
+	for dir in DIR8:
+		if not bool(can_boss_step.call(unit, dir)):
+			continue
+		var d := _footprint_chebyshev_after_step(unit, target, dir)
+		var man := _footprint_manhattan(unit, target, dir)
+		if not found or d < best_d or (d == best_d and man < best_man):
+			found = true
+			best_d = d
+			best_man = man
+			best_dir = dir
+	if not found:
+		return Vector2i.ZERO
+	if best_d > cur_d:
+		return Vector2i.ZERO
+	if best_d == cur_d and best_man >= _footprint_manhattan(unit, target, Vector2i.ZERO):
+		return Vector2i.ZERO
+	return best_dir
+
+
+static func _footprint_chebyshev_after_step(unit: RtUnit, target: RtUnit, dir: Vector2i) -> int:
+	var origin: Vector2i = unit.cell + dir
+	var mine := unit.get_footprint_cells(origin)
+	var theirs := target.get_footprint_cells(target.cell)
+	var best := 999999
+	for a in mine:
+		for b in theirs:
+			best = mini(best, RtUnit.chebyshev(a, b))
+	return best
+
+
+static func _footprint_manhattan(unit: RtUnit, target: RtUnit, dir: Vector2i) -> int:
+	var origin: Vector2i = unit.cell + dir
+	var mine := unit.get_footprint_cells(origin)
+	var theirs := target.get_footprint_cells(target.cell)
+	var best := 999999
+	for a in mine:
+		for b in theirs:
+			best = mini(best, absi(a.x - b.x) + absi(a.y - b.y))
+	return best
 
 
 ## 旧并行推进路径（测例/兼容）；新主路径用 decide_turn。

@@ -55,20 +55,22 @@ static func roll(
 	var remain_seats := seat_count - fixed_units.size()
 	var remain_e := maxf(0.0, target_e - fixed_u)
 
+	## Boss 节点：只出固定首领（及关卡写死的跟班若有），不预算填杂兵。
 	var fill: Array[UnitData] = []
-	if remain_seats > 0 and remain_e > 0.0 and not pool.is_empty():
-		fill = _sample_fill(
-			pool,
-			remain_e,
-			remain_seats,
-			wave.spawn_count,
-			cfg,
-			node_type,
-			rng,
-		)
-	elif remain_seats > 0 and remain_e <= 0.0 and fixed_units.is_empty():
-		## 无固定且预算异常：仍至少出 n_min，走保底贪心。
-		fill = _greedy_fill(pool, target_e, remain_seats, cfg)
+	if node_type != MapNodeType.Type.BOSS:
+		if remain_seats > 0 and remain_e > 0.0 and not pool.is_empty():
+			fill = _sample_fill(
+				pool,
+				remain_e,
+				remain_seats,
+				wave.spawn_count,
+				cfg,
+				node_type,
+				rng,
+			)
+		elif remain_seats > 0 and remain_e <= 0.0 and fixed_units.is_empty():
+			## 无固定且预算异常：仍至少出 n_min，走保底贪心。
+			fill = _greedy_fill(pool, target_e, remain_seats, cfg)
 
 	var all_units: Array[UnitData] = []
 	all_units.append_array(fixed_units)

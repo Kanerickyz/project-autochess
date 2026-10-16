@@ -31,6 +31,12 @@ static func run_all() -> bool:
 	ok = _check("mutual_melee_exchange", _test_mutual_melee_exchange()) and ok
 	ok = _check("mutual_kill_both_die_player_wins", _test_mutual_kill_both_die_player_wins()) and ok
 	ok = _check("ranged_out_of_reach_no_counter", _test_ranged_out_of_reach_no_counter()) and ok
+	ok = _check("boss_decapitation_wins_and_routs", _test_boss_decapitation_wins_and_routs()) and ok
+	ok = _check("boss_no_counter_when_targeted", _test_boss_no_counter_when_targeted()) and ok
+	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
+	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
+	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
+	ok = _check("boss_push_ally_on_step", _test_boss_push_ally_on_step()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -53,6 +59,13 @@ static func _check(name: String, passed: bool) -> bool:
 	return passed
 
 
+const _STAT_OVERRIDE_KEYS := [
+	"max_hp", "attack", "steps_per_turn", "crit_rate_percent", "attack_interval",
+	"attack_windup", "attack_reach", "sight_range", "body_radius", "mass",
+	"projectile_speed", "splash_radius", "deploy_time", "attack_range",
+]
+
+
 static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> UnitInstance:
 	var stats := UnitStats.new()
 	stats.max_hp = 100
@@ -68,13 +81,37 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	stats.projectile_speed = 0.0
 	stats.splash_radius = 0.0
 	stats.deploy_time = 0.0
-	for key in overrides.keys():
-		stats.set(key, overrides[key])
+	for key in _STAT_OVERRIDE_KEYS:
+		if overrides.has(key):
+			stats.set(key, overrides[key])
 	var data := UnitData.new()
 	data.id = String(overrides.get("id", "test_unit"))
 	data.display_name = String(overrides.get("display_name", "测试"))
 	data.stats = stats
+	data.is_boss_leader = bool(overrides.get("is_boss_leader", false))
+	data.footprint_w = int(overrides.get("footprint_w", 1))
+	data.footprint_h = int(overrides.get("footprint_h", 1))
+	if overrides.has("summon_unit"):
+		data.summon_unit = overrides["summon_unit"] as UnitData
+	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))
+	data.summon_per_action = int(overrides.get("summon_per_action", 1))
 	return UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+
+
+static func make_summon_body() -> UnitData:
+	var stats := UnitStats.new()
+	stats.max_hp = 1
+	stats.attack = 1
+	stats.steps_per_turn = 1
+	stats.attack_reach = 1.0
+	stats.attack_windup = 0.0
+	stats.deploy_time = 0.0
+	stats.sight_range = 5.0
+	var data := UnitData.new()
+	data.id = "skeleton"
+	data.display_name = "枯骨"
+	data.stats = stats
+	return data
 
 
 ## 不会主动伤人的木桩
@@ -880,5 +917,286 @@ static func _test_ranged_out_of_reach_no_counter() -> bool:
 		return false
 	if ally.unit.current_hp != 40:
 		push_error("ranged: ally should take no counter (hp=%d)" % ally.unit.current_hp)
+		return false
+	return true
+
+
+## 斩首：首领死 → 胜；衍生小兵溃散且不发死亡事件。
+static func _test_boss_decapitation_wins_and_routs() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 50)
+	var deaths: Array[String] = []
+	sim.get_event_bus().combat_event.connect(
+		func(event_type: StringName, payload: CombatEventPayload) -> void:
+			if event_type == CombatEvents.ON_DEATH and payload.target != null:
+				deaths.append(payload.target.id)
+	)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 30, "attack": 50, "steps_per_turn": 0, "attack_reach": 3.0,
+			"attack_windup": 0.0, "id": "slayer",
+		}),
+		Vector2(8.5, 6.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 5, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": make_summon_body(), "summon_max_alive": 3,
+		}),
+		Vector2(8.5, 4.5),
+	)
+	## 预先放一只敌方召唤体（非首领）
+	var minion_u := UnitInstance.from_unit_data(make_summon_body(), Vector2i(12, 4), UnitInstance.Team.ENEMY)
+	minion_u.is_combat_summon = true
+	var minion := sim.add_unit(minion_u, Vector2(12.5, 4.5))
+	if boss == null or minion == null:
+		push_error("decap: failed to place boss/minion")
+		return false
+	sim.begin_combat()
+	var guard := 0
+	while not sim.is_finished() and guard < 80:
+		sim.advance_fixed_step()
+		guard += 1
+	if not sim.is_finished() or not sim.did_player_win():
+		push_error("decap: expected player win by decapitation")
+		return false
+	if sim.count_alive(UnitInstance.Team.ENEMY) != 0:
+		push_error("decap: enemies should be cleared after rout")
+		return false
+	if deaths.has("skeleton"):
+		push_error("decap: rout must not emit ON_DEATH for minion")
+		return false
+	if not deaths.has("boss"):
+		push_error("decap: boss death event expected")
+		return false
+	return true
+
+
+## 友方打首领：首领不反打。
+static func _test_boss_no_counter_when_targeted() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 51)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 40, "attack": 7, "steps_per_turn": 0, "attack_reach": 2.0,
+			"attack_windup": 0.0, "id": "ally",
+		}),
+		Vector2(8.5, 6.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 40, "attack": 11, "steps_per_turn": 0, "attack_reach": 2.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(8.5, 4.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while boss.unit.current_hp == 40 and guard < 40:
+		sim.advance_fixed_step()
+		guard += 1
+	if boss.unit.current_hp != 40 - 7:
+		push_error("boss_counter: boss hp=%d expected %d" % [boss.unit.current_hp, 33])
+		return false
+	if ally.unit.current_hp != 40:
+		push_error("boss_counter: ally should take no counter (hp=%d)" % ally.unit.current_hp)
+		return false
+	return true
+
+
+## 2×2 足迹占四格。
+static func _test_boss_footprint_occupies_four_cells() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 52)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 20, "steps_per_turn": 0, "attack_windup": 5.0,
+			"sight_range": 0.0, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(5.5, 3.5),
+	)
+	sim.add_unit(make_dummy(UnitInstance.Team.PLAYER, 100), Vector2(15.5, 28.5))
+	if boss == null:
+		push_error("footprint: boss null")
+		return false
+	var cells := boss.get_footprint_cells(boss.cell)
+	if cells.size() != 4:
+		push_error("footprint: expected 4 cells got %d" % cells.size())
+		return false
+	for c in cells:
+		if sim.get_occupancy_owner(c) != boss:
+			push_error("footprint: cell %s not owned by boss" % str(c))
+			return false
+	return true
+
+
+## 场上衍生小兵硬上限。
+static func _test_boss_summon_respects_cap() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 53)
+	## 木桩友方远离，避免进攻距；首领应优先召唤。
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"sight_range": 0.0, "attack_reach": 0.0, "id": "far_ally",
+		}),
+		Vector2(16.5, 30.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "sight_range": 40.0, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": make_summon_body(), "summon_max_alive": 3, "summon_per_action": 1,
+		}),
+		Vector2(4.5, 2.5),
+	)
+	if boss == null:
+		push_error("summon_cap: boss null")
+		return false
+	sim.begin_combat()
+	var guard := 0
+	var max_summons := 0
+	while guard < 400:
+		sim.advance_fixed_step()
+		var n := 0
+		for u in sim.get_units():
+			var rt := u as RtUnit
+			if rt != null and rt.is_alive() and rt.unit.is_combat_summon:
+				n += 1
+		max_summons = maxi(max_summons, n)
+		if max_summons >= 3 and n == 3:
+			break
+		guard += 1
+	if max_summons > 3:
+		push_error("summon_cap: exceeded hard cap (%d)" % max_summons)
+		return false
+	if max_summons < 3:
+		push_error("summon_cap: expected to reach 3 summons, got %d" % max_summons)
+		return false
+	## 再推进若干动，仍不得超过 3
+	for _i in 120:
+		sim.advance_fixed_step()
+		var n2 := 0
+		for u2 in sim.get_units():
+			var rt2 := u2 as RtUnit
+			if rt2 != null and rt2.is_alive() and rt2.unit.is_combat_summon:
+				n2 += 1
+		if n2 > 3:
+			push_error("summon_cap: drifted above 3 (%d)" % n2)
+			return false
+	return true
+
+
+## 同批首领死 + 己方全灭 → 仍胜（斩首优先于清波/全灭判负）。
+static func _test_boss_decapitation_beats_mutual_wipe() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 54)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 5, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 5.0, "id": "ally",
+		}),
+		Vector2(8.5, 6.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 5, "attack": 1, "steps_per_turn": 0, "attack_reach": 2.0,
+			"attack_windup": 5.0, "sight_range": 0.0, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(8.5, 4.5),
+	)
+	sim.begin_combat()
+	## 模拟同批互杀后的场况：双方均已倒下，斩首仍应判胜。
+	ally.unit.current_hp = 0
+	boss.unit.current_hp = 0
+	ally.state = RtUnit.State.DEAD
+	boss.state = RtUnit.State.DEAD
+	sim.advance_fixed_step()
+	if not sim.is_finished() or not sim.did_player_win():
+		push_error("decap_wipe: expected win despite mutual wipe")
+		return false
+	return true
+
+
+## Boss 足迹平移可推开友方；无伤害；无空位则整步失败。
+static func _test_boss_push_ally_on_step() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 55)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 50, "attack": 1, "steps_per_turn": 0, "id": "blocker",
+		}),
+		Vector2(5.5, 5.5),
+	)
+	var ally2 := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 50, "attack": 1, "steps_per_turn": 0, "id": "blocker2",
+		}),
+		Vector2(6.5, 5.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "steps_per_turn": 1, "id": "boss",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(5.5, 3.5),
+	)
+	if ally == null or ally2 == null or boss == null:
+		push_error("push: place failed")
+		return false
+	## 确认首领足迹在 (5,3) 起 2×2，一步 +y 将覆盖两名友方。
+	if boss.cell != Vector2i(5, 3):
+		push_error("push: unexpected boss origin %s" % str(boss.cell))
+		return false
+	var ally_hp := ally.unit.current_hp
+	if not sim.try_boss_step_for_test(boss, Vector2i(0, 1)):
+		push_error("push: expected step+push to succeed")
+		return false
+	## begin_step 未落稳前站立格仍为 from，占格看 step_dest。
+	if boss.get_occupied_cell() != Vector2i(5, 4):
+		push_error("push: boss dest %s expected (5,4)" % str(boss.get_occupied_cell()))
+		return false
+	if ally.get_occupied_cell() == Vector2i(5, 5) or ally2.get_occupied_cell() == Vector2i(6, 5):
+		push_error(
+			"push: allies still occupying old cells %s %s"
+			% [str(ally.get_occupied_cell()), str(ally2.get_occupied_cell())]
+		)
+		return false
+	if ally.unit.current_hp != ally_hp:
+		push_error("push: must not damage")
+		return false
+	## 堵死正前与斜前，整步应失败。
+	var sim2 := _new_sim()
+	sim2.configure(Vector2i(8, 8), 56)
+	var a := sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "a"}), Vector2(2.5, 3.5))
+	var b := sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "b"}), Vector2(3.5, 3.5))
+	## 推开落点全堵
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "c"}), Vector2(2.5, 4.5))
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "d"}), Vector2(3.5, 4.5))
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "e"}), Vector2(1.5, 4.5))
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "f"}), Vector2(4.5, 4.5))
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "g"}), Vector2(2.5, 5.5))
+	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "h"}), Vector2(3.5, 5.5))
+	var boss2 := sim2.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "id": "boss2",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(2.5, 1.5),
+	)
+	if a == null or b == null or boss2 == null:
+		push_error("push_fail: place failed")
+		return false
+	var origin2 := boss2.cell
+	if sim2.try_boss_step_for_test(boss2, Vector2i(0, 1)):
+		push_error("push_fail: step should fail when no push landing")
+		return false
+	if boss2.cell != origin2 or a.cell != Vector2i(2, 3):
+		push_error("push_fail: positions should roll back / stay")
 		return false
 	return true

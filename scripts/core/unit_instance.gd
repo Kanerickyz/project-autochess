@@ -18,6 +18,18 @@ var attached_abilities: Array[AbilityData] = []
 var stats: UnitStats
 var current_hp: int
 var stat_modifiers: StatModifierStack = StatModifierStack.new()
+## 战中召唤代理（Boss 衍生小兵等）；溃散与上限计数用。
+var is_combat_summon: bool = false
+
+
+func is_boss_leader() -> bool:
+	return unit_data != null and unit_data.is_boss_leader
+
+
+func get_footprint_size() -> Vector2i:
+	if unit_data == null:
+		return Vector2i(1, 1)
+	return Vector2i(maxi(1, unit_data.footprint_w), maxi(1, unit_data.footprint_h))
 
 
 func _init(

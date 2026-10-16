@@ -3,19 +3,13 @@
 [ext_resource type="Script" uid="uid://dgyryiko0mrak" path="res://scripts/data/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" uid="uid://bnpw8o7he14yj" path="res://scripts/data/spawn_schedule_entry.gd" id="2_entry"]
 [ext_resource type="Resource" path="res://resources/units/realtime/giant_knight.tres" id="u_giant_knight"]
-[ext_resource type="Resource" path="res://resources/units/realtime/spear_goblin.tres" id="u_spear_goblin"]
 
 [sub_resource type="Resource" id="Entry_0"]
 script = ExtResource("2_entry")
 unit = ExtResource("u_giant_knight")
 count = 1
 
-[sub_resource type="Resource" id="Entry_1"]
-script = ExtResource("2_entry")
-unit = ExtResource("u_spear_goblin")
-count = 2
-
 [resource]
 script = ExtResource("1_wave")
 spawn_count = 1
-fixed_entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1")])
+fixed_entries = Array[ExtResource("2_entry")]([SubResource("Entry_0")])
