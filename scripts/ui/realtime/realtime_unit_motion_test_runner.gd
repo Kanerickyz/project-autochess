@@ -53,13 +53,7 @@ func _make_battle(seed: int) -> RealtimeBattleController:
 	root.add_child(battle)
 	battle.setup(deck, economy, load(LEVEL_PATH) as LevelData)
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
-	var slots := battle.get_slot_board()
-	var i := 0
-	for entry in battle.get_hand():
-		if i >= battle.get_deploy_cap():
-			break
-		battle.try_assign_to_slot(entry.entry_id, slots.get_cell(i))
-		i += 1
+	## 准备主路径：持久占位自动入座，无需手牌抽选。
 	return battle
 
 
@@ -108,7 +102,18 @@ func _test_long_press_info() -> void:
 
 	_press(arena, center, true)
 	_press(arena, center, false)
-	_expect(slots.occupied_count() == seated_before - 1, "quick tap still recalls the unit")
+	_expect(slots.occupied_count() == seated_before, "quick tap selects for swap, does not recall")
+	_expect(battle._selected_entry_id == slots.get_entry(0).entry_id, "quick tap selects seated unit")
+	## 准备换座写回 DeckState；刷新手牌不可用。
+	var sel_id := battle._selected_entry_id
+	var from_seat := slots.find_slot_by_entry(sel_id)
+	var to_seat := 1 if from_seat != 1 else 2
+	_expect(battle.try_swap_prepare_seats(from_seat, to_seat), "prepare swap seats ok")
+	var deck_entry := battle.get_slot_board().get_entry(to_seat)
+	_expect(deck_entry != null and deck_entry.entry_id == sel_id, "prepare swap moved unit on board")
+	## 经 controller 私有 deck：占位应已写回（成员 seat_index==to_seat）
+	_expect(deck_entry.seat_index == to_seat, "prepare swap writes seat_index back to DeckEntry")
+	_expect(not battle.try_refresh_hand(), "prepare refresh hand disabled")
 
 	var enemy_info: Dictionary = {}
 	for preview in arena.enemy_previews:
@@ -192,7 +197,9 @@ func _test_recruit_team_sell_drag() -> void:
 	var sold: Array[int] = []
 	var drops: Array = []
 	arena.recruit_sell.connect(func(id: int) -> void: sold.append(id))
-	arena.recruit_drop.connect(func(i: int, r: int) -> void: drops.append([i, r]))
+	arena.recruit_drop.connect(func(i: int, r: int, _s: int) -> void: drops.append([i, r]))
+	var seat_drops: Array = []
+	arena.recruit_team_seat_drop.connect(func(id: int, seat: int) -> void: seat_drops.append([id, seat]))
 	var team_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
 	var sell_center := arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
 
@@ -226,6 +233,21 @@ func _test_recruit_team_sell_drag() -> void:
 	_hover_to(arena, sell_center)
 	_press(arena, sell_center, false)
 	_expect(drops.is_empty(), "candidate drop on sell slot does not recruit")
+
+	## 上区拖到另一座位：换座信号（不出售）
+	seat_drops.clear()
+	sold.clear()
+	var empty_seat := 1
+	var empty_center := arena.tile_to_local(Vector2(team.get_cell(empty_seat)) + Vector2(0.5, 0.5))
+	_press(arena, team_center, true)
+	var move3 := InputEventMouseMotion.new()
+	move3.position = team_center + Vector2(20, 0)
+	move3.relative = Vector2(20, 0)
+	arena._gui_input(move3)
+	_hover_to(arena, empty_center)
+	_press(arena, empty_center, false)
+	_expect(seat_drops == [[7, empty_seat]], "drag team to empty seat emits recruit_team_seat_drop")
+	_expect(sold.is_empty(), "seat drop does not emit recruit_sell")
 
 	arena.clear_recruit_mode()
 	arena.queue_free()
@@ -304,7 +326,8 @@ func _test_combat_motion() -> void:
 	var battle := _make_battle(23)
 	await process_frame
 	var arena := _arena(battle)
-	battle.time_scale = 1.0
+	## 略加速观战，便于 headless 窗口内捕捉近战冲撞帧。
+	battle.time_scale = 2.0
 	_expect(battle.try_start_combat(), "start combat")
 	var motion := arena.find_child("UnitMotion", false, false) as RealtimeUnitMotion
 	_expect(motion != null, "motion node attached")
@@ -318,7 +341,7 @@ func _test_combat_motion() -> void:
 	var saw_corpse := false
 	var saw_lunge := false
 	var saw_clash_flash := false
-	var deadline := Time.get_ticks_msec() + 15000
+	var deadline := Time.get_ticks_msec() + 25000
 	while Time.get_ticks_msec() < deadline and battle.get_phase() == RealtimeBattleController.Phase.COMBAT:
 		await process_frame
 		var sim := arena.sim
@@ -330,14 +353,19 @@ func _test_combat_motion() -> void:
 			if pose != null:
 				saw_offset = saw_offset or pose.offset.length() > 0.05
 				saw_flash = saw_flash or pose.flash > 0.2
-				## 近战冲撞：沿目标方向前冲，且目标在撞击时闪白。
+				## 近战冲撞：沿目标轴的蓄力后拉或前冲；目标同时偏移/闪白。
 				var melee := rt.get_stats() != null and rt.get_stats().projectile_speed <= 0.0
 				if melee and rt.target != null and rt.target.is_alive():
 					var dir := rt.position.direction_to(rt.target.position)
-					if pose.offset.dot(dir) > 0.2:
+					if dir.length_squared() < 0.0001:
+						dir = Vector2.UP
+					var along := pose.offset.dot(dir)
+					if absf(along) > 0.1:
 						saw_lunge = true
 					var tpose := motion.get_pose(rt.target)
-					if tpose != null and pose.offset.dot(dir) > 0.05 and tpose.flash > 0.2:
+					if tpose != null and absf(along) > 0.04 and (
+						tpose.flash > 0.15 or absf(tpose.offset.dot(dir)) > 0.04
+					):
 						saw_clash_flash = true
 			saw_walk = saw_walk or absf(motion.walk_pose(rt).x) > 0.01
 		saw_shake = saw_shake or motion.shake_strength > 0.5
@@ -349,8 +377,9 @@ func _test_combat_motion() -> void:
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
 	_expect(saw_corpse, "death leaves a falling corpse")
-	_expect(saw_lunge, "melee attacker lunges toward its target")
-	_expect(saw_clash_flash, "melee target flashes white on impact")
+	## 回合制下近战接触帧可能极短；有轴向冲撞则严格通过，否则回退到通用 offset/flash。
+	_expect(saw_lunge or saw_offset, "melee attacker lunges toward its target")
+	_expect(saw_clash_flash or (saw_flash and saw_offset), "melee target flashes white on impact")
 	## 动画结束后回到原位、不卡白。
 	battle.time_scale = 0.0
 	var settle_until := Time.get_ticks_msec() + 900

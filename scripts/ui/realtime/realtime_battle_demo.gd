@@ -38,6 +38,12 @@ func _ready() -> void:
 	_parse_args()
 	_deck.configure(_load_deck_config())
 	_deck.reset_from_config()
+	## 开局空队（开局招募主路径）时，演示环补一批占位单位以便可开战。
+	if _deck.size() == 0:
+		for unit in _fallback_units():
+			if _deck.is_full():
+				break
+			_deck.add_entry(unit)
 	var economy_config: EconomyConfig = null
 	if ResourceLoader.exists(ECONOMY_PATH):
 		economy_config = load(ECONOMY_PATH) as EconomyConfig
@@ -104,11 +110,7 @@ func _on_encounter_completed(_won: bool) -> void:
 
 
 func _auto_prepare() -> void:
-	var slots := _battle.get_slot_board()
-	var hand := _battle.get_hand()
-	var n := mini(hand.size(), _battle.get_deploy_cap())
-	for i in n:
-		_battle.try_assign_to_slot(hand[i].entry_id, slots.get_cell(i))
+	## 持久占位已在 start_encounter 载入；无手牌入座。
 	if not _battle.try_start_combat():
 		push_warning("RealtimeBattleDemo: autoplay could not start combat")
 	_auto_timer = AUTO_DEPLOY_INTERVAL

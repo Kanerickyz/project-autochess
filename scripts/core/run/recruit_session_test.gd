@@ -21,6 +21,7 @@ static func run_all() -> bool:
 	passed = _test_auto_merge_three_same_level() and passed
 	passed = _test_auto_merge_skips_max_star() and passed
 	passed = _test_sell_refunds_and_reset_rolls_back() and passed
+	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -44,10 +45,13 @@ static func _make_config() -> RecruitConfig:
 	return config
 
 
-static func _make_deck(units: Array, max_size: int = 20) -> DeckState:
+static func _make_deck(units: Array, max_size: int = 5) -> DeckState:
 	var deck := DeckState.new()
 	var deck_config := DeckConfig.new()
 	deck_config.max_size = max_size
+	deck_config.seat_rows = 2
+	deck_config.seat_cols = 5
+	deck_config.max_board_units = max_size
 	deck.configure(deck_config)
 	for unit in units:
 		if unit is UnitData:
@@ -78,11 +82,17 @@ static func _make_session(
 
 
 static func _test_seat_cap_uses_min_of_max_size_and_seat_grid() -> bool:
-	var deck := _make_deck([ARCHER], 20)
+	## 本版主路径 max_size=5 → cap=5；仍尊重更小 max_size。
+	var deck := _make_deck([ARCHER], 5)
 	var economy := _make_economy(5)
 	var session := _make_session(deck, economy, 3, 0.0)
-	if session.get_seat_cap() != 10:
-		push_error("RecruitSessionTest: seat cap should be min(20, 2x5)=10, got %d" % session.get_seat_cap())
+	if session.get_seat_cap() != 5:
+		push_error("RecruitSessionTest: seat cap should be min(5, 2x5)=5, got %d" % session.get_seat_cap())
+		return false
+	var large := _make_deck([ARCHER], 20)
+	var session_large := _make_session(large, _make_economy(5), 5, 0.0)
+	if session_large.get_seat_cap() != 10:
+		push_error("RecruitSessionTest: seat cap should be min(20, 2x5)=10, got %d" % session_large.get_seat_cap())
 		return false
 	var small := _make_deck([ARCHER, KNIGHT], 2)
 	var session_small := _make_session(small, _make_economy(5), 4, 0.0)
@@ -431,4 +441,130 @@ static func _test_sell_refunds_and_reset_rolls_back() -> bool:
 	if inactive.get("ok", false):
 		push_error("RecruitSessionTest: inactive session must not sell")
 		return false
+	return true
+
+
+static func _test_persistent_seats_recruit_replace_sell_swap_merge() -> bool:
+	## cap=5；招入占座；替换继承；出售腾座；招募换座持久；三合一占最早座。
+	var deck := _make_deck([], 5)
+	var economy := _make_economy(40)
+	var session := _make_session(deck, economy, 61, 0.0)
+	if session.get_seat_cap() != 5:
+		push_error("RecruitSessionTest: persist seats fixture cap should be 5")
+		return false
+
+	session.candidates = [ARCHER, KNIGHT, BARBARIAN]
+	var buy0 := session.try_recruit(0, -1, 3)
+	if not buy0.get("ok", false):
+		push_error("RecruitSessionTest: recruit to seat 3 failed: %s" % buy0.get("reason"))
+		return false
+	var e0 := buy0["entry"] as DeckEntry
+	if e0 == null or e0.seat_index != 3:
+		push_error("RecruitSessionTest: recruit should land on seat 3")
+		return false
+
+	session.candidates = [KNIGHT, BARBARIAN, MUSKETEER]
+	var buy1 := session.try_recruit(0)
+	if not buy1.get("ok", false):
+		push_error("RecruitSessionTest: recruit default first empty failed")
+		return false
+	var e1 := buy1["entry"] as DeckEntry
+	if e1 == null or e1.seat_index != 0:
+		push_error("RecruitSessionTest: first empty seat should be 0, got %d" % (e1.seat_index if e1 else -1))
+		return false
+
+	## 换座：骑士 0 ↔ 空座 2
+	if not session.try_swap_seat(e1.entry_id, 2):
+		push_error("RecruitSessionTest: recruit swap to empty seat failed")
+		return false
+	e1 = deck.get_entry(e1.entry_id)
+	if e1 == null or e1.seat_index != 2:
+		push_error("RecruitSessionTest: swap should move knight to seat 2")
+		return false
+	if deck.get_entry_at_seat(0) != null:
+		push_error("RecruitSessionTest: seat 0 should be empty after move")
+		return false
+
+	## 互换：弓箭手(3) ↔ 骑士(2)
+	var archer_id := e0.entry_id
+	var knight_id := e1.entry_id
+	if not session.try_swap_seat(archer_id, 2):
+		push_error("RecruitSessionTest: recruit swap between members failed")
+		return false
+	if deck.get_entry(archer_id).seat_index != 2:
+		push_error("RecruitSessionTest: archer should be on seat 2 after swap")
+		return false
+	if deck.get_entry(knight_id).seat_index != 3:
+		push_error("RecruitSessionTest: knight should be on seat 3 after swap")
+		return false
+
+	## 出售腾座（当前 deck：弓 seat2、骑 seat3）
+	var sell_seat := deck.get_entry(archer_id).seat_index
+	var sold := session.try_sell(archer_id)
+	if not sold.get("ok", false):
+		push_error("RecruitSessionTest: sell for clear seat failed")
+		return false
+	if deck.get_entry_at_seat(sell_seat) != null:
+		push_error("RecruitSessionTest: sell should clear seat %d" % sell_seat)
+		return false
+
+	## 满员替换继承座位
+	var full := _make_deck([ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE], 5)
+	var full_econ := _make_economy(20)
+	var full_session := _make_session(full, full_econ, 62, 0.0)
+	var replace_target := full.get_entries()[2]
+	var inherit_seat := replace_target.seat_index
+	full_session.candidates = [MINI_PEKKA, ARCHER, ARCHER]
+	var replaced := full_session.try_recruit(0, replace_target.entry_id)
+	if not replaced.get("ok", false):
+		push_error("RecruitSessionTest: replace recruit failed: %s" % replaced.get("reason"))
+		return false
+	var new_e := replaced["entry"] as DeckEntry
+	if new_e == null or new_e.seat_index != inherit_seat:
+		push_error(
+			"RecruitSessionTest: replace should inherit seat %d, got %d"
+			% [inherit_seat, new_e.seat_index if new_e else -1]
+		)
+		return false
+
+	## 三合一占最早落座时间座位
+	var merge_deck := _make_deck([], 5)
+	var a := merge_deck.add_entry(ARCHER, 0, 4)
+	var b := merge_deck.add_entry(ARCHER, 0, 1)
+	var c := merge_deck.add_entry(ARCHER, 0, 7)
+	if a == null or b == null or c == null:
+		push_error("RecruitSessionTest: merge seat fixture add failed")
+		return false
+	## add 第三个应已合并；产物占 a（最早 seq）的座位 4
+	if merge_deck.size() != 1:
+		push_error("RecruitSessionTest: merge seat size should be 1, got %d" % merge_deck.size())
+		return false
+	var product := merge_deck.get_entries()[0]
+	if product.seat_index != 4:
+		push_error(
+			"RecruitSessionTest: merge product should keep earliest seat 4, got %d"
+			% product.seat_index
+		)
+		return false
+	if merge_deck.get_entry_at_seat(1) != null or merge_deck.get_entry_at_seat(7) != null:
+		push_error("RecruitSessionTest: merge should free the other two seats")
+		return false
+
+	## 快照含占位：换座后 reset 恢复
+	var snap_deck := _make_deck([ARCHER, KNIGHT], 5)
+	var snap_econ := _make_economy(10)
+	var snap_session := _make_session(snap_deck, snap_econ, 70, 0.0)
+	var before_seats: Dictionary = {}
+	for entry in snap_deck.get_entries():
+		before_seats[entry.entry_id] = entry.seat_index
+	var move_id: int = snap_deck.get_entries()[0].entry_id
+	snap_session.try_swap_seat(move_id, 9)
+	if snap_deck.get_entry(move_id).seat_index != 9:
+		push_error("RecruitSessionTest: snapshot fixture swap failed")
+		return false
+	snap_session.reset()
+	for entry in snap_deck.get_entries():
+		if int(before_seats.get(entry.entry_id, -99)) != entry.seat_index:
+			push_error("RecruitSessionTest: reset should restore seat layout")
+			return false
 	return true

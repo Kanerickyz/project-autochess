@@ -184,6 +184,55 @@ func try_assign(slot_index: int, entry: DeckEntry) -> bool:
 	return true
 
 
+## 载入持久占位：使用已有落座序，不重新计时。
+func try_assign_with_seq(slot_index: int, entry: DeckEntry, seq: int) -> bool:
+	if entry == null or slot_index < 0 or slot_index >= occupants.size():
+		return false
+	if occupants[slot_index] != null:
+		return false
+	occupants[slot_index] = entry
+	var use_seq := seq if seq > 0 else 0
+	if use_seq <= 0:
+		_assign_seq_counter += 1
+		use_seq = _assign_seq_counter
+	else:
+		_assign_seq_counter = maxi(_assign_seq_counter, use_seq)
+	if slot_index < seat_assign_seq.size():
+		seat_assign_seq[slot_index] = use_seq
+	return true
+
+
+## 准备/招募换座：空座则移入；目标有人则互换；双方刷新本地入座序。
+func try_swap_slots(from_index: int, to_index: int) -> bool:
+	if from_index < 0 or from_index >= occupants.size():
+		return false
+	if to_index < 0 or to_index >= occupants.size():
+		return false
+	if from_index == to_index:
+		return false
+	var from_entry: DeckEntry = occupants[from_index] as DeckEntry
+	if from_entry == null:
+		return false
+	var to_entry: DeckEntry = occupants[to_index] as DeckEntry
+	occupants[from_index] = to_entry
+	occupants[to_index] = from_entry
+	_assign_seq_counter += 1
+	var seq_a := _assign_seq_counter
+	_assign_seq_counter += 1
+	var seq_b := _assign_seq_counter
+	if to_entry == null:
+		if from_index < seat_assign_seq.size():
+			seat_assign_seq[from_index] = -1
+		if to_index < seat_assign_seq.size():
+			seat_assign_seq[to_index] = seq_b
+	else:
+		if from_index < seat_assign_seq.size():
+			seat_assign_seq[from_index] = seq_a
+		if to_index < seat_assign_seq.size():
+			seat_assign_seq[to_index] = seq_b
+	return true
+
+
 func try_recall(slot_index: int) -> DeckEntry:
 	if slot_index < 0 or slot_index >= occupants.size():
 		return null

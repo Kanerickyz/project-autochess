@@ -78,8 +78,8 @@ func get_recruit_cost(unit: UnitData) -> int:
 
 
 func get_seat_cap() -> int:
-	## 队伍席位上限：取牌库 max_size 与座位网格总数的较小值（默认 ≤10），
-	## 不用 deploy_cap（As-Is 上场上限可小于队伍人数）。
+	## 队伍席位上限：取牌库 max_size 与座位网格总数的较小值。
+	## 本版主路径 max_size=5、网格 2×5=10 → cap≈5；不用 deploy_cap。
 	if deck == null:
 		return 0
 	var deck_cap := deck.get_max_size()
@@ -124,9 +124,20 @@ func needs_replace() -> bool:
 	return is_roster_full()
 
 
-## 空席：replace_entry_id 忽略；满员：必须指定被替换成员。
-func try_recruit(candidate_index: int, replace_entry_id: int = -1) -> Dictionary:
-	var result := {"ok": false, "reason": "inactive", "entry": null, "replaced": false}
+## 空席：replace_entry_id 忽略；seat_index≥0 落到指定空座，否则首空座。
+## 满员：必须指定被替换成员；新人继承其座位。
+func try_recruit(
+	candidate_index: int,
+	replace_entry_id: int = -1,
+	seat_index: int = -1,
+) -> Dictionary:
+	var result := {
+		"ok": false,
+		"reason": "inactive",
+		"entry": null,
+		"replaced": false,
+		"seat_index": -1,
+	}
 	if not is_active or deck == null or economy == null:
 		return result
 	var unit := get_candidate(candidate_index)
@@ -139,11 +150,13 @@ func try_recruit(candidate_index: int, replace_entry_id: int = -1) -> Dictionary
 		return result
 
 	if not is_roster_full():
-		## 空席加入：仍受牌库 max_size 硬顶（DeckState.add_entry），但席位以 deploy_cap 为准。
 		if not economy.spend(cost):
 			result["reason"] = "no_gold"
 			return result
-		var entry := deck.add_entry(unit)
+		var preferred := seat_index
+		if preferred >= 0 and not deck.is_seat_free(preferred):
+			preferred = -1
+		var entry := deck.add_entry(unit, 0, preferred)
 		if entry == null:
 			economy.grant(cost)
 			result["reason"] = "add_failed"
@@ -152,10 +165,11 @@ func try_recruit(candidate_index: int, replace_entry_id: int = -1) -> Dictionary
 		result["ok"] = true
 		result["reason"] = "added"
 		result["entry"] = entry
+		result["seat_index"] = entry.seat_index
 		session_changed.emit()
 		return result
 
-	## 满员替换：旧人不退金
+	## 满员替换：旧人不退金；继承被替者座位。
 	if replace_entry_id < 0:
 		result["reason"] = "need_replace"
 		return result
@@ -175,8 +189,21 @@ func try_recruit(candidate_index: int, replace_entry_id: int = -1) -> Dictionary
 	result["reason"] = "replaced"
 	result["entry"] = replaced
 	result["replaced"] = true
+	result["seat_index"] = replaced.seat_index
 	session_changed.emit()
 	return result
+
+
+## 招募上区换座：写回 DeckState 持久占位（与准备换座同一规则）。
+func try_swap_seat(entry_id: int, target_seat: int) -> bool:
+	if not is_active or deck == null:
+		return false
+	if deck.get_entry(entry_id) == null:
+		return false
+	if not deck.swap_seats(entry_id, target_seat):
+		return false
+	session_changed.emit()
+	return true
 
 
 func try_refresh() -> bool:

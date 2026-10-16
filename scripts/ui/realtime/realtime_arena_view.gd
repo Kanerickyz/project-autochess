@@ -6,12 +6,14 @@ extends Control
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
-## 招募：候选人 index 拖放到上半场；replace_entry_id≥0 为替换，-1 为空席加入。
-signal recruit_drop(candidate_index: int, replace_entry_id: int)
+## 招募：候选人拖放到上半场；replace_entry_id≥0 为替换；seat_index≥0 为指定空座。
+signal recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int)
 signal recruit_candidate_pressed(candidate_index: int)
 signal recruit_team_pressed(entry_id: int)
 ## 招募：上区队伍成员拖到出售落点松手。
 signal recruit_sell(entry_id: int)
+## 招募：上区成员拖到空座或另一成员座位换座。
+signal recruit_team_seat_drop(entry_id: int, target_seat: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -678,14 +680,19 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		queue_redraw()
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
+	var seat_i := _find_recruit_team_seat_at(cell)
 	if recruit_needs_replace:
 		if replace_id < 0:
 			queue_redraw()
 			return
-		recruit_drop.emit(index, replace_id)
+		recruit_drop.emit(index, replace_id, -1)
 	else:
-		## 空席：落到上半任意格（含空队位）即可加入。
-		recruit_drop.emit(index, -1)
+		## 空席：指定空座优先；拖到非座位格则首空座（seat=-1）。
+		if replace_id >= 0:
+			seat_i = -1
+		elif seat_i < 0 and recruit_team_slots != null:
+			seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+		recruit_drop.emit(index, -1, seat_i)
 	queue_redraw()
 
 
@@ -726,6 +733,18 @@ func _finish_recruit_team_drag(cell: Vector2i) -> void:
 		return
 	if _is_recruit_sell_cell(cell):
 		recruit_sell.emit(entry_id)
+		queue_redraw()
+		return
+	## 拖到上区空座或另一座位：换座（写回由控制器处理）；勿与出售冲突。
+	var seat_i := _find_recruit_team_seat_at(cell)
+	if seat_i < 0 and recruit_team_slots != null:
+		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+		if seat_i >= 0:
+			var sc := recruit_team_slots.get_cell(seat_i)
+			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
+				seat_i = -1
+	if seat_i >= 0:
+		recruit_team_seat_drop.emit(entry_id, seat_i)
 	queue_redraw()
 
 
@@ -755,6 +774,12 @@ func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 	if entry == null:
 		return -1
 	return entry.entry_id
+
+
+func _find_recruit_team_seat_at(cell: Vector2i) -> int:
+	if recruit_team_slots == null or cell == NO_CELL:
+		return -1
+	return recruit_team_slots.find_slot_at_cell(cell)
 
 
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
@@ -794,12 +819,17 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		if cell == NO_CELL or cell.y >= mid:
 			return
 		var replace_id := _find_recruit_team_entry_at(cell)
+		var seat_i := _find_recruit_team_seat_at(cell)
 		if recruit_needs_replace:
 			if replace_id < 0:
 				return
-			recruit_drop.emit(index, replace_id)
+			recruit_drop.emit(index, replace_id, -1)
 		else:
-			recruit_drop.emit(index, -1)
+			if replace_id >= 0:
+				seat_i = -1
+			elif seat_i < 0 and recruit_team_slots != null:
+				seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+			recruit_drop.emit(index, -1, seat_i)
 		return
 	card_dropped.emit(int(dict[DRAG_KEY]), local_to_tile(at_position))
 
@@ -870,7 +900,10 @@ func _draw() -> void:
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
 		elif _recruit_team_drag_id >= 0 and _hover_cell != NO_CELL:
-			_draw_recruit_team_sell_hint(px)
+			if _is_recruit_sell_cell(_hover_cell):
+				_draw_recruit_team_sell_hint(px)
+			else:
+				_draw_recruit_team_seat_hint(px)
 	else:
 		_draw_enemy_slots(px)
 		_draw_prepare_slots(px)
@@ -938,6 +971,30 @@ func _draw_recruit_team_sell_hint(px: float) -> void:
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
 	var ok := _is_recruit_sell_cell(cell)
 	draw_rect(cell_rect, Color(0.85, 0.45, 0.9, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	_draw_body(
+		Vector2(cell) + Vector2(0.5, 0.5),
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		0.45,
+		_drag_label,
+		px,
+		true,
+		Vector2.ZERO,
+		true,
+		_drag_unit_id,
+	)
+
+
+func _draw_recruit_team_seat_hint(px: float) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var seat_i := _find_recruit_team_seat_at(cell)
+	var ok := seat_i >= 0
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
 	_draw_body(
 		Vector2(cell) + Vector2(0.5, 0.5),
 		_drag_radius,

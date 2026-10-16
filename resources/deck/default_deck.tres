@@ -13,11 +13,12 @@
 script = ExtResource("1")
 starting_units = Array[ExtResource("3_s31k3")]([ExtResource("4_s6lp0"), ExtResource("5_pjdwd"), ExtResource("6_sw0up"), ExtResource("8_skykj"), ExtResource("9_skykj")])
 starting_count = 5
-max_size = 20
-max_board_units = 4
+max_size = 5
+max_board_units = 5
 draw_count = 4
 hand_width = 4
 seat_rows = 2
 seat_cols = 5
 slot_count = 0
+max_refresh = 0
 level_config = ExtResource("2_level")

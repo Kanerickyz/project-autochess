@@ -11,6 +11,10 @@ var experience: int = 0
 var bonus_attack: int = 0
 var bonus_max_hp: int = 0
 var bonus_crit_rate_percent: int = 0
+## 友方持久占位：座位下标（0 .. seat_grid-1）；-1 表示未入座。
+var seat_index: int = -1
+## 落座时间序：越大越晚；0 表示从未成功落座。开战生成序 / 三合一最早座用。
+var seat_assign_seq: int = 0
 
 
 func get_unit_id() -> String:

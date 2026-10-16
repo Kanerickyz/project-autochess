@@ -74,11 +74,9 @@ func _test_recruit_arena_transition() -> void:
 	var prepare_dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(prepare_dock != null and prepare_dock.visible, "dock visible in prepare")
 
-	## 入座并开战清敌 → RESULT
-	var hand := battle.get_hand()
+	## 持久占位自动入座后开战清敌 → RESULT
 	var slots := battle.get_slot_board()
-	_expect(not hand.is_empty(), "hand has units")
-	battle.try_assign_to_slot(hand[0].entry_id, slots.get_cell(0))
+	_expect(slots.occupied_count() >= 1, "prepare loads persistent seats")
 	_expect(battle.try_start_combat(), "start combat")
 	var sim := battle.get_sim()
 	_expect(sim != null, "sim started")
