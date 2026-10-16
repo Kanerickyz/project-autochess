@@ -38,6 +38,7 @@ static func run_all() -> bool:
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
 	ok = _check("boss_push_ally_on_step", _test_boss_push_ally_on_step()) and ok
 	ok = _check("boss_summon_minions_advance", _test_boss_summon_minions_advance()) and ok
+	ok = _check("boss_footprint_horiz_centered", _test_boss_footprint_horiz_centered()) and ok
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -1251,5 +1252,35 @@ static func _test_boss_summon_minions_advance() -> bool:
 			break
 	if not saw_move:
 		push_error("summon_advance: minion never left spawn cell %s" % str(first_cell))
+		return false
+	return true
+
+
+## 首领 2×2 足迹在 9 宽场上应水平居中（足迹中心贴近 board_cx=4）。
+static func _test_boss_footprint_horiz_centered() -> bool:
+	var sim := _new_sim()
+	sim.configure(Vector2i(9, 16), 62)
+	## 敌方前排居中座约 (4,5)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"steps_per_turn": 0, "attack_reach": 1.0,
+		}),
+		Vector2(4.5, 5.5),
+	)
+	if boss == null:
+		push_error("footprint_center: boss null")
+		return false
+	var cells := boss.get_footprint_cells(boss.cell)
+	if cells.size() != 4:
+		push_error("footprint_center: expected 4 cells")
+		return false
+	var sx := 0
+	for c in cells:
+		sx += c.x
+	var fp_cx := float(sx) / float(cells.size())
+	var board_cx := 4.0
+	if absf(fp_cx - board_cx) > 0.51:
+		push_error("footprint_center: fp_cx=%s not near board center" % fp_cx)
 		return false
 	return true

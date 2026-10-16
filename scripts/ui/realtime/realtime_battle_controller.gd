@@ -684,19 +684,38 @@ func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
 		for _i in maxi(1, entry.count):
 			units.append(entry.unit)
 
-	var seat_indices: Array[int] = []
-	for i in _enemy_slots.slot_count:
-		seat_indices.append(i)
-	if units.size() > seat_indices.size():
+	var seat_count := _enemy_slots.slot_count
+	if units.size() > seat_count:
 		push_warning(
 			"RealtimeBattleController: %d enemies but only %d enemy seats; extra enemies dropped"
-			% [units.size(), seat_indices.size()]
+			% [units.size(), seat_count]
 		)
+	var center_seat := EnemyBudgetSpawner.front_center_seat_index(_enemy_slots.seat_cols)
+	var taken: Dictionary = {}
 	var result: Array = []
-	for i in mini(units.size(), seat_indices.size()):
-		var seat_i: int = seat_indices[i]
+	for i in mini(units.size(), seat_count):
+		var ud: UnitData = units[i]
+		var seat_i: int
+		## Boss 首领（或 Boss 遭遇唯一敌）落前排水平居中。
+		var want_center := (
+			ud != null and ud.is_boss_leader
+		) or (
+			_encounter != null and _encounter.is_boss and units.size() == 1
+		)
+		if want_center and not taken.has(center_seat):
+			seat_i = center_seat
+		else:
+			seat_i = -1
+			for s in seat_count:
+				if taken.has(s):
+					continue
+				seat_i = s
+				break
+		if seat_i < 0:
+			break
+		taken[seat_i] = true
 		var cell := _enemy_slots.get_cell(seat_i)
-		var unit := UnitInstance.from_unit_data(units[i], cell, UnitInstance.Team.ENEMY)
+		var unit := UnitInstance.from_unit_data(ud, cell, UnitInstance.Team.ENEMY)
 		result.append({
 			"unit": unit,
 			"position": Vector2(cell) + Vector2(0.5, 0.5),

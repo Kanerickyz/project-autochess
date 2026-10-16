@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
 	ok = _check("tier_filter_hard", _test_tier_filter_hard()) and ok
 	ok = _check("boss_fixed_only_no_fill", _test_boss_fixed_only_no_fill()) and ok
+	ok = _check("boss_front_center_seat", _test_boss_front_center_seat()) and ok
 	ok = _check("disabled_keeps_legacy_path_marker", _test_config_disabled_flag()) and ok
 	ok = _check("p_mid_not_player_team", _test_p_mid_from_config_only()) and ok
 	ok = _check("overflow_melee_to_back", _test_overflow_melee_to_back()) and ok
@@ -206,6 +207,7 @@ static func _test_tier_filter_hard() -> bool:
 
 static func _test_boss_fixed_only_no_fill() -> bool:
 	var boss := _make_unit("boss", 40, 8, 1.5, 3, 0.0, 0.0, true)
+	boss.is_boss_leader = true
 	var filler := _make_unit("fodder", 8, 2, 1.0, 1, 0.0, 0.0, true)
 	var cfg := _make_config([filler, boss])
 	var mid120: Array[float] = [120.0]
@@ -222,6 +224,22 @@ static func _test_boss_fixed_only_no_fill() -> bool:
 		return false
 	var ud: UnitData = seated[0].get("unit_data") as UnitData
 	return ud != null and ud.id == "boss"
+
+
+static func _test_boss_front_center_seat() -> bool:
+	var boss := _make_unit("boss", 40, 8, 1.5, 3, 0.0, 0.0, true)
+	boss.is_boss_leader = true
+	var cfg := _make_config([boss])
+	var wave := _make_wave(1, [boss])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 1, 0, MapNodeType.Type.BOSS, 2, 5, rng
+	)
+	if seated.size() != 1:
+		return false
+	var expect := EnemyBudgetSpawner.front_center_seat_index(5)
+	return int(seated[0].get("seat_index", -1)) == expect
 
 
 static func _test_config_disabled_flag() -> bool:

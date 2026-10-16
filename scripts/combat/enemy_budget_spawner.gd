@@ -399,7 +399,13 @@ static func _pick_closest_unit(
 	return best
 
 
+## 敌方前排水平居中座位索引（5 列 → 2）。
+static func front_center_seat_index(cols: int) -> int:
+	return maxi(1, cols) / 2
+
+
 ## 落座：近战→前排、远程→后排；同行 max_hp→U→id；溢出对向；书写序前排再后排。
+## 首领（is_boss_leader）强制落在前排水平居中座。
 static func _seat_units(
 	units: Array[UnitData],
 	cols: int,
@@ -461,6 +467,8 @@ static func _seat_units(
 					seats[s] = u4
 					break
 
+	_place_boss_leaders_front_center(seats, cols, front_cap)
+
 	var result: Array = []
 	for seat_i in seat_count:
 		var unit: UnitData = seats[seat_i]
@@ -472,6 +480,25 @@ static func _seat_units(
 			"power_u": _unit_u(unit, cfg),
 		})
 	return result
+
+
+## 将 is_boss_leader 与前排居中座交换（已在居中则不动）。
+static func _place_boss_leaders_front_center(seats: Array, cols: int, front_cap: int) -> void:
+	if seats.is_empty() or front_cap <= 0:
+		return
+	var center_i := front_center_seat_index(cols)
+	if center_i < 0 or center_i >= front_cap or center_i >= seats.size():
+		return
+	for s in seats.size():
+		var u: UnitData = seats[s] as UnitData
+		if u == null or not u.is_boss_leader:
+			continue
+		if s == center_i:
+			return
+		var displaced: UnitData = seats[center_i] as UnitData
+		seats[center_i] = u
+		seats[s] = displaced
+		return
 
 
 static func _sort_for_seat(units: Array[UnitData], cfg: SpawnBudgetConfig) -> void:

@@ -624,7 +624,7 @@ func _find_free_cell(origin: Vector2i) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## 2×2 等足迹：锚座为角，优先向中线/场内展开；失败返回 (-1,-1)。
+## 2×2 等足迹：锚座为角，优先水平居中 + 向中线/场内展开；失败返回 (-1,-1)。
 func _find_free_footprint_origin(
 	preferred: Vector2i,
 	size: Vector2i,
@@ -638,39 +638,61 @@ func _find_free_footprint_origin(
 		start - Vector2i(size.x - 1, size.y - 1),
 	]
 	var mid_y := BoardHalf.midline_row(int(_arena_size.y))
-	var center_x := int(_arena_size.x) / 2
+	## 连续中心（宽 9 → 4.0），使 2 格足迹优先盖住水平中线附近。
+	var board_cx := (float(int(_arena_size.x)) - 1.0) * 0.5
 	var best := Vector2i(-1, -1)
-	var best_score := -999999
+	var best_score := -999999.0
 	for origin in candidates:
 		if not _footprint_fits(origin, size, null):
 			continue
-		var score := 0
-		for dy in size.y:
-			for dx in size.x:
-				var c := origin + Vector2i(dx, dy)
-				## 敌方向下（中线）、友方向上；并靠水平中线。
-				if team == UnitInstance.Team.ENEMY:
-					score += c.y
-				else:
-					score -= c.y
-				score -= absi(c.x - center_x)
-				score -= absi(c.y - mid_y) / 2
+		var score := _score_footprint_origin(origin, size, team, mid_y, board_cx)
 		if score > best_score:
 			best_score = score
 			best = origin
 	if best != Vector2i(-1, -1):
 		return best
-	## 在 preferred 附近平移搜索
+	## 在 preferred 附近平移搜索：仍优先水平居中
 	var max_r := maxi(int(_arena_size.x), int(_arena_size.y))
 	for radius in range(0, max_r + 1):
+		var ring_best := Vector2i(-1, -1)
+		var ring_score := -999999.0
 		for dy in range(-radius, radius + 1):
 			for dx in range(-radius, radius + 1):
 				if radius > 0 and maxi(absi(dx), absi(dy)) != radius:
 					continue
 				var origin2 := Vector2i(start.x + dx, start.y + dy)
-				if _footprint_fits(origin2, size, null):
-					return origin2
+				if not _footprint_fits(origin2, size, null):
+					continue
+				var sc2 := _score_footprint_origin(origin2, size, team, mid_y, board_cx)
+				if sc2 > ring_score:
+					ring_score = sc2
+					ring_best = origin2
+		if ring_best != Vector2i(-1, -1):
+			return ring_best
 	return Vector2i(-1, -1)
+
+
+func _score_footprint_origin(
+	origin: Vector2i,
+	size: Vector2i,
+	team: UnitInstance.Team,
+	mid_y: int,
+	board_cx: float,
+) -> float:
+	var score := 0.0
+	var fp_cx := float(origin.x) + (float(size.x) - 1.0) * 0.5
+	## 水平局中权重最高。
+	score -= absf(fp_cx - board_cx) * 20.0
+	for dy in size.y:
+		for dx in size.x:
+			var c := origin + Vector2i(dx, dy)
+			## 敌方向下（中线）、友方向上。
+			if team == UnitInstance.Team.ENEMY:
+				score += float(c.y)
+			else:
+				score -= float(c.y)
+			score -= float(absi(c.y - mid_y)) * 0.5
+	return score
 
 
 func _footprint_fits(origin: Vector2i, size: Vector2i, ignore: RtUnit) -> bool:
