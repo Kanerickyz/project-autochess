@@ -23,7 +23,7 @@
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
-| [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **层预算抽阵**（内部尺子 E＝κ×层中线 P；独立敌池；落座；品阶硬/预算软；兼容旧出兵只数） |
+| [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（普通/精英 E＝κ×队伍强度 S＋层护栏；Boss 不吃真队；独立敌池；落座；品阶硬/预算软；兼容旧出兵只数） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、9×16、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
@@ -72,7 +72,7 @@ Project Autochess/
 | `scenes/ui/board_cell.tscn` | 格子 Area2D | **M1 已实现** |
 | `scenes/units/placeholder_unit.tscn` | 占位单位视觉 | **M1 已实现** |
 | `scripts/core/board_grid.gd` | 格占用、`get_empty_cells` | **M1 已实现** |
-| `scripts/core/board_controller.gd` | 牌库/手牌/商店/布阵/击杀掉金 | **M3b 已实现** |
+| `scripts/core/board_controller.gd` | 牌库/手牌/商店/布阵（击杀掉金已否决） | **M3b 已实现** |
 | `scripts/core/run_economy.gd` | 金币余额、击杀奖励、波次结算金 | **M3 已实现** |
 | `scripts/core/shop_service.gd` | 双卡种商店、Tier roll、购买、刷新 | **M3b 已实现** |
 | `scripts/core/deck_state.gd` | 牌库条目、满库替换、`attach_buff` | **M3b 已实现** |
@@ -146,7 +146,7 @@ Project Autochess/
 | Level / Wave | 关卡配置、遭遇、`MatchStateMachine` | GAME_VISION · **M2c** |
 | Run / Map | 爬塔地图、选路、节点类型、Boss | GAME_VISION · **Run** |
 | Run / Match | 遭遇内：准备入槽 → 开战观战 → 结算；地图商店 | GAME_VISION · **M2c / Run** |
-| Economy & Shop | 角色卡/增益卡、Tier、牌库、击杀掉金、波次结算 | **GAME_VISION** · **BUFF_SYSTEM** · **ARCHITECTURE** · **M3b** |
+| Economy & Shop | 角色卡/增益卡、Tier、牌库、波次结算（无击杀掉金） | **GAME_VISION** · **BUFF_SYSTEM** · **ARCHITECTURE** · **M3b** |
 | Board & Deck | 可变棋盘 + 本波 cycle 手牌（抽牌/战中补人 To-Be） | **GAME_VISION** · **M3b** |
 | Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
 | Spawn | `SpawnSystem` 出兵（As-Is 半场候选；To-Be 敌方座位） | **M2a** · ARCHITECTURE §3.3 · [COMBATLEVEL](./Features/COMBATLEVEL.md) |

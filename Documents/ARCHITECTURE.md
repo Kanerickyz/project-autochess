@@ -123,7 +123,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 |------|------|------|
 | 1 进入波次 | PREPARE 入口 | `wave_index` 指向即将战斗的 `WaveData` |
 | 2 准备 | PREPARE | To-Be：抽选入角色座位（可刷新）；As-Is 实时路径常跳过 |
-| 3 战斗 | COMBAT | 击杀掉金；自动战斗观战（To-Be 不能出牌）；`CombatEventBus` 见 §3.4 |
+| 3 战斗 | COMBAT | 无击杀掉金；自动战斗观战（To-Be 不能出牌）；`CombatEventBus` 见 §3.4 |
 | 4 结算 | RESOLVE | 发放 `WaveData.wave_gold_reward`；清敌人；清波制胜负；**不得**直接开下一场战斗 |
 | 5 商店 | PREPARE（结算后） | 购买角色卡/增益卡；RESOLVE 点「继续构筑」→ PREPARE + `roll_shop()`（线性工具环） |
 | 6 下一波 | PREPARE → COMBAT | 玩家手动点「开始第 N 波」 |
@@ -140,7 +140,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 | 概念 | 说明 |
 |------|------|
-| 金币 | 击杀掉金（战斗中）、波次固定收益（RESOLVE）、**商店出售**（按 `DeckEntry.level`） |
+| 金币 | 波次固定收益（RESOLVE）、**商店出售**（按 `DeckEntry.level`）；**无**击杀掉金 |
 | 波次结算金 | `WaveData.wave_gold_reward`（`-1` 用 `EconomyConfig.default_wave_gold`） |
 | 商店商品 | **角色卡**（入牌库）、**增益卡**（附加到牌库条目） |
 | 刷新 | 消耗金币刷新（商店锁定非本版范围） |
