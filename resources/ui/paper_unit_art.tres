@@ -9,6 +9,26 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_musket_blue.png" id="b_musket"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_banner_blue.png" id="b_banner"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_skeleton_blue.png" id="b_skeleton"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_crossbow_blue.png" id="b_crossbow"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_horsebow_blue.png" id="b_horsebow"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rider_blue.png" id="b_rider"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_hunter_blue.png" id="b_hunter"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_maul_blue.png" id="b_maul"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_valkyrie_blue.png" id="b_valkyrie"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_giant_knight_blue.png" id="b_giant_knight"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spike_shield_blue.png" id="b_spike_shield"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rune_plate_blue.png" id="b_rune_plate"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_relic_aegis_blue.png" id="b_relic_aegis"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mirror_warden_blue.png" id="b_mirror_warden"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_dirge_horn_blue.png" id="b_dirge_horn"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wardrum_blue.png" id="b_wardrum"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_echo_spear_blue.png" id="b_echo_spear"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_goblin_blue.png" id="b_spear_goblin"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_blue.png" id="b_goblin"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_blue.png" id="b_gravewright"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_blue.png" id="b_soulcaller"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_blue.png" id="b_ram"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_blue.png" id="b_slime"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
@@ -17,6 +37,26 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_musket_red.png" id="r_musket"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_banner_red.png" id="r_banner"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_skeleton_red.png" id="r_skeleton"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_crossbow_red.png" id="r_crossbow"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_horsebow_red.png" id="r_horsebow"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rider_red.png" id="r_rider"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_hunter_red.png" id="r_hunter"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_maul_red.png" id="r_maul"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_valkyrie_red.png" id="r_valkyrie"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_giant_knight_red.png" id="r_giant_knight"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spike_shield_red.png" id="r_spike_shield"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rune_plate_red.png" id="r_rune_plate"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_relic_aegis_red.png" id="r_relic_aegis"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mirror_warden_red.png" id="r_mirror_warden"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_dirge_horn_red.png" id="r_dirge_horn"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wardrum_red.png" id="r_wardrum"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_echo_spear_red.png" id="r_echo_spear"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_goblin_red.png" id="r_spear_goblin"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_red.png" id="r_goblin"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_red.png" id="r_gravewright"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_red.png" id="r_soulcaller"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_red.png" id="r_ram"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_red.png" id="r_slime"]
 
 [resource]
 script = ExtResource("1_cat")
@@ -24,36 +64,36 @@ archetype_by_unit_id = {
 "archer": &"archer",
 "banner": &"banner",
 "barbarian": &"axe",
-"bus": &"shield",
-"chick": &"skeleton",
-"crossbow": &"archer",
-"dirge_horn": &"banner",
-"echo_spear": &"spear",
-"giant_knight": &"axe",
-"goblin": &"skeleton",
-"gravewright": &"skeleton",
-"horsebow": &"archer",
-"hunter": &"captain",
+"bus": &"ram",
+"chick": &"slime",
+"crossbow": &"crossbow",
+"dirge_horn": &"dirge_horn",
+"echo_spear": &"echo_spear",
+"giant_knight": &"giant_knight",
+"goblin": &"goblin",
+"gravewright": &"gravewright",
+"horsebow": &"horsebow",
+"hunter": &"hunter",
 "knight": &"shield",
-"maul": &"axe",
+"maul": &"maul",
 "mini_pekka": &"captain",
-"mirror_warden": &"shield",
+"mirror_warden": &"mirror_warden",
 "musketeer": &"musket",
-"ram": &"shield",
-"relic_aegis": &"shield",
-"rider": &"captain",
-"rune_plate": &"shield",
+"ram": &"ram",
+"relic_aegis": &"relic_aegis",
+"rider": &"rider",
+"rune_plate": &"rune_plate",
 "skeleton": &"skeleton",
-"slime_split": &"skeleton",
-"soulcaller": &"skeleton",
-"spear_goblin": &"spear",
-"spike_shield": &"shield",
+"slime_split": &"slime",
+"soulcaller": &"soulcaller",
+"spear_goblin": &"spear_goblin",
+"spike_shield": &"spike_shield",
 "token_ember": &"spear",
-"token_thick_copy": &"shield",
+"token_thick_copy": &"mirror_warden",
 "token_weak": &"skeleton",
-"token_weak_copy": &"skeleton",
-"valkyrie": &"axe",
-"wardrum": &"banner",
+"token_weak_copy": &"echo_spear",
+"valkyrie": &"valkyrie",
+"wardrum": &"wardrum",
 "zombie_fly": &"skeleton"
 }
 default_archetype = &"spear"
@@ -62,18 +102,58 @@ player_textures = {
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
 &"captain": ExtResource("b_captain"),
+&"crossbow": ExtResource("b_crossbow"),
+&"dirge_horn": ExtResource("b_dirge_horn"),
+&"echo_spear": ExtResource("b_echo_spear"),
+&"giant_knight": ExtResource("b_giant_knight"),
+&"goblin": ExtResource("b_goblin"),
+&"gravewright": ExtResource("b_gravewright"),
+&"horsebow": ExtResource("b_horsebow"),
+&"hunter": ExtResource("b_hunter"),
+&"maul": ExtResource("b_maul"),
+&"mirror_warden": ExtResource("b_mirror_warden"),
 &"musket": ExtResource("b_musket"),
+&"ram": ExtResource("b_ram"),
+&"relic_aegis": ExtResource("b_relic_aegis"),
+&"rider": ExtResource("b_rider"),
+&"rune_plate": ExtResource("b_rune_plate"),
 &"shield": ExtResource("b_shield"),
 &"skeleton": ExtResource("b_skeleton"),
-&"spear": ExtResource("b_spear")
+&"slime": ExtResource("b_slime"),
+&"soulcaller": ExtResource("b_soulcaller"),
+&"spear": ExtResource("b_spear"),
+&"spear_goblin": ExtResource("b_spear_goblin"),
+&"spike_shield": ExtResource("b_spike_shield"),
+&"valkyrie": ExtResource("b_valkyrie"),
+&"wardrum": ExtResource("b_wardrum")
 }
 enemy_textures = {
 &"archer": ExtResource("r_archer"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
 &"captain": ExtResource("r_captain"),
+&"crossbow": ExtResource("r_crossbow"),
+&"dirge_horn": ExtResource("r_dirge_horn"),
+&"echo_spear": ExtResource("r_echo_spear"),
+&"giant_knight": ExtResource("r_giant_knight"),
+&"goblin": ExtResource("r_goblin"),
+&"gravewright": ExtResource("r_gravewright"),
+&"horsebow": ExtResource("r_horsebow"),
+&"hunter": ExtResource("r_hunter"),
+&"maul": ExtResource("r_maul"),
+&"mirror_warden": ExtResource("r_mirror_warden"),
 &"musket": ExtResource("r_musket"),
+&"ram": ExtResource("r_ram"),
+&"relic_aegis": ExtResource("r_relic_aegis"),
+&"rider": ExtResource("r_rider"),
+&"rune_plate": ExtResource("r_rune_plate"),
 &"shield": ExtResource("r_shield"),
 &"skeleton": ExtResource("r_skeleton"),
-&"spear": ExtResource("r_spear")
+&"slime": ExtResource("r_slime"),
+&"soulcaller": ExtResource("r_soulcaller"),
+&"spear": ExtResource("r_spear"),
+&"spear_goblin": ExtResource("r_spear_goblin"),
+&"spike_shield": ExtResource("r_spike_shield"),
+&"valkyrie": ExtResource("r_valkyrie"),
+&"wardrum": ExtResource("r_wardrum")
 }

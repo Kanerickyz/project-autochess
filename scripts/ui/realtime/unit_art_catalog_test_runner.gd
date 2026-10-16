@@ -32,6 +32,7 @@ func _initialize() -> void:
 			_expect(catalog.get_texture(unit.id, true) != null, "%s has player sprite" % unit.id)
 			_expect(catalog.get_texture(unit.id, false) != null, "%s has enemy sprite" % unit.id)
 	_expect(checked >= 40, "checked %d unit resources" % checked)
+	_check_roster_unique(catalog)
 	_expect(catalog.get_archetype("enemy_knight") == catalog.get_archetype("knight"), "enemy_ prefix shares archetype")
 	_expect(catalog.get_texture("unknown_unit", true) != null, "unknown id falls back to default sprite")
 	_expect(
@@ -42,6 +43,23 @@ func _initialize() -> void:
 	if _failures == 0:
 		print("UnitArtCatalogTest: all passed (%d units)" % checked)
 	quit(0 if _failures == 0 else 1)
+
+
+## 主兵种（realtime 目录）每个都有独立贴图，不与其他兵种共用。
+func _check_roster_unique(catalog: UnitArtCatalog) -> void:
+	var owner_by_key: Dictionary = {}
+	for file in DirAccess.get_files_at(UNIT_DIRS[0]):
+		if not file.ends_with(".tres"):
+			continue
+		var unit := load("%s/%s" % [UNIT_DIRS[0], file]) as UnitData
+		if unit == null:
+			continue
+		var key := catalog.get_archetype(unit.id)
+		_expect(
+			not owner_by_key.has(key),
+			"%s has its own sprite (shared with %s)" % [unit.id, owner_by_key.get(key, "-")],
+		)
+		owner_by_key[key] = unit.id
 
 
 func _check_layout() -> void:

@@ -5,11 +5,12 @@ Sources (art_source/paper_cutout/, ignored by Godot):
   arena_background.jpg   empty clearing edited from concept_reference.jpg
   units_sheet_a.jpg      2x2 blue stickers: shield, archer, axe, captain
   units_sheet_b.jpg      2x2 blue stickers: spear, musket, banner, skeleton
+  units_sheet_c..g.jpg   2x2 blue stickers, one per remaining unit (see SHEETS)
   stat_badges_sheet.jpg  attack (sword) and HP (heart) tags without numbers
 
 Output:
   assets/sprites/paper_cutout/env/arena_background.jpg
-  assets/sprites/paper_cutout/units/unit_<archetype>_{blue,red}.png
+  assets/sprites/paper_cutout/units/unit_<sprite_key>_{blue,red}.png
   assets/sprites/paper_cutout/ui/stat_{attack,hp}.png
 
 Red variants recolor only the cobalt cloth so both teams keep identical silhouettes.
@@ -29,10 +30,16 @@ ENV = ROOT / "assets" / "sprites" / "paper_cutout" / "env"
 UNITS = ROOT / "assets" / "sprites" / "paper_cutout" / "units"
 UI = ROOT / "assets" / "sprites" / "paper_cutout" / "ui"
 
-SHEETS = {
-	"units_sheet_a.jpg": ["shield", "archer", "axe", "captain"],
-	"units_sheet_b.jpg": ["spear", "musket", "banner", "skeleton"],
-}
+## (sheet, 2x2 sprite keys, edge_connected_only keying). Sheets c-g are one sprite per unit.
+SHEETS = [
+	("units_sheet_a.jpg", ["shield", "archer", "axe", "captain"], False),
+	("units_sheet_b.jpg", ["spear", "musket", "banner", "skeleton"], False),
+	("units_sheet_c.jpg", ["crossbow", "horsebow", "rider", "hunter"], True),
+	("units_sheet_d.jpg", ["maul", "valkyrie", "giant_knight", "spike_shield"], True),
+	("units_sheet_e.jpg", ["rune_plate", "relic_aegis", "mirror_warden", "dirge_horn"], True),
+	("units_sheet_f.jpg", ["wardrum", "echo_spear", "spear_goblin", "goblin"], True),
+	("units_sheet_g.jpg", ["gravewright", "soulcaller", "ram", "slime"], True),
+]
 UNIT_MAX_HEIGHT = 320
 BADGES = ["attack", "hp"]
 BADGE_SIZE = (192, 120)
@@ -52,7 +59,20 @@ def key_out_backdrop(rgb: np.ndarray, edge_connected_only: bool = False) -> np.n
 	if edge_connected_only:
 		labels, _count = ndimage.label(backdrop)
 		edge = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
-		backdrop = np.isin(labels, edge[edge > 0])
+		outside = np.isin(labels, edge[edge > 0])
+		# Enclosed gaps (inside a bow string, under a lance) have a backdrop-coloured median;
+		# red props (hearts, embers) do not.
+		ref = np.median(rgb[outside], axis=0).astype(np.int32)
+		for idx in range(1, _count + 1):
+			if idx in edge:
+				continue
+			region = labels == idx
+			median = np.median(rgb[region], axis=0).astype(np.int32)
+			if np.abs(median - ref).max() < 30:
+				outside |= region
+		# JPEG fringe: magenta-tinted pixels hugging a removed area.
+		fringe = (r - g > 80) & (g < 110) & (b > 45) & (b - g > 20)
+		backdrop = outside | (ndimage.binary_dilation(outside, iterations=3) & fringe)
 	keep = Image.fromarray(np.where(backdrop, 0, 255).astype(np.uint8), mode="L")
 	# Eat the 1px pink fringe JPEG leaves around the cream border, then soften.
 	keep = keep.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
@@ -94,10 +114,10 @@ def to_red_team(im: Image.Image) -> Image.Image:
 	return Image.fromarray(rgba, mode="RGBA")
 
 
-def cut_sheet(path: Path, names: list[str]) -> None:
+def cut_sheet(path: Path, names: list[str], edge_connected_only: bool) -> None:
 	sheet = Image.open(path).convert("RGB")
 	rgb = np.array(sheet)
-	alpha = key_out_backdrop(rgb)
+	alpha = key_out_backdrop(rgb, edge_connected_only)
 	rgba = np.dstack([rgb, alpha])
 	full = Image.fromarray(rgba, mode="RGBA")
 	half_w, half_h = sheet.width // 2, sheet.height // 2
@@ -131,8 +151,8 @@ def main() -> None:
 	UNITS.mkdir(parents=True, exist_ok=True)
 	UI.mkdir(parents=True, exist_ok=True)
 	shutil.copyfile(SRC / "arena_background.jpg", ENV / "arena_background.jpg")
-	for sheet, names in SHEETS.items():
-		cut_sheet(SRC / sheet, names)
+	for sheet, names, edge_only in SHEETS:
+		cut_sheet(SRC / sheet, names, edge_only)
 	cut_badges(SRC / "stat_badges_sheet.jpg")
 
 
