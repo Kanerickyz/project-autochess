@@ -67,27 +67,22 @@ static func roll(
 	var remain_seats := seat_count - fixed_units.size()
 	var remain_e := maxf(0.0, target_e - fixed_u)
 
-	## Boss 节点：只出固定首领（及关卡写死的跟班若有），不预算填杂兵、不跟人数规则。
+	## Boss 节点：只出固定首领（及关卡写死的跟班若有），不预算填杂兵。
 	var fill: Array[UnitData] = []
 	if node_type != MapNodeType.Type.BOSS:
-		var player_n := _player_roster_count(team_entries)
-		var target_total := cfg.roll_enemy_count(node_type, player_n, rng)
-		## 座位硬上限仍有效。
-		target_total = clampi(target_total, 0, seat_count)
-		var fill_n := clampi(target_total - fixed_units.size(), 0, remain_seats)
-		if remain_seats > 0 and fill_n > 0 and not pool.is_empty():
-			## 人数硬约束优先：先定 fill_n，再在预算软约束下抽人。
+		if remain_seats > 0 and remain_e > 0.0 and not pool.is_empty():
 			fill = _sample_fill(
 				pool,
-				remain_e if remain_e > 0.0 else target_e,
-				fill_n,
+				remain_e,
+				remain_seats,
+				wave.spawn_count,
 				cfg,
 				node_type,
 				rng,
 			)
-		elif remain_seats > 0 and fill_n > 0 and remain_e <= 0.0 and fixed_units.is_empty():
-			## 无固定且预算异常：仍按人数硬约束贪心填满。
-			fill = _greedy_fill(pool, target_e, fill_n, cfg, true)
+		elif remain_seats > 0 and remain_e <= 0.0 and fixed_units.is_empty():
+			## 无固定且预算异常：仍至少出 n_min，走保底贪心。
+			fill = _greedy_fill(pool, target_e, remain_seats, cfg)
 
 	var all_units: Array[UnitData] = []
 	all_units.append_array(fixed_units)
@@ -97,19 +92,11 @@ static func roll(
 		for i in seat_count:
 			capped.append(all_units[i])
 		all_units = capped
-	if all_units.is_empty() and not pool.is_empty() and node_type != MapNodeType.Type.BOSS:
+	if all_units.is_empty() and not pool.is_empty():
 		## 极端保底：至少 1 个最接近 E 的单位。
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
 
 	return _seat_units(all_units, cols, seat_count, cfg)
-
-
-static func _player_roster_count(team_entries: Array) -> int:
-	var n := 0
-	for entry in team_entries:
-		if entry != null:
-			n += 1
-	return maxi(1, n)
 
 
 static func _resolve_pool(
@@ -151,22 +138,18 @@ static func _collect_fixed_units(wave: WaveData) -> Array[UnitData]:
 	return units
 
 
-## exact_fill_n：人数硬约束下的填充只数（不含固定位）。
 static func _sample_fill(
 	pool: Array[UnitData],
 	target_e: float,
-	exact_fill_n: int,
+	remain_seats: int,
+	spawn_count_hint: int,
 	cfg: SpawnBudgetConfig,
 	node_type: MapNodeType.Type,
 	rng: RandomNumberGenerator,
 ) -> Array[UnitData]:
-	var n := maxi(0, exact_fill_n)
-	if n <= 0 or pool.is_empty():
-		return []
-	## 人数硬锁：n_min＝n_max＝center。
-	var n_min := n
-	var n_max := n
-	var center := n
+	var n_min := clampi(cfg.n_min, 1, remain_seats)
+	var n_max := remain_seats
+	var center := clampi(maxi(1, spawn_count_hint), n_min, n_max)
 	var base_band := cfg.get_band(node_type)
 	var formation := cfg.pick_formation_tag(rng)
 
@@ -174,7 +157,7 @@ static func _sample_fill(
 	var best := _rejection_search(
 		pool, target_e, n_min, n_max, center, base_band, formation, true, cfg, rng
 	)
-	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
+	if _within_band(best, target_e, base_band, cfg):
 		return best
 
 	## 第二档：忽略标签，同带宽
@@ -184,7 +167,7 @@ static func _sample_fill(
 		target_e,
 		cfg,
 	)
-	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
+	if _within_band(best, target_e, base_band, cfg):
 		return best
 
 	## 放宽一档（禁止再静默纯随机）
@@ -195,18 +178,18 @@ static func _sample_fill(
 		target_e,
 		cfg,
 	)
-	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
+	if _within_band(best, target_e, wide_band, cfg):
 		return best
 
-	## 最近解 + 仅替换爬山（不改人数）
-	if best.is_empty() or best.size() != n:
+	## 最近解 + ±1 替换爬山
+	if best.is_empty():
 		best = _random_composition(pool, center, rng)
-	best = _hill_climb(best, pool, target_e, cfg, rng, true)
-	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
+	best = _hill_climb(best, pool, target_e, cfg, rng)
+	if _within_band(best, target_e, wide_band, cfg):
 		return best
 
-	## 保底：按 U 贪心填满人数
-	return _greedy_fill(pool, target_e, n, cfg, true)
+	## 保底：按 U 贪心填充到接近 E
+	return _greedy_fill(pool, target_e, remain_seats, cfg)
 
 
 static func _rejection_search(
@@ -339,7 +322,6 @@ static func _hill_climb(
 	target_e: float,
 	cfg: SpawnBudgetConfig,
 	rng: RandomNumberGenerator,
-	lock_count: bool = false,
 ) -> Array[UnitData]:
 	if seed_units.is_empty() or pool.is_empty():
 		return seed_units
@@ -351,12 +333,11 @@ static func _hill_climb(
 		var replacement := pool[rng.randi_range(0, pool.size() - 1)]
 		var trial: Array[UnitData] = current.duplicate()
 		trial[idx] = replacement
-		## 人数硬锁时禁止 ±1；否则偶发尝试增删。
-		if not lock_count:
-			if rng.randf() < 0.25 and trial.size() > 1 and rng.randf() < 0.5:
-				trial.remove_at(rng.randi_range(0, trial.size() - 1))
-			elif rng.randf() < 0.25:
-				trial.append(pool[rng.randi_range(0, pool.size() - 1)])
+		## 可选 ±1 人数：偶发尝试增删
+		if rng.randf() < 0.25 and trial.size() > 1 and rng.randf() < 0.5:
+			trial.remove_at(rng.randi_range(0, trial.size() - 1))
+		elif rng.randf() < 0.25:
+			trial.append(pool[rng.randi_range(0, pool.size() - 1)])
 		var err := absf(_power(trial, cfg) - target_e)
 		if err < best_err:
 			best_err = err
@@ -369,7 +350,6 @@ static func _greedy_fill(
 	target_e: float,
 	remain_seats: int,
 	cfg: SpawnBudgetConfig,
-	exact_count: bool = false,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or remain_seats <= 0:
@@ -390,8 +370,8 @@ static func _greedy_fill(
 		for cand in sorted_pool:
 			var trial := power + _unit_u(cand, cfg)
 			var err := absf(trial - target_e)
-			## 非精确人数时：已超过且加人只会更差则跳过过大单位
-			if not exact_count and power >= target_e and trial > power:
+			## 已超过且加人只会更差时跳过过大单位
+			if power >= target_e and trial > power:
 				continue
 			if err < best_err - 0.0001:
 				best_err = err
@@ -400,24 +380,14 @@ static func _greedy_fill(
 				if _unit_id(cand) < _unit_id(best_unit):
 					best_unit = cand
 		if best_unit == null:
-			## 精确人数：仍须填满，取池中任意合法单位。
-			if exact_count and not sorted_pool.is_empty():
-				best_unit = sorted_pool[result.size() % sorted_pool.size()]
-			else:
-				break
+			break
 		var next_power := power + _unit_u(best_unit, cfg)
-		## 非精确人数：若已在带宽附近且再加会明显偏大，停止（至少 1 个）
-		if (
-			not exact_count
-			and not result.is_empty()
-			and power >= target_e * 0.85
-			and next_power > target_e
-			and absf(next_power - target_e) > absf(power - target_e)
-		):
+		## 若已在带宽附近且再加会明显偏大，停止（至少 1 个）
+		if not result.is_empty() and power >= target_e * 0.85 and next_power > target_e and absf(next_power - target_e) > absf(power - target_e):
 			break
 		result.append(best_unit)
 		power = next_power
-		if not exact_count and _power_within(power, target_e, 0.05):
+		if _power_within(power, target_e, 0.05):
 			break
 	if result.is_empty():
 		result.append(_pick_closest_unit(pool, target_e, cfg))

@@ -151,12 +151,11 @@ flowchart TD
 | 时机 | 来源 |
 |------|------|
 | 战斗内 | **无**击杀掉金（击杀敌方不给金） |
-| 战斗结算 | **按当前地图层发金**：第 1 层 +1、第 2 层 +2…（**取代**原波次金） |
+| 波次结算 | `WaveData.wave_gold_reward`（或默认波次金） |
 | 商店出售 | 按队伍成员星级 / 等级退金（细则见商店） |
 | 招募出售 | 正常退金腾位（细则见招募篇；点数见数值） |
 
-准备阶段可买角色与道具，见 [Features/PREPARE_SHOP.md](./Features/PREPARE_SHOP.md)。  
-敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英按进点瞬间的**整局队伍强度**定目标；人数约束见该文；Boss 不吃真队修正、不跟人数规则。
+敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英按进点瞬间的**整局队伍强度**定目标；Boss 不吃真队修正。
 
 ```
 LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
