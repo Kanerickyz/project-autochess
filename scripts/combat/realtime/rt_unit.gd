@@ -32,7 +32,8 @@ func _init(p_unit: UnitInstance, p_position: Vector2) -> void:
 	unit = p_unit
 	cell = Vector2i(floori(p_position.x), floori(p_position.y))
 	step_dest = cell
-	position = cell_center(cell)
+	## 多格足迹单位：表现锚在足迹几何中心，而非锚点格心。
+	position = footprint_center(cell)
 	step_t = 1.0
 	deploy_remaining = maxf(0.0, get_stats().deploy_time)
 	state = State.DEPLOYING if deploy_remaining > 0.0 else State.MOVING
@@ -123,11 +124,16 @@ func get_footprint_cells(anchor: Vector2i = Vector2i(-99999, -99999)) -> Array[V
 	return cells
 
 
-## 足迹几何中心（表现坐标用）。
+## 足迹几何中心（表现坐标用）：2×2 锚 (3,4) → (4.0, 5.0)，落在四格正中。
 func footprint_center(anchor: Vector2i = Vector2i(-99999, -99999)) -> Vector2:
 	var origin := cell if anchor == Vector2i(-99999, -99999) else anchor
-	var size := get_footprint_size()
-	return Vector2(origin) + Vector2(float(size.x) * 0.5, float(size.y) * 0.5)
+	return footprint_center_for(origin, get_footprint_size())
+
+
+static func footprint_center_for(origin: Vector2i, size: Vector2i) -> Vector2:
+	var w := maxi(1, size.x)
+	var h := maxi(1, size.y)
+	return Vector2(origin) + Vector2(float(w) * 0.5, float(h) * 0.5)
 
 
 func get_hp_ratio() -> float:

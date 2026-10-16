@@ -912,9 +912,13 @@ func _draw() -> void:
 			var body_r := float(preview["radius"])
 			var vwx := float(preview.get("visual_half_width", 0.0))
 			var vhy := float(preview.get("visual_half_height", 0.0))
+			var fp_span := maxf(
+				float(preview.get("footprint_w", 1)),
+				float(preview.get("footprint_h", 1)),
+			)
 			_draw_body(
 				preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.85, String(preview["label"]), px, false, enemy_off,
-				false, String(preview.get("unit_id", "")),
+				false, String(preview.get("unit_id", "")), null, Vector2.ZERO, fp_span,
 			)
 			_draw_stat_badges(
 				tile_to_local(preview["position"]) + enemy_off,
@@ -1203,9 +1207,11 @@ func _draw_units(px: float) -> void:
 		## 当前行动者略放大剪影，便于观战指认。
 		var scale := 1.12 if is_actor else 1.0
 		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
+		var fp := rt.get_footprint_size()
+		var fp_span := maxf(float(fp.x), float(fp.y))
 		_draw_body(
 			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off,
-			rt.is_player(), _rt_unit_id(rt), _motion.get_pose(rt), _motion.walk_pose(rt),
+			rt.is_player(), _rt_unit_id(rt), _motion.get_pose(rt), _motion.walk_pose(rt), fp_span,
 		)
 		var center := tile_to_local(rt.position) + off
 		var silhouette_r_px := maxf(vwx, vhy) * scale * px
@@ -1248,13 +1254,18 @@ func _draw_body(
 	unit_id: String = "",
 	pose: RealtimeUnitMotion.Pose = null,
 	walk: Vector2 = Vector2.ZERO,
+	footprint_span: float = 1.0,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
 	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
+	## 多格足迹：剪影略放大，使角色在 2×2 内更饱满可读。
+	if footprint_span >= 1.5:
+		rx *= 1.35
+		ry *= 1.35
 	var tex: Texture2D = _art.get_texture(unit_id, is_player) if _art != null else null
 	if tex != null:
-		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk)
+		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
 	var fill := Color(color, alpha)
@@ -1275,7 +1286,7 @@ func _draw_body(
 	draw_string(font, baseline, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, alpha))
 
 
-## 贴图脚底落在格心略下方；高亮/受击用整体提亮，不改阵营色。
+## 贴图脚底：单格落在格心略下方；多格足迹则把整张贴图垂向居中于足迹中心。
 ## pose / walk 为纯表现动画：以脚底为轴旋转缩放，偏移以格为单位。
 func _draw_unit_sprite(
 	center: Vector2,
@@ -1287,11 +1298,20 @@ func _draw_unit_sprite(
 	is_player: bool,
 	pose: RealtimeUnitMotion.Pose = null,
 	walk: Vector2 = Vector2.ZERO,
+	footprint_span: float = 1.0,
 ) -> void:
-	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, px * 1.9)
+	var h_cap := px * 1.9
+	if footprint_span >= 1.5:
+		h_cap = px * minf(2.6, footprint_span * 1.15)
+	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, h_cap)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
-	var feet := center + Vector2(0.0, px * 0.38)
+	## 2×2：贴图中心对齐足迹几何中心；1×1：脚底略低于格心。
+	var feet := (
+		center + Vector2(0.0, h * 0.5)
+		if footprint_span >= 1.5
+		else center + Vector2(0.0, px * 0.38)
+	)
 	var offset := Vector2(0.0, walk.y * px)
 	var rot := walk.x
 	var scl := Vector2.ONE

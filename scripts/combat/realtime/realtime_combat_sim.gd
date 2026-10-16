@@ -630,29 +630,65 @@ func _find_free_footprint_origin(
 	size: Vector2i,
 	team: UnitInstance.Team,
 ) -> Vector2i:
-	var start := _clamp_cell(preferred)
+	return pick_footprint_origin(
+		preferred,
+		size,
+		_arena_size,
+		team,
+		func(origin: Vector2i, sz: Vector2i) -> bool: return _footprint_fits(origin, sz, null),
+	)
+
+
+## 空场选足迹锚（准备预览用）：仅校验界内，不查占格。
+static func pick_empty_footprint_origin(
+	preferred: Vector2i,
+	size: Vector2i,
+	arena: Vector2i,
+	team: UnitInstance.Team,
+) -> Vector2i:
+	return pick_footprint_origin(
+		preferred,
+		size,
+		arena,
+		team,
+		func(origin: Vector2i, sz: Vector2i) -> bool: return _footprint_in_bounds(origin, sz, arena),
+	)
+
+
+static func pick_footprint_origin(
+	preferred: Vector2i,
+	size: Vector2i,
+	arena: Vector2i,
+	team: UnitInstance.Team,
+	fits: Callable,
+) -> Vector2i:
+	var start := Vector2i(
+		clampi(preferred.x, 0, maxi(0, arena.x - 1)),
+		clampi(preferred.y, 0, maxi(0, arena.y - 1)),
+	)
+	var w := maxi(1, size.x)
+	var h := maxi(1, size.y)
 	var candidates: Array[Vector2i] = [
 		start,
-		start - Vector2i(size.x - 1, 0),
-		start - Vector2i(0, size.y - 1),
-		start - Vector2i(size.x - 1, size.y - 1),
+		start - Vector2i(w - 1, 0),
+		start - Vector2i(0, h - 1),
+		start - Vector2i(w - 1, h - 1),
 	]
-	var mid_y := BoardHalf.midline_row(int(_arena_size.y))
-	## 连续中心（宽 9 → 4.0），使 2 格足迹优先盖住水平中线附近。
-	var board_cx := (float(int(_arena_size.x)) - 1.0) * 0.5
+	var mid_y := BoardHalf.midline_row(int(arena.y))
+	## 与 footprint_center 一致：连续几何中心（宽 9 → 4.5）。
+	var board_cx := float(arena.x) * 0.5
 	var best := Vector2i(-1, -1)
 	var best_score := -999999.0
 	for origin in candidates:
-		if not _footprint_fits(origin, size, null):
+		if not bool(fits.call(origin, Vector2i(w, h))):
 			continue
-		var score := _score_footprint_origin(origin, size, team, mid_y, board_cx)
+		var score := score_footprint_origin(origin, Vector2i(w, h), team, mid_y, board_cx)
 		if score > best_score:
 			best_score = score
 			best = origin
 	if best != Vector2i(-1, -1):
 		return best
-	## 在 preferred 附近平移搜索：仍优先水平居中
-	var max_r := maxi(int(_arena_size.x), int(_arena_size.y))
+	var max_r := maxi(int(arena.x), int(arena.y))
 	for radius in range(0, max_r + 1):
 		var ring_best := Vector2i(-1, -1)
 		var ring_score := -999999.0
@@ -661,9 +697,9 @@ func _find_free_footprint_origin(
 				if radius > 0 and maxi(absi(dx), absi(dy)) != radius:
 					continue
 				var origin2 := Vector2i(start.x + dx, start.y + dy)
-				if not _footprint_fits(origin2, size, null):
+				if not bool(fits.call(origin2, Vector2i(w, h))):
 					continue
-				var sc2 := _score_footprint_origin(origin2, size, team, mid_y, board_cx)
+				var sc2 := score_footprint_origin(origin2, Vector2i(w, h), team, mid_y, board_cx)
 				if sc2 > ring_score:
 					ring_score = sc2
 					ring_best = origin2
@@ -672,7 +708,7 @@ func _find_free_footprint_origin(
 	return Vector2i(-1, -1)
 
 
-func _score_footprint_origin(
+static func score_footprint_origin(
 	origin: Vector2i,
 	size: Vector2i,
 	team: UnitInstance.Team,
@@ -680,27 +716,37 @@ func _score_footprint_origin(
 	board_cx: float,
 ) -> float:
 	var score := 0.0
-	var fp_cx := float(origin.x) + (float(size.x) - 1.0) * 0.5
-	## 水平局中权重最高。
+	var fp_cx := float(origin.x) + float(size.x) * 0.5
+	var fp_cy := float(origin.y) + float(size.y) * 0.5
+	## 水平局中权重最高；垂直亦略拉向足迹几何中心可读。
 	score -= absf(fp_cx - board_cx) * 20.0
 	for dy in size.y:
 		for dx in size.x:
 			var c := origin + Vector2i(dx, dy)
-			## 敌方向下（中线）、友方向上。
 			if team == UnitInstance.Team.ENEMY:
 				score += float(c.y)
 			else:
 				score -= float(c.y)
 			score -= float(absi(c.y - mid_y)) * 0.5
+	score -= absf(fp_cy - float(mid_y)) * 0.25
 	return score
 
 
-func _footprint_fits(origin: Vector2i, size: Vector2i, ignore: RtUnit) -> bool:
+static func _footprint_in_bounds(origin: Vector2i, size: Vector2i, arena: Vector2i) -> bool:
 	for dy in size.y:
 		for dx in size.x:
 			var c := origin + Vector2i(dx, dy)
-			if not _in_arena(c):
+			if c.x < 0 or c.y < 0 or c.x >= arena.x or c.y >= arena.y:
 				return false
+	return true
+
+
+func _footprint_fits(origin: Vector2i, size: Vector2i, ignore: RtUnit) -> bool:
+	if not _footprint_in_bounds(origin, size, _arena_size):
+		return false
+	for dy in size.y:
+		for dx in size.x:
+			var c := origin + Vector2i(dx, dy)
 			var owner := _occupancy_owner(c)
 			if owner != null and owner != ignore:
 				return false

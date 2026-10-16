@@ -646,8 +646,15 @@ func _begin_combat_from_prepare() -> void:
 		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
 
 	## 2) 敌方按遭遇配置书写顺序依次生成（_enemy_spawns 已保序）。
+	## 逻辑落点用座位格心；spawn.position 可能是多格足迹几何中心（仅供预览）。
 	for spawn in _enemy_spawns:
-		_sim.add_unit(spawn["unit"], spawn["position"])
+		var place: Vector2 = spawn["position"]
+		var seat_i: int = int(spawn.get("seat_index", -1))
+		if seat_i >= 0 and _enemy_slots != null:
+			var seat_cell := _enemy_slots.get_cell(seat_i)
+			if seat_cell != Vector2i(-1, -1):
+				place = Vector2(seat_cell) + Vector2(0.5, 0.5)
+		_sim.add_unit(spawn["unit"], place)
 
 	## 3) 双方生成之后：未入座手牌回抽、清空手牌、准备结束。
 	_card_flow.return_hand_to_draw(_encounter_rng)
@@ -718,7 +725,7 @@ func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
 		var unit := UnitInstance.from_unit_data(ud, cell, UnitInstance.Team.ENEMY)
 		result.append({
 			"unit": unit,
-			"position": Vector2(cell) + Vector2(0.5, 0.5),
+			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
 	return result
@@ -753,10 +760,25 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		var unit := UnitInstance.from_unit_data(unit_data, cell, UnitInstance.Team.ENEMY)
 		result.append({
 			"unit": unit,
-			"position": Vector2(cell) + Vector2(0.5, 0.5),
+			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
 	return result
+
+
+## 多格足迹：预览/开场表现落在足迹几何中心（2×2 四格正中），非锚座格心。
+func _enemy_spawn_visual_position(unit: UnitInstance, seat_cell: Vector2i) -> Vector2:
+	var size := Vector2i(1, 1)
+	if unit != null:
+		size = unit.get_footprint_size()
+	if size.x <= 1 and size.y <= 1:
+		return Vector2(seat_cell) + Vector2(0.5, 0.5)
+	var origin := RealtimeCombatSim.pick_empty_footprint_origin(
+		seat_cell, size, _board_size, UnitInstance.Team.ENEMY
+	)
+	if origin == Vector2i(-1, -1):
+		origin = seat_cell
+	return RtUnit.footprint_center_for(origin, size)
 
 
 func _get_spawn_budget_config() -> SpawnBudgetConfig:
@@ -784,11 +806,14 @@ func _build_enemy_previews(spawns: Array) -> Array:
 		var label := ""
 		if unit != null and unit.unit_data != null:
 			label = unit.unit_data.display_name if not unit.unit_data.display_name.is_empty() else unit.unit_data.id
+		var fp := unit.get_footprint_size() if unit != null else Vector2i(1, 1)
 		previews.append({
 			"position": spawn["position"],
 			"radius": stats.body_radius if stats != null else 0.5,
 			"visual_half_width": stats.get_visual_half_width() if stats != null else 0.0,
 			"visual_half_height": stats.get_visual_half_height() if stats != null else 0.0,
+			"footprint_w": fp.x,
+			"footprint_h": fp.y,
 			"label": label,
 			"unit_id": unit.unit_data.id if unit != null and unit.unit_data != null else "",
 			"unit": unit,
