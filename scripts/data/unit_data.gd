@@ -23,12 +23,26 @@ extends Resource
 @export_range(1, 3, 1) var footprint_w: int = 1
 ## 逻辑足迹高（格）；普通单位为 1。Boss 召唤统领为 2。
 @export_range(1, 3, 1) var footprint_h: int = 1
-## 首领衍生小兵身体（如枯骨）；空 = 不可召唤。
+## 首领衍生小兵身体（单模板回退）；空且 summon_pool 空 = 不可召唤。
 @export var summon_unit: UnitData
+## 首领召唤池（优先）：非空时每次从中随机一只（如 T4/T5）。
+@export var summon_pool: Array[UnitData] = []
 ## 场上衍生小兵硬上限（存活计数）；0 = 不召唤。
 @export_range(0, 20, 1) var summon_max_alive: int = 0
 ## 单次召唤只数。
 @export_range(0, 10, 1) var summon_per_action: int = 1
+
+
+func pick_summon_unit(rng: RandomNumberGenerator = null) -> UnitData:
+	var pool: Array[UnitData] = []
+	for entry in summon_pool:
+		if entry != null:
+			pool.append(entry)
+	if not pool.is_empty():
+		if rng != null:
+			return pool[rng.randi_range(0, pool.size() - 1)]
+		return pool[randi() % pool.size()]
+	return summon_unit
 
 @export_group("UI")
 ## 角色头像/立绘，用于卡片与棋盘 UI；留空则使用色块占位。

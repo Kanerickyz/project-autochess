@@ -65,6 +65,7 @@ var _recruit_hint: Label
 var _recruit_gold: Label
 var _recruit_seat: Label
 var _recruit_refresh_btn: Button
+var _recruit_lock_btn: Button
 var _recruit_reset_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
@@ -91,6 +92,9 @@ var _recruit_pending_item_slot: int = -1
 @onready var _dock: Control = $Layout/Dock
 
 var _refresh_button: Button
+## 观战倍速：1 → 2 → 3 → 1 循环。
+var _speed_button: Button
+const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
 
 
 func _ready() -> void:
@@ -106,6 +110,7 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
+	_ensure_speed_button()
 	_ensure_recruit_hud()
 	_result_overlay.visible = false
 	if _start_button != null:
@@ -932,6 +937,49 @@ func _ensure_refresh_button() -> void:
 	_refresh_button.visible = false
 
 
+func _ensure_speed_button() -> void:
+	if _speed_button != null and is_instance_valid(_speed_button):
+		_update_speed_button_text()
+		return
+	_speed_button = Button.new()
+	_speed_button.name = "SpeedButton"
+	_speed_button.unique_name_in_owner = true
+	_speed_button.custom_minimum_size = Vector2(0, 36)
+	_speed_button.pressed.connect(_on_speed_pressed)
+	var dock_box := _start_button.get_parent() if _start_button != null else null
+	if dock_box != null:
+		dock_box.add_child(_speed_button)
+		## 开战钮下方，观战可用。
+		dock_box.move_child(_speed_button, _start_button.get_index() + 1)
+	else:
+		add_child(_speed_button)
+	_update_speed_button_text()
+	_speed_button.visible = false
+
+
+func _update_speed_button_text() -> void:
+	if _speed_button == null:
+		return
+	var shown := 1
+	if time_scale >= 2.5:
+		shown = 3
+	elif time_scale >= 1.5:
+		shown = 2
+	_speed_button.text = "倍速 %d×" % shown
+
+
+func _on_speed_pressed() -> void:
+	var idx := 0
+	for i in _SPEED_STEPS.size():
+		if is_equal_approx(time_scale, _SPEED_STEPS[i]):
+			idx = i
+			break
+	idx = (idx + 1) % _SPEED_STEPS.size()
+	time_scale = _SPEED_STEPS[idx]
+	_update_speed_button_text()
+	_refresh_hud()
+
+
 func _ensure_recruit_hud() -> void:
 	if _recruit_hud != null and is_instance_valid(_recruit_hud):
 		return
@@ -986,6 +1034,11 @@ func _ensure_recruit_hud() -> void:
 	_recruit_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_recruit_refresh_btn.pressed.connect(_on_recruit_refresh_pressed)
 	row.add_child(_recruit_refresh_btn)
+	_recruit_lock_btn = Button.new()
+	_recruit_lock_btn.text = "锁定"
+	_recruit_lock_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_recruit_lock_btn.pressed.connect(_on_recruit_lock_pressed)
+	row.add_child(_recruit_lock_btn)
 	_recruit_reset_btn = Button.new()
 	_recruit_reset_btn.text = "重置"
 	_recruit_reset_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1032,6 +1085,8 @@ func _hide_combat_chrome_for_recruit() -> void:
 		_start_button.visible = false
 	if _refresh_button != null:
 		_refresh_button.visible = false
+	if _speed_button != null:
+		_speed_button.visible = false
 	if _result_overlay != null:
 		_result_overlay.visible = false
 
@@ -1141,6 +1196,7 @@ func _build_recruit_candidate_previews() -> Array:
 			"cell": cell,
 			"cost": cost,
 			"affordable": _recruit_session.can_afford_recruit(i) if unit != null else false,
+			"locked": _recruit_session.is_candidate_locked(i),
 			"label": unit.display_name if unit != null else "",
 		})
 	return result
@@ -1262,6 +1318,17 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
+	if _recruit_lock_btn != null:
+		var can_lock := (
+			not _recruit_animating
+			and _recruit_selected_candidate >= 0
+			and _recruit_session.get_candidate(_recruit_selected_candidate) != null
+		)
+		_recruit_lock_btn.disabled = not can_lock
+		if can_lock and _recruit_session.is_candidate_locked(_recruit_selected_candidate):
+			_recruit_lock_btn.text = "解锁"
+		else:
+			_recruit_lock_btn.text = "锁定"
 	if _recruit_reset_btn != null:
 		_recruit_reset_btn.disabled = _recruit_animating
 	if _recruit_skip_btn != null:
@@ -1459,6 +1526,27 @@ func _on_recruit_refresh_pressed() -> void:
 	if not _recruit_session.try_refresh():
 		if _recruit_hint != null:
 			_recruit_hint.text = "金币不足，无法刷新"
+
+
+func _on_recruit_lock_pressed() -> void:
+	if _recruit_animating or _recruit_session == null:
+		return
+	if _recruit_selected_candidate < 0:
+		if _recruit_hint != null:
+			_recruit_hint.text = "先点选下半场角色再锁定"
+		return
+	var unit := _recruit_session.get_candidate(_recruit_selected_candidate)
+	if unit == null:
+		if _recruit_hint != null:
+			_recruit_hint.text = "空槽无法锁定"
+		return
+	var locked := _recruit_session.toggle_candidate_lock(_recruit_selected_candidate)
+	if _recruit_hint != null:
+		if locked:
+			_recruit_hint.text = "已锁定 %s（刷新保留）" % unit.display_name
+		else:
+			_recruit_hint.text = "已解锁 %s" % unit.display_name
+	_refresh_recruit_hud()
 
 
 func _on_recruit_reset_pressed() -> void:
@@ -1776,6 +1864,11 @@ func _refresh_cards() -> void:
 		_refresh_button.visible = false
 		_refresh_button.disabled = true
 		_refresh_button.text = "刷新手牌（已禁用）"
+	if _speed_button != null:
+		## 开战观战与结算可调倍速；准备/招募隐藏。
+		_speed_button.visible = _phase == Phase.COMBAT or _phase == Phase.RESULT
+		_speed_button.disabled = false
+		_update_speed_button_text()
 
 
 func _combat_phase_status_text() -> String:
@@ -1783,9 +1876,7 @@ func _combat_phase_status_text() -> String:
 		return "战斗中·观战"
 	var round_i := _sim.get_round_index()
 	var actor := _sim.get_current_actor()
-	var scale_txt := ""
-	if time_scale > 1.01:
-		scale_txt = " ×%.2g" % time_scale
+	var scale_txt := " ×%.0f" % time_scale
 	if actor == null:
 		return "战斗中·第%d回合%s" % [round_i, scale_txt]
 	var name := actor.get_display_name()

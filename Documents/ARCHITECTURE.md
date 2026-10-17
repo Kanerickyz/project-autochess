@@ -15,7 +15,8 @@
 - **手牌 As-Is**：实时主路径为战中抽打弃 + 号令出牌（待按玩家篇回摆）
 - **M3 Economy（Legacy，已替换）**：原 `BenchState` 备战席流程已由 M3b 替代
 - **M2 交互**：进入波次 →（To-Be 准备入座）→ 开始战斗 → 敌方按座位出齐 → 自动战斗观战 → 波次结算（发金）→ 商店构筑
-- 尚无：商店锁定、牌库内手动合并；准备角色座位几何与刷新 UI
+- 尚无：遗留遭遇商店（`ShopService`）锁定、牌库内手动合并；准备角色座位几何与刷新 UI
+- **已实现（招募主路径）**：角色候选槽锁定（刷新保留）；观战手动倍速 1×/2×/3×（`RealtimeBattleController.time_scale`）
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
 - **未创建** `resources/traits/`（v1 不含羁绊）
@@ -143,7 +144,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | 金币 | 波次固定收益（RESOLVE）、**商店出售**（按 `DeckEntry.level`）；**无**击杀掉金 |
 | 波次结算金 | `WaveData.wave_gold_reward`（`-1` 用 `EconomyConfig.default_wave_gold`） |
 | 商店商品 | **角色卡**（入牌库）、**增益卡**（附加到牌库条目） |
-| 刷新 | 消耗金币刷新（商店锁定非本版范围） |
+| 刷新 | 消耗金币刷新；**招募主路径**角色槽可锁定（刷新保留）；遗留 `ShopService` 锁定仍非本版 |
 | 购买限制 | 角色卡：牌库未满直接入队，已满 → 替换流；增益卡不占新槽 |
 
 **Legacy（已移除）**：`BenchState` / 备战席 UI。  
@@ -216,7 +217,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 **确定性**（若需回放或联机）：`combat_tick` 为回合序号（刷怪节拍）；回合内各单位按固定顺序逐个行动，`action_interval` 控制行动节奏；RNG 使用 seeded，避免 `delta` 浮点累积差异。
 
-**战斗节奏（tick 加速）**：单波战斗内，`CombatPaceConfig` 按当前 `combat_tick` 缩放 `action_interval` 与全部战斗 Tween 基准时长（`CombatAnimationConfig`）。公式：`pace_scale = clamp(1 - tick × scale_per_combat_tick, min_pace_scale, 1)`；首回合 tick=0 为 100% 基准，新波开战重置。`skill_callout_hold_sec` 保证技能说明 callout 最短可读时间（默认 1.2s），**不受** tick 加速影响。默认资源 `resources/combat/default_combat_pace.tres`。此为自动随战斗推进加速，**非**全局固定提速、**非**玩家手动倍速。
+**战斗节奏（tick 加速）**：单波战斗内，`CombatPaceConfig` 按当前 `combat_tick` 缩放 `action_interval` 与全部战斗 Tween 基准时长（`CombatAnimationConfig`）。公式：`pace_scale = clamp(1 - tick × scale_per_combat_tick, min_pace_scale, 1)`；首回合 tick=0 为 100% 基准，新波开战重置。`skill_callout_hold_sec` 保证技能说明 callout 最短可读时间（默认 1.2s），**不受** tick 加速影响。默认资源 `resources/combat/default_combat_pace.tres`。此为**旧网格工具环**自动随战斗推进加速，**非**全局 `Engine.time_scale`。**Run 主路径观战手动倍速**见 `RealtimeBattleController.time_scale`（1×/2×/3× UI），只缩短表现墙钟，不改结算与行动序。
 
 表现层监听 `combat_event`（伤害数字、死亡、技能特效）播放，不改变模拟结果。战斗步进时高亮当前行动单位；`ON_EFFECT_RESOLVED` 时在单位附近弹出对应 `EffectSpec` 技能说明 callout。
 
