@@ -112,16 +112,18 @@ func _test_opening_enter_recruit_ui() -> void:
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		_expect(cell.y == expected_ys[0], "candidate y == ally-half vertical center")
 
-	## 上半场队伍块：敌半场 2×5 垂直居中（空队仍配置几何）。
+	## 上半场队伍块：敌半场区域 2×5 垂直居中；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
 	if arena.recruit_team_slots != null and arena.recruit_team_slots.slot_count >= 1:
 		var team_front := arena.recruit_team_slots.get_cell(0)
+		var team_back := arena.recruit_team_slots.get_cell(5)
 		var mid := BoardHalf.midline_row(battle.get_board_size().y)
 		_expect(team_front.y < mid, "team block on enemy half")
+		_expect(team_front.y < team_back.y, "recruit front row above back (ally row order)")
 		var team_ys := PrepareSlotBoard._centered_row_ys(
-			battle.get_board_size().y, 2, 2, 3, true
+			battle.get_board_size().y, 2, 2, 3, true, true
 		)
-		_expect(team_front.y == team_ys[0], "team front row enemy-half vertical center")
+		_expect(team_front.y == team_ys[0], "team front row enemy-half + ally row order")
 
 	var finished: Array = []
 	battle.recruit_finished.connect(func(kept: bool) -> void: finished.append(kept))

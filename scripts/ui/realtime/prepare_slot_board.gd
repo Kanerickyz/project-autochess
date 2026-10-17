@@ -35,13 +35,16 @@ func configure_grid(
 	cols: int,
 	board_size: Vector2i,
 	enemy_side: bool = false,
+	match_ally_row_order: bool = false,
 ) -> void:
 	clear()
 	seat_rows = maxi(1, rows)
 	seat_cols = maxi(1, cols)
 	slot_count = seat_rows * seat_cols
 	is_enemy_side = enemy_side
-	cells = build_grid_cells(board_size, seat_rows, seat_cols, enemy_side)
+	cells = build_grid_cells(
+		board_size, seat_rows, seat_cols, enemy_side, match_ally_row_order
+	)
 	occupants.resize(slot_count)
 	seat_assign_seq.resize(slot_count)
 	for i in slot_count:
@@ -59,6 +62,7 @@ static func build_grid_cells(
 	rows: int,
 	cols: int,
 	enemy_side: bool,
+	match_ally_row_order: bool = false,
 ) -> Array[Vector2i]:
 	var n_rows := maxi(1, rows)
 	var n_cols := maxi(1, cols)
@@ -68,7 +72,9 @@ static func build_grid_cells(
 	var block_h := n_rows + (n_rows - 1) * gap
 	var start_x := (board_size.x - block_w) / 2
 	start_x = clampi(start_x, 0, maxi(0, board_size.x - 1))
-	var row_ys := _centered_row_ys(board_size.y, n_rows, stride, block_h, enemy_side)
+	var row_ys := _centered_row_ys(
+		board_size.y, n_rows, stride, block_h, enemy_side, match_ally_row_order
+	)
 	var result: Array[Vector2i] = []
 	for row_i in row_ys.size():
 		var y: int = row_ys[row_i]
@@ -84,7 +90,10 @@ static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vect
 	return build_grid_cells(board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
 
 
-## 在各自半场可放置区内垂直居中；索引 0 为前排（更近中线），行距 = stride。
+## 在各自半场可放置区内垂直居中；行距 = stride。
+## 战斗半场：索引 0 为前排（更近中线）。
+## match_ally_row_order：招募上区把友方画在敌半场时用——索引 0 仍为前排，
+## 但行序与我半场一致（屏幕上前排在上、后排在下），避免与准备/战斗前后排颠倒。
 ## 半场内边距用 round，避免 (half-block)/2 整除把角色行偏到半场一侧。
 static func _centered_row_ys(
 	height: int,
@@ -92,6 +101,7 @@ static func _centered_row_ys(
 	stride: int,
 	block_h: int,
 	enemy_side: bool,
+	match_ally_row_order: bool = false,
 ) -> Array[int]:
 	var mid := BoardHalf.midline_row(height)
 	var half_h := mid if enemy_side else maxi(0, height - mid)
@@ -101,9 +111,13 @@ static func _centered_row_ys(
 	for i in rows:
 		var y: int
 		if enemy_side:
-			## 敌半场：块从顶侧居中；前排靠近中线（更大 y）。
-			var back_y := start_in_half
-			y = back_y + (rows - 1 - i) * stride
+			if match_ally_row_order:
+				## 招募友方上区：与我半场同序（i=0 更靠屏顶 = 前排）。
+				y = start_in_half + i * stride
+			else:
+				## 敌半场：块从顶侧居中；前排靠近中线（更大 y）。
+				var back_y := start_in_half
+				y = back_y + (rows - 1 - i) * stride
 			y = clampi(y, 0, maxi(0, mid - 1))
 		else:
 			## 我半场：块从中线起居中；前排靠近中线（更小 y）。

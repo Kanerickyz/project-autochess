@@ -20,6 +20,7 @@ runners=(
   "res://scripts/ui/realtime/realtime_battle_flow_test_runner.gd"
   "res://scripts/ui/realtime/recruit_arena_transition_test_runner.gd"
   "res://scripts/ui/realtime/opening_recruit_flow_test_runner.gd"
+  "res://scripts/ui/realtime/prepare_slot_board_test_runner.gd"
   "res://scripts/ui/realtime/realtime_combat_feedback_test_runner.gd"
   "res://scripts/ui/realtime/unit_art_catalog_test_runner.gd"
   "res://scripts/ui/realtime/realtime_unit_motion_test_runner.gd"
