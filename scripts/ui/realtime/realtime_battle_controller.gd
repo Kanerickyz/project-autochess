@@ -65,7 +65,6 @@ var _recruit_hint: Label
 var _recruit_gold: Label
 var _recruit_seat: Label
 var _recruit_refresh_btn: Button
-var _recruit_lock_btn: Button
 var _recruit_reset_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
@@ -104,6 +103,7 @@ func _ready() -> void:
 	_arena.recruit_candidate_pressed.connect(_on_recruit_candidate_pressed)
 	_arena.recruit_team_pressed.connect(_on_recruit_team_pressed)
 	_arena.recruit_sell.connect(_on_recruit_sell)
+	_arena.recruit_candidate_lock.connect(_on_recruit_candidate_lock)
 	_arena.recruit_team_seat_drop.connect(_on_recruit_team_seat_drop)
 	_arena.recruit_item_pressed.connect(_on_recruit_item_pressed)
 	_arena.recruit_item_drop.connect(_on_recruit_item_drop)
@@ -1034,11 +1034,6 @@ func _ensure_recruit_hud() -> void:
 	_recruit_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_recruit_refresh_btn.pressed.connect(_on_recruit_refresh_pressed)
 	row.add_child(_recruit_refresh_btn)
-	_recruit_lock_btn = Button.new()
-	_recruit_lock_btn.text = "锁定"
-	_recruit_lock_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_recruit_lock_btn.pressed.connect(_on_recruit_lock_pressed)
-	row.add_child(_recruit_lock_btn)
 	_recruit_reset_btn = Button.new()
 	_recruit_reset_btn.text = "重置"
 	_recruit_reset_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1142,6 +1137,7 @@ func _sync_recruit_arena() -> void:
 	_arena.recruit_needs_replace = _recruit_session.needs_replace()
 	_arena.recruit_pending_item_slot = _recruit_pending_item_slot
 	_arena.recruit_sell_cell = _build_recruit_sell_cell()
+	_arena.recruit_lock_cell = _build_recruit_lock_cell()
 	_arena.prepare_slots = null
 	_arena.enemy_slots = null
 	_arena.enemy_previews = []
@@ -1266,6 +1262,15 @@ func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
 
 ## 出售落点：道具行右侧或下方，不与候选人/道具槽重叠。
 func _build_recruit_sell_cell() -> Vector2i:
+	return _build_recruit_side_action_cell(true)
+
+
+## 锁定落点：道具行左侧，与出售对称；候选人拖入切换锁定。
+func _build_recruit_lock_cell() -> Vector2i:
+	return _build_recruit_side_action_cell(false)
+
+
+func _build_recruit_side_action_cell(on_right: bool) -> Vector2i:
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var cand_count := RecruitSession.CANDIDATE_COUNT
 	if _recruit_session != null:
@@ -1281,9 +1286,17 @@ func _build_recruit_sell_cell() -> Vector2i:
 	elif not cand.is_empty():
 		y = cand[0].y + 2
 	y = clampi(y, mid, maxi(mid, _board_size.y - 1))
-	var x := _board_size.x - 1
-	if not items.is_empty():
-		x = clampi(items[items.size() - 1].x + 2, 0, maxi(0, _board_size.x - 1))
+	var x := 0
+	if on_right:
+		x = _board_size.x - 1
+		if not items.is_empty():
+			x = clampi(items[items.size() - 1].x + 2, 0, maxi(0, _board_size.x - 1))
+	else:
+		x = 0
+		if not items.is_empty():
+			x = clampi(items[0].x - 2, 0, maxi(0, _board_size.x - 1))
+		elif not cand.is_empty():
+			x = clampi(cand[0].x - 2, 0, maxi(0, _board_size.x - 1))
 	var cell := Vector2i(x, y)
 	for c in cand:
 		if c == cell:
@@ -1293,6 +1306,9 @@ func _build_recruit_sell_cell() -> Vector2i:
 		if c2 == cell:
 			cell.y = clampi(cell.y + 1, mid, maxi(mid, _board_size.y - 1))
 			break
+	## 避免与对侧动作格重叠（窄板；sell 先建、lock 后建）。
+	if not on_right and _arena != null and _arena.recruit_sell_cell == cell:
+		cell.y = clampi(cell.y + 1, mid, maxi(mid, _board_size.y - 1))
 	return cell
 
 
@@ -1314,21 +1330,10 @@ func _refresh_recruit_hud() -> void:
 		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）；可换座或拖成员到出售槽腾位"
 		else:
-			_recruit_hint.text = "上行招人；下行道具（药水拖到上区角色；旗帜扩席位）"
+			_recruit_hint.text = "上行招人；下行道具；拖角色到「锁定」格可锁定/解锁"
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
-	if _recruit_lock_btn != null:
-		var can_lock := (
-			not _recruit_animating
-			and _recruit_selected_candidate >= 0
-			and _recruit_session.get_candidate(_recruit_selected_candidate) != null
-		)
-		_recruit_lock_btn.disabled = not can_lock
-		if can_lock and _recruit_session.is_candidate_locked(_recruit_selected_candidate):
-			_recruit_lock_btn.text = "解锁"
-		else:
-			_recruit_lock_btn.text = "锁定"
 	if _recruit_reset_btn != null:
 		_recruit_reset_btn.disabled = _recruit_animating
 	if _recruit_skip_btn != null:
@@ -1528,24 +1533,22 @@ func _on_recruit_refresh_pressed() -> void:
 			_recruit_hint.text = "金币不足，无法刷新"
 
 
-func _on_recruit_lock_pressed() -> void:
-	if _recruit_animating or _recruit_session == null:
+func _on_recruit_candidate_lock(candidate_index: int) -> void:
+	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	if _recruit_selected_candidate < 0:
-		if _recruit_hint != null:
-			_recruit_hint.text = "先点选下半场角色再锁定"
-		return
-	var unit := _recruit_session.get_candidate(_recruit_selected_candidate)
+	var unit := _recruit_session.get_candidate(candidate_index)
 	if unit == null:
 		if _recruit_hint != null:
 			_recruit_hint.text = "空槽无法锁定"
 		return
-	var locked := _recruit_session.toggle_candidate_lock(_recruit_selected_candidate)
+	var locked := _recruit_session.toggle_candidate_lock(candidate_index)
+	_recruit_selected_candidate = candidate_index
 	if _recruit_hint != null:
 		if locked:
 			_recruit_hint.text = "已锁定 %s（刷新保留）" % unit.display_name
 		else:
 			_recruit_hint.text = "已解锁 %s" % unit.display_name
+	_sync_recruit_arena()
 	_refresh_recruit_hud()
 
 

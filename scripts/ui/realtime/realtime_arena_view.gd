@@ -12,6 +12,8 @@ signal recruit_candidate_pressed(candidate_index: int)
 signal recruit_team_pressed(entry_id: int)
 ## 招募：上区队伍成员拖到出售落点松手。
 signal recruit_sell(entry_id: int)
+## 招募：下区候选人拖到锁定落点松手（切换锁定）。
+signal recruit_candidate_lock(candidate_index: int)
 ## 招募：上区成员拖到空座或另一成员座位换座。
 signal recruit_team_seat_drop(entry_id: int, target_seat: int)
 ## 招募道具行：点击道具槽。
@@ -103,6 +105,8 @@ var recruit_needs_replace: bool = false
 var recruit_pending_item_slot: int = -1
 ## 下区出售落点格；与候选人/道具槽分离，避免混手势。
 var recruit_sell_cell: Vector2i = NO_CELL
+## 下区锁定落点格：候选人拖入切换锁定（与出售对称）。
+var recruit_lock_cell: Vector2i = NO_CELL
 ## 拖到出售落点时预览退金（由控制器写入）。
 var recruit_sell_preview_gold: int = 0
 
@@ -153,6 +157,9 @@ const RECRUIT_SELECT := Color(1.0, 0.95, 0.35, 0.55)
 const RECRUIT_SELL_EMPTY := Color(0.55, 0.35, 0.55, 0.28)
 const RECRUIT_SELL_HOT := Color(0.85, 0.35, 0.75, 0.45)
 const RECRUIT_SELL_BORDER := Color(0.95, 0.70, 0.95, 0.95)
+const RECRUIT_LOCK_EMPTY := Color(0.55, 0.50, 0.25, 0.28)
+const RECRUIT_LOCK_HOT := Color(0.95, 0.80, 0.30, 0.45)
+const RECRUIT_LOCK_BORDER := Color(1.0, 0.88, 0.40, 0.95)
 
 
 func _ready() -> void:
@@ -513,8 +520,30 @@ func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
 
 
 func _track_press_motion(pos: Vector2) -> void:
-	if _press_ms >= 0 and not _info_shown and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+	if not _press_active:
+		return
+	## 信息卡已弹出：保持按住时滑到其他单位即切换介绍。
+	if _info_shown:
+		_update_info_card_under_finger(pos)
+		return
+	if _press_ms >= 0 and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 		_press_ms = -1
+
+
+func _update_info_card_under_finger(pos: Vector2) -> void:
+	var info := inspect_at(pos)
+	if info.is_empty():
+		return
+	var prev_key := String(_press_info.get("inspect_key", ""))
+	var next_key := String(info.get("inspect_key", ""))
+	if next_key.is_empty():
+		next_key = "%s|%s" % [String(info.get("name", "")), str(info.get("center", Vector2.ZERO))]
+	if prev_key.is_empty():
+		prev_key = "%s|%s" % [String(_press_info.get("name", "")), str(_press_info.get("center", Vector2.ZERO))]
+	if next_key == prev_key:
+		return
+	_press_info = info
+	_show_info_card(info)
 
 
 ## 松手：信息卡已弹出则只收起；否则执行推迟的点按。返回是否有待处理的按下。
@@ -610,7 +639,10 @@ func _collect_inspectables() -> Array[Dictionary]:
 			var cell: Vector2i = cand.get("cell", NO_CELL)
 			if unit != null and cell != NO_CELL:
 				var tile := Vector2(cell) + Vector2(0.5, 0.5)
-				out.append(_info_from_unit_data(unit, tile_to_local(tile) + ally_off))
+				var cand_i := int(cand.get("index", -1))
+				out.append(_info_from_unit_data(
+					unit, tile_to_local(tile) + ally_off, "cand:%d" % cand_i
+				))
 		return out
 	if sim != null and sim.has_started():
 		for item in sim.get_units():
@@ -644,6 +676,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
 	var stats := entry.unit.stats if entry.unit != null else null
 	return {
+		"inspect_key": "entry:%d" % entry.entry_id,
 		"center": center,
 		"name": entry.get_display_name(),
 		"side_player": true,
@@ -655,8 +688,12 @@ func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
 	}
 
 
-func _info_from_unit_data(data: UnitData, center: Vector2) -> Dictionary:
+func _info_from_unit_data(data: UnitData, center: Vector2, inspect_key: String = "") -> Dictionary:
+	var key := inspect_key
+	if key.is_empty():
+		key = "unit:%s@%s" % [data.id, str(center)]
 	return {
+		"inspect_key": key,
 		"center": center,
 		"name": UnitInfoText.get_display_name_from_unit_data(data),
 		"side_player": true,
@@ -671,6 +708,7 @@ func _info_from_unit_data(data: UnitData, center: Vector2) -> Dictionary:
 func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
 	var unit_id := unit.unit_data.id if unit.unit_data != null else ""
 	return {
+		"inspect_key": "inst:%d" % unit.get_instance_id(),
 		"center": center,
 		"name": UnitInfoText.get_display_name(unit),
 		"side_player": is_player,
@@ -761,6 +799,11 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	if _is_recruit_sell_cell(cell):
 		queue_redraw()
 		return
+	## 拖到锁定落点：切换锁定，不购买。
+	if _is_recruit_lock_cell(cell):
+		recruit_candidate_lock.emit(index)
+		queue_redraw()
+		return
 	var mid := BoardHalf.midline_row(board_size.y)
 	if cell == NO_CELL or cell.y >= mid:
 		queue_redraw()
@@ -836,6 +879,10 @@ func _finish_recruit_team_drag(cell: Vector2i) -> void:
 
 func _is_recruit_sell_cell(cell: Vector2i) -> bool:
 	return recruit_sell_cell != NO_CELL and cell == recruit_sell_cell
+
+
+func _is_recruit_lock_cell(cell: Vector2i) -> bool:
+	return recruit_lock_cell != NO_CELL and cell == recruit_lock_cell
 
 
 func _find_recruit_candidate_at(cell: Vector2i) -> int:
@@ -952,6 +999,7 @@ func clear_recruit_mode() -> void:
 	recruit_needs_replace = false
 	recruit_pending_item_slot = -1
 	recruit_sell_cell = NO_CELL
+	recruit_lock_cell = NO_CELL
 	recruit_sell_preview_gold = 0
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
@@ -1000,6 +1048,7 @@ func _draw() -> void:
 		_draw_recruit_candidates(px, ally_off)
 		_draw_recruit_items(px, ally_off)
 		_draw_recruit_sell_slot(px, ally_off)
+		_draw_recruit_lock_slot(px, ally_off)
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
 		elif _recruit_item_drag_index >= 0 and _hover_cell != NO_CELL:
@@ -1071,6 +1120,29 @@ func _draw_recruit_sell_slot(px: float, off: Vector2) -> void:
 		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
 	)
 	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.92, 1.0, 0.95))
+
+
+func _draw_recruit_lock_slot(px: float, off: Vector2) -> void:
+	if recruit_lock_cell == NO_CELL:
+		return
+	var rect := get_board_rect()
+	var cell_rect := Rect2(rect.position + Vector2(recruit_lock_cell) * px + off, Vector2(px, px))
+	var hot := _recruit_drag_index >= 0 and _hover_cell == recruit_lock_cell
+	draw_rect(cell_rect, RECRUIT_LOCK_HOT if hot else RECRUIT_LOCK_EMPTY)
+	draw_rect(cell_rect, RECRUIT_LOCK_BORDER, false, 2.0)
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.4), 10, 16)
+	var label := "锁定"
+	if hot and _recruit_drag_index >= 0 and _recruit_drag_index < recruit_candidates.size():
+		var info: Dictionary = recruit_candidates[_recruit_drag_index]
+		if bool(info.get("locked", false)):
+			label = "解锁"
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := cell_rect.position + Vector2(
+		(cell_rect.size.x - text_size.x) * 0.5,
+		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+	)
+	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.95))
 
 
 func _draw_recruit_team_sell_hint(px: float) -> void:
@@ -1283,6 +1355,24 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	if cell == NO_CELL:
 		return
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	## 锁区在下半场：拖候选人落锁为合法高亮。
+	if _is_recruit_lock_cell(cell):
+		draw_rect(cell_rect, Color(0.95, 0.85, 0.35, 0.4))
+		_draw_body(
+			Vector2(cell) + Vector2(0.5, 0.5),
+			_drag_radius,
+			_drag_visual_half_width,
+			_drag_visual_half_height,
+			PLAYER_COLOR,
+			0.45,
+			_drag_label,
+			px,
+			true,
+			Vector2.ZERO,
+			true,
+			_drag_unit_id,
+		)
+		return
 	if cell.y >= mid:
 		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
 		return
