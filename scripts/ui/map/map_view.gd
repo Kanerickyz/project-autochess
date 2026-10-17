@@ -89,7 +89,34 @@ func _rebuild_map() -> void:
 
 	_path_drawer.queue_redraw()
 	await get_tree().process_frame
-	_scroll.scroll_vertical = int(_content.custom_minimum_size.y)
+	_scroll_to_focus_node(max_floor)
+
+
+## 将视口滚到玩家当前节点（无当前则滚到可达选点 / 起点带）。
+func _scroll_to_focus_node(max_floor: int) -> void:
+	if _scroll == null or _content == null or _map_state == null:
+		return
+	var focus_y := _resolve_focus_content_y(max_floor)
+	var viewport_h := _scroll.size.y
+	if viewport_h <= 1.0:
+		viewport_h = size.y
+	var max_scroll := maxi(0, int(_content.custom_minimum_size.y - viewport_h))
+	var target := int(focus_y + NODE_SIZE.y * 0.5 - viewport_h * 0.5)
+	_scroll.scroll_vertical = clampi(target, 0, max_scroll)
+
+
+func _resolve_focus_content_y(max_floor: int) -> float:
+	if _map_state.current_node_id >= 0:
+		var current := _map_state.get_node(_map_state.current_node_id)
+		if current != null:
+			return _node_position(current, max_floor).y
+	var available := _map_state.get_available_nodes()
+	if not available.is_empty():
+		var sum_y := 0.0
+		for node in available:
+			sum_y += _node_position(node, max_floor).y
+		return sum_y / float(available.size())
+	return _content.custom_minimum_size.y
 
 
 func _node_position(node: MapNodeRuntime, max_floor: int) -> Vector2:
