@@ -65,12 +65,12 @@ static func _make_economy(gold: int) -> RunEconomy:
 
 
 static func _test_floor_gold_amount() -> bool:
-	if RunEconomy.resolve_floor_gold_amount(1) != 1:
+	if RunEconomy.resolve_floor_gold_amount(1) != 2:
 		return false
-	if RunEconomy.resolve_floor_gold_amount(3) != 3:
+	if RunEconomy.resolve_floor_gold_amount(3) != 4:
 		return false
-	## 0-based 下标兼容 → 第 1 层
-	if RunEconomy.resolve_floor_gold_amount(0) != 1:
+	## 0-based 下标兼容 → 第 1 层 = 2 金
+	if RunEconomy.resolve_floor_gold_amount(0) != 2:
 		return false
 	if RunEconomy.resolve_floor_gold_amount(-2) != 0:
 		return false
@@ -80,7 +80,7 @@ static func _test_floor_gold_amount() -> bool:
 static func _test_grant_floor_gold() -> bool:
 	var econ := _make_economy(0)
 	var got := econ.grant_floor_gold(2)
-	return got == 2 and econ.gold == 2
+	return got == 3 and econ.gold == 3
 
 
 static func _test_kill_gold_noop() -> bool:
