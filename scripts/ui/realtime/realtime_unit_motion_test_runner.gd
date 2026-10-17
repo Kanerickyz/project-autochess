@@ -22,8 +22,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _test_long_press_info()
+	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
+	await _test_recruit_lock_drag()
 	await _test_hand_card_long_press()
 	await _test_combat_motion()
 	if _failures == 0:
@@ -123,6 +125,53 @@ func _test_long_press_info() -> void:
 			break
 	_expect(not enemy_info.is_empty(), "enemy preview is inspectable")
 	_expect(not bool(enemy_info.get("side_player", true)), "enemy preview reports enemy side")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_long_press_slide_inspect() -> void:
+	var battle := _make_battle(13)
+	await process_frame
+	var arena := _arena(battle)
+	_expect(arena != null, "arena for slide inspect")
+	if arena == null:
+		battle.queue_free()
+		return
+	var slots := battle.get_slot_board()
+	_expect(slots.occupied_count() >= 2, "need two seated units for slide inspect")
+	if slots.occupied_count() < 2:
+		battle.queue_free()
+		return
+	var entry0 := slots.get_entry(0)
+	var entry1 := slots.get_entry(1)
+	_expect(entry0 != null and entry1 != null, "seat 0/1 occupied")
+	var c0 := arena.tile_to_local(Vector2(slots.get_cell(0)) + Vector2(0.5, 0.5)) + Vector2(0.0, arena.ally_half_slide_y)
+	var c1 := arena.tile_to_local(Vector2(slots.get_cell(1)) + Vector2(0.5, 0.5)) + Vector2(0.0, arena.ally_half_slide_y)
+	_press(arena, c0, true)
+	var until := Time.get_ticks_msec() + RealtimeArenaView.LONG_PRESS_MS + 120
+	while Time.get_ticks_msec() < until:
+		await process_frame
+	_expect(arena.is_info_card_visible(), "long press opens first unit")
+	_expect(
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry0),
+		"first long-press shows seat0 skills",
+	)
+	## 保持按下，滑到另一单位。
+	var move := InputEventMouseMotion.new()
+	move.position = c1
+	move.relative = c1 - c0
+	arena._gui_input(move)
+	_expect(arena.is_info_card_visible(), "info stays open while sliding")
+	_expect(
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry1),
+		"slide switches to seat1 skills",
+	)
+	_expect(
+		String(arena._press_info.get("inspect_key", "")) == "entry:%d" % entry1.entry_id,
+		"slide updates inspect_key to seat1",
+	)
+	_press(arena, c1, false)
+	_expect(not arena.is_info_card_visible(), "release after slide hides card")
 	battle.queue_free()
 	await process_frame
 
@@ -248,6 +297,47 @@ func _test_recruit_team_sell_drag() -> void:
 	_press(arena, empty_center, false)
 	_expect(seat_drops == [[7, empty_seat]], "drag team to empty seat emits recruit_team_seat_drop")
 	_expect(sold.is_empty(), "seat drop does not emit recruit_sell")
+
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _test_recruit_lock_drag() -> void:
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	await process_frame
+	var unit := load(UNIT_PATHS[0]) as UnitData
+	var cand_cell := Vector2i(2, 11)
+	var lock_cell := Vector2i(0, 12)
+	arena.recruit_active = true
+	arena.recruit_lock_cell = lock_cell
+	arena.recruit_sell_cell = Vector2i(8, 12)
+	arena.recruit_candidates = [{
+		"index": 0,
+		"unit": unit,
+		"cell": cand_cell,
+		"cost": 3,
+		"affordable": true,
+		"locked": false,
+	}]
+	var locks: Array[int] = []
+	var drops: Array = []
+	arena.recruit_candidate_lock.connect(func(i: int) -> void: locks.append(i))
+	arena.recruit_drop.connect(func(i: int, r: int, _s: int) -> void: drops.append([i, r]))
+	var cand_center := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5))
+	var lock_center := arena.tile_to_local(Vector2(lock_cell) + Vector2(0.5, 0.5))
+
+	_press(arena, cand_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = cand_center + Vector2(0, 40)
+	move.relative = Vector2(0, 40)
+	arena._gui_input(move)
+	_hover_to(arena, lock_center)
+	_press(arena, lock_center, false)
+	_expect(locks == [0], "drag candidate to lock cell emits recruit_candidate_lock")
+	_expect(drops.is_empty(), "lock drop does not emit recruit_drop")
 
 	arena.clear_recruit_mode()
 	arena.queue_free()
