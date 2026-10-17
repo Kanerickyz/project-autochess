@@ -1103,8 +1103,8 @@ func _rebuild_recruit_team_slots() -> void:
 		if config != null:
 			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
-	## 上半场用敌方座位几何展示队伍（与准备同一套友方占位数据）。
-	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true)
+	## 上半场落点用敌半场区域，行序与我半场一致（前排在上），seat_index 与准备共用。
+	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
 	if _recruit_session == null or _recruit_session.deck == null:
 		return
 	var deck := _recruit_session.deck

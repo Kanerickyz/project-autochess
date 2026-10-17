@@ -125,14 +125,12 @@ func _test_recruit_arena_transition() -> void:
 			absf(arena.size.y - prepare_arena_h) <= 2.0,
 			"arena height matches prepare (no dock collapse)"
 		)
-	## 候选人行相对我半场垂直居中（与 PrepareSlotBoard._centered_row_ys 一致）。
-	var expected_ys := PrepareSlotBoard._centered_row_ys(battle.get_board_size().y, 1, 1, 1, false)
+	## 候选人行在我半场略偏上（mid+1），为道具行留空。
+	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
 	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
 	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
-	_expect(
-		not expected_ys.is_empty() and cand_cell.y == expected_ys[0],
-		"candidate row vertically centered in ally half"
-	)
+	_expect(cand_cell.y == expected_cand_y, "candidate row in ally-half upper band (mid+1)")
 
 	## 规则：刷新 / 重置仍可用
 	var gold_before := economy.gold
