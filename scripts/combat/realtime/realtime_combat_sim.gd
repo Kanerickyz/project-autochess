@@ -835,7 +835,7 @@ func _boss_can_summon(actor: RtUnit) -> bool:
 	if actor == null or not actor.is_boss_leader() or not actor.is_alive():
 		return false
 	var data := actor.unit.unit_data if actor.unit != null else null
-	if data == null or data.summon_unit == null:
+	if data == null or data.pick_summon_unit(_rng) == null:
 		return false
 	var cap := maxi(0, data.summon_max_alive)
 	if cap <= 0:
@@ -856,15 +856,18 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		var cell := _find_boss_summon_cell(actor)
 		if cell == Vector2i(-1, -1):
 			break
-		var minion := UnitInstance.from_unit_data(data.summon_unit, cell, UnitInstance.Team.ENEMY)
-		## 敌方代理：无主技能；保证可移动可接敌（商店枯骨攻距/部署原值不适合作战中召唤）
+		var template := data.pick_summon_unit(_rng)
+		if template == null:
+			break
+		var minion := UnitInstance.from_unit_data(template, cell, UnitInstance.Team.ENEMY)
+		## 衍生小兵：保留主技能；禁止再当首领/再召唤；保证可立即接敌。
 		if minion.unit_data != null:
 			var body := minion.unit_data.duplicate(true) as UnitData
-			body.ability = null
-			body.passives = []
 			body.is_boss_leader = false
 			body.summon_unit = null
+			body.summon_pool = []
 			body.summon_max_alive = 0
+			body.summon_per_action = 0
 			minion.unit_data = body
 		minion.is_combat_summon = true
 		minion.cannot_move = false

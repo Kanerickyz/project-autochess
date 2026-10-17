@@ -64,6 +64,8 @@ archetype_by_unit_id = {
 "archer": &"archer",
 "banner": &"banner",
 "barbarian": &"axe",
+"boss_minion_t4": &"captain",
+"boss_minion_t5": &"valkyrie",
 "bus": &"ram",
 "chick": &"slime",
 "crossbow": &"crossbow",

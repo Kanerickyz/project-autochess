@@ -15,6 +15,8 @@ var economy: RunEconomy
 var _rng: RandomNumberGenerator
 
 var candidates: Array[UnitData] = []
+## 与 candidates 同长：锁定槽刷新时保留角色。
+var candidate_locked: Array[bool] = []
 var is_active: bool = false
 var progress_ratio: float = 0.0
 ## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
@@ -24,6 +26,7 @@ var _snapshot_gold: int = 0
 var _snapshot_entries: Array[DeckEntry] = []
 var _snapshot_next_entry_id: int = 0
 var _snapshot_candidates: Array[UnitData] = []
+var _snapshot_locked: Array[bool] = []
 
 
 func configure(
@@ -68,6 +71,26 @@ func get_candidate(index: int) -> UnitData:
 	if index < 0 or index >= candidates.size():
 		return null
 	return candidates[index]
+
+
+func is_candidate_locked(index: int) -> bool:
+	if index < 0 or index >= candidate_locked.size():
+		return false
+	return candidate_locked[index]
+
+
+## 有候选人的槽可切换锁定；空槽强制解锁。返回切换后是否锁定。
+func toggle_candidate_lock(index: int) -> bool:
+	_ensure_lock_slots()
+	if index < 0 or index >= candidates.size():
+		return false
+	if candidates[index] == null:
+		candidate_locked[index] = false
+		session_changed.emit()
+		return false
+	candidate_locked[index] = not candidate_locked[index]
+	session_changed.emit()
+	return candidate_locked[index]
 
 
 func get_refresh_cost() -> int:
@@ -169,6 +192,7 @@ func try_recruit(
 			result["reason"] = "add_failed"
 			return result
 		candidates[candidate_index] = null
+		_set_candidate_locked(candidate_index, false)
 		result["ok"] = true
 		result["reason"] = "added"
 		result["entry"] = entry
@@ -192,6 +216,7 @@ func try_recruit(
 		result["reason"] = "replace_failed"
 		return result
 	candidates[candidate_index] = null
+	_set_candidate_locked(candidate_index, false)
 	result["ok"] = true
 	result["reason"] = "replaced"
 	result["entry"] = replaced
@@ -219,7 +244,7 @@ func try_refresh() -> bool:
 	var cost := get_refresh_cost()
 	if not economy.spend(cost):
 		return false
-	_roll_candidates()
+	_roll_unlocked_candidates()
 	session_changed.emit()
 	return true
 
@@ -304,6 +329,7 @@ func _capture_snapshot() -> void:
 				_snapshot_entries.append(item as DeckEntry)
 		_snapshot_next_entry_id = int(roster.get("next_entry_id", 0))
 	_snapshot_candidates = candidates.duplicate()
+	_snapshot_locked = candidate_locked.duplicate()
 
 
 func _restore_snapshot() -> void:
@@ -319,14 +345,48 @@ func _restore_snapshot() -> void:
 			"next_entry_id": _snapshot_next_entry_id,
 		})
 	candidates = _snapshot_candidates.duplicate()
+	candidate_locked = _snapshot_locked.duplicate()
+	_ensure_lock_slots()
 
 
 func _roll_candidates() -> void:
 	var count := get_candidate_slot_count()
 	candidates.clear()
+	candidate_locked.clear()
 	var preferred := get_preferred_tier()
 	for _i in count:
 		candidates.append(_pick_one(preferred))
+		candidate_locked.append(false)
+
+
+## 刷新：锁定槽保留角色；未锁定槽重抽。
+func _roll_unlocked_candidates() -> void:
+	_ensure_lock_slots()
+	var count := get_candidate_slot_count()
+	var preferred := get_preferred_tier()
+	while candidates.size() < count:
+		candidates.append(null)
+		candidate_locked.append(false)
+	for i in count:
+		if candidate_locked[i] and candidates[i] != null:
+			continue
+		candidates[i] = _pick_one(preferred)
+		candidate_locked[i] = false
+
+
+func _ensure_lock_slots() -> void:
+	var count := maxi(candidates.size(), get_candidate_slot_count())
+	while candidate_locked.size() < count:
+		candidate_locked.append(false)
+	while candidate_locked.size() > candidates.size() and candidate_locked.size() > 0:
+		candidate_locked.pop_back()
+
+
+func _set_candidate_locked(index: int, locked: bool) -> void:
+	_ensure_lock_slots()
+	if index < 0 or index >= candidate_locked.size():
+		return
+	candidate_locked[index] = locked
 
 
 func _pick_one(preferred_tier: int) -> UnitData:

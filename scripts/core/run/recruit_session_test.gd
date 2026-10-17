@@ -15,6 +15,7 @@ static func run_all() -> bool:
 	passed = _test_seat_cap_uses_min_of_max_size_and_seat_grid() and passed
 	passed = _test_snapshot_reset_restores_gold_team_candidates() and passed
 	passed = _test_refresh_keeps_recruited() and passed
+	passed = _test_refresh_keeps_locked_candidate() and passed
 	passed = _test_replace_no_refund() and passed
 	passed = _test_skip_discards_finish_keeps() and passed
 	passed = _test_opening_require_nonempty_roster() and passed
@@ -194,6 +195,38 @@ static func _test_refresh_keeps_recruited() -> bool:
 	if not still_has:
 		push_error("RecruitSessionTest: recruited unit missing after refresh")
 		return false
+	return true
+
+
+static func _test_refresh_keeps_locked_candidate() -> bool:
+	var deck := _make_deck([ARCHER])
+	var economy := _make_economy(20)
+	var session := _make_session(deck, economy, 99, 0.2)
+	var locked_unit := session.get_candidate(0)
+	if locked_unit == null:
+		push_error("RecruitSessionTest: lock fixture missing candidate 0")
+		return false
+	var locked_id := locked_unit.id
+	if not session.toggle_candidate_lock(0):
+		push_error("RecruitSessionTest: toggle lock should lock slot 0")
+		return false
+	if not session.is_candidate_locked(0):
+		push_error("RecruitSessionTest: slot 0 should be locked")
+		return false
+	var unlocked_before := session.get_candidate(1)
+	var unlocked_id := unlocked_before.id if unlocked_before != null else ""
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh with lock failed")
+		return false
+	var after_locked := session.get_candidate(0)
+	if after_locked == null or after_locked.id != locked_id:
+		push_error("RecruitSessionTest: locked candidate must survive refresh")
+		return false
+	if not session.is_candidate_locked(0):
+		push_error("RecruitSessionTest: lock flag must survive refresh")
+		return false
+	## 未锁定槽应被重抽（种子固定下通常会变；若碰巧同 id 仍算合法，只断言锁槽）。
+	var _ignore := unlocked_id
 	return true
 
 

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://goobxpv7q19pt" path="res://resources/abilities/deal_damage_gain_atk_small.tres" id="3_ability"]
+
+[sub_resource type="Resource" id="UnitStats_boss_minion_t5"]
+script = ExtResource("2_stats")
+max_hp = 18
+attack = 14
+steps_per_turn = 2
+crit_rate_percent = 5
+attack_interval = 1.5
+attack_windup = 0.5
+attack_reach = 1.2
+sight_range = 8.0
+body_radius = 0.75
+visual_half_width = 0.95
+visual_half_height = 1.2
+mass = 2.2
+projectile_speed = 0.0
+splash_radius = 0.8
+deploy_time = 0.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "boss_minion_t5"
+display_name = "霸卫"
+cost = 5
+tier = 5
+command_cost = 5
+stats = SubResource("UnitStats_boss_minion_t5")
+team_default = 1
+ability = ExtResource("3_ability")

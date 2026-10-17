@@ -1165,11 +1165,14 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var unit: UnitData = info.get("unit") as UnitData
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
 		draw_rect(cell_rect, RECRUIT_CAND_FILL if unit != null else RECRUIT_CAND_EMPTY)
+		var locked := bool(info.get("locked", false))
 		var border := RECRUIT_CAND_BORDER
+		if locked:
+			border = Color(0.95, 0.75, 0.25, 1.0)
 		if index == recruit_selected_candidate or index == _recruit_drag_index:
 			draw_rect(cell_rect, RECRUIT_SELECT)
 			border = Color(1.0, 0.95, 0.4, 1.0)
-		draw_rect(cell_rect, border, false, 2.0)
+		draw_rect(cell_rect, border, false, 2.0 if not locked else 3.0)
 		if unit == null:
 			continue
 		## 拖拽中的候选人在原位半透明，并在悬停格画幽灵。
@@ -1189,6 +1192,8 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
 		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
+		if locked:
+			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
@@ -1199,6 +1204,15 @@ func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: fl
 	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.85)
 	var color := Color(1.0, 0.9, 0.35, 0.95) if affordable else Color(1.0, 0.35, 0.3, 0.95)
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
+
+func _draw_recruit_lock_tag(center: Vector2, px: float) -> void:
+	var font := get_theme_default_font()
+	var text := "锁"
+	var font_size := clampi(int(px * 0.32), 9, 13)
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := center + Vector2(px * 0.22 - text_size.x * 0.5, -px * 0.55)
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.85, 0.3, 0.98))
 
 
 func _draw_recruit_items(px: float, off: Vector2) -> void:
