@@ -106,11 +106,13 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	var expected_ys := PrepareSlotBoard._centered_row_ys(battle.get_board_size().y, 1, 1, 1, false)
+	## 候选人行在我半场略偏上（mid+1），为道具行留空；不再用整半场垂直居中。
+	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
-		_expect(cell.y == expected_ys[0], "candidate y == ally-half vertical center")
+		_expect(cell.y == expected_cand_y, "candidate y == ally-half upper band (mid+1)")
 
 	## 上半场队伍块：敌半场区域 2×5 垂直居中；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
