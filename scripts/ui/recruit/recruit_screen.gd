@@ -95,7 +95,7 @@ func _refresh_view() -> void:
 	_refresh_button.disabled = not _session.can_refresh() or _animating
 	_refresh_button.text = "刷新（%d 金）" % _session.get_refresh_cost()
 	if _session.needs_replace():
-		_hint_label.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）"
+		_hint_label.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）；已有 2 只同名同星时可直接买入三合一"
 	else:
 		_hint_label.text = "将下区候选人拖到上区队伍，或点选后确认加入"
 	_rebuild_team()
@@ -145,7 +145,7 @@ func _on_candidate_pressed(index: int) -> void:
 	if _animating or _session == null:
 		return
 	_selected_candidate = index
-	if not _session.needs_replace():
+	if not _session.needs_replace_for_candidate(index):
 		_try_recruit(index, -1)
 		return
 	if _selected_replace_id >= 0:
@@ -160,7 +160,7 @@ func _on_team_selected(entry_id: int) -> void:
 	_selected_replace_id = entry_id
 	for card in _team_cards:
 		card.set_selected(card.entry_id == entry_id)
-	if _selected_candidate >= 0 and _session.needs_replace():
+	if _selected_candidate >= 0 and _session.needs_replace_for_candidate(_selected_candidate):
 		_try_recruit(_selected_candidate, entry_id)
 
 
@@ -184,7 +184,7 @@ func _finish_drag(viewport_pos: Vector2) -> void:
 	if index < 0 or _session == null:
 		return
 	var replace_id := _find_team_entry_at(viewport_pos)
-	if _session.needs_replace():
+	if _session.needs_replace_for_candidate(index):
 		if replace_id < 0:
 			_hint_label.text = "满员时请拖到要替换的成员上"
 			return

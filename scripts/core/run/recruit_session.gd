@@ -154,8 +154,25 @@ func needs_replace() -> bool:
 	return is_roster_full()
 
 
+## 满员时若买入会使「同 id 同 1 星」凑满 3 只并自动三合一，则无需换人。
+func can_recruit_via_merge(unit: UnitData) -> bool:
+	if unit == null or deck == null:
+		return false
+	return deck.would_complete_triple_on_add(unit, 1)
+
+
+func needs_replace_for_candidate(candidate_index: int) -> bool:
+	if not is_roster_full():
+		return false
+	var unit := get_candidate(candidate_index)
+	if can_recruit_via_merge(unit):
+		return false
+	return true
+
+
 ## 空席：replace_entry_id 忽略；seat_index≥0 落到指定空座，否则首空座。
 ## 满员：必须指定被替换成员；新人继承其座位。
+## 例外：已有同 id 同星 2 只时，满员也可买入并自动三合一。
 func try_recruit(
 	candidate_index: int,
 	replace_entry_id: int = -1,
@@ -179,7 +196,8 @@ func try_recruit(
 		result["reason"] = "no_gold"
 		return result
 
-	if not is_roster_full():
+	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
+	if not is_roster_full() or merge_overflow:
 		if not economy.spend(cost):
 			result["reason"] = "no_gold"
 			return result
@@ -194,7 +212,7 @@ func try_recruit(
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
 		result["ok"] = true
-		result["reason"] = "added"
+		result["reason"] = "merged" if merge_overflow else "added"
 		result["entry"] = entry
 		result["seat_index"] = entry.seat_index
 		session_changed.emit()
@@ -393,15 +411,16 @@ func _pick_one(preferred_tier: int) -> UnitData:
 	var pool := _player_pool()
 	if pool.is_empty():
 		return null
-	for tier in range(preferred_tier, 0, -1):
-		var tier_pool: Array[UnitData] = []
-		for unit in pool:
-			if unit != null and unit.tier == tier:
-				tier_pool.append(unit)
-		if not tier_pool.is_empty():
-			return tier_pool[_rng.randi_range(0, tier_pool.size() - 1)]
-	## 该档与更低档皆空：任意池内单位
-	return pool[_rng.randi_range(0, pool.size() - 1)]
+	## 解锁到 T 时：把 ≤T 的角色全部并入可抽池（不是只抽当前最高 tier）。
+	var unlocked: Array[UnitData] = []
+	for unit in pool:
+		if unit == null:
+			continue
+		if unit.tier <= preferred_tier:
+			unlocked.append(unit)
+	if unlocked.is_empty():
+		return pool[_rng.randi_range(0, pool.size() - 1)]
+	return unlocked[_rng.randi_range(0, unlocked.size() - 1)]
 
 
 func _player_pool() -> Array[UnitData]:

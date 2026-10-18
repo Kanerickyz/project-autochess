@@ -172,12 +172,28 @@ func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dic
 	return result
 
 
+## 再买一只 level 星同 id 是否会凑满 3 只并触发三合一（满员溢出购买用）。
+func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
+	if unit_data == null or level < 1 or level >= 3:
+		return false
+	var count := 0
+	for entry in _entries:
+		if entry == null or entry.unit == null:
+			continue
+		if entry.get_unit_id() == unit_data.id and entry.level == level:
+			count += 1
+	return count >= 2
+
+
 func add_entry(
 	unit_data: UnitData,
 	shop_bonus_max_hp: int = 0,
 	preferred_seat: int = -1,
 ) -> DeckEntry:
-	if unit_data == null or not can_add():
+	if unit_data == null:
+		return null
+	## 满员但买入可立刻三合一时，允许短暂超出席位上限。
+	if not can_add() and not would_complete_triple_on_add(unit_data, 1):
 		return null
 	var entry := _create_entry(unit_data)
 	entry.bonus_max_hp += shop_bonus_max_hp

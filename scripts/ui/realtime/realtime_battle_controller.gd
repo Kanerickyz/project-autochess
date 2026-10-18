@@ -1163,7 +1163,13 @@ func _sync_recruit_arena() -> void:
 	_arena.recruit_items = _build_recruit_item_previews()
 	_arena.recruit_selected_candidate = _recruit_selected_candidate
 	_arena.recruit_selected_replace_id = _recruit_selected_replace_id
-	_arena.recruit_needs_replace = _recruit_session.needs_replace()
+	## 按当前选中/拖动候选人判断；满员但可三合一时不进换人态。
+	if _recruit_selected_candidate >= 0:
+		_arena.recruit_needs_replace = _recruit_session.needs_replace_for_candidate(
+			_recruit_selected_candidate
+		)
+	else:
+		_arena.recruit_needs_replace = _recruit_session.needs_replace()
 	_arena.recruit_pending_item_slot = _recruit_pending_item_slot
 	_arena.recruit_sell_cell = _build_recruit_sell_cell()
 	_arena.recruit_lock_cell = _build_recruit_lock_cell()
@@ -1222,6 +1228,7 @@ func _build_recruit_candidate_previews() -> Array:
 			"cost": cost,
 			"affordable": _recruit_session.can_afford_recruit(i) if unit != null else false,
 			"locked": _recruit_session.is_candidate_locked(i),
+			"needs_replace": _recruit_session.needs_replace_for_candidate(i) if unit != null else false,
 			"label": unit.display_name if unit != null else "",
 		})
 	return result
@@ -1357,7 +1364,7 @@ func _refresh_recruit_hud() -> void:
 		elif _recruit_session.require_nonempty_roster and seats < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
-			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）；可换座或拖成员到出售槽腾位"
+			_recruit_hint.text = "队伍已满：将候选人拖到要替换的成员上（旧人不退金）；已有 2 只同名同星时可直接买入三合一"
 		else:
 			_recruit_hint.text = "上行招人；下行道具；拖角色到「锁定」格可锁定/解锁"
 	if _recruit_refresh_btn != null:
@@ -1416,7 +1423,7 @@ func _on_recruit_candidate_pressed(candidate_index: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
 	_recruit_selected_candidate = candidate_index
-	if not _recruit_session.needs_replace():
+	if not _recruit_session.needs_replace_for_candidate(candidate_index):
 		_try_recruit(candidate_index, -1)
 		return
 	if _recruit_selected_replace_id >= 0:
@@ -1436,7 +1443,9 @@ func _on_recruit_team_pressed(entry_id: int) -> void:
 		return
 	_recruit_selected_replace_id = entry_id
 	_sync_recruit_arena()
-	if _recruit_selected_candidate >= 0 and _recruit_session.needs_replace():
+	if _recruit_selected_candidate >= 0 and _recruit_session.needs_replace_for_candidate(
+		_recruit_selected_candidate
+	):
 		_try_recruit(_recruit_selected_candidate, entry_id)
 
 
@@ -1732,6 +1741,8 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
+	## 先弹出与长按相同的技能介绍卡，再播数字/短提示。
+	_show_skill_trigger_info_card(payload)
 	var pops := RealtimeEffectFeedback.build_popups(payload)
 	var callout_center := Vector2.ZERO
 	var callout_player := true
@@ -1780,6 +1791,24 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 	if owner != null:
 		return Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
 	return Vector2(_board_size) * 0.5
+
+
+func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
+	if _arena == null or payload == null:
+		return
+	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	if owner == null:
+		return
+	var tile := _resolve_feedback_center(owner, payload)
+	var atk := owner.get_effective_attack() if owner.has_method("get_effective_attack") else 0
+	var hp := owner.current_hp
+	if _sim != null:
+		var rt := _sim.find_unit(owner)
+		if rt != null:
+			atk = rt.get_effective_attack()
+			hp = rt.get_current_hp()
+			tile = rt.position
+	_arena.show_skill_trigger_info(owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile)
 
 
 func _on_combat_finished(won: bool) -> void:

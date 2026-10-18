@@ -23,6 +23,8 @@ static func run_all() -> bool:
 	passed = _test_auto_merge_skips_max_star() and passed
 	passed = _test_sell_refunds_and_reset_rolls_back() and passed
 	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
+	passed = _test_unlocked_tier_merges_into_pool() and passed
+	passed = _test_full_roster_buy_completes_triple() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -600,4 +602,79 @@ static func _test_persistent_seats_recruit_replace_sell_swap_merge() -> bool:
 		if int(before_seats.get(entry.entry_id, -99)) != entry.seat_index:
 			push_error("RecruitSessionTest: reset should restore seat layout")
 			return false
+	return true
+
+
+static func _test_unlocked_tier_merges_into_pool() -> bool:
+	## 解锁 T2 时池内应同时含 T1 与 T2，而不是只抽当前最高档。
+	var deck := _make_deck([], 5)
+	var economy := _make_economy(5)
+	var session := _make_session(deck, economy, 11, 0.5)
+	if session.get_preferred_tier() != 2:
+		push_error(
+			"RecruitSessionTest: progress 0.5 should prefer tier 2, got %d"
+			% session.get_preferred_tier()
+		)
+		return false
+	var saw_t1 := false
+	var saw_t2 := false
+	for _i in 120:
+		var unit: UnitData = session._pick_one(2)
+		if unit == null:
+			push_error("RecruitSessionTest: unlocked pool pick returned null")
+			return false
+		if unit.tier > 2:
+			push_error("RecruitSessionTest: should not pick above unlocked tier 2")
+			return false
+		if unit.tier == 1:
+			saw_t1 = true
+		elif unit.tier == 2:
+			saw_t2 = true
+		if saw_t1 and saw_t2:
+			break
+	if not saw_t1 or not saw_t2:
+		push_error("RecruitSessionTest: unlocked tier must merge lower tiers into pool")
+		return false
+	return true
+
+
+static func _test_full_roster_buy_completes_triple() -> bool:
+	## 满员且已有同名 1 星×2：买入第三只应自动三合一，无需换人。
+	var deck := _make_deck([ARCHER, ARCHER, KNIGHT, BARBARIAN, MUSKETEER], 5)
+	if deck.size() != 5:
+		push_error("RecruitSessionTest: full roster fixture size should be 5")
+		return false
+	if not deck.would_complete_triple_on_add(ARCHER, 1):
+		push_error("RecruitSessionTest: two 1★ archers should complete triple on add")
+		return false
+	var economy := _make_economy(20)
+	var session := _make_session(deck, economy, 13, 0.0)
+	if not session.needs_replace():
+		push_error("RecruitSessionTest: full roster should report needs_replace")
+		return false
+	session.candidates = [ARCHER, KNIGHT, VALKYRIE]
+	if session.needs_replace_for_candidate(0):
+		push_error("RecruitSessionTest: mergeable candidate should not need replace")
+		return false
+	if not session.needs_replace_for_candidate(1):
+		push_error("RecruitSessionTest: non-mergeable candidate should need replace")
+		return false
+	var gold_before := economy.gold
+	var buy := session.try_recruit(0)
+	if not buy.get("ok", false):
+		push_error("RecruitSessionTest: full roster merge buy failed: %s" % buy.get("reason"))
+		return false
+	if String(buy.get("reason", "")) != "merged":
+		push_error("RecruitSessionTest: merge buy reason should be merged, got %s" % buy.get("reason"))
+		return false
+	if deck.size() != 4:
+		push_error("RecruitSessionTest: after overflow merge size should be 4, got %d" % deck.size())
+		return false
+	var product := buy["entry"] as DeckEntry
+	if product == null or product.get_unit_id() != ARCHER.id or product.level != 2:
+		push_error("RecruitSessionTest: merge product should be 2★ archer")
+		return false
+	if economy.gold >= gold_before:
+		push_error("RecruitSessionTest: merge buy should spend gold")
+		return false
 	return true
