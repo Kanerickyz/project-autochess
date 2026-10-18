@@ -38,6 +38,10 @@ const ENEMY_COLOR := Color(0.88, 0.24, 0.22)
 const CONTACT_SHADOW := Color(0.22, 0.20, 0.10, 0.28)
 ## 贴图高度相对剪影半高；贴图含米白纸边，比色块剪影略大。
 const SPRITE_HEIGHT_MUL := 2.5
+## 单格角色贴图最大宽度（格）；超宽武器/骑乘按比例缩小以保持格内可读。
+const SPRITE_MAX_WIDTH_CELLS := 1.35
+## 多格足迹（如 Boss 2×2）允许更宽。
+const SPRITE_MAX_WIDTH_CELLS_FOOTPRINT := 2.2
 const ATTACK_FLASH_SECONDS := 0.12
 const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
@@ -1670,6 +1674,14 @@ func _draw_unit_sprite(
 	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, h_cap)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
+	## 贴纸 sheet 剪影偏方/偏宽：限制占格宽度，超限时等比缩小，避免压住邻格。
+	var max_w := px * (
+		SPRITE_MAX_WIDTH_CELLS_FOOTPRINT if footprint_span >= 1.5 else SPRITE_MAX_WIDTH_CELLS
+	)
+	if w > max_w and w > 0.0:
+		var shrink := max_w / w
+		w = max_w
+		h *= shrink
 	## 2×2：贴图中心对齐足迹几何中心；1×1：脚底略低于格心。
 	var feet := (
 		center + Vector2(0.0, h * 0.5)

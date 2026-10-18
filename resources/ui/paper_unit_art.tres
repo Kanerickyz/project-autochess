@@ -29,6 +29,10 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_blue.png" id="b_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_blue.png" id="b_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_blue.png" id="b_slime"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_acolyte_blue.png" id="b_blood_acolyte"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_vita_keeper_blue.png" id="b_vita_keeper"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_blue.png" id="b_iron_heart"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
@@ -57,19 +61,20 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_red.png" id="r_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_red.png" id="r_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_red.png" id="r_slime"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_acolyte_red.png" id="r_blood_acolyte"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_vita_keeper_red.png" id="r_vita_keeper"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_red.png" id="r_iron_heart"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
 
 [resource]
 script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "archer": &"archer",
 "banner": &"banner",
-"blood_acolyte": &"relic_aegis",
-"iron_heart": &"rune_plate",
-"mend_friar": &"banner",
-"vita_keeper": &"shield",
 "barbarian": &"axe",
-"boss_minion_t4": &"captain",
-"boss_minion_t5": &"valkyrie",
+"blood_acolyte": &"blood_acolyte",
+"boss_minion_t4": &"boss_minion_t4",
+"boss_minion_t5": &"boss_minion_t5",
 "bus": &"ram",
 "chick": &"slime",
 "crossbow": &"crossbow",
@@ -80,8 +85,10 @@ archetype_by_unit_id = {
 "gravewright": &"gravewright",
 "horsebow": &"horsebow",
 "hunter": &"hunter",
+"iron_heart": &"iron_heart",
 "knight": &"shield",
 "maul": &"maul",
+"mend_friar": &"mend_friar",
 "mini_pekka": &"captain",
 "mirror_warden": &"mirror_warden",
 "musketeer": &"musket",
@@ -99,6 +106,7 @@ archetype_by_unit_id = {
 "token_weak": &"skeleton",
 "token_weak_copy": &"echo_spear",
 "valkyrie": &"valkyrie",
+"vita_keeper": &"vita_keeper",
 "wardrum": &"wardrum",
 "zombie_fly": &"skeleton"
 }
@@ -107,6 +115,9 @@ player_textures = {
 &"archer": ExtResource("b_archer"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
+&"blood_acolyte": ExtResource("b_blood_acolyte"),
+&"boss_minion_t4": ExtResource("b_captain"),
+&"boss_minion_t5": ExtResource("b_valkyrie"),
 &"captain": ExtResource("b_captain"),
 &"crossbow": ExtResource("b_crossbow"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
@@ -116,7 +127,9 @@ player_textures = {
 &"gravewright": ExtResource("b_gravewright"),
 &"horsebow": ExtResource("b_horsebow"),
 &"hunter": ExtResource("b_hunter"),
+&"iron_heart": ExtResource("b_iron_heart"),
 &"maul": ExtResource("b_maul"),
+&"mend_friar": ExtResource("b_mend_friar"),
 &"mirror_warden": ExtResource("b_mirror_warden"),
 &"musket": ExtResource("b_musket"),
 &"ram": ExtResource("b_ram"),
@@ -131,12 +144,16 @@ player_textures = {
 &"spear_goblin": ExtResource("b_spear_goblin"),
 &"spike_shield": ExtResource("b_spike_shield"),
 &"valkyrie": ExtResource("b_valkyrie"),
+&"vita_keeper": ExtResource("b_vita_keeper"),
 &"wardrum": ExtResource("b_wardrum")
 }
 enemy_textures = {
 &"archer": ExtResource("r_archer"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
+&"blood_acolyte": ExtResource("r_blood_acolyte"),
+&"boss_minion_t4": ExtResource("r_captain"),
+&"boss_minion_t5": ExtResource("r_valkyrie"),
 &"captain": ExtResource("r_captain"),
 &"crossbow": ExtResource("r_crossbow"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
@@ -146,7 +163,9 @@ enemy_textures = {
 &"gravewright": ExtResource("r_gravewright"),
 &"horsebow": ExtResource("r_horsebow"),
 &"hunter": ExtResource("r_hunter"),
+&"iron_heart": ExtResource("r_iron_heart"),
 &"maul": ExtResource("r_maul"),
+&"mend_friar": ExtResource("r_mend_friar"),
 &"mirror_warden": ExtResource("r_mirror_warden"),
 &"musket": ExtResource("r_musket"),
 &"ram": ExtResource("r_ram"),
@@ -161,5 +180,6 @@ enemy_textures = {
 &"spear_goblin": ExtResource("r_spear_goblin"),
 &"spike_shield": ExtResource("r_spike_shield"),
 &"valkyrie": ExtResource("r_valkyrie"),
+&"vita_keeper": ExtResource("r_vita_keeper"),
 &"wardrum": ExtResource("r_wardrum")
 }
