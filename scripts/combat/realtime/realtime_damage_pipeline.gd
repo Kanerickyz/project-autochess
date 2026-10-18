@@ -70,17 +70,19 @@ func resolve_hit(
 			if crit_rate > 0.0 and _rng.randf() < crit_rate:
 				is_crit = true
 				rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
+		var hp_before := tgt.unit.current_hp
 		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - rolled)
-		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit)
-		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, rolled, is_crit)
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit, hp_before)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, rolled, is_crit, hp_before)
 		if is_crit and src != null:
-			_emit(CombatEvents.ON_CRIT, src, tgt.unit, rolled, true)
+			_emit(CombatEvents.ON_CRIT, src, tgt.unit, rolled, true, hp_before)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 			death_pending.append({
 				"source": src,
 				"target": tgt,
 				"rolled": rolled,
 				"is_crit": is_crit,
+				"hp_before": hp_before,
 			})
 
 	death_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -95,12 +97,13 @@ func resolve_hit(
 		var src2: UnitInstance = death["source"]
 		var rolled2: int = int(death["rolled"])
 		var is_crit2: bool = bool(death["is_crit"])
+		var hp_before2: int = int(death.get("hp_before", -1))
 		tgt2.state = RtUnit.State.DEAD
 		tgt2.target = null
-		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, is_crit2)
-		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, is_crit2)
+		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
+		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
 		if src2 != null:
-			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, is_crit2)
+			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
 		killed.append(tgt2)
 	return killed
 
@@ -155,19 +158,20 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 		if crit_rate > 0.0 and _rng.randf() < crit_rate:
 			is_crit = true
 			rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
+	var hp_before := target.unit.current_hp
 	target.unit.current_hp = maxi(0, target.unit.current_hp - rolled)
-	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, rolled, is_crit)
-	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, rolled, is_crit)
+	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, rolled, is_crit, hp_before)
+	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, rolled, is_crit, hp_before)
 	if is_crit and source != null:
-		_emit(CombatEvents.ON_CRIT, source, target.unit, rolled, true)
+		_emit(CombatEvents.ON_CRIT, source, target.unit, rolled, true, hp_before)
 	if target.unit.is_alive():
 		return false
 	target.state = RtUnit.State.DEAD
 	target.target = null
-	_emit(CombatEvents.ON_DEATH, source, target.unit, rolled, is_crit)
-	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, rolled, is_crit)
+	_emit(CombatEvents.ON_DEATH, source, target.unit, rolled, is_crit, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, rolled, is_crit, hp_before)
 	if source != null:
-		_emit(CombatEvents.ON_KILL, source, target.unit, rolled, is_crit)
+		_emit(CombatEvents.ON_KILL, source, target.unit, rolled, is_crit, hp_before)
 	return true
 
 
@@ -177,6 +181,7 @@ func _emit(
 	target: UnitInstance,
 	amount: int,
 	is_crit: bool = false,
+	target_hp_before: int = -1,
 ) -> void:
 	if _bus == null:
 		return
@@ -185,4 +190,5 @@ func _emit(
 	payload.target = target
 	payload.amount = amount
 	payload.is_crit = is_crit
+	payload.target_hp_before = target_hp_before
 	_bus.emit_event(event_type, payload)

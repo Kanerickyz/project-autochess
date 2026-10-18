@@ -56,6 +56,7 @@ func apply_damage(
 	if target == null or not target.is_alive():
 		return
 
+	var hp_before := target.current_hp
 	target.current_hp = maxi(0, target.current_hp - amount)
 
 	var payload := CombatEventPayload.new()
@@ -63,6 +64,7 @@ func apply_damage(
 	payload.target = target
 	payload.amount = amount
 	payload.is_crit = is_crit
+	payload.target_hp_before = hp_before
 
 	_bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
 	_bus.emit_event(CombatEvents.ON_DEAL_DAMAGE, payload)

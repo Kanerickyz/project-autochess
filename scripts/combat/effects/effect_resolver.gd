@@ -444,7 +444,13 @@ func _spec_condition_met(
 		EffectSpec.Condition.EVENT_TARGET_HP_GT_OWNER:
 			if owner == null or payload == null or payload.target == null:
 				return false
-			return payload.target.current_hp > owner.current_hp
+			## 用扣血前生命，避免收刀后均血/死亡导致削峰漏触发。
+			var target_hp := (
+				payload.target_hp_before
+				if payload.target_hp_before >= 0
+				else payload.target.current_hp
+			)
+			return target_hp > owner.current_hp
 		_:
 			return true
 
@@ -642,7 +648,7 @@ func _execute_action(
 			print("[Effect] %s heal %d->%d" % [target.id, before, target.current_hp])
 			executed = true
 		EffectAction.Type.SPAWN_UNIT:
-			executed = _spawn_unit(action, payload, depth)
+			executed = _spawn_unit(action, payload, depth, owner)
 		EffectAction.Type.SPLIT_SELF:
 			executed = not _split_self(owner, action, payload, depth).is_empty()
 		EffectAction.Type.DEAL_DAMAGE:
@@ -917,8 +923,9 @@ func _split_self(
 		payload.removed_owner_instance_id = owner.instance_id
 	_grid.remove_unit(owner)
 
+	var prefer_player_half := team == UnitInstance.Team.PLAYER
 	for i in count:
-		var cell := _pick_spawn_cell(origin, i == 0)
+		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
@@ -939,20 +946,28 @@ func _split_self(
 	return entries
 
 
-func _spawn_unit(action: EffectAction, payload: CombatEventPayload, depth: int) -> bool:
+func _spawn_unit(
+	action: EffectAction,
+	payload: CombatEventPayload,
+	depth: int,
+	owner: UnitInstance,
+) -> bool:
 	if action.spawn_unit == null or payload.target == null:
 		return false
 	if payload.target.is_alive():
 		return false
 
-	var team := payload.target.team
+	## 击杀生成须跟技能持有者阵营；死亡/友亡的 owner 与死者同队。
+	var team := owner.team if owner != null else payload.target.team
 	var origin := _grid.find_cell_of(payload.target)
 	if origin == Vector2i(-1, -1):
 		origin = payload.target.grid_pos
+	var prefer_player_half := team == UnitInstance.Team.PLAYER
+	var summon_context := owner if owner != null else payload.target
 	var spawn_total := maxi(1, action.spawn_count)
 	var spawned_any := false
 	for i in spawn_total:
-		var cell := _pick_spawn_cell(origin, i == 0)
+		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
@@ -972,14 +987,13 @@ func _spawn_unit(action: EffectAction, payload: CombatEventPayload, depth: int) 
 			continue
 		spawned_any = true
 		print("[Effect] spawn %s at %s hp=%d" % [spawned.id, str(cell), spawned.current_hp])
-		_emit_friend_summoned(spawned, payload.target, depth)
+		_emit_friend_summoned(spawned, summon_context, depth)
 		_emit_summoned(spawned, depth)
 	return spawned_any
 
 
-func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool) -> Vector2i:
+func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool, prefer_player_half: bool) -> Vector2i:
 	var height := _grid.get_size().y
-	var prefer_player_half := BoardHalf.is_player_deploy_cell(origin, height)
 	if (
 		prefer_origin
 		and _grid.can_place_at(origin)
