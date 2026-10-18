@@ -1,11 +1,11 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 8×5 铺满半场（与 5×16 棋盘对齐）；满座 ≠ 上场人数上限。
+## 准备阶段角色座位：双方各 2×5 网格；满座 ≠ 上场人数上限（见 Features/PLAYER.md / COMBATLEVEL.md）。
 
-const DEFAULT_SEAT_ROWS := 8
+const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 座位行/列间距；0 = 铺满半场（8×5 对 8 行半场必须为 0）。
-const SEAT_GAP_CELLS := 0
+## 座位行与行、列与列之间空出的格数。
+const SEAT_GAP_CELLS := 1
 
 var seat_rows: int = DEFAULT_SEAT_ROWS
 var seat_cols: int = DEFAULT_SEAT_COLS
@@ -52,7 +52,7 @@ func configure_grid(
 		seat_assign_seq[i] = -1
 
 
-## 兼容旧单排 API：改为默认 8×5 网格（忽略旧 slot_count，改用默认行列）。
+## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
 func configure(_p_slot_count: int, board_size: Vector2i) -> void:
 	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
 
@@ -67,16 +67,9 @@ static func build_grid_cells(
 	var n_rows := maxi(1, rows)
 	var n_cols := maxi(1, cols)
 	var gap := maxi(0, SEAT_GAP_CELLS)
-	var mid := BoardHalf.midline_row(board_size.y)
-	var half_h := mid if enemy_side else maxi(0, board_size.y - mid)
-	## 块放不下半场/棋盘宽时自动收拢间距，保证能铺满。
+	var stride := 1 + gap
 	var block_w := n_cols + (n_cols - 1) * gap
 	var block_h := n_rows + (n_rows - 1) * gap
-	if block_w > board_size.x or block_h > half_h:
-		gap = 0
-		block_w = n_cols
-		block_h = n_rows
-	var stride := 1 + gap
 	var start_x := (board_size.x - block_w) / 2
 	start_x = clampi(start_x, 0, maxi(0, board_size.x - 1))
 	var row_ys := _centered_row_ys(

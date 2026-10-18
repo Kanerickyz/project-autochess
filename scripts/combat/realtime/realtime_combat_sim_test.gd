@@ -1210,7 +1210,7 @@ static func _test_boss_push_ally_on_step() -> bool:
 ## 首领召唤的枯骨代理须朝远离出生点的方向推进（不能卡死不动）。
 static func _test_boss_summon_minions_advance() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 16), 61)
+	sim.configure(Vector2i(9, 16), 61)
 	var boss_data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
 	if boss_data == null or boss_data.summon_unit == null:
 		push_error("summon_advance: giant_knight missing summon_unit")
@@ -1262,7 +1262,7 @@ static func _test_boss_summon_minions_advance() -> bool:
 ## 首领 2×2 足迹在 9 宽场上应水平居中（足迹中心贴近 board_cx=4）。
 static func _test_boss_footprint_horiz_centered() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 16), 62)
+	sim.configure(Vector2i(9, 16), 62)
 	## 敌方前排居中座约 (4,5)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
@@ -1292,7 +1292,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 ## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
 static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 16), 11)
+	sim.configure(Vector2i(9, 16), 11)
 	var p_right := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 0, "attack_reach": 1.0, "sight_range": 99.0,
@@ -1327,7 +1327,7 @@ static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 ## 左右两路对位时，右路不应被索敌平局拖去左半场。
 static func _test_flanks_do_not_collapse_left() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 16), 13)
+	sim.configure(Vector2i(9, 16), 13)
 	var p_left := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
@@ -1380,7 +1380,7 @@ static func _test_boss_visual_centers_in_footprint() -> bool:
 		push_error("visual_center: static mid=%s want (4,5)" % mid)
 		return false
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 16), 62)
+	sim.configure(Vector2i(9, 16), 62)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
