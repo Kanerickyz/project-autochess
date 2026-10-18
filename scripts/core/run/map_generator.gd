@@ -121,13 +121,43 @@ static func _pick_node_count(config: RunMapConfig, _floor_index: int, rng: Rando
 
 
 static func _pick_columns(column_count: int, node_count: int, rng: RandomNumberGenerator) -> Array[int]:
-	var available: Array[int] = []
-	for i in column_count:
-		available.append(i)
-	available.shuffle()
+	## 在列宽内尽量均匀取样，减少挤在同一侧（视图层也会再均分，但生成侧先铺开）。
+	var count := clampi(node_count, 1, column_count)
+	if count == 1:
+		return [column_count / 2]
 	var result: Array[int] = []
-	for i in node_count:
-		result.append(available[i])
+	for i in count:
+		var t := float(i) / float(count - 1)
+		var col := int(round(t * float(column_count - 1)))
+		result.append(col)
+	## 轻微抖动一列，避免每层完全垂直对齐成「铁轨」。
+	if column_count > 2 and rng.randf() < 0.55:
+		var jitter_i := rng.randi_range(0, count - 1)
+		var delta := -1 if rng.randf() < 0.5 else 1
+		result[jitter_i] = clampi(result[jitter_i] + delta, 0, column_count - 1)
+	## 去重：冲突时向空列挪。
+	var used: Dictionary = {}
+	for i in result.size():
+		var col: int = int(result[i])
+		if used.has(col):
+			var placed := false
+			for d in range(1, column_count):
+				var left: int = col - d
+				var right: int = col + d
+				if left >= 0 and not used.has(left):
+					result[i] = left
+					used[left] = true
+					placed = true
+					break
+				if right < column_count and not used.has(right):
+					result[i] = right
+					used[right] = true
+					placed = true
+					break
+			if not placed:
+				used[col] = true
+		else:
+			used[col] = true
 	result.sort()
 	return result
 

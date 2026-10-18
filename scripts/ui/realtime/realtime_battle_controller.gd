@@ -89,6 +89,11 @@ var _recruit_pending_item_slot: int = -1
 @onready var _result_detail: Label = %ResultDetail
 @onready var _continue_button: Button = %ContinueButton
 @onready var _dock: Control = $Layout/Dock
+@onready var _hud: Control = $Layout/Hud
+@onready var _solid_bg: CanvasItem = $Background
+
+## 地图罩在关卡世界上：藏 HUD/底栏，只留竞技场底图，避免黑屏跳转。
+var _world_backdrop_mode: bool = false
 
 var _refresh_button: Button
 ## 观战倍速：1 → 2 → 3 → 1 循环。
@@ -160,6 +165,30 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
 	_refresh_hud()
+
+
+## Run 地图阶段：保留竞技场背景作世界底图，隐藏战斗 HUD。
+func set_world_backdrop_mode(enabled: bool) -> void:
+	_world_backdrop_mode = enabled
+	if _solid_bg != null:
+		## 地图自带同款背景；关掉纯色底以免发灰。
+		_solid_bg.visible = not enabled
+	if _hud != null:
+		_hud.visible = not enabled
+	if _dock != null:
+		_dock.visible = not enabled
+	if _result_overlay != null and enabled:
+		_result_overlay.visible = false
+	if _arena != null:
+		_arena.modulate = Color(1, 1, 1, 0.42) if enabled else Color.WHITE
+		_arena.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE if enabled else Control.MOUSE_FILTER_STOP
+		)
+	if enabled:
+		_teardown_sim()
+		if _arena != null:
+			_arena.clear_fx()
+			_arena.queue_redraw()
 
 
 ## 注入层预算配置（测试用）；null 时按 SpawnBudgetConfig.load_or_default()。
