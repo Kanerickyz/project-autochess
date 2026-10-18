@@ -22,7 +22,8 @@
 script = ExtResource("1")
 act_display_name = "第一幕 · 森林"
 floor_count = 12
-max_nodes_per_floor = 5
+min_nodes_per_floor = 2
+max_nodes_per_floor = 3
 shop_min_floor = 4
 board_defaults = ExtResource("2")
 combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
