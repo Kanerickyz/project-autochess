@@ -10,6 +10,8 @@ static func run_all() -> bool:
 	passed = _test_mystery_resolves() and passed
 	passed = _test_batch_generation() and passed
 	passed = _test_only_v1_node_types() and passed
+	passed = _test_max_nodes_per_floor() and passed
+	passed = _test_path_guarantees() and passed
 	if passed:
 		print("MapGeneratorTest: all passed")
 	else:
@@ -20,8 +22,8 @@ static func run_all() -> bool:
 static func _make_test_config() -> RunMapConfig:
 	var config := RunMapConfig.new()
 	config.floor_count = 10
-	config.min_nodes_per_floor = 3
-	config.max_nodes_per_floor = 5
+	config.min_nodes_per_floor = 2
+	config.max_nodes_per_floor = 3
 	config.column_count = 7
 	config.shop_min_floor = 4
 	config.elite_interval = 3
@@ -45,6 +47,10 @@ static func _make_test_config() -> RunMapConfig:
 	boss.wave = wave
 	boss.is_boss = true
 	config.boss_encounter = boss
+
+	var event := EventData.new()
+	event.id = "test_event"
+	config.event_pool = [event]
 	return config
 
 
@@ -144,6 +150,53 @@ static func _test_only_v1_node_types() -> bool:
 	if not seen.has(MapNodeType.Type.ENCHANT):
 		push_error("MapGeneratorTest: enchant node never generated in 100 seeds")
 		return false
+	return true
+
+
+static func _test_max_nodes_per_floor() -> bool:
+	var config := _make_test_config()
+	## 即便配置写大，生成器也应钳到 MAX_NODES_PER_FLOOR。
+	config.max_nodes_per_floor = 9
+	config.min_nodes_per_floor = 3
+	for seed in 50:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		var state := MapGenerator.generate(config, rng)
+		var by_floor: Dictionary = {}
+		for node in state.nodes:
+			var floor_index := node.get_floor()
+			if floor_index == 0 or node.get_node_type() == MapNodeType.Type.BOSS:
+				continue
+			by_floor[floor_index] = int(by_floor.get(floor_index, 0)) + 1
+		for floor_index in by_floor.keys():
+			var count: int = int(by_floor[floor_index])
+			if count > MapGenerator.MAX_NODES_PER_FLOOR:
+				push_error(
+					"MapGeneratorTest: seed %d floor %d has %d nodes (max %d)"
+					% [seed, floor_index, count, MapGenerator.MAX_NODES_PER_FLOOR]
+				)
+				return false
+	return true
+
+
+static func _test_path_guarantees() -> bool:
+	var config := _make_test_config()
+	var required: Array[MapNodeType.Type] = [
+		MapNodeType.Type.ELITE,
+		MapNodeType.Type.SHOP,
+		MapNodeType.Type.EVENT,
+	]
+	for seed in 80:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		var state := MapGenerator.generate(config, rng)
+		for req in required:
+			if not MapGenerator._find_path_avoiding_type(state, req).is_empty():
+				push_error(
+					"MapGeneratorTest: seed %d has a path missing %s"
+					% [seed, MapNodeType.display_name(req)]
+				)
+				return false
 	return true
 
 

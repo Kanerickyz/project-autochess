@@ -1,6 +1,16 @@
 class_name MapGenerator
 extends RefCounted
 
+## 每一层（横向排布）最多节点数。
+const MAX_NODES_PER_FLOOR := 3
+
+## 每条 start→boss 路径必须覆盖的节点类型。
+const _PATH_REQUIRED_TYPES: Array[MapNodeType.Type] = [
+	MapNodeType.Type.ELITE,
+	MapNodeType.Type.SHOP,
+	MapNodeType.Type.EVENT,
+]
+
 const _MYSTERY_RESOLVE_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.COMBAT,
 	MapNodeType.Type.EVENT,
@@ -53,6 +63,7 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	floor_nodes.append([boss_data])
 
 	_connect_floors(floor_nodes, rng)
+	_ensure_path_guarantees(state, config, rng)
 	_assign_encounters(floor_nodes, config, rng)
 	_assign_events(floor_nodes, config, rng)
 
@@ -101,9 +112,11 @@ static func _make_node(
 	return node
 
 
-static func _pick_node_count(config: RunMapConfig, floor_index: int, rng: RandomNumberGenerator) -> int:
+static func _pick_node_count(config: RunMapConfig, _floor_index: int, rng: RandomNumberGenerator) -> int:
 	var min_count := mini(config.min_nodes_per_floor, config.column_count)
 	var max_count := mini(config.max_nodes_per_floor, config.column_count)
+	min_count = clampi(min_count, 1, MAX_NODES_PER_FLOOR)
+	max_count = clampi(max_count, min_count, MAX_NODES_PER_FLOOR)
 	return rng.randi_range(min_count, max_count)
 
 
@@ -177,6 +190,125 @@ static func _nearest_node(from_node: MapNodeData, candidates: Array) -> MapNodeD
 	return best
 
 
+## 保证每条 start→boss 路至少含精英、商店、事件各一。
+## 多轮修复：先改战斗/附魔；必要时才挤占其它类型，并在后续轮次补回。
+static func _ensure_path_guarantees(
+	state: MapState,
+	config: RunMapConfig,
+	rng: RandomNumberGenerator,
+) -> void:
+	if state == null or config == null or rng == null:
+		return
+	for _round in 24:
+		var dirty := false
+		for required in _PATH_REQUIRED_TYPES:
+			var avoiding := _find_path_avoiding_type(state, required)
+			if avoiding.is_empty():
+				continue
+			dirty = true
+			if not _convert_node_on_path(state, avoiding, required, config, rng, true):
+				if not _convert_node_on_path(state, avoiding, required, config, rng, false):
+					push_warning(
+						"MapGenerator: could not guarantee %s on all paths"
+						% MapNodeType.display_name(required)
+					)
+					return
+		if not dirty:
+			return
+	push_warning("MapGenerator: path guarantees did not fully converge")
+
+
+static func _find_path_avoiding_type(
+	state: MapState,
+	avoided: MapNodeType.Type,
+) -> Array[int]:
+	## DFS：找一条不含 avoided 类型的 start→boss 路径（起点/Boss 除外）。
+	var path: Array[int] = []
+	var visiting: Dictionary = {}
+	if _dfs_avoiding(state, state.start_node_id, state.boss_node_id, avoided, path, visiting):
+		return path
+	return []
+
+
+static func _dfs_avoiding(
+	state: MapState,
+	current_id: int,
+	boss_id: int,
+	avoided: MapNodeType.Type,
+	path: Array[int],
+	visiting: Dictionary,
+) -> bool:
+	if current_id in visiting:
+		return false
+	var node := state.get_node(current_id)
+	if node == null:
+		return false
+	var node_type := node.get_node_type()
+	if (
+		node_type == avoided
+		and node_type != MapNodeType.Type.START
+		and node_type != MapNodeType.Type.BOSS
+	):
+		return false
+	visiting[current_id] = true
+	path.append(current_id)
+	if current_id == boss_id:
+		return true
+	for outgoing_id in node.get_outgoing_ids():
+		if _dfs_avoiding(state, outgoing_id, boss_id, avoided, path, visiting):
+			return true
+	path.pop_back()
+	visiting.erase(current_id)
+	return false
+
+
+static func _convert_node_on_path(
+	state: MapState,
+	path: Array[int],
+	required: MapNodeType.Type,
+	config: RunMapConfig,
+	rng: RandomNumberGenerator,
+	combat_only: bool,
+) -> bool:
+	var candidates: Array[MapNodeRuntime] = []
+	for node_id in path:
+		var runtime := state.get_node(node_id)
+		if runtime == null or runtime.data == null:
+			continue
+		var node_type := runtime.get_node_type()
+		if node_type == MapNodeType.Type.START or node_type == MapNodeType.Type.BOSS:
+			continue
+		if node_type == required:
+			continue
+		if combat_only:
+			if node_type == MapNodeType.Type.COMBAT or node_type == MapNodeType.Type.ENCHANT:
+				candidates.append(runtime)
+		else:
+			candidates.append(runtime)
+	if candidates.is_empty():
+		return false
+	var pick := candidates[rng.randi_range(0, candidates.size() - 1)]
+	_retype_node(pick.data, required, config, rng)
+	return true
+
+
+static func _retype_node(
+	data: MapNodeData,
+	new_type: MapNodeType.Type,
+	config: RunMapConfig,
+	rng: RandomNumberGenerator,
+) -> void:
+	if data == null:
+		return
+	data.node_type = new_type
+	data.encounter = null
+	data.event_data = null
+	if MapNodeType.is_combat(new_type) and new_type != MapNodeType.Type.BOSS:
+		data.encounter = _roll_encounter(config, new_type, rng)
+	elif new_type == MapNodeType.Type.EVENT and not config.event_pool.is_empty():
+		data.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
+
+
 static func _assign_encounters(floor_nodes: Array, config: RunMapConfig, rng: RandomNumberGenerator) -> void:
 	for floor in floor_nodes:
 		for node in floor:
@@ -197,7 +329,8 @@ static func _assign_events(floor_nodes: Array, config: RunMapConfig, rng: Random
 		for node in floor:
 			if node.node_type != MapNodeType.Type.EVENT:
 				continue
-			node.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
+			if node.event_data == null:
+				node.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
 
 
 static func _roll_encounter(
