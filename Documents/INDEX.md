@@ -26,7 +26,7 @@
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、9×16、一动内八向落格顿步越线） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 8×5 角色座位、5×16、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
@@ -93,7 +93,7 @@ Project Autochess/
 | `resources/economy/` | `EconomyConfig` | **M3 已实现** |
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
 | `resources/levels/dev_6x6.tres` | **8×8** 线性开发关，**15 波**（`wave_01`–`wave_15`）；`main.tscn` 直接 F5 | **M1 已实现** |
-| `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 9×16 + 座位见 COMBATLEVEL） | **Run 已实现** |
+| `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 5×16 + 座位见 COMBATLEVEL） | **Run 已实现** |
 | `resources/levels/board_legacy_4x8.tres` | 沙盒用旧 4×8 格子棋盘 | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |

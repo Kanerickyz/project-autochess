@@ -137,9 +137,9 @@ func _load_level() -> LevelData:
 		var level := load(LEVEL_PATH) as LevelData
 		if level != null:
 			return level
-	push_warning("RealtimeBattleDemo: %s missing, using fallback 9x16 level" % LEVEL_PATH)
+	push_warning("RealtimeBattleDemo: %s missing, using fallback 5x16 level" % LEVEL_PATH)
 	var fallback := LevelData.new()
-	fallback.board_width = 9
+	fallback.board_width = 5
 	fallback.board_height = 16
 	fallback.enemy_pool = _fallback_units()
 	return fallback

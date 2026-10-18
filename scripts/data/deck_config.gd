@@ -3,7 +3,8 @@ extends Resource
 
 const DEFAULT_HAND_WIDTH := 4
 const DEFAULT_DEPLOY_CAP := 4
-const DEFAULT_SEAT_ROWS := 2
+## 半场铺满：行数 = 半场格高（16 高棋盘 → 8）。
+const DEFAULT_SEAT_ROWS := 8
 const DEFAULT_SEAT_COLS := 5
 
 ## Legacy single starter; ignored when starting_units is non-empty.
@@ -18,9 +19,9 @@ const DEFAULT_SEAT_COLS := 5
 @export_range(1, 20, 1) var draw_count: int = DEFAULT_HAND_WIDTH
 ## 遭遇准备阶段手牌宽度（默认与上场人数上限同值；不要求大于座位数）。
 @export_range(1, 20, 1) var hand_width: int = DEFAULT_HAND_WIDTH
-## 友方/敌方角色座位行数（默认 2；前排近中线、后排靠己方底）。
-@export_range(1, 4, 1) var seat_rows: int = DEFAULT_SEAT_ROWS
-## 友方/敌方角色座位列数（默认 5）。
+## 友方/敌方角色座位行数（默认 8，铺满半场；前排近中线、后排靠己方底）。
+@export_range(1, 8, 1) var seat_rows: int = DEFAULT_SEAT_ROWS
+## 友方/敌方角色座位列数（默认 5，与棋盘宽对齐）。
 @export_range(1, 10, 1) var seat_cols: int = DEFAULT_SEAT_COLS
 ## Legacy 座位总数；优先用 seat_rows × seat_cols。保留以便旧 .tres 可读。
 @export_range(0, 20, 1) var slot_count: int = 0
@@ -57,7 +58,7 @@ func get_seat_cols() -> int:
 	return seat_cols if seat_cols > 0 else DEFAULT_SEAT_COLS
 
 
-## 单侧座位总数（默认 2×5=10）。旧 slot_count 仅作兼容回退。
+## 单侧座位总数（默认 8×5=40）。旧 slot_count 仅作兼容回退。
 func get_slot_count() -> int:
 	var from_grid := get_seat_rows() * get_seat_cols()
 	if from_grid > 0:

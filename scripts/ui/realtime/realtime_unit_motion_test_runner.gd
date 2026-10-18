@@ -231,7 +231,7 @@ func _test_recruit_team_sell_drag() -> void:
 	entry.unit = unit
 	entry.level = 2
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(9, 16), true, true)
+	team.configure_grid(8, 5, Vector2i(5, 16), true, true)
 	team.try_assign(0, entry)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
