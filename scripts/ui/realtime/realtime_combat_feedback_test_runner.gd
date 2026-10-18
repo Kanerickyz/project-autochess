@@ -113,7 +113,7 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(spawn_pops[0]["kind"] == RealtimeEffectFeedback.KIND_LABEL, "mapper: spawn kind=label")
 
 	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(9, 16)
+	arena.board_size = Vector2i(5, 16)
 	root.add_child(arena)
 	arena.add_feedback_popup(
 		RealtimeEffectFeedback.KIND_STAT,

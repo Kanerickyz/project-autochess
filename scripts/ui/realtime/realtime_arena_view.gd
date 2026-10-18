@@ -69,7 +69,9 @@ const SHAKE_BLEED_PX := 8.0
 const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
 
-var board_size: Vector2i = Vector2i(9, 16)
+var board_size: Vector2i = Vector2i(5, 16)
+## 相对旧 9 列基准放大剪影，使变窄棋盘上角色仍饱满可读。
+const REFERENCE_BOARD_WIDTH := 9.0
 var sim: RealtimeCombatSim
 ## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label, attack?, hp?}
 var enemy_previews: Array = []
@@ -92,7 +94,7 @@ var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同敌方 8×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
@@ -223,6 +225,11 @@ func get_cell_px() -> float:
 	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
 	var avail_x := maxf(1.0, size.x - gutter * 2.0)
 	return maxf(1.0, minf(avail_x / board_size.x, size.y / board_size.y))
+
+
+## 列数变少时放大角色表现（碰撞仍以逻辑格为准）。
+func get_unit_visual_scale() -> float:
+	return clampf(REFERENCE_BOARD_WIDTH / float(maxi(1, board_size.x)), 1.0, 2.0)
 
 
 ## 背景按「铺满」缩放并居中裁切，保持原图比例。
@@ -1615,9 +1622,10 @@ func _rt_unit_id(rt: RtUnit) -> String:
 
 
 func _resolve_visual_half(explicit: float, body_radius: float, fallback_mul: float) -> float:
+	var scale := get_unit_visual_scale()
 	if explicit > 0.0:
-		return explicit
-	return maxf(0.05, body_radius * fallback_mul)
+		return explicit * scale
+	return maxf(0.05, body_radius * fallback_mul * scale)
 
 
 func _draw_ellipse_filled(center: Vector2, rx: float, ry: float, color: Color) -> void:

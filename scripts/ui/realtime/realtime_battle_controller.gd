@@ -14,7 +14,7 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
-const DEFAULT_BOARD_SIZE := Vector2i(9, 16)
+const DEFAULT_BOARD_SIZE := Vector2i(5, 16)
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
 ## 战斗推进倍速（仅表现层；不影响结果）
@@ -39,7 +39,7 @@ var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
-## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
+## 敌方座位几何（镜像 8×5）；准备预览 / 开战落点用，不存 DeckEntry。
 var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []
