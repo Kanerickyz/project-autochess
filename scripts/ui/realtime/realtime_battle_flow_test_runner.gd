@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless：准备入座 / 刷新 / 开战观战 / 结算（对齐 Features/PLAYER.md）。
+## Headless：持久占位准备 / 换座 / 开战观战 / 结算（对齐 Features/PLAYER.md 无手牌主路径）。
 
 const BATTLE_SCENE := "res://scenes/combat/realtime/realtime_battle.tscn"
 const DECK_PATH := "res://resources/deck/realtime_starter_deck.tres"
@@ -65,21 +65,22 @@ func _test_battle_controller_rules() -> void:
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: start_encounter enters PREPARE")
-	_expect(battle.get_board_size() == Vector2i(9, 16), "controller: board is 9x16")
+	_expect(battle.get_board_size() == Vector2i(5, 8), "controller: board is 5x8")
 	_expect(battle.get_command_current() == 0.0, "controller: command resource disabled")
-	var hand := battle.get_hand()
-	_expect(hand.size() == deck.get_hand_width(), "controller: hand size equals hand_width")
-	_expect(deck.get_hand_width() == EncounterCardFlow.DEFAULT_HAND_WIDTH or deck.get_hand_width() == 4, "controller: hand_width default 4")
+	## 本版准备无手牌抽选：清牌区后按 DeckState 持久占位入座。
+	_expect(battle.get_hand().is_empty(), "controller: prepare hand empty (no encounter draw)")
 	var slots := battle.get_slot_board()
-	_expect(slots.seat_rows == 2 and slots.seat_cols == 5, "controller: ally seats 2x5")
-	_expect(slots.slot_count == 10, "controller: ally seat total 10")
+	_expect(slots.seat_rows == 4 and slots.seat_cols == 5, "controller: ally seats 4x5")
+	_expect(slots.slot_count == 20, "controller: ally seat total 20")
 	var enemy_slots := battle.get_enemy_slot_board()
-	_expect(enemy_slots.seat_rows == 2 and enemy_slots.seat_cols == 5, "controller: enemy seats 2x5")
+	_expect(enemy_slots.seat_rows == 4 and enemy_slots.seat_cols == 5, "controller: enemy seats 4x5")
 	_expect(enemy_slots.is_enemy_side, "controller: enemy seat board flagged")
 	var deploy_cap := battle.get_deploy_cap()
-	_expect(deploy_cap == deck.get_deploy_cap(), "controller: deploy_cap from deck")
+	_expect(deploy_cap == mini(deck.get_max_size(), deck.get_slot_count()), "controller: deploy_cap from max_size ∩ seats")
 	_expect(deploy_cap == battle.get_max_board_units(), "controller: get_max_board_units == deploy_cap")
 	_expect(deploy_cap < slots.slot_count, "controller: deploy_cap < seat total (empty seats normal)")
+	_expect(slots.occupied_count() >= 1, "controller: persistent seats auto-filled from deck")
+	_expect(slots.occupied_count() <= deploy_cap, "controller: occupied within deploy_cap")
 	_expect(battle.get_sim() == null, "controller: sim not started in PREPARE")
 	_expect(not battle.get_pending_enemy_positions().is_empty(), "controller: enemy previews available in prepare")
 	## 敌人落在敌方座位格心上
@@ -93,45 +94,41 @@ func _test_battle_controller_rules() -> void:
 			enemies_on_seats = false
 			break
 	_expect(enemies_on_seats, "controller: enemy spawns land on enemy seats")
-	_expect(not battle.try_start_combat(), "controller: cannot start with empty seats")
 
-	## 前排更近中线、后排更靠己方底
+	## 前排更近中线、后排更靠己方底（4×5 铺满：末行索引 15）
 	var mid := BoardHalf.midline_row(battle.get_board_size().y)
-	_expect(slots.get_cell(0).y < slots.get_cell(5).y, "controller: ally front row nearer mid than back")
+	_expect(slots.get_cell(0).y < slots.get_cell(15).y, "controller: ally front row nearer mid than back")
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
-	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
+	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(15).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
-	## 9×16 / 2×5 / 隔一格：列 x=0,2,4,6,8；我半场行 y=10,12；敌半场行 y=4,2（前排近中线）。
-	_expect(slots.get_cell(0) == Vector2i(0, 10), "controller: ally front-left centered gap grid")
-	_expect(slots.get_cell(1) == Vector2i(2, 10), "controller: ally col gap one cell")
-	_expect(slots.get_cell(5) == Vector2i(0, 12), "controller: ally row gap one cell")
-	_expect(enemy_slots.get_cell(0) == Vector2i(0, 4), "controller: enemy front-left centered gap grid")
-	_expect(enemy_slots.get_cell(5) == Vector2i(0, 2), "controller: enemy back row with one-cell gap")
+	## 5×8 / 4×5 / 无间距：列 x=0..4；我半场 y=4..7；敌半场 y=3..0（前排近中线）。
+	_expect(slots.get_cell(0) == Vector2i(0, 4), "controller: ally front-left fills half")
+	_expect(slots.get_cell(1) == Vector2i(1, 4), "controller: ally adjacent columns")
+	_expect(slots.get_cell(5) == Vector2i(0, 5), "controller: ally next row no gap")
+	_expect(enemy_slots.get_cell(0) == Vector2i(0, 3), "controller: enemy front-left near mid")
+	_expect(enemy_slots.get_cell(15) == Vector2i(0, 0), "controller: enemy back-left at top")
 
-	var first_id := hand[0].entry_id
-	var slot0 := slots.get_cell(0)
-	_expect(battle.try_assign_to_slot(first_id, slot0).is_empty(), "controller: assign hand to empty seat")
-	_expect(slots.get_entry(0) != null and slots.get_entry(0).entry_id == first_id, "controller: seat occupied")
-	_expect(not battle._card_flow.is_in_hand(first_id), "controller: seated card left hand")
-	_expect(battle.get_hand().size() == hand.size() - 1, "controller: no auto-draw on seat assign")
-	_expect(slots.get_seat_assign_seq(0) > 0, "controller: seat assign seq recorded")
+	## 清空全部座位后不可开战；再入一座可开战（绕过手牌宽度，直接清槽）。
+	var first_cleared: DeckEntry = null
+	for i in range(slots.slot_count - 1, -1, -1):
+		var e := slots.try_recall(i)
+		if e == null:
+			continue
+		deck.clear_seat(e.entry_id)
+		if first_cleared == null:
+			first_cleared = e
+	_expect(slots.occupied_count() == 0, "controller: all seats cleared")
+	_expect(not battle.try_start_combat(), "controller: cannot start with empty seats")
+	_expect(first_cleared != null, "controller: had seated units before clear")
+	if first_cleared != null:
+		_expect(battle._card_flow.try_return_to_hand(first_cleared), "controller: park one unit in hand")
+		var slot0 := slots.get_cell(0)
+		_expect(battle.try_assign_to_slot(first_cleared.entry_id, slot0).is_empty(), "controller: re-seat from hand")
+		_expect(slots.get_entry(0) != null and slots.get_entry(0).entry_id == first_cleared.entry_id, "controller: seat occupied after re-seat")
+		_expect(slots.get_seat_assign_seq(0) > 0, "controller: seat assign seq recorded")
 
-	_expect(battle.try_recall_slot(0), "controller: recall from seat to hand")
-	_expect(slots.is_empty(0), "controller: seat empty after recall")
-	_expect(slots.get_seat_assign_seq(0) < 0, "controller: seat seq cleared on recall")
-	_expect(battle._card_flow.is_in_hand(first_id), "controller: recalled card back in hand")
-
-	# 刷新：入座保留，未入座重抽
-	hand = battle.get_hand()
-	var keep_id := hand[0].entry_id
-	_expect(battle.try_assign_to_slot(keep_id, slot0).is_empty(), "controller: re-assign for refresh test")
-	_expect(battle.get_refresh_remaining() == 3, "controller: refresh starts at 3")
-	_expect(battle.try_refresh_hand(), "controller: refresh succeeds")
-	_expect(battle.get_refresh_remaining() == 2, "controller: refresh decremented")
-	_expect(slots.get_entry(0) != null and slots.get_entry(0).entry_id == keep_id, "controller: seated card kept after refresh")
-	_expect(not battle._card_flow.is_in_hand(keep_id), "controller: seated card not returned to hand by refresh")
-	## 入座牌不在牌流中；刷新后手牌仍抽满到 hand_width。
-	_expect(battle.get_hand().size() == deck.get_hand_width(), "controller: hand refilled to width after refresh")
+	## 准备刷新手牌已取消
+	_expect(not battle.try_refresh_hand(), "controller: refresh disabled in prepare")
 
 	# 开战
 	_expect(battle.try_start_combat(), "controller: start combat with >=1 seated")
@@ -148,9 +145,9 @@ func _test_battle_controller_rules() -> void:
 	var seats_sorted := enemy_seats.duplicate()
 	seats_sorted.sort()
 	_expect(enemy_seats == seats_sorted, "controller: enemy spawn seats follow index order (no shuffle)")
-	_expect(not battle.try_deploy(keep_id, Vector2i(3, battle.get_board_size().y - 3)).is_empty(), "controller: deploy rejected in COMBAT")
+	_expect(not battle.try_deploy(0, Vector2i(3, battle.get_board_size().y - 3)).is_empty(), "controller: deploy rejected in COMBAT")
 	_expect(not battle.try_refresh_hand(), "controller: refresh rejected in COMBAT")
-	_expect(not battle.try_assign_to_slot(keep_id, slot0).is_empty(), "controller: assign rejected in COMBAT")
+	_expect(not battle.try_assign_to_slot(0, slots.get_cell(0)).is_empty(), "controller: assign rejected in COMBAT")
 
 	var gold_before := economy.gold
 	for rt in sim.get_units():
@@ -170,72 +167,43 @@ func _test_battle_controller_rules() -> void:
 	await process_frame
 	_expect(battle.find_child("RealtimeCombatEventBus", false, false) == null, "controller: bus freed after continue")
 
-	# 刷新上限 + 手牌全入座后不可刷新
+	# 再次进入：持久占位仍自动入座；刷新仍禁用
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: second encounter PREPARE")
-	for i in 3:
-		_expect(battle.try_refresh_hand(), "controller: refresh %d ok" % (i + 1))
-	_expect(not battle.try_refresh_hand(), "controller: refresh blocked at limit")
+	_expect(battle.get_slot_board().occupied_count() >= 1, "controller: second prepare auto-seated")
+	_expect(not battle.try_refresh_hand(), "controller: refresh still disabled")
 
-	# 上场人数上限：占满 deploy_cap 后不能再入座（空座仍在）
+	## 上场人数上限：持久入座不超过 deploy_cap；空座仍多
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 1)
 	var slots_cap := battle.get_slot_board()
 	var cap := battle.get_deploy_cap()
-	## 先入座 cap-1，刷新补手牌，再入第 cap 人，保证仍有手牌可测硬顶。
-	var assigned := 0
-	var hand_cap := battle.get_hand()
-	for i in mini(hand_cap.size(), maxi(0, cap - 1)):
-		if battle.try_assign_to_slot(hand_cap[i].entry_id, slots_cap.get_cell(i)).is_empty():
-			assigned += 1
-	_expect(assigned == maxi(0, cap - 1), "controller: seated to cap-1")
-	_expect(battle.try_refresh_hand(), "controller: refresh while under cap for overflow hand")
-	hand_cap = battle.get_hand()
-	_expect(not hand_cap.is_empty(), "controller: hand after mid refresh")
-	_expect(battle.try_assign_to_slot(hand_cap[0].entry_id, slots_cap.get_cell(assigned)).is_empty(), "controller: seat final unit to deploy_cap")
-	assigned += 1
-	_expect(assigned == cap, "controller: filled to deploy_cap")
-	_expect(slots_cap.occupied_count() == cap, "controller: occupied equals deploy_cap")
-	_expect(not slots_cap.is_full(), "controller: seats not full when at deploy_cap")
-	_expect(not slots_cap.can_assign_more(cap), "controller: can_assign_more false at cap")
-	_expect(not battle.get_hand().is_empty(), "controller: hand has overflow candidate")
-	var overflow_id := battle.get_hand()[0].entry_id
-	var overflow_cell := slots_cap.get_cell(cap) ## 下一空座
-	var overflow_msg := battle.try_assign_to_slot(overflow_id, overflow_cell)
-	_expect(not overflow_msg.is_empty(), "controller: assign blocked at deploy_cap")
-	_expect(overflow_msg.find("上限") >= 0, "controller: deploy_cap block message")
-	_expect(slots_cap.occupied_count() == cap, "controller: occupied unchanged after blocked assign")
+	_expect(slots_cap.occupied_count() <= cap, "controller: occupied <= deploy_cap after load")
+	_expect(not slots_cap.is_full(), "controller: seats not full when at/under deploy_cap")
+	_expect(slots_cap.can_assign_more(cap) == (slots_cap.occupied_count() < cap), "controller: can_assign_more matches occupancy")
 
-	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 2)
-	var hand3 := battle.get_hand()
-	var slots3 := battle.get_slot_board()
-	var cap3 := battle.get_deploy_cap()
-	for i in mini(hand3.size(), cap3):
-		battle.try_assign_to_slot(hand3[i].entry_id, slots3.get_cell(i))
-	# 手牌仍可能有剩余；强制清空手牌到抽牌堆再断言
-	battle._card_flow.return_hand_to_draw(battle._encounter_rng)
-	battle._rebuild_cards()
-	_expect(battle.get_hand().is_empty(), "controller: hand empty for refresh-empty check")
-	_expect(not battle.try_refresh_hand(), "controller: refresh blocked when hand empty")
-
-	## 入座时间序：先 A 再 B，收回 A 再入 A → 生成序为 B 然后 A
+	## 换座
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
-	var hand_ord := battle.get_hand()
 	var slots_ord := battle.get_slot_board()
-	_expect(hand_ord.size() >= 2, "seat-order: need >=2 hand cards")
-	if hand_ord.size() >= 2:
-		var id_a := hand_ord[0].entry_id
-		var id_b := hand_ord[1].entry_id
-		_expect(battle.try_assign_to_slot(id_a, slots_ord.get_cell(0)).is_empty(), "seat-order: assign A")
-		_expect(battle.try_assign_to_slot(id_b, slots_ord.get_cell(1)).is_empty(), "seat-order: assign B")
-		var seq_a1 := slots_ord.get_seat_assign_seq(0)
-		var seq_b := slots_ord.get_seat_assign_seq(1)
-		_expect(seq_a1 > 0 and seq_b > seq_a1, "seat-order: B seated after A")
-		_expect(battle.try_recall_slot(0), "seat-order: recall A")
-		_expect(battle.try_assign_to_slot(id_a, slots_ord.get_cell(0)).is_empty(), "seat-order: re-seat A")
-		var seq_a2 := slots_ord.get_seat_assign_seq(0)
-		_expect(seq_a2 > seq_b, "seat-order: re-seat A is latest")
-		var order := slots_ord.get_occupied_indices_by_seat_order()
-		_expect(order.size() == 2 and order[0] == 1 and order[1] == 0, "seat-order: spawn order B then A")
+	while slots_ord.occupied_count() < 2 and not battle.get_hand().is_empty():
+		var hand_e := battle.get_hand()[0]
+		var empty_i := -1
+		for i in slots_ord.slot_count:
+			if slots_ord.is_empty(i):
+				empty_i = i
+				break
+		if empty_i < 0:
+			break
+		battle.try_assign_to_slot(hand_e.entry_id, slots_ord.get_cell(empty_i))
+	_expect(slots_ord.occupied_count() >= 2, "seat-order: need >=2 seated")
+	if slots_ord.occupied_count() >= 2:
+		var occ := slots_ord.get_occupied_indices_by_seat_order()
+		var from_i: int = occ[0]
+		var to_i: int = occ[1]
+		var id_a := slots_ord.get_entry(from_i).entry_id
+		var id_b := slots_ord.get_entry(to_i).entry_id
+		_expect(battle.try_swap_prepare_seats(from_i, to_i), "seat-order: swap A and B")
+		_expect(slots_ord.get_entry(to_i) != null and slots_ord.get_entry(to_i).entry_id == id_a, "seat-order: A moved to B seat")
+		_expect(slots_ord.get_entry(from_i) != null and slots_ord.get_entry(from_i).entry_id == id_b, "seat-order: B moved to A seat")
 		_expect(battle.try_start_combat(), "seat-order: start combat")
 		var sim_ord := battle.get_sim()
 		_expect(sim_ord != null and sim_ord.has_started(), "seat-order: sim started")
