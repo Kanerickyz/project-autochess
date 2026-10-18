@@ -964,13 +964,21 @@ func _spawn_unit(
 		origin = payload.target.grid_pos
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
 	var summon_context := owner if owner != null else payload.target
-	var spawn_total := maxi(1, action.spawn_count)
+	## 每角色最多生成 1 只随从（本场累计）。
+	const MAX_MINIONS_PER_UNIT := 1
+	if summon_context != null and summon_context.combat_summons_spawned >= MAX_MINIONS_PER_UNIT:
+		return false
+	var remaining := MAX_MINIONS_PER_UNIT
+	if summon_context != null:
+		remaining = MAX_MINIONS_PER_UNIT - summon_context.combat_summons_spawned
+	var spawn_total := mini(maxi(1, action.spawn_count), remaining)
 	var spawned_any := false
 	for i in spawn_total:
 		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
+		spawned.is_combat_summon = true
 		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
 			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
 			var pct := action.spawn_owner_base_percent
@@ -986,6 +994,8 @@ func _spawn_unit(
 		if not _grid.place(spawned, cell):
 			continue
 		spawned_any = true
+		if summon_context != null:
+			summon_context.combat_summons_spawned += 1
 		print("[Effect] spawn %s at %s hp=%d" % [spawned.id, str(cell), spawned.current_hp])
 		_emit_friend_summoned(spawned, summon_context, depth)
 		_emit_summoned(spawned, depth)

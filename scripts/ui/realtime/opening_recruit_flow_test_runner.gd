@@ -110,9 +110,20 @@ func _test_opening_enter_recruit_ui() -> void:
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
 	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
+	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		_expect(cell.y == expected_cand_y, "candidate y == ally-half upper band (mid+1)")
+		## 一行五格：x 互不重叠（5 宽棋盘 gap=0 → x=0..4）。
+		var xs: Dictionary = {}
+		var same_y := true
+		for info in arena.recruit_candidates:
+			var c: Vector2i = info.get("cell", Vector2i(-1, -1))
+			xs[c.x] = true
+			if c.y != expected_cand_y:
+				same_y = false
+		_expect(same_y, "all candidates share one row")
+		_expect(xs.size() == arena.recruit_candidates.size(), "candidate cells unique x in one row")
 
 	## 上半场队伍块：敌半场区域 2×5 垂直居中；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")

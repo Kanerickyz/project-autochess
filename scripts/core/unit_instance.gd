@@ -18,8 +18,10 @@ var attached_abilities: Array[AbilityData] = []
 var stats: UnitStats
 var current_hp: int
 var stat_modifiers: StatModifierStack = StatModifierStack.new()
-## 战中召唤代理（Boss 衍生小兵等）；溃散与上限计数用。
+## 战中召唤随从（技能生成 / Boss 衍生小兵等）；溃散与上限计数用。
 var is_combat_summon: bool = false
+## 本场已成功生成的随从只数（技能路径：每角色最多 1）。
+var combat_summons_spawned: int = 0
 
 
 func is_boss_leader() -> bool:

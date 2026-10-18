@@ -1250,12 +1250,15 @@ func _build_recruit_item_previews() -> Array:
 
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
-	## 两行布局：候选人上行；相对我半场略偏上（为道具行留空）。
+	## 一行布局：候选人上行；相对我半场略偏上（为道具行留空）。
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 3))
-	## 5 槽时 gap=1 才能塞进 9 列。
+	## 5 槽须落在同一行：宽不够时收拢间距（5×8 棋盘 → gap=0 占满 x=0..4）。
 	var gap := 1 if n >= 5 else 2
 	var block_w := n + (n - 1) * gap
+	if block_w > _board_size.x:
+		gap = 0
+		block_w = n
 	var start_x := (_board_size.x - block_w) / 2
 	start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
 	var cells: Array[Vector2i] = []
@@ -1280,6 +1283,9 @@ func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
 	y = clampi(y, mid, maxi(mid, _board_size.y - 2))
 	var gap := 1
 	var block_w := n + (n - 1) * gap
+	if block_w > _board_size.x:
+		gap = 0
+		block_w = n
 	var start_x := (_board_size.x - block_w) / 2
 	start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
 	var cells: Array[Vector2i] = []
