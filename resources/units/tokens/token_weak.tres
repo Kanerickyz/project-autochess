@@ -22,7 +22,7 @@ deploy_time = 0.7
 [resource]
 script = ExtResource("1_unit")
 id = "token_weak"
-display_name = "弱代理"
+display_name = "随从"
 cost = 1
 tier = 1
 stats = SubResource("UnitStats_token_weak")

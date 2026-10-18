@@ -63,6 +63,10 @@ script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "archer": &"archer",
 "banner": &"banner",
+"blood_acolyte": &"relic_aegis",
+"iron_heart": &"rune_plate",
+"mend_friar": &"banner",
+"vita_keeper": &"shield",
 "barbarian": &"axe",
 "boss_minion_t4": &"captain",
 "boss_minion_t5": &"valkyrie",
