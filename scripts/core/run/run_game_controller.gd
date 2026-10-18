@@ -68,9 +68,11 @@ func _show_map() -> void:
 	if _suppress_map_show:
 		return
 	_hide_encounter_ui()
-	_battle_root.visible = false
+	## 地图与关卡共用竞技场背景：战斗层保留在下方作世界底图，地图半透明罩上。
+	_battle_root.visible = true
 	if _battle != null:
 		_battle.exit_recruit()
+		_battle.set_world_backdrop_mode(true)
 	_map_screen.show_map(run_controller)
 
 
@@ -98,6 +100,8 @@ func _on_map_node_selected(node_id: int) -> void:
 			run_controller.complete_encounter()
 			return
 		_battle_root.visible = true
+		if _battle != null:
+			_battle.set_world_backdrop_mode(false)
 		var floor_index := node.get_floor()
 		_battle.start_encounter(
 			encounter,
@@ -108,6 +112,10 @@ func _on_map_node_selected(node_id: int) -> void:
 		return
 	if node_type == MapNodeType.Type.SHOP:
 		run_controller.register_shop_visit()
+	## 非战斗节点仍留世界底图，占位 UI 叠在上面。
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
 	_placeholder_screen.show_placeholder(node_type)
 
 
@@ -146,6 +154,8 @@ func _open_opening_recruit() -> void:
 		return
 	_recruit_busy = true
 	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
 
@@ -165,6 +175,8 @@ func _open_recruit() -> void:
 	_recruit_busy = true
 	_opening_recruit_pending = false
 	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
 
