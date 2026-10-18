@@ -403,7 +403,7 @@ func _begin_next_actor_turn() -> void:
 			_current_actor = candidate
 			_actor_turn_active = true
 			_actor_has_attacked = false
-			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate.get_stats())
+			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate)
 			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
 			var payload := CombatEventPayload.new()
 			payload.source = candidate.unit

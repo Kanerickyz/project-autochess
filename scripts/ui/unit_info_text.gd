@@ -6,7 +6,7 @@ const TRIGGER_LABELS := {
 	CombatEvents.ON_FRIEND_SUMMONED: "友方召唤时",
 	CombatEvents.ON_SUMMONED: "被召唤时",
 	CombatEvents.ON_FRIEND_DEATH: "友方死亡时",
-	CombatEvents.ON_ROUND_START: "回合开始时",
+	CombatEvents.ON_ROUND_START: "自己回合开始时",
 	CombatEvents.ON_DAMAGE_TAKEN: "受伤时",
 	CombatEvents.ON_DEAL_DAMAGE: "造成伤害时",
 	CombatEvents.ON_CRIT: "造成暴击时",
@@ -255,6 +255,16 @@ static func _format_target(spec: EffectSpec) -> String:
 			if spec.exclude_owner:
 				return "与当前血量最高的其他队友"
 			return "与当前血量最高的队友"
+		EffectSpec.TargetSelector.UNIT_AHEAD_OF_MOVE:
+			return "对移动前方单位"
+		EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET:
+			return "对目标邻格敌人"
+		EffectSpec.TargetSelector.EVENT_SOURCE:
+			return "对施害者"
+		EffectSpec.TargetSelector.NEARBY_ALLIES:
+			if spec.exclude_owner:
+				return "对附近其他友方"
+			return "对附近友方"
 	return ""
 
 
@@ -268,6 +278,8 @@ static func format_action(action: EffectAction) -> String:
 				stat = "生命上限"
 			elif stat == "crit_rate_percent":
 				stat = "暴击率"
+			elif stat == "steps_per_turn":
+				stat = "每回合步数"
 			var sign: String = "+" if action.value >= 0 else ""
 			return "%s%s %s" % [sign, action.value, stat]
 		EffectAction.Type.HEAL:
@@ -279,6 +291,12 @@ static func format_action(action: EffectAction) -> String:
 			elif action.spawn_unit != null:
 				spawn_name = action.spawn_unit.id
 			var count := maxi(1, action.spawn_count)
+			if action.spawn_owner_base_percent > 0:
+				if count > 1:
+					return "生成 %d×%s（死者基础身体 %d%%）" % [
+						count, spawn_name, action.spawn_owner_base_percent
+					]
+				return "生成 %s（死者基础身体 %d%%）" % [spawn_name, action.spawn_owner_base_percent]
 			if action.spawn_unit != null and action.spawn_unit.stats != null:
 				var stats := action.spawn_unit.stats
 				var atk := stats.attack

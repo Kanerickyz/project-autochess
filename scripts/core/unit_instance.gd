@@ -106,7 +106,10 @@ func get_movement_pattern() -> UnitStats.MovementPattern:
 func get_steps_per_turn() -> int:
 	if stats == null:
 		return 1
-	return maxi(1, stats.steps_per_turn)
+	var bonus := 0
+	if stat_modifiers != null:
+		bonus = stat_modifiers.get_flat_bonus(&"steps_per_turn")
+	return maxi(0, stats.steps_per_turn + bonus)
 
 
 func uses_sliding_move_presentation() -> bool:

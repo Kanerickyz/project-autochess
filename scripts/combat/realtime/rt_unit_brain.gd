@@ -32,8 +32,19 @@ class Decision:
 	var turn_done: bool = false
 
 
-## 一动最多走几格：直接读整数 steps_per_turn（0 = 本动不挪步）。
-static func turn_step_budget(stats: UnitStats) -> int:
+## 一动最多走几格：含临时 steps_per_turn 修正（0 = 本动不挪步）。
+static func turn_step_budget(unit_or_stats: Variant) -> int:
+	if unit_or_stats is RtUnit:
+		var rt := unit_or_stats as RtUnit
+		if rt == null or rt.unit == null:
+			return 0
+		return rt.unit.get_steps_per_turn()
+	if unit_or_stats is UnitInstance:
+		var inst := unit_or_stats as UnitInstance
+		if inst == null:
+			return 0
+		return inst.get_steps_per_turn()
+	var stats := unit_or_stats as UnitStats
 	if stats == null:
 		return 0
 	return maxi(0, stats.steps_per_turn)
@@ -127,7 +138,7 @@ static func decide_boss_leader_turn(
 		decision.turn_done = true
 		return decision
 	## 本动已挪过一步：不再出手/再召（三选一互斥）
-	var budget := turn_step_budget(unit.get_stats())
+	var budget := turn_step_budget(unit)
 	if budget > 0 and steps_left < budget:
 		decision.turn_done = true
 		return decision
@@ -249,7 +260,7 @@ static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	if turn_step_budget(stats) <= 0:
+	if turn_step_budget(unit) <= 0:
 		return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	return decision
