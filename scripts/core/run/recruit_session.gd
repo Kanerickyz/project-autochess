@@ -109,7 +109,7 @@ func get_recruit_cost(unit: UnitData) -> int:
 
 func get_seat_cap() -> int:
 	## 队伍席位上限：取牌库 max_size 与座位网格总数的较小值。
-	## 本版主路径 max_size=5、网格 2×5=10 → cap≈5；不用 deploy_cap。
+	## 本版主路径 max_size=5、网格 4×5=20 → cap≈5；不用 deploy_cap。
 	if deck == null:
 		return 0
 	var deck_cap := deck.get_max_size()

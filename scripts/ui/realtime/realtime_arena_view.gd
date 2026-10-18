@@ -69,7 +69,10 @@ const SHAKE_BLEED_PX := 8.0
 const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
 
-var board_size: Vector2i = Vector2i(9, 16)
+var board_size: Vector2i = Vector2i(5, 8)
+## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
+const REFERENCE_BOARD_WIDTH := 9.0
+const REFERENCE_BOARD_HEIGHT := 16.0
 var sim: RealtimeCombatSim
 ## Array[Dictionary]：{position, radius, visual_half_width?, visual_half_height?, label, attack?, hp?}
 var enemy_previews: Array = []
@@ -92,7 +95,7 @@ var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
@@ -138,12 +141,13 @@ var _press_info: Dictionary = {}
 var _press_tap: Callable
 var _info_shown := false
 
-const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.35)
-const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.45)
-const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.9)
-const ENEMY_SLOT_EMPTY := Color(0.95, 0.40, 0.36, 0.18)
-const ENEMY_SLOT_OCCUPIED := Color(0.90, 0.30, 0.28, 0.32)
-const ENEMY_SLOT_BORDER := Color(0.95, 0.60, 0.55, 0.55)
+## 座位铺满半场时不描格线；仅极淡底色，避免棋盘像表格。
+const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.08)
+const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.18)
+const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.0)
+const ENEMY_SLOT_EMPTY := Color(0.95, 0.40, 0.36, 0.06)
+const ENEMY_SLOT_OCCUPIED := Color(0.90, 0.30, 0.28, 0.14)
+const ENEMY_SLOT_BORDER := Color(0.95, 0.60, 0.55, 0.0)
 const RECRUIT_TEAM_EMPTY := Color(0.45, 0.70, 0.95, 0.22)
 const RECRUIT_TEAM_FILL := Color(0.30, 0.55, 0.95, 0.42)
 const RECRUIT_TEAM_BORDER := Color(0.75, 0.90, 1.0, 0.95)
@@ -223,6 +227,13 @@ func get_cell_px() -> float:
 	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
 	var avail_x := maxf(1.0, size.x - gutter * 2.0)
 	return maxf(1.0, minf(avail_x / board_size.x, size.y / board_size.y))
+
+
+## 列/行变少时放大角色表现（碰撞仍以逻辑格为准）。
+func get_unit_visual_scale() -> float:
+	var sx := REFERENCE_BOARD_WIDTH / float(maxi(1, board_size.x))
+	var sy := REFERENCE_BOARD_HEIGHT / float(maxi(1, board_size.y))
+	return clampf(minf(sx, sy), 1.0, 1.75)
 
 
 ## 背景按「铺满」缩放并居中裁切，保持原图比例。
@@ -1040,7 +1051,8 @@ func _draw() -> void:
 			DEPLOY_HIGHLIGHT,
 		)
 	var mid_y := rect.position.y + mid * px
-	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), MIDLINE, 2.0)
+	## 中线仅作半场暗示，避免画成明显格网线。
+	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), Color(MIDLINE, MIDLINE.a * 0.45), 1.0)
 
 	if recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
@@ -1406,8 +1418,11 @@ func _draw_enemy_slots(px: float) -> void:
 		var cell: Vector2i = enemy_slots.cells[i]
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
 		var filled := occupied.has(i)
-		draw_rect(cell_rect, ENEMY_SLOT_OCCUPIED if filled else ENEMY_SLOT_EMPTY)
-		draw_rect(cell_rect, ENEMY_SLOT_BORDER, false, 1.5)
+		## 不描边；空座几乎不可见，避免铺满半场时像格子纸。
+		if filled:
+			draw_rect(cell_rect, ENEMY_SLOT_OCCUPIED)
+		elif ENEMY_SLOT_EMPTY.a > 0.0:
+			draw_rect(cell_rect, ENEMY_SLOT_EMPTY)
 
 
 func _enemy_preview_seat_set() -> Dictionary:
@@ -1429,8 +1444,11 @@ func _draw_prepare_slots(px: float) -> void:
 		var cell: Vector2i = prepare_slots.cells[i]
 		var entry: DeckEntry = prepare_slots.get_entry(i)
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, SLOT_OCCUPIED if entry != null else SLOT_EMPTY)
-		draw_rect(cell_rect, SLOT_BORDER, false, 2.0)
+		## 不描边；空座极淡，占座仅轻晕，避免显性格线。
+		if entry != null:
+			draw_rect(cell_rect, SLOT_OCCUPIED)
+		elif SLOT_EMPTY.a > 0.0:
+			draw_rect(cell_rect, SLOT_EMPTY)
 		if entry != null and (sim == null or not sim.has_started()):
 			var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 			var stats := entry.unit.stats if entry.unit != null else null
@@ -1615,9 +1633,10 @@ func _rt_unit_id(rt: RtUnit) -> String:
 
 
 func _resolve_visual_half(explicit: float, body_radius: float, fallback_mul: float) -> float:
+	var scale := get_unit_visual_scale()
 	if explicit > 0.0:
-		return explicit
-	return maxf(0.05, body_radius * fallback_mul)
+		return explicit * scale
+	return maxf(0.05, body_radius * fallback_mul * scale)
 
 
 func _draw_ellipse_filled(center: Vector2, rx: float, ry: float, color: Color) -> void:

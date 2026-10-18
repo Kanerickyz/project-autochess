@@ -3,7 +3,7 @@ extends RefCounted
 
 signal deck_changed
 
-## 队伍席位上限硬顶（旗帜扩容上限；与座位网格 2×5=10 对齐）。
+## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 4×5=20）。
 const SEAT_CAP_HARD_MAX := 10
 
 var _config: DeckConfig
