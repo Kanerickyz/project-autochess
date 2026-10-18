@@ -4,17 +4,22 @@
 [ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
 [ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
 
-[sub_resource type="Resource" id="Resource_act"]
+[sub_resource type="Resource" id="Resource_act_atk"]
 script = ExtResource("3_act")
+value = 2
+
+[sub_resource type="Resource" id="Resource_act_steps"]
+script = ExtResource("3_act")
+stat_name = &"steps_per_turn"
 value = 2
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
 trigger = &"OnCombatStart"
-actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act_atk"), SubResource("Resource_act_steps")])
 
 [resource]
 script = ExtResource("1_ab")
 id = "combat_start_charge"
-display_name = "开战时 自身攻击+2"
+display_name = "开战时 自身攻击+2、每回合步数+2"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

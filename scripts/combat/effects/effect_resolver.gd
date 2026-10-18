@@ -289,6 +289,11 @@ func _resolve_targets(
 				result.append(ally)
 		EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET:
 			result.append_array(_pick_enemies_adjacent_to_event_target(owner, payload))
+		EffectSpec.TargetSelector.EVENT_SOURCE:
+			if payload.source != null and payload.source.is_alive():
+				result.append(payload.source)
+		EffectSpec.TargetSelector.NEARBY_ALLIES:
+			result.append_array(_pick_nearby_allies(owner, spec.exclude_owner))
 	return result
 
 
@@ -486,6 +491,30 @@ func _pick_enemies_adjacent_to_event_target(
 		if unit_cell != Vector2i(-1, -1):
 			cell = unit_cell
 		if _grid.combat_distance(center, cell) == 1:
+			result.append(unit)
+	result.sort_custom(_sort_listeners)
+	return result
+
+
+## 持有者附近友方（切比雪夫 ≤ EffectSpec.NEARBY_ALLY_RADIUS）。
+func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[UnitInstance]:
+	var result: Array[UnitInstance] = []
+	if owner == null or _grid == null:
+		return result
+	var center := owner.grid_pos
+	var found := _grid.find_cell_of(owner)
+	if found != Vector2i(-1, -1):
+		center = found
+	for unit in _grid.get_units_by_team(owner.team, true):
+		if unit == null or not unit.is_alive():
+			continue
+		if exclude_owner and unit.instance_id == owner.instance_id:
+			continue
+		var cell := unit.grid_pos
+		var unit_cell := _grid.find_cell_of(unit)
+		if unit_cell != Vector2i(-1, -1):
+			cell = unit_cell
+		if _grid.chebyshev_distance(center, cell) <= EffectSpec.NEARBY_ALLY_RADIUS:
 			result.append(unit)
 	result.sort_custom(_sort_listeners)
 	return result
@@ -927,7 +956,15 @@ func _spawn_unit(action: EffectAction, payload: CombatEventPayload, depth: int) 
 		if cell == Vector2i(-1, -1):
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
-		if action.spawn_hp_override > 0:
+		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
+			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
+			var pct := action.spawn_owner_base_percent
+			var base_atk := payload.target.stats.attack
+			var base_hp := payload.target.stats.max_hp
+			spawned.stats.attack = maxi(1, base_atk * pct / 100)
+			spawned.stats.max_hp = maxi(1, base_hp * pct / 100)
+			spawned.current_hp = spawned.stats.max_hp
+		elif action.spawn_hp_override > 0:
 			spawned.current_hp = action.spawn_hp_override
 			if spawned.stats != null:
 				spawned.stats.max_hp = maxi(spawned.stats.max_hp, action.spawn_hp_override)

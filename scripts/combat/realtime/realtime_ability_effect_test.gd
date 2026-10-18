@@ -110,11 +110,16 @@ static func _test_combat_start_charge_atk() -> bool:
 	var rider := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
 	sim.add_unit(_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 8.5))
 	var base_atk := rider.unit.get_effective_attack()
+	var base_steps := rider.unit.get_steps_per_turn()
 	sim.begin_combat()
 	var after := rider.unit.get_effective_attack()
-	## combat_start_charge：开战自身攻击 +2（与 ability 资源一致）
+	var after_steps := rider.unit.get_steps_per_turn()
+	## combat_start_charge：开战自身攻击 +2、每回合步数 +2（与 ability 资源一致）
 	if after != base_atk + 2:
 		push_error("charge: atk %d -> %d, expected +2" % [base_atk, after])
+		return false
+	if after_steps != base_steps + 2:
+		push_error("charge: steps %d -> %d, expected +2" % [base_steps, after_steps])
 		return false
 	return true
 

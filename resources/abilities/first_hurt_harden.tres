@@ -18,5 +18,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "first_hurt_harden"
-display_name = "首次受伤时 自身生命上限+2"
+display_name = "首次受伤时 自身生命上限+2（承伤感等效）"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

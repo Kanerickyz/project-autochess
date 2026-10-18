@@ -20,7 +20,14 @@ enum TargetSelector {
 	HIGHEST_CURRENT_HP_ALLY,
 	## 事件目标邻格上的敌人（Chebyshev=1；不含事件目标自身）。
 	ENEMIES_ADJACENT_TO_EVENT_TARGET,
+	## 事件来源单位（如受伤时的施害者）；须追加在枚举末尾以免破坏既有 .tres 序号。
+	EVENT_SOURCE,
+	## 持有者附近友方（切比雪夫 ≤ NEARBY_ALLY_RADIUS）；可 exclude_owner。
+	NEARBY_ALLIES,
 }
+
+## 「附近友方」切比雪夫半径（格）。
+const NEARBY_ALLY_RADIUS := 2
 
 ## Optional gate evaluated when the trigger fires (before targets/actions).
 enum Condition {
