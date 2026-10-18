@@ -140,6 +140,9 @@ var _press_ms: int = -1
 var _press_info: Dictionary = {}
 var _press_tap: Callable
 var _info_shown := false
+## 技能触发自动弹出的信息卡：到期自动收起（长按中不抢收）。
+var _auto_info_until_clock: float = -1.0
+const SKILL_INFO_SECONDS := 1.35
 
 ## 座位铺满半场时不描格线；仅极淡底色，避免棋盘像表格。
 const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.08)
@@ -183,6 +186,11 @@ func _process(delta: float) -> void:
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
+	if _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
+		if not _press_active:
+			_info_card.hide_info()
+			_info_shown = false
+		_auto_info_until_clock = -1.0
 	if not _fx.is_empty():
 		var alive: Array = []
 		for fx in _fx:
@@ -229,11 +237,11 @@ func get_cell_px() -> float:
 	return maxf(1.0, minf(avail_x / board_size.x, size.y / board_size.y))
 
 
-## 列/行变少时放大角色表现（碰撞仍以逻辑格为准）。
+## 列/行变少时放大角色表现（碰撞仍以逻辑格为准）；再收 20% 避免邻格剪影互盖。
 func get_unit_visual_scale() -> float:
 	var sx := REFERENCE_BOARD_WIDTH / float(maxi(1, board_size.x))
 	var sy := REFERENCE_BOARD_HEIGHT / float(maxi(1, board_size.y))
-	return clampf(minf(sx, sy), 1.0, 1.75)
+	return clampf(minf(sx, sy), 1.0, 1.75) * 0.8
 
 
 ## 背景按「铺满」缩放并居中裁切，保持原图比例。
@@ -614,6 +622,17 @@ func _show_info_card(info: Dictionary) -> void:
 	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size))
 
 
+## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
+func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, hp: int, tile_pos: Vector2) -> void:
+	if unit == null:
+		return
+	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
+	var center := tile_to_local(tile_pos) + off
+	_show_info_card(_info_from_instance(unit, is_player, attack, hp, center))
+	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
+	_auto_info_until_clock = _fx_clock + life
+
+
 ## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
 func inspect_at(local_pos: Vector2) -> Dictionary:
 	var px := get_cell_px()
@@ -731,6 +750,15 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 	}
 
 
+func _candidate_needs_replace(index: int) -> bool:
+	if index < 0 or index >= recruit_candidates.size():
+		return recruit_needs_replace
+	var info: Dictionary = recruit_candidates[index]
+	if info.has("needs_replace"):
+		return bool(info.get("needs_replace", false))
+	return recruit_needs_replace
+
+
 func _begin_recruit_drag(index: int) -> void:
 	if index < 0 or index >= recruit_candidates.size():
 		return
@@ -744,6 +772,7 @@ func _begin_recruit_drag(index: int) -> void:
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
 	recruit_selected_candidate = index
+	recruit_needs_replace = _candidate_needs_replace(index)
 	_drag_active = true
 	var unit: UnitData = info.get("unit") as UnitData
 	var stats: UnitStats = unit.stats if unit != null else null
@@ -821,13 +850,14 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
 	var seat_i := _find_recruit_team_seat_at(cell)
-	if recruit_needs_replace:
+	if _candidate_needs_replace(index):
 		if replace_id < 0:
 			queue_redraw()
 			return
 		recruit_drop.emit(index, replace_id, -1)
 	else:
 		## 空席：指定空座优先；拖到非座位格则首空座（seat=-1）。
+		## 满员可三合一时走此分支，直接买入。
 		if replace_id >= 0:
 			seat_i = -1
 		elif seat_i < 0 and recruit_team_slots != null:
@@ -976,7 +1006,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			return
 		var replace_id := _find_recruit_team_entry_at(cell)
 		var seat_i := _find_recruit_team_seat_at(cell)
-		if recruit_needs_replace:
+		if _candidate_needs_replace(index):
 			if replace_id < 0:
 				return
 			recruit_drop.emit(index, replace_id, -1)
@@ -1074,7 +1104,18 @@ func _draw() -> void:
 		_draw_enemy_slots(px)
 		_draw_prepare_slots(px)
 
-		for preview in enemy_previews:
+		## 敌方预览按 y 轴排序：靠下压上，避免剪影互盖错层。
+		var previews := enemy_previews.duplicate()
+		previews.sort_custom(func(a: Variant, b: Variant) -> bool:
+			var ay := float((a as Dictionary).get("position", Vector2.ZERO).y)
+			var by := float((b as Dictionary).get("position", Vector2.ZERO).y)
+			if ay == by:
+				return float((a as Dictionary).get("position", Vector2.ZERO).x) < float((b as Dictionary).get("position", Vector2.ZERO).x)
+			return ay < by
+		)
+		for preview in previews:
+			if not (preview is Dictionary):
+				continue
 			var body_r := float(preview["radius"])
 			var vwx := float(preview.get("visual_half_width", 0.0))
 			var vhy := float(preview.get("visual_half_height", 0.0))
@@ -1208,6 +1249,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 	if recruit_team_slots == null or recruit_team_slots.cells.is_empty():
 		return
 	var rect := get_board_rect()
+	var occupied_indices: Array[int] = []
 	for i in recruit_team_slots.cells.size():
 		var cell: Vector2i = recruit_team_slots.cells[i]
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
@@ -1218,6 +1260,18 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			draw_rect(cell_rect, RECRUIT_SELECT)
 			border = Color(1.0, 0.95, 0.4, 1.0)
 		draw_rect(cell_rect, border, false, 2.0)
+		if entry != null:
+			occupied_indices.append(i)
+	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
+		var ca := recruit_team_slots.cells[a]
+		var cb := recruit_team_slots.cells[b]
+		if ca.y != cb.y:
+			return ca.y < cb.y
+		return ca.x < cb.x
+	)
+	for i in occupied_indices:
+		var cell: Vector2i = recruit_team_slots.cells[i]
+		var entry: DeckEntry = recruit_team_slots.get_entry(i)
 		if entry == null:
 			continue
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
@@ -1440,6 +1494,8 @@ func _draw_prepare_slots(px: float) -> void:
 		return
 	var rect := get_board_rect()
 	var off := Vector2(0.0, ally_half_slide_y)
+	## 先画底色，再按 y 排序画角色（靠下压上）。
+	var occupied_indices: Array[int] = []
 	for i in prepare_slots.cells.size():
 		var cell: Vector2i = prepare_slots.cells[i]
 		var entry: DeckEntry = prepare_slots.get_entry(i)
@@ -1447,24 +1503,38 @@ func _draw_prepare_slots(px: float) -> void:
 		## 不描边；空座极淡，占座仅轻晕，避免显性格线。
 		if entry != null:
 			draw_rect(cell_rect, SLOT_OCCUPIED)
+			occupied_indices.append(i)
 		elif SLOT_EMPTY.a > 0.0:
 			draw_rect(cell_rect, SLOT_EMPTY)
-		if entry != null and (sim == null or not sim.has_started()):
-			var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
-			var stats := entry.unit.stats if entry.unit != null else null
-			var radius := stats.body_radius if stats != null else 0.7
-			var vwx := stats.get_visual_half_width() if stats != null else 0.0
-			var vhy := stats.get_visual_half_height() if stats != null else 0.0
-			_draw_body(
-				center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
-				true, entry.get_unit_id(),
-			)
-			var atk := 0
-			var hp := 0
-			if stats != null:
-				atk = maxi(1, stats.attack + entry.bonus_attack)
-				hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-			_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
+	if sim != null and sim.has_started():
+		return
+	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
+		var ca := prepare_slots.cells[a]
+		var cb := prepare_slots.cells[b]
+		if ca.y != cb.y:
+			return ca.y < cb.y
+		return ca.x < cb.x
+	)
+	for i in occupied_indices:
+		var cell: Vector2i = prepare_slots.cells[i]
+		var entry: DeckEntry = prepare_slots.get_entry(i)
+		if entry == null:
+			continue
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var stats := entry.unit.stats if entry.unit != null else null
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		_draw_body(
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
+			true, entry.get_unit_id(),
+		)
+		var atk := 0
+		var hp := 0
+		if stats != null:
+			atk = maxi(1, stats.attack + entry.bonus_attack)
+			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
 
 
 func _draw_units(px: float) -> void:
@@ -1474,9 +1544,13 @@ func _draw_units(px: float) -> void:
 	var actor: RtUnit = sim.get_current_actor() if started else null
 	## 先画全部单位再画全部攻血标，避免相邻贴图盖住标签。
 	var badges: Array[Dictionary] = []
-	## 按纵向排序绘制，冲撞时靠下的单位压在上面。
+	## 按 y 轴排序绘制：靠下（更大 y）后画压上，避免剪影叠层错乱。
 	var ordered := sim.get_units().duplicate()
-	ordered.sort_custom(func(a: RtUnit, b: RtUnit) -> bool: return a.position.y < b.position.y)
+	ordered.sort_custom(func(a: RtUnit, b: RtUnit) -> bool:
+		if a.position.y == b.position.y:
+			return a.position.x < b.position.x
+		return a.position.y < b.position.y
+	)
 	for item in ordered:
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR

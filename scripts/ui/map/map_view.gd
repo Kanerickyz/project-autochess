@@ -46,11 +46,23 @@ var _layout_positions: Dictionary = {}
 var _scroll: ScrollContainer
 var _content: Control
 var _path_drawer: Control
+## 手指/鼠标拖动浏览：超过阈值后滚动，并吞掉节点点击。
+var _pan_tracking := false
+var _pan_dragging := false
+var _pan_last_y := 0.0
+var _pan_press_node_id := -1
+const PAN_DRAG_THRESHOLD_PX := 10.0
 
 
 func _ready() -> void:
 	_build_layout()
 	resized.connect(_on_resized)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _gui_input(event: InputEvent) -> void:
+	## 空白区（未点到节点按钮）也可拖动滚动。
+	_handle_pan_input(event, -1)
 
 
 func set_map_state(state: MapState) -> void:
@@ -72,11 +84,17 @@ func _build_layout() -> void:
 	_scroll = ScrollContainer.new()
 	_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	## 竖向始终显示可滚；拖动由本视图处理，不依赖必须点滑块。
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	_scroll.gui_input.connect(_on_scroll_gui_input)
 	add_child(_scroll)
 
 	_content = Control.new()
 	var view_w := _view_width()
 	_content.custom_minimum_size = Vector2(view_w, 800)
+	_content.mouse_filter = Control.MOUSE_FILTER_STOP
+	_content.gui_input.connect(_on_content_gui_input)
 	_scroll.add_child(_content)
 
 	_path_drawer = Control.new()
@@ -205,7 +223,11 @@ func _create_node_button(node: MapNodeRuntime, pos: Vector2) -> Button:
 	if node.completed:
 		label = "✓"
 	button.text = label
-	button.disabled = not node.available
+	## 不用 disabled：禁用控件不收指针，无法从该格开始拖地图。
+	button.disabled = false
+	button.mouse_default_cursor_shape = (
+		Control.CURSOR_POINTING_HAND if node.available and not node.completed else Control.CURSOR_ARROW
+	)
 	button.add_theme_font_size_override("font_size", 15)
 	button.add_theme_color_override("font_color", Color(0.08, 0.08, 0.1, 1))
 	button.add_theme_color_override("font_disabled_color", Color(0.12, 0.12, 0.14, 0.85))
@@ -231,7 +253,8 @@ func _create_node_button(node: MapNodeRuntime, pos: Vector2) -> Button:
 	button.add_theme_stylebox_override("hover", style)
 	button.add_theme_stylebox_override("pressed", style)
 	button.add_theme_stylebox_override("disabled", style)
-	button.pressed.connect(_on_node_pressed.bind(node.get_id()))
+	## 不用 pressed：拖动浏览时要区分「点击选节点」与「滑动地图」。
+	button.gui_input.connect(_on_node_button_gui_input.bind(node.get_id()))
 	return button
 
 
@@ -305,5 +328,65 @@ func _draw_bent_path(
 	_path_drawer.draw_polyline(points, color, width, true)
 
 
-func _on_node_pressed(node_id: int) -> void:
-	node_selected.emit(node_id)
+func _on_scroll_gui_input(event: InputEvent) -> void:
+	_handle_pan_input(event, -1)
+
+
+func _on_content_gui_input(event: InputEvent) -> void:
+	_handle_pan_input(event, -1)
+
+
+func _on_node_button_gui_input(event: InputEvent, node_id: int) -> void:
+	_handle_pan_input(event, node_id)
+
+
+func _handle_pan_input(event: InputEvent, node_id: int) -> void:
+	if _scroll == null:
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			_pan_tracking = true
+			_pan_dragging = false
+			_pan_last_y = mb.global_position.y
+			_pan_press_node_id = node_id
+			accept_event()
+			return
+		var was_dragging := _pan_dragging
+		var press_id := _pan_press_node_id
+		_pan_tracking = false
+		_pan_dragging = false
+		_pan_press_node_id = -1
+		accept_event()
+		## 未拖动且点在可用节点上 → 选中。
+		if was_dragging or press_id < 0 or _map_state == null:
+			return
+		var node := _map_state.get_node(press_id)
+		if node != null and node.available and not node.completed:
+			node_selected.emit(press_id)
+		return
+	if event is InputEventMouseMotion and _pan_tracking:
+		var motion := event as InputEventMouseMotion
+		var y := motion.global_position.y
+		if not _pan_dragging and absf(y - _pan_last_y) >= PAN_DRAG_THRESHOLD_PX:
+			_pan_dragging = true
+		if _pan_dragging:
+			var delta := _pan_last_y - y
+			_pan_last_y = y
+			_scroll.scroll_vertical = clampi(
+				_scroll.scroll_vertical + int(round(delta)),
+				0,
+				_max_scroll_vertical(),
+			)
+			accept_event()
+
+
+func _max_scroll_vertical() -> int:
+	if _scroll == null or _content == null:
+		return 0
+	var viewport_h := _scroll.size.y
+	if viewport_h <= 1.0:
+		viewport_h = size.y
+	return maxi(0, int(_content.custom_minimum_size.y - viewport_h))
