@@ -111,15 +111,16 @@ static func get_skills_block_from_unit_data(data: UnitData) -> String:
 static func get_skills_block_from_entry(entry: DeckEntry) -> String:
 	if entry == null or entry.unit == null:
 		return "无技能"
+	var scale := UnitInstance.ability_value_multiplier(entry.level)
 	var lines: PackedStringArray = []
 	if entry.unit.ability != null:
-		lines.append(format_ability("技能", entry.unit.ability))
+		lines.append(format_ability("技能", entry.unit.ability, scale))
 	for passive in entry.unit.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive))
+			lines.append(format_ability("被动", passive, scale))
 	for attached in entry.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached))
+			lines.append(format_ability("移植", attached, scale))
 	for buff in entry.attached_buffs:
 		if buff != null:
 			lines.append(format_buff(buff))
@@ -132,15 +133,16 @@ static func get_skills_block(unit: UnitInstance) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
 
+	var scale := UnitInstance.ability_value_multiplier(unit.level)
 	var lines: PackedStringArray = []
 	if unit.unit_data.ability != null:
-		lines.append(format_ability("技能", unit.unit_data.ability))
+		lines.append(format_ability("技能", unit.unit_data.ability, scale))
 	for passive in unit.unit_data.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive))
+			lines.append(format_ability("被动", passive, scale))
 	for attached in unit.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached))
+			lines.append(format_ability("移植", attached, scale))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
@@ -169,12 +171,12 @@ static func _buff_effect_description(buff: BuffCardData) -> String:
 	return ""
 
 
-static func get_ability_description(ability: AbilityData) -> String:
+static func get_ability_description(ability: AbilityData, value_scale: int = 1) -> String:
 	if ability == null:
 		return ""
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
-		var line := format_effect_spec(spec)
+		var line := format_effect_spec(spec, value_scale)
 		if not line.is_empty():
 			parts.append(line)
 	if not parts.is_empty():
@@ -184,14 +186,14 @@ static func get_ability_description(ability: AbilityData) -> String:
 	return ability.id
 
 
-static func format_ability(kind: String, ability: AbilityData) -> String:
-	var desc := get_ability_description(ability)
+static func format_ability(kind: String, ability: AbilityData, value_scale: int = 1) -> String:
+	var desc := get_ability_description(ability, value_scale)
 	if desc.is_empty():
 		desc = "无效果描述"
 	return "【%s】%s" % [kind, desc]
 
 
-static func format_effect_spec(spec: EffectSpec) -> String:
+static func format_effect_spec(spec: EffectSpec, value_scale: int = 1) -> String:
 	if spec == null:
 		return ""
 	var trigger: String = String(TRIGGER_LABELS.get(spec.trigger, String(spec.trigger)))
@@ -200,7 +202,7 @@ static func format_effect_spec(spec: EffectSpec) -> String:
 	for action in spec.actions:
 		if action == null:
 			continue
-		var text: String = format_action(action)
+		var text: String = format_action(action, value_scale)
 		if not text.is_empty():
 			actions.append(text)
 	var action_text: String = "，".join(actions) if not actions.is_empty() else ""
@@ -270,7 +272,9 @@ static func _format_target(spec: EffectSpec) -> String:
 	return ""
 
 
-static func format_action(action: EffectAction) -> String:
+static func format_action(action: EffectAction, value_scale: int = 1) -> String:
+	var scale := maxi(1, value_scale)
+	var scaled_value := action.value * scale
 	match action.action_type:
 		EffectAction.Type.MODIFY_STAT:
 			var stat: String = String(action.stat_name)
@@ -282,10 +286,10 @@ static func format_action(action: EffectAction) -> String:
 				stat = "暴击率"
 			elif stat == "steps_per_turn":
 				stat = "每回合步数"
-			var sign: String = "+" if action.value >= 0 else ""
-			return "%s%s %s" % [sign, action.value, stat]
+			var sign: String = "+" if scaled_value >= 0 else ""
+			return "%s%s %s" % [sign, scaled_value, stat]
 		EffectAction.Type.HEAL:
-			return "恢复 %d 生命" % action.value
+			return "恢复 %d 生命" % scaled_value
 		EffectAction.Type.SPAWN_UNIT:
 			var spawn_name: String = "单位"
 			if action.spawn_unit != null and not action.spawn_unit.display_name.is_empty():
@@ -317,27 +321,27 @@ static func format_action(action: EffectAction) -> String:
 		EffectAction.Type.DEAL_DAMAGE:
 			if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 				return "造成 %d%% 攻击力伤害" % action.percent
-			return "造成 %d 点伤害" % action.value
+			return "造成 %d 点伤害" % scaled_value
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
-			return "复制 %d%% 生命" % action.value
+			return "复制 %d%% 生命" % scaled_value
 		EffectAction.Type.GRANT_GOLD:
-			return "获得 +%d 金" % action.value
+			return "获得 +%d 金" % scaled_value
 		EffectAction.Type.PERMANENT_DECK_STAT:
-			var stat: String = String(action.stat_name)
-			if stat == "attack":
-				stat = "攻击"
-			elif stat == "max_hp":
-				stat = "生命上限"
-			elif stat == "crit_rate_percent":
-				stat = "暴击率"
-			return "永久 +%d %s" % [action.value, stat]
+			var pstat: String = String(action.stat_name)
+			if pstat == "attack":
+				pstat = "攻击"
+			elif pstat == "max_hp":
+				pstat = "生命上限"
+			elif pstat == "crit_rate_percent":
+				pstat = "暴击率"
+			return "永久 +%d %s" % [scaled_value, pstat]
 		EffectAction.Type.STOCK_FREE_BUFF:
 			var buff_name := "增益"
 			if action.buff_card != null and not action.buff_card.display_name.is_empty():
 				buff_name = action.buff_card.display_name
-			return "补充免费 %s ×%d" % [buff_name, action.value]
+			return "补充免费 %s ×%d" % [buff_name, scaled_value]
 		EffectAction.Type.SHOP_CHARACTER_BONUS_HP:
-			return "商店角色 +%d 生命上限" % action.value
+			return "商店角色 +%d 生命上限" % scaled_value
 		EffectAction.Type.APPLY_CELL_EFFECT:
 			var effect_name := "格子效果"
 			if action.cell_effect != null and not action.cell_effect.display_name.is_empty():
@@ -349,7 +353,7 @@ static func format_action(action: EffectAction) -> String:
 			return "施加 %s" % effect_name
 		EffectAction.Type.FRIENDS_HURT_AOE:
 			var need := maxi(1, action.threshold)
-			return "若本回合友方受伤≥%d 次，对全体敌人 %d 点伤害" % [need, action.value]
+			return "若本回合友方受伤≥%d 次，对全体敌人 %d 点伤害" % [need, scaled_value]
 		EffectAction.Type.SWAP_POSITIONS:
 			return "换位"
 		EffectAction.Type.FUSE_EXPLODE:

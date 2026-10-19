@@ -114,15 +114,17 @@ func _execute_action(
 ) -> void:
 	if action == null:
 		return
-	var level := maxi(1, owner_entry.level)
+	var scale := UnitInstance.ability_value_multiplier(
+		owner_entry.level if owner_entry != null else 1
+	)
 	match action.action_type:
 		EffectAction.Type.GRANT_GOLD:
 			if _economy != null:
-				_economy.grant(action.value * level)
+				_economy.grant(action.value * scale)
 		EffectAction.Type.PERMANENT_DECK_STAT:
 			if target_entry == null:
 				return
-			var stat_value := action.value * level
+			var stat_value := action.value * scale
 			if action.stat_name == &"attack":
 				target_entry.bonus_attack += stat_value
 			elif action.stat_name == &"max_hp":
@@ -132,7 +134,7 @@ func _execute_action(
 			_deck.deck_changed.emit()
 		EffectAction.Type.STOCK_FREE_BUFF:
 			if _shop != null and action.buff_card != null:
-				_shop.stock_free_buff(action.buff_card, action.value * level)
+				_shop.stock_free_buff(action.buff_card, action.value * scale)
 		EffectAction.Type.SHOP_CHARACTER_BONUS_HP:
 			if _shop != null:
-				_shop.apply_shop_character_bonus_hp(action.value * level)
+				_shop.apply_shop_character_bonus_hp(action.value * scale)

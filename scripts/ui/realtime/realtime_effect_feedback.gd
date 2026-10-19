@@ -200,7 +200,7 @@ static func _stat_short_label(stat_name: StringName) -> String:
 static func _scaled_value(owner: UnitInstance, value: int) -> int:
 	if owner == null:
 		return value
-	return value * maxi(1, owner.level)
+	return value * UnitInstance.ability_value_multiplier(owner.level)
 
 
 static func _resolve_damage_amount(owner: UnitInstance, action: EffectAction) -> int:
