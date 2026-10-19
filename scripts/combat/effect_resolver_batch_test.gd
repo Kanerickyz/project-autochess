@@ -107,8 +107,8 @@ static func _test_ant_faint_one_batch_one_step() -> void:
 	_assert_eq(resolver.has_pending_steps(), false, "one step clears ant faint batch")
 
 	_assert_eq(friend.get_effective_attack(), 2, "ally attack after batched faint")
-	_assert_eq(friend.get_effective_max_hp(), 3, "ally max hp after batched faint")
-	_assert_eq(friend.current_hp, 2, "ally current hp after batched faint")
+	_assert_eq(friend.get_effective_max_hp(), 4, "ally max hp after batched faint")
+	_assert_eq(friend.current_hp, 4, "ally current hp after batched faint")
 
 
 static func _test_ant_faint_single_resolved_event() -> void:

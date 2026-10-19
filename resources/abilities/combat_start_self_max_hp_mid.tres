@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
 stat_name = &"max_hp"
-value = 6
+value = 12
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -17,5 +17,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "combat_start_self_max_hp_mid"
-display_name = "开战时 自身 +6 生命上限"
+display_name = "开战时 自身 +12 生命上限"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

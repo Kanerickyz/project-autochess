@@ -191,7 +191,7 @@
 | 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后附近临时承伤感 |
 | 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时附近加攻 |
 | 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始附近小幅加攻 |
-| 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始附近生命上限与当前各 +1（本场临时） |
+| 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始附近生命上限与当前各 +2（本场临时） |
 | 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时疗该友方 |
 
 | 猎手 | 削峰一击 | `deal_vs_higher_hp_extra` | 斩峰 | 目标当前生命高于自己时额外伤 |

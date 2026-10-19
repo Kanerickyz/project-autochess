@@ -6,4 +6,4 @@
 [resource]
 script = ExtResource("1_ab")
 id = "placeholder_sell_shop_hp"
-display_name = "出售时 商店角色 +1 生命上限（商店阶段待实现）"
+display_name = "出售时 商店角色 +2 生命上限（商店阶段待实现）"

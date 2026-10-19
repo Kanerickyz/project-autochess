@@ -11,12 +11,12 @@ value = 2
 [sub_resource type="Resource" id="Resource_act_hp"]
 script = ExtResource("3_act")
 stat_name = &"max_hp"
-value = 2
+value = 4
 
 [sub_resource type="Resource" id="Resource_act_heal"]
 script = ExtResource("3_act")
 action_type = 1
-value = 2
+value = 4
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -27,5 +27,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act_atk"), SubResou
 [resource]
 script = ExtResource("1_ab")
 id = "faint_buff_all_allies"
-display_name = "死亡时 对全体队友 +2 攻击, +2 生命上限, 恢复 2 生命"
+display_name = "死亡时 对全体队友 +2 攻击, +4 生命上限, 恢复 4 生命"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

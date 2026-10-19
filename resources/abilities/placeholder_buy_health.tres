@@ -6,4 +6,4 @@
 [resource]
 script = ExtResource("1_ab")
 id = "placeholder_buy_health"
-display_name = "购买时 对随机队友 +1 生命上限（商店阶段待实现）"
+display_name = "购买时 对随机队友 +2 生命上限（商店阶段待实现）"

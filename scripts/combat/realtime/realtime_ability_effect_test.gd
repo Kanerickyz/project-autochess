@@ -393,9 +393,9 @@ static func _test_first_hurt_harden_once() -> bool:
 		push_error("first_hurt: expected >=2 plate hits, got %d" % plate_hits[0])
 		return false
 	var after_max := rt.unit.get_effective_max_hp()
-	if after_max != base_max + 2:
+	if after_max != base_max + 4:
 		push_error(
-			"first_hurt: max_hp %d -> %d, expected +2 once (max_triggers=1)"
+			"first_hurt: max_hp %d -> %d, expected +4 once (max_triggers=1)"
 			% [base_max, after_max]
 		)
 		return false
@@ -523,7 +523,7 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-## 枯骨死亡 → 附近最低血友方回血 2。
+## 枯骨死亡 → 附近最低血友方回血 4。
 static func _test_death_heal_nearby_ally() -> bool:
 	var data := _load_unit("res://resources/units/realtime/skeleton.tres")
 	if data == null or data.ability == null or data.ability.id != "death_heal_nearby_ally_mid":
@@ -544,16 +544,16 @@ static func _test_death_heal_nearby_ally() -> bool:
 		push_error("death_heal: apply_damage should kill skeleton")
 		return false
 	sim._drain_effects()
-	if ally.unit.current_hp != hp_before + 2:
+	if ally.unit.current_hp != hp_before + 4:
 		push_error(
-			"death_heal: ally hp %d → %d, expected +2"
+			"death_heal: ally hp %d → %d, expected +4"
 			% [hp_before, ally.unit.current_hp]
 		)
 		return false
 	return true
 
 
-## 标枪造成伤害 → 最低血其他友方回血 1。
+## 标枪造成伤害 → 最低血其他友方回血 2。
 static func _test_deal_heal_lowest_ally() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "deal_heal_lowest_ally_small":
@@ -581,16 +581,16 @@ static func _test_deal_heal_lowest_ally() -> bool:
 	while ally.unit.current_hp <= hp_before and guard < 300:
 		sim.advance_fixed_step()
 		guard += 1
-	if ally.unit.current_hp < hp_before + 1:
+	if ally.unit.current_hp < hp_before + 2:
 		push_error(
-			"deal_heal: ally hp %d → %d, expected heal"
+			"deal_heal: ally hp %d → %d, expected heal +2"
 			% [hp_before, ally.unit.current_hp]
 		)
 		return false
 	return true
 
 
-## 弩手：友方受伤 → 疗该友方 1。
+## 弩手：友方受伤 → 疗该友方 2。
 static func _test_ally_hurt_heal_target() -> bool:
 	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
@@ -608,11 +608,11 @@ static func _test_ally_hurt_heal_target() -> bool:
 	var hp_mid := ally.unit.current_hp
 	sim._pipeline.apply_damage(null, ally, 2)
 	sim._drain_effects()
-	## 扣 2 后应被疗回 1 → 净 -1
-	if ally.unit.current_hp != hp_mid - 2 + 1:
+	## 扣 2 后应被疗回 2 → 净 0
+	if ally.unit.current_hp != hp_mid - 2 + 2:
 		push_error(
 			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
-			% [ally.unit.current_hp, hp_mid - 1]
+			% [ally.unit.current_hp, hp_mid]
 		)
 		return false
 	return true
