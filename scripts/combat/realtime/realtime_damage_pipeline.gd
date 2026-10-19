@@ -73,10 +73,12 @@ func resolve_hit(
 		var hp_before := tgt.unit.current_hp
 		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - rolled)
 		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit, hp_before)
+		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit, hp_before)
 		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, rolled, is_crit, hp_before)
 		if is_crit and src != null:
 			_emit(CombatEvents.ON_CRIT, src, tgt.unit, rolled, true, hp_before)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
+
 			death_pending.append({
 				"source": src,
 				"target": tgt,
@@ -161,11 +163,13 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	var hp_before := target.unit.current_hp
 	target.unit.current_hp = maxi(0, target.unit.current_hp - rolled)
 	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, rolled, is_crit, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, rolled, is_crit, hp_before)
 	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, rolled, is_crit, hp_before)
 	if is_crit and source != null:
 		_emit(CombatEvents.ON_CRIT, source, target.unit, rolled, true, hp_before)
 	if target.unit.is_alive():
 		return false
+
 	target.state = RtUnit.State.DEAD
 	target.target = null
 	_emit(CombatEvents.ON_DEATH, source, target.unit, rolled, is_crit, hp_before)

@@ -13,10 +13,14 @@ const MOUNT_TABLE := {
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
-	"spear_goblin": "death_aoe_mid",
+	"spear_goblin": "deal_heal_lowest_ally_small",
+	"skeleton": "death_heal_nearby_ally_mid",
+	"crossbow": "ally_hurt_heal_target_small",
+	"maul": "deal_damage_adj_splash_small",
 }
 
-const EMPTY_ABILITY_IDS := ["skeleton", "giant_knight"]
+const EMPTY_ABILITY_IDS := ["giant_knight"]
+
 
 static var _created: Array[RealtimeCombatSim] = []
 static var _failures: int = 0
@@ -36,8 +40,11 @@ static func run_all() -> bool:
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("death_spawn_pack", _test_death_spawn_pack())
-	_check("death_aoe_deal_damage", _test_death_aoe_deal_damage())
+	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
+	_check("deal_heal_lowest_ally", _test_deal_heal_lowest_ally())
+	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
+
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -191,15 +198,17 @@ static func _test_deal_damage_gain_atk() -> bool:
 	flail.unit.stats.sight_range = 10.0
 	flail.unit.stats.splash_radius = 0.0
 	var base_atk := flail.unit.get_effective_attack()
+	## deal_damage_gain_atk_small：每次出手 +1，本场软顶 5。
 	var guard := 0
-	while flail.unit.get_effective_attack() < base_atk + 16 and guard < 300:
+	while flail.unit.get_effective_attack() < base_atk + 5 and guard < 300:
 		sim.advance_fixed_step()
 		guard += 1
 	var after := flail.unit.get_effective_attack()
-	if after < base_atk + 16:
-		push_error("deal: atk %d -> %d, expected at least +16 (2x8)" % [base_atk, after])
+	if after < base_atk + 5:
+		push_error("deal: atk %d -> %d, expected at least +5 (soft cap)" % [base_atk, after])
 		return false
 	return true
+
 
 
 static func _test_musketeer_has_nonzero_crit() -> bool:
@@ -514,39 +523,97 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-static func _test_death_aoe_deal_damage() -> bool:
-	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "death_aoe_mid":
-		push_error("aoe: spear_goblin ability not mounted")
+## 枯骨死亡 → 附近最低血友方回血 2。
+static func _test_death_heal_nearby_ally() -> bool:
+	var data := _load_unit("res://resources/units/realtime/skeleton.tres")
+	if data == null or data.ability == null or data.ability.id != "death_heal_nearby_ally_mid":
+		push_error("death_heal: skeleton ability not mounted")
 		return false
 	var sim := _new_sim()
-	sim.configure(ARENA, 5)
-	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	# 远处唯一敌方，死亡 AOE 的 RANDOM_ENEMY 必打到它
-	var enemy := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 200, {"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0}),
-		Vector2(15.5, 4.5),
+	sim.configure(ARENA, 41)
+	var bone := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 20.5),
 	)
+	ally.unit.current_hp = 3
 	sim.begin_combat()
-	var enemy_hp_before := enemy.unit.current_hp
-	# 经 realtime 扣血入口杀投矛兵，触发 ON_DEATH → EffectResolver DEAL_DAMAGE
-	var killed: bool = sim._pipeline.apply_damage(null, spear, 999)
+	var hp_before := ally.unit.current_hp
+	var killed: bool = sim._pipeline.apply_damage(null, bone, 999)
 	if not killed:
-		push_error("aoe: apply_damage should kill spear")
+		push_error("death_heal: apply_damage should kill skeleton")
 		return false
 	sim._drain_effects()
-	if spear.unit.is_alive():
-		push_error("aoe: spear should be dead")
-		return false
-	if enemy.unit.current_hp >= enemy_hp_before:
+	if ally.unit.current_hp != hp_before + 2:
 		push_error(
-			"aoe: enemy hp unchanged (%d); expected DEAL_DAMAGE from death_aoe_mid"
-			% enemy.unit.current_hp
+			"death_heal: ally hp %d → %d, expected +2"
+			% [hp_before, ally.unit.current_hp]
 		)
 		return false
-	var dealt := enemy_hp_before - enemy.unit.current_hp
-	## death_aoe_mid：死亡对随机敌人造成 3 伤害
-	if dealt < 3:
-		push_error("aoe: dealt %d, expected >=3" % dealt)
+	return true
+
+
+## 标枪造成伤害 → 最低血其他友方回血 1。
+static func _test_deal_heal_lowest_ally() -> bool:
+	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
+	if data == null or data.ability == null or data.ability.id != "deal_heal_lowest_ally_small":
+		push_error("deal_heal: spear_goblin ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 42)
+	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	spear.unit.stats.attack_windup = 0.0
+	spear.unit.stats.attack_interval = 0.3
+	spear.unit.stats.steps_per_turn = 0
+	spear.unit.stats.attack_reach = 2.0
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 8, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(8.5, 22.5),
+	)
+	ally.unit.current_hp = 2
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "sight_range": 0.0, "body_radius": 0.3}),
+		Vector2(9.5, 20.0),
+	)
+	sim.begin_combat()
+	var hp_before := ally.unit.current_hp
+	var guard := 0
+	while ally.unit.current_hp <= hp_before and guard < 300:
+		sim.advance_fixed_step()
+		guard += 1
+	if ally.unit.current_hp < hp_before + 1:
+		push_error(
+			"deal_heal: ally hp %d → %d, expected heal"
+			% [hp_before, ally.unit.current_hp]
+		)
 		return false
 	return true
+
+
+## 弩手：友方受伤 → 疗该友方 1。
+static func _test_ally_hurt_heal_target() -> bool:
+	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
+		push_error("ally_hurt_heal: crossbow ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 43)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(9.5, 20.5),
+	)
+	ally.unit.current_hp = 5
+	sim.begin_combat()
+	var hp_mid := ally.unit.current_hp
+	sim._pipeline.apply_damage(null, ally, 2)
+	sim._drain_effects()
+	## 扣 2 后应被疗回 1 → 净 -1
+	if ally.unit.current_hp != hp_mid - 2 + 1:
+		push_error(
+			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
+			% [ally.unit.current_hp, hp_mid - 1]
+		)
+		return false
+	return true
+

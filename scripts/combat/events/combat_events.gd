@@ -5,7 +5,10 @@ const ON_COMBAT_START := &"OnCombatStart"
 const ON_FRIEND_SUMMONED := &"OnFriendSummoned"
 const ON_SUMMONED := &"OnSummoned"
 const ON_FRIEND_DEATH := &"OnFriendDeath"
+## 其他友方受伤时（小队范围）；payload.target = 受伤者。
+const ON_FRIEND_DAMAGE_TAKEN := &"OnFriendDamageTaken"
 const ON_DAMAGE_TAKEN := &"OnDamageTaken"
+
 const ON_DEAL_DAMAGE := &"OnDealDamage"
 const ON_CRIT := &"OnCrit"
 const ON_KILL := &"OnKill"
