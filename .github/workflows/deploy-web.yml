@@ -16,9 +16,13 @@ permissions:
   pages: write
   id-token: write
 
+# Official Pages starter uses cancel-in-progress: false. Cancelling an in-flight
+# deploy-pages job can leave the github-pages environment stuck in "waiting",
+# which then blocks the whole concurrency group (queued forever; Cancel UI fails).
+# Group renamed off legacy "pages" so a fresh deploy is not gated by any stuck run.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-deploy
+  cancel-in-progress: false
 
 env:
   GODOT_VERSION: "4.6.3"
@@ -26,6 +30,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,6 +100,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
