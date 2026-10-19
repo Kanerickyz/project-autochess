@@ -26,6 +26,8 @@ static func run_all() -> bool:
 	ok = _check("elite_count_n_or_n_plus_2", _test_elite_count_n_or_n_plus_2()) and ok
 	ok = _check("boss_ignores_roster_count", _test_boss_ignores_roster_count()) and ok
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
+	ok = _check("first_floor_count_cap", _test_first_floor_count_cap()) and ok
+	ok = _check("first_floor_max_one_ranged", _test_first_floor_max_one_ranged()) and ok
 	if ok:
 		print("EnemyBudgetSpawnerTest: all passed")
 	else:
@@ -397,15 +399,16 @@ static func _test_combat_count_n_or_n_plus_1() -> bool:
 		team.append(_make_entry(pool[i]))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
+	## 第 2 层起才允许偶发 N＋1；floor=2。
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		wave, cfg, [], 0, 2, MapNodeType.Type.COMBAT, 2, 5, rng, team
 	)
 	if seated.size() != 3:
 		return false
 	cfg.combat_plus_one_chance = 1.0
 	rng.seed = 12
 	seated = EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		wave, cfg, [], 0, 2, MapNodeType.Type.COMBAT, 2, 5, rng, team
 	)
 	return seated.size() == 4
 
@@ -423,16 +426,80 @@ static func _test_elite_count_n_or_n_plus_2() -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 21
 	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 1, MapNodeType.Type.ELITE, 2, 5, rng, team
+		wave, cfg, [], 0, 2, MapNodeType.Type.ELITE, 2, 5, rng, team
 	)
 	if seated.size() != 2:
 		return false
 	cfg.elite_plus_two_chance = 1.0
 	rng.seed = 22
 	seated = EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 1, MapNodeType.Type.ELITE, 2, 5, rng, team
+		wave, cfg, [], 0, 2, MapNodeType.Type.ELITE, 2, 5, rng, team
 	)
 	return seated.size() == 4
+
+
+static func _test_first_floor_count_cap() -> bool:
+	var pool: Array[UnitData] = []
+	for i in 8:
+		pool.append(_make_unit("f%d" % i, 10, 3, 1.0, 1, 0.0, 0.0, true))
+	var cfg := _make_config(pool)
+	cfg.combat_plus_one_chance = 1.0
+	cfg.elite_plus_two_chance = 1.0
+	var wave := _make_wave(8)
+	var team: Array = []
+	for i in 3:
+		team.append(_make_entry(pool[i]))
+	var rng := RandomNumberGenerator.new()
+	for seed_i in 20:
+		rng.seed = 100 + seed_i
+		var seated := EnemyBudgetSpawner.roll(
+			wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		)
+		if seated.size() > 3:
+			return false
+		seated = EnemyBudgetSpawner.roll(
+			wave, cfg, [], 0, 0, MapNodeType.Type.ELITE, 2, 5, rng, team
+		)
+		if seated.size() > 3:
+			return false
+	## 配置层：第一关 roll_enemy_count 永不 N＋1。
+	if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 1) != 3:
+		return false
+	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 2) == 4
+
+
+static func _test_first_floor_max_one_ranged() -> bool:
+	var melee: Array[UnitData] = []
+	var ranged: Array[UnitData] = []
+	for i in 5:
+		melee.append(_make_unit("m%d" % i, 12, 3, 1.0, 1, 0.0, 0.0, true))
+		ranged.append(_make_unit("r%d" % i, 8, 4, 1.2, 1, 6.0, 0.0, true))
+	var pool: Array[UnitData] = []
+	pool.append_array(melee)
+	pool.append_array(ranged)
+	var cfg := _make_config(pool)
+	cfg.combat_plus_one_chance = 0.0
+	cfg.formation_tags = ["backline", "skirmish", "frontline"]
+	var wave := _make_wave(8)
+	var team: Array = []
+	for i in 4:
+		team.append(_make_entry(melee[i % melee.size()]))
+	var rng := RandomNumberGenerator.new()
+	for seed_i in 30:
+		rng.seed = 200 + seed_i
+		var seated := EnemyBudgetSpawner.roll(
+			wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		)
+		if seated.size() > 4:
+			return false
+		var ranged_n := 0
+		for item in seated:
+			var ud: UnitData = item.get("unit_data") as UnitData
+			if UnitPowerScore.is_ranged(ud):
+				ranged_n += 1
+		if ranged_n > 1:
+			return false
+	return true
 
 
 static func _test_boss_ignores_roster_count() -> bool:
@@ -458,15 +525,15 @@ static func _test_roll_enemy_count_config() -> bool:
 	cfg.elite_plus_two_chance = 1.0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 4, rng) != 4:
+	if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 4, rng, 2) != 4:
 		return false
-	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 4, rng) != 6:
+	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 4, rng, 2) != 6:
 		return false
 	if cfg.roll_enemy_count(MapNodeType.Type.BOSS, 4, rng) != -1:
 		return false
 	## 空队保底 N=1
 	cfg.combat_plus_one_chance = 0.0
-	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 0, rng) == 1
+	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 0, rng, 2) == 1
 
 
 static func _test_overflow_melee_to_back() -> bool:

@@ -70,11 +70,29 @@ static func roll(
 
 	## Boss 节点：只出固定首领（及关卡写死的跟班若有），不预算填杂兵、不跟人数规则。
 	var fill: Array[UnitData] = []
+	var first_floor := SpawnBudgetConfig.is_first_floor(floor_index)
+	var max_ranged := 1 if first_floor else -1
 	if node_type != MapNodeType.Type.BOSS:
 		var player_n := _player_roster_count(team_entries)
-		var target_total := cfg.roll_enemy_count(node_type, player_n, rng)
+		var target_total := cfg.roll_enemy_count(node_type, player_n, rng, floor_index)
 		## 座位硬上限仍有效。
 		target_total = clampi(target_total, 0, seat_count)
+		## 第一关：人数不得超过玩家（含固定位合计）。
+		if first_floor:
+			target_total = mini(target_total, player_n)
+			if fixed_units.size() > player_n:
+				var trim_fixed: Array[UnitData] = []
+				for i in player_n:
+					trim_fixed.append(fixed_units[i])
+				fixed_units = trim_fixed
+				remain_seats = seat_count - fixed_units.size()
+				fixed_u = UnitPowerScore.team_power(
+					fixed_units,
+					cfg.skill_alpha_by_unit_id,
+					cfg.skill_alpha_no_ability,
+					cfg.skill_alpha_default,
+				)
+				remain_e = maxf(0.0, target_e - fixed_u)
 		var fill_n := clampi(target_total - fixed_units.size(), 0, remain_seats)
 		if remain_seats > 0 and fill_n > 0 and not pool.is_empty():
 			## 人数硬约束优先：先定 fill_n，再在预算软约束下抽人。
@@ -85,10 +103,12 @@ static func roll(
 				cfg,
 				node_type,
 				rng,
+				max_ranged,
 			)
 		elif remain_seats > 0 and fill_n > 0 and remain_e <= 0.0 and fixed_units.is_empty():
 			## 无固定且预算异常：仍按人数硬约束贪心填满。
 			fill = _greedy_fill(pool, target_e, fill_n, cfg, true)
+			fill = _enforce_max_ranged(fill, pool, max_ranged, target_e, cfg)
 
 	var all_units: Array[UnitData] = []
 	all_units.append_array(fixed_units)
@@ -98,6 +118,14 @@ static func roll(
 		for i in seat_count:
 			capped.append(all_units[i])
 		all_units = capped
+	if first_floor and node_type != MapNodeType.Type.BOSS:
+		var player_cap := _player_roster_count(team_entries)
+		if all_units.size() > player_cap:
+			var capped_n: Array[UnitData] = []
+			for i in player_cap:
+				capped_n.append(all_units[i])
+			all_units = capped_n
+		all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
 	if all_units.is_empty() and not pool.is_empty() and node_type != MapNodeType.Type.BOSS:
 		## 极端保底：至少 1 个最接近 E 的单位。
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
@@ -175,6 +203,7 @@ static func _collect_fixed_units(wave: WaveData) -> Array[UnitData]:
 
 
 ## exact_fill_n：人数硬约束下的填充只数（不含固定位）。
+## max_ranged：≥0 时限制远程只数（第一关＝1）；＜0 不限。
 static func _sample_fill(
 	pool: Array[UnitData],
 	target_e: float,
@@ -182,6 +211,7 @@ static func _sample_fill(
 	cfg: SpawnBudgetConfig,
 	node_type: MapNodeType.Type,
 	rng: RandomNumberGenerator,
+	max_ranged: int = -1,
 ) -> Array[UnitData]:
 	var n := maxi(0, exact_fill_n)
 	if n <= 0 or pool.is_empty():
@@ -191,45 +221,54 @@ static func _sample_fill(
 	var n_max := n
 	var center := n
 	var base_band := cfg.get_band(node_type)
+	## 第一关限远程时避开「后排倒戈」标签，优先前排/散兵。
 	var formation := cfg.pick_formation_tag(rng)
+	if max_ranged >= 0 and max_ranged < n and formation == SpawnBudgetConfig.FormationTag.BACKLINE:
+		formation = SpawnBudgetConfig.FormationTag.FRONTLINE
 
 	## 第一档：带阵型标签
 	var best := _rejection_search(
-		pool, target_e, n_min, n_max, center, base_band, formation, true, cfg, rng
+		pool, target_e, n_min, n_max, center, base_band, formation, true, cfg, rng, max_ranged
 	)
 	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
-		return best
+		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
 
 	## 第二档：忽略标签，同带宽
 	best = _better_of(
 		best,
-		_rejection_search(pool, target_e, n_min, n_max, center, base_band, formation, false, cfg, rng),
+		_rejection_search(
+			pool, target_e, n_min, n_max, center, base_band, formation, false, cfg, rng, max_ranged
+		),
 		target_e,
 		cfg,
 	)
 	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
-		return best
+		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
 
 	## 放宽一档（禁止再静默纯随机）
 	var wide_band := base_band + maxf(0.0, cfg.band_widen_step)
 	best = _better_of(
 		best,
-		_rejection_search(pool, target_e, n_min, n_max, center, wide_band, formation, false, cfg, rng),
+		_rejection_search(
+			pool, target_e, n_min, n_max, center, wide_band, formation, false, cfg, rng, max_ranged
+		),
 		target_e,
 		cfg,
 	)
 	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
-		return best
+		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
 
 	## 最近解 + 仅替换爬山（不改人数）
 	if best.is_empty() or best.size() != n:
-		best = _random_composition(pool, center, rng)
-	best = _hill_climb(best, pool, target_e, cfg, rng, true)
+		best = _random_composition(pool, center, rng, max_ranged)
+	best = _hill_climb(best, pool, target_e, cfg, rng, true, max_ranged)
 	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
-		return best
+		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
 
 	## 保底：按 U 贪心填满人数
-	return _greedy_fill(pool, target_e, n, cfg, true)
+	return _enforce_max_ranged(
+		_greedy_fill(pool, target_e, n, cfg, true), pool, max_ranged, target_e, cfg
+	)
 
 
 static func _rejection_search(
@@ -243,14 +282,17 @@ static func _rejection_search(
 	require_formation: bool,
 	cfg: SpawnBudgetConfig,
 	rng: RandomNumberGenerator,
+	max_ranged: int = -1,
 ) -> Array[UnitData]:
 	var best: Array[UnitData] = []
 	var best_err := INF
 	var attempts := maxi(1, cfg.rejection_attempts)
 	for _i in attempts:
 		var n := _roll_n(center, n_min, n_max, rng)
-		var comp := _random_composition(pool, n, rng)
+		var comp := _random_composition(pool, n, rng, max_ranged)
 		if require_formation and not _matches_formation(comp, formation):
+			continue
+		if max_ranged >= 0 and _count_ranged(comp) > max_ranged:
 			continue
 		var power := _power(comp, cfg)
 		var err := absf(power - target_e)
@@ -271,13 +313,106 @@ static func _random_composition(
 	pool: Array[UnitData],
 	n: int,
 	rng: RandomNumberGenerator,
+	max_ranged: int = -1,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or n <= 0:
 		return result
-	for _i in n:
-		result.append(pool[rng.randi_range(0, pool.size() - 1)])
+	if max_ranged < 0:
+		for _i in n:
+			result.append(pool[rng.randi_range(0, pool.size() - 1)])
+		return result
+	var melee_pool: Array[UnitData] = []
+	var ranged_pool: Array[UnitData] = []
+	for u in pool:
+		if UnitPowerScore.is_ranged(u):
+			ranged_pool.append(u)
+		else:
+			melee_pool.append(u)
+	var ranged_n := 0
+	if not ranged_pool.is_empty() and max_ranged > 0:
+		var upper := mini(max_ranged, n)
+		if melee_pool.is_empty():
+			ranged_n = upper
+		else:
+			ranged_n = rng.randi_range(0, upper)
+	for _r in ranged_n:
+		result.append(ranged_pool[rng.randi_range(0, ranged_pool.size() - 1)])
+	var melee_needed := n - result.size()
+	for _m in melee_needed:
+		if not melee_pool.is_empty():
+			result.append(melee_pool[rng.randi_range(0, melee_pool.size() - 1)])
+		elif not ranged_pool.is_empty() and result.size() < maxi(1, max_ranged):
+			## 近战池空且尚可再塞远程时补远程；否则重复已有远程以凑人数（再由 enforce 裁）。
+			result.append(ranged_pool[rng.randi_range(0, ranged_pool.size() - 1)])
+		elif not pool.is_empty():
+			result.append(pool[rng.randi_range(0, pool.size() - 1)])
 	return result
+
+
+static func _count_ranged(units: Array[UnitData]) -> int:
+	var n := 0
+	for u in units:
+		if UnitPowerScore.is_ranged(u):
+			n += 1
+	return n
+
+
+## 超限远程替换为池中近战（按贴近 target_e）；无近战可换则丢掉多余远程。
+static func _enforce_max_ranged(
+	units: Array[UnitData],
+	pool: Array[UnitData],
+	max_ranged: int,
+	target_e: float,
+	cfg: SpawnBudgetConfig,
+) -> Array[UnitData]:
+	if max_ranged < 0 or units.is_empty():
+		return units
+	var ranged_n := _count_ranged(units)
+	if ranged_n <= max_ranged:
+		return units
+	var melee_pool: Array[UnitData] = []
+	for u in pool:
+		if u != null and UnitPowerScore.is_melee(u):
+			melee_pool.append(u)
+	var result: Array[UnitData] = units.duplicate()
+	var kept_ranged := 0
+	for i in result.size():
+		if not UnitPowerScore.is_ranged(result[i]):
+			continue
+		if kept_ranged < max_ranged:
+			kept_ranged += 1
+			continue
+		if melee_pool.is_empty():
+			result[i] = null
+			continue
+		var best: UnitData = null
+		var best_err := INF
+		var current_power := _power(_without_index(result, i), cfg)
+		for cand in melee_pool:
+			var err := absf(current_power + _unit_u(cand, cfg) - target_e)
+			if err < best_err - 0.0001:
+				best_err = err
+				best = cand
+			elif is_equal_approx(err, best_err) and best != null:
+				if _unit_id(cand) < _unit_id(best):
+					best = cand
+		result[i] = best
+	var cleaned: Array[UnitData] = []
+	for u2 in result:
+		if u2 != null:
+			cleaned.append(u2)
+	return cleaned
+
+
+static func _without_index(units: Array[UnitData], skip: int) -> Array[UnitData]:
+	var out: Array[UnitData] = []
+	for i in units.size():
+		if i == skip:
+			continue
+		if units[i] != null:
+			out.append(units[i])
+	return out
 
 
 static func _matches_formation(units: Array[UnitData], tag: SpawnBudgetConfig.FormationTag) -> bool:
@@ -363,6 +498,7 @@ static func _hill_climb(
 	cfg: SpawnBudgetConfig,
 	rng: RandomNumberGenerator,
 	lock_count: bool = false,
+	max_ranged: int = -1,
 ) -> Array[UnitData]:
 	if seed_units.is_empty() or pool.is_empty():
 		return seed_units
@@ -380,6 +516,8 @@ static func _hill_climb(
 				trial.remove_at(rng.randi_range(0, trial.size() - 1))
 			elif rng.randf() < 0.25:
 				trial.append(pool[rng.randi_range(0, pool.size() - 1)])
+		if max_ranged >= 0 and _count_ranged(trial) > max_ranged:
+			continue
 		var err := absf(_power(trial, cfg) - target_e)
 		if err < best_err:
 			best_err = err
