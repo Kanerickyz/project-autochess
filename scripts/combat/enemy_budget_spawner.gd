@@ -77,8 +77,10 @@ static func roll(
 		var target_total := cfg.roll_enemy_count(node_type, player_n, rng, floor_index)
 		## 座位硬上限仍有效。
 		target_total = clampi(target_total, 0, seat_count)
-		## 第一关：人数不得超过玩家（含固定位合计）。
-		if first_floor:
+		## 普通战斗：人数不得超过玩家队伍角色数（含固定位合计）。
+		## 第一关：精英同样不得超过 N。
+		var cap_to_player := node_type == MapNodeType.Type.COMBAT or first_floor
+		if cap_to_player:
 			target_total = mini(target_total, player_n)
 			if fixed_units.size() > player_n:
 				var trim_fixed: Array[UnitData] = []
@@ -118,14 +120,17 @@ static func roll(
 		for i in seat_count:
 			capped.append(all_units[i])
 		all_units = capped
-	if first_floor and node_type != MapNodeType.Type.BOSS:
+	if node_type != MapNodeType.Type.BOSS:
 		var player_cap := _player_roster_count(team_entries)
-		if all_units.size() > player_cap:
-			var capped_n: Array[UnitData] = []
-			for i in player_cap:
-				capped_n.append(all_units[i])
-			all_units = capped_n
-		all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
+		## 普通战斗（及第一关任意非 Boss）最终名单硬封顶 ≤ 队伍人数。
+		if node_type == MapNodeType.Type.COMBAT or first_floor:
+			if all_units.size() > player_cap:
+				var capped_n: Array[UnitData] = []
+				for i in player_cap:
+					capped_n.append(all_units[i])
+				all_units = capped_n
+		if first_floor:
+			all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
 	if all_units.is_empty() and not pool.is_empty() and node_type != MapNodeType.Type.BOSS:
 		## 极端保底：至少 1 个最接近 E 的单位。
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))

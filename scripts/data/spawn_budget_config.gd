@@ -62,15 +62,16 @@ enum FormationTag {
 @export_range(1, 10, 1) var n_min: int = 1
 
 @export_group("Roster Count")
-## 普通：在人数＝N 的基础上，以该概率改为 N＋1。
-@export_range(0.0, 1.0, 0.01) var combat_plus_one_chance: float = 0.25
+## 【弃用】普通战斗已硬封顶＝N，不再使用；保留字段兼容旧 .tres。
+@export_range(0.0, 1.0, 0.01) var combat_plus_one_chance: float = 0.0
 ## 精英：以该概率选 N＋2，否则＝N。
 @export_range(0.0, 1.0, 0.01) var elite_plus_two_chance: float = 0.5
 
 
 ## 按节点类型与玩家阵容人数 N 掷敌方目标人数（不含座位硬顶裁切）。
 ## Boss 返回 -1（调用方应跳过人数规则）。空队时 N 按 1 保底。
-## floor_index：地图层号（1=第1层；≤1 视为第一关）。第一关人数硬封顶 ≤ N（无 N＋1 / N＋2）。
+## 【用户新共识】普通：始终＝N（不得超过队伍角色数）。
+## 精英：＝N 或 N＋2；第一关（≤1 层）精英也不得超过 N。
 func roll_enemy_count(
 	node_type: MapNodeType.Type,
 	player_roster_n: int,
@@ -80,20 +81,15 @@ func roll_enemy_count(
 	if node_type == MapNodeType.Type.BOSS:
 		return -1
 	var n := maxi(1, player_roster_n)
-	## 第一关：不得超过玩家人数。
+	## 第一关：不得超过玩家人数（含精英）。
 	if is_first_floor(floor_index):
 		return n
-	if rng == null:
+	if node_type == MapNodeType.Type.ELITE:
+		if rng != null and rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
+			return n + 2
 		return n
-	match node_type:
-		MapNodeType.Type.ELITE:
-			if rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
-				return n + 2
-			return n
-		_:
-			if rng.randf() < clampf(combat_plus_one_chance, 0.0, 1.0):
-				return n + 1
-			return n
+	## 普通战斗：硬封顶＝N。
+	return n
 
 
 ## 地图第 1 层（及沙盒传入的 0）视为第一关。
