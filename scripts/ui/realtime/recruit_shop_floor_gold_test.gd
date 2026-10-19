@@ -9,6 +9,7 @@ static func run_all() -> bool:
 	ok = _check("grant_floor_gold", _test_grant_floor_gold()) and ok
 	ok = _check("kill_gold_noop", _test_kill_gold_noop()) and ok
 	ok = _check("seat_cap_banner", _test_seat_cap_banner()) and ok
+	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
 	ok = _check("recruit_shop_potion", _test_recruit_shop_potion()) and ok
 	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
 	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
@@ -65,12 +66,13 @@ static func _make_economy(gold: int) -> RunEconomy:
 
 
 static func _test_floor_gold_amount() -> bool:
-	if RunEconomy.resolve_floor_gold_amount(1) != 2:
+	## 第 n 层 = n+3（原 n+1，再多 2）
+	if RunEconomy.resolve_floor_gold_amount(1) != 4:
 		return false
-	if RunEconomy.resolve_floor_gold_amount(3) != 4:
+	if RunEconomy.resolve_floor_gold_amount(3) != 6:
 		return false
-	## 0-based 下标兼容 → 第 1 层 = 2 金
-	if RunEconomy.resolve_floor_gold_amount(0) != 2:
+	## 0-based 下标兼容 → 第 1 层 = 4 金
+	if RunEconomy.resolve_floor_gold_amount(0) != 4:
 		return false
 	if RunEconomy.resolve_floor_gold_amount(-2) != 0:
 		return false
@@ -80,7 +82,7 @@ static func _test_floor_gold_amount() -> bool:
 static func _test_grant_floor_gold() -> bool:
 	var econ := _make_economy(0)
 	var got := econ.grant_floor_gold(2)
-	return got == 3 and econ.gold == 3
+	return got == 5 and econ.gold == 5
 
 
 static func _test_kill_gold_noop() -> bool:
@@ -159,6 +161,43 @@ static func _test_banner_excluded_at_cap10() -> bool:
 		if item != null and item.item_type == PrepareItemData.ItemType.BANNER:
 			return false
 	return true
+
+
+## 同一招募阶段可多次买旗帜，直到席位满 10。
+static func _test_banner_repeatable_until_cap() -> bool:
+	var deck := _make_deck(5)
+	var cfg := RecruitShopConfig.make_code_defaults()
+	var econ := _make_economy(40)
+	var shop := RecruitShopService.new()
+	shop.configure(cfg, econ)
+	shop.open_shop(deck)
+	var banner_slot := -1
+	var items := shop.get_item_offers()
+	for i in items.size():
+		var it: PrepareItemData = items[i]
+		if it != null and it.item_type == PrepareItemData.ItemType.BANNER:
+			banner_slot = i
+			break
+	if banner_slot < 0:
+		return false
+	var buys := 0
+	while not deck.is_seat_cap_maxed() and buys < 10:
+		var r := shop.try_buy_banner(banner_slot, deck)
+		if int(r.get("result", -1)) != RecruitShopService.BuyResult.OK:
+			return false
+		buys += 1
+		## 未满时旗帜槽应仍在，可继续买
+		if not deck.is_seat_cap_maxed():
+			var still := shop.get_item_offer(banner_slot)
+			if still == null or still.item_type != PrepareItemData.ItemType.BANNER:
+				return false
+	if buys < 2:
+		return false
+	if not deck.is_seat_cap_maxed():
+		return false
+	## 满席后该槽应被清空
+	var after := shop.get_item_offer(banner_slot)
+	return after == null
 
 
 static func _test_recruit_candidate_count_default_5() -> bool:

@@ -19,7 +19,7 @@ visual_half_width = 0.9
 visual_half_height = 1.15
 mass = 2.3
 projectile_speed = 0.0
-splash_radius = 1.0
+splash_radius = 0.0
 deploy_time = 1.2
 
 [resource]

@@ -103,7 +103,9 @@ func try_buy_banner(slot_index: int, deck: DeckState) -> Dictionary:
 		_economy.grant(cost)
 		failed["reason"] = "cap_failed"
 		return failed
-	_item_offers[slot_index] = null
+	## 未满席时可反复购买同一旗帜槽；满 10 后清空该槽。
+	if deck.is_seat_cap_maxed():
+		_item_offers[slot_index] = null
 	shop_changed.emit()
 	return {"result": BuyResult.OK, "reason": ""}
 
