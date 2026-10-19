@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="UnitStats_rune_plate"]
 script = ExtResource("2_stats")
-max_hp = 6
-attack = 2
+max_hp = 4
+attack = 1
 steps_per_turn = 1
 crit_rate_percent = 0
 attack_interval = 1.45
@@ -24,8 +24,8 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "rune_plate"
 display_name = "石甲"
-cost = 3
-tier = 2
+cost = 2
+tier = 1
 command_cost = 4
 stats = SubResource("UnitStats_rune_plate")
 ability = ExtResource("3_ability")
