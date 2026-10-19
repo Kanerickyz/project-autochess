@@ -1,5 +1,5 @@
 extends Control
-## 角色库：用战斗棋盘同款剪影铺招募池单位；可按 tier / 技能触发时机筛选；长按弹技能卡。
+## 角色库：用战斗棋盘同款剪影铺招募池单位；可按 tier / 触发时机 / 技能效果筛选；长按弹技能卡。
 
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const RECRUIT_CONFIG_PATH := "res://resources/recruit/default_recruit_config.tres"
@@ -25,9 +25,26 @@ const TRIGGER_ORDER: Array[StringName] = [
 ]
 const TRIGGER_NONE := &"__none__"
 
+enum EffectCategory {
+	ALL,
+	ATTACK,
+	HP,
+	SPAWN,
+	OTHER,
+}
+
+const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
+	EffectCategory.ALL,
+	EffectCategory.ATTACK,
+	EffectCategory.HP,
+	EffectCategory.SPAWN,
+	EffectCategory.OTHER,
+]
+
 @onready var _back_button: Button = %BackButton
 @onready var _tier_filter: HBoxContainer = %TierFilter
 @onready var _trigger_filter: HBoxContainer = %TriggerFilter
+@onready var _effect_filter: HBoxContainer = %EffectFilter
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
 @onready var _arena: RealtimeArenaView = %CodexArena
@@ -37,19 +54,24 @@ var _all_units: Array[UnitData] = []
 var _selected_tier: int = 0
 ## &"" = 全部时机；TRIGGER_NONE = 无技能；其余为 CombatEvents / ShopEvents
 var _selected_trigger: StringName = &""
+var _selected_effect: EffectCategory = EffectCategory.ALL
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
+var _effect_buttons: Dictionary = {} # EffectCategory -> Button
 var _tier_button_group: ButtonGroup = ButtonGroup.new()
 var _trigger_button_group: ButtonGroup = ButtonGroup.new()
+var _effect_button_group: ButtonGroup = ButtonGroup.new()
 
 
 func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
+	_effect_button_group.allow_unpress = false
 	_load_pool()
 	_build_tier_filters()
 	_build_trigger_filters()
+	_build_effect_filters()
 	_rebuild_board()
 	_back_button.grab_focus()
 
@@ -143,6 +165,23 @@ func _build_trigger_filters() -> void:
 		(_trigger_buttons[&""] as Button).button_pressed = true
 
 
+func _build_effect_filters() -> void:
+	for child in _effect_filter.get_children():
+		child.queue_free()
+	_effect_buttons.clear()
+	for category in EFFECT_CATEGORY_ORDER:
+		var button := Button.new()
+		button.toggle_mode = true
+		button.button_group = _effect_button_group
+		button.custom_minimum_size = Vector2(0, 36)
+		button.text = _effect_category_label(category)
+		button.pressed.connect(_on_effect_pressed.bind(category))
+		_effect_filter.add_child(button)
+		_effect_buttons[category] = button
+	if _effect_buttons.has(_selected_effect):
+		(_effect_buttons[_selected_effect] as Button).button_pressed = true
+
+
 func _add_trigger_button(trigger: StringName, label: String) -> void:
 	var button := Button.new()
 	button.toggle_mode = true
@@ -160,6 +199,21 @@ func _trigger_label(trigger: StringName) -> String:
 	return String(trigger)
 
 
+func _effect_category_label(category: EffectCategory) -> String:
+	match category:
+		EffectCategory.ALL:
+			return "全部效果"
+		EffectCategory.ATTACK:
+			return "攻击力"
+		EffectCategory.HP:
+			return "生命值"
+		EffectCategory.SPAWN:
+			return "生成角色"
+		EffectCategory.OTHER:
+			return "其他"
+	return "其他"
+
+
 func _on_tier_pressed(tier: int) -> void:
 	if _selected_tier == tier:
 		return
@@ -171,6 +225,13 @@ func _on_trigger_pressed(trigger: StringName) -> void:
 	if _selected_trigger == trigger:
 		return
 	_selected_trigger = trigger
+	_rebuild_board()
+
+
+func _on_effect_pressed(category: EffectCategory) -> void:
+	if _selected_effect == category:
+		return
+	_selected_effect = category
 	_rebuild_board()
 
 
@@ -210,12 +271,59 @@ func _unit_matches_trigger(unit: UnitData) -> bool:
 	return triggers.has(_selected_trigger)
 
 
+## 返回单位技能效果所属分类集合（可多标签）。
+func _unit_effect_categories(unit: UnitData) -> Dictionary:
+	var cats: Dictionary = {}
+	if unit == null:
+		return cats
+	_collect_ability_effect_categories(unit.ability, cats)
+	for passive in unit.passives:
+		_collect_ability_effect_categories(passive, cats)
+	return cats
+
+
+func _collect_ability_effect_categories(ability: AbilityData, cats: Dictionary) -> void:
+	if ability == null:
+		return
+	for spec in ability.effect_specs:
+		if spec == null:
+			continue
+		for action in spec.actions:
+			if action == null:
+				continue
+			cats[_classify_action(action)] = true
+
+
+func _classify_action(action: EffectAction) -> EffectCategory:
+	match action.action_type:
+		EffectAction.Type.MODIFY_STAT, EffectAction.Type.PERMANENT_DECK_STAT:
+			if action.stat_name == &"attack":
+				return EffectCategory.ATTACK
+			if action.stat_name == &"max_hp":
+				return EffectCategory.HP
+			return EffectCategory.OTHER
+		EffectAction.Type.HEAL, EffectAction.Type.SET_HP_FROM_ALLY_PERCENT, EffectAction.Type.SHOP_CHARACTER_BONUS_HP:
+			return EffectCategory.HP
+		EffectAction.Type.SPAWN_UNIT, EffectAction.Type.SPLIT_SELF:
+			return EffectCategory.SPAWN
+		_:
+			return EffectCategory.OTHER
+
+
+func _unit_matches_effect(unit: UnitData) -> bool:
+	if _selected_effect == EffectCategory.ALL:
+		return true
+	return _unit_effect_categories(unit).has(_selected_effect)
+
+
 func _filtered_units() -> Array[UnitData]:
 	var out: Array[UnitData] = []
 	for unit in _all_units:
 		if _selected_tier > 0 and maxi(1, unit.tier) != _selected_tier:
 			continue
 		if not _unit_matches_trigger(unit):
+			continue
+		if not _unit_matches_effect(unit):
 			continue
 		out.append(unit)
 	return out
@@ -241,6 +349,8 @@ func _format_count(count: int) -> String:
 		parts.append("无技能")
 	elif _selected_trigger != &"":
 		parts.append(_trigger_label(_selected_trigger))
+	if _selected_effect != EffectCategory.ALL:
+		parts.append(_effect_category_label(_selected_effect))
 	if parts.is_empty():
 		return "共 %d 名" % count
 	return "%s · %d 名" % [" · ".join(parts), count]
