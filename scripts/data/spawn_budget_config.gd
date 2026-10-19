@@ -70,14 +70,19 @@ enum FormationTag {
 
 ## 按节点类型与玩家阵容人数 N 掷敌方目标人数（不含座位硬顶裁切）。
 ## Boss 返回 -1（调用方应跳过人数规则）。空队时 N 按 1 保底。
+## floor_index：地图层号（1=第1层；≤1 视为第一关）。第一关人数硬封顶 ≤ N（无 N＋1 / N＋2）。
 func roll_enemy_count(
 	node_type: MapNodeType.Type,
 	player_roster_n: int,
 	rng: RandomNumberGenerator,
+	floor_index: int = -1,
 ) -> int:
 	if node_type == MapNodeType.Type.BOSS:
 		return -1
 	var n := maxi(1, player_roster_n)
+	## 第一关：不得超过玩家人数。
+	if is_first_floor(floor_index):
+		return n
 	if rng == null:
 		return n
 	match node_type:
@@ -89,6 +94,11 @@ func roll_enemy_count(
 			if rng.randf() < clampf(combat_plus_one_chance, 0.0, 1.0):
 				return n + 1
 			return n
+
+
+## 地图第 1 层（及沙盒传入的 0）视为第一关。
+static func is_first_floor(floor_index: int) -> bool:
+	return floor_index >= 0 and floor_index <= 1
 
 
 static func load_or_default() -> SpawnBudgetConfig:
