@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="UnitStats_enemy_dirge_horn"]
 script = ExtResource("2_stats")
-max_hp = 3
-attack = 2
+max_hp = 4
+attack = 4
 steps_per_turn = 1
 crit_rate_percent = 0
 attack_interval = 1.2

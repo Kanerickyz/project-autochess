@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="UnitStats_enemy_soulcaller"]
 script = ExtResource("2_stats")
-max_hp = 5
-attack = 3
+max_hp = 2
+attack = 2
 steps_per_turn = 1
 crit_rate_percent = 0
 attack_interval = 1.25
