@@ -83,7 +83,7 @@ func _init() -> void:
 	header.add_child(titles)
 
 	_name_label = Label.new()
-	_name_label.add_theme_font_override("font", RealtimeArenaView.STAT_FONT)
+	## 名称含中文：须走带 CJK fallback 的 Theme/ui_font，勿用纯数字用的 embolden 字体覆盖。
 	_name_label.add_theme_font_size_override("font_size", 18)
 	_name_label.add_theme_color_override("font_color", INK)
 	titles.add_child(_name_label)

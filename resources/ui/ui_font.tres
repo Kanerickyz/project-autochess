@@ -1,6 +1,6 @@
 [gd_resource type="FontVariation" format=3 uid="uid://90ddf96238901c67"]
 
-[ext_resource type="FontFile" uid="uid://40c56e41eeefd4e6" path="res://assets/fonts/NotoSans-Regular.ttf" id="1_latin"]
+[ext_resource type="FontFile" uid="uid://dboxd8errgmhf" path="res://assets/fonts/NotoSans-Regular.ttf" id="1_latin"]
 [ext_resource type="FontFile" uid="uid://d3sfjw74n3i3e" path="res://assets/fonts/DroidSansFallback.ttf" id="2_cjk"]
 
 [resource]

@@ -1,0 +1,95 @@
+[gd_scene load_steps=2 format=3 uid="uid://unitcodexscr1"]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/unit_codex_screen.gd" id="1"]
+
+[node name="UnitCodexScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.14, 0.16, 1)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 28
+
+[node name="RootVBox" type="VBoxContainer" parent="SafeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/RootVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BackButton" type="Button" parent="SafeMargin/RootVBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 40)
+layout_mode = 2
+text = "返回"
+
+[node name="TitleLabel" type="Label" parent="SafeMargin/RootVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 26
+text = "角色库"
+horizontal_alignment = 1
+
+[node name="CountLabel" type="Label" parent="SafeMargin/RootVBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.74, 0.78, 1)
+theme_override_font_sizes/font_size = 14
+text = "共 0 名"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TierFilter" type="HBoxContainer" parent="SafeMargin/RootVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="SafeMargin/RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Center" type="CenterContainer" parent="SafeMargin/RootVBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="UnitGrid" type="GridContainer" parent="SafeMargin/RootVBox/Scroll/Center"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 4
+
+[node name="EmptyLabel" type="Label" parent="SafeMargin/RootVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.74, 0.78, 1)
+text = "该阶暂无角色"
+horizontal_alignment = 1

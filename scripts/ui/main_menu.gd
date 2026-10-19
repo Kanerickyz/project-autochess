@@ -2,8 +2,10 @@ extends Control
 
 const GAME_SCENE_PATH := "res://scenes/main/run_game.tscn"
 const SANDBOX_SCENE_PATH := "res://scenes/main/sandbox.tscn"
+const CODEX_SCENE_PATH := "res://scenes/ui/codex/unit_codex_screen.tscn"
 
 @onready var _start_button: Button = %StartButton
+@onready var _codex_button: Button = %CodexButton
 @onready var _sandbox_button: Button = %SandboxButton
 @onready var _settings_button: Button = %SettingsButton
 @onready var _exit_button: Button = %ExitButton
@@ -13,6 +15,7 @@ const SANDBOX_SCENE_PATH := "res://scenes/main/sandbox.tscn"
 
 func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
+	_codex_button.pressed.connect(_on_codex_pressed)
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_exit_button.pressed.connect(_on_exit_pressed)
@@ -34,6 +37,10 @@ func _refresh_version_label() -> void:
 
 func _on_start_pressed() -> void:
 	get_tree().change_scene_to_file(GAME_SCENE_PATH)
+
+
+func _on_codex_pressed() -> void:
+	get_tree().change_scene_to_file(CODEX_SCENE_PATH)
 
 
 func _on_sandbox_pressed() -> void:
