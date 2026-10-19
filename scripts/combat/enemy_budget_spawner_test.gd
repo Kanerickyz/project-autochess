@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
 	ok = _check("tier_filter_hard", _test_tier_filter_hard()) and ok
+	ok = _check("player_tier_caps_enemy_pool", _test_player_tier_caps_enemy_pool()) and ok
 	ok = _check("boss_fixed_only_no_fill", _test_boss_fixed_only_no_fill()) and ok
 	ok = _check("boss_ignores_team_power", _test_boss_ignores_team_power()) and ok
 	ok = _check("boss_front_center_seat", _test_boss_front_center_seat()) and ok
@@ -242,6 +243,28 @@ static func _test_tier_filter_hard() -> bool:
 	return not seated.is_empty()
 
 
+## 进度已解锁高品阶时，仍不得超过玩家队伍现有最高品阶。
+static func _test_player_tier_caps_enemy_pool() -> bool:
+	var t1 := _make_unit("t1", 10, 2, 1.0, 1, 0.0, 0.0, true)
+	var t3 := _make_unit("t3", 30, 8, 1.0, 3, 0.0, 0.0, true)
+	var cfg := _make_config([t1, t3])
+	var wave := _make_wave(4)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	## tier_index=4 → TierUnlock 允许到 3；队伍只有 T1 → 敌方不得出 T3
+	var team: Array = [_make_entry(t1), _make_entry(t1)]
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 4, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
+	)
+	if seated.is_empty():
+		return false
+	for item in seated:
+		var ud: UnitData = item.get("unit_data") as UnitData
+		if ud != null and ud.tier > 1:
+			return false
+	return true
+
+
 static func _test_boss_fixed_only_no_fill() -> bool:
 	var boss := _make_unit("boss", 40, 8, 1.5, 3, 0.0, 0.0, true)
 	boss.is_boss_leader = true
@@ -320,11 +343,15 @@ static func _test_team_target_with_floor_guards() -> bool:
 	var e_hi := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 100.0)
 	if not is_equal_approx(e_hi, 60.0):
 		return false
-	## S=0 → 夹到 min
+	## S=0（无真队）→ 仍夹到层下限
 	var e_lo := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 0.0)
 	if not is_equal_approx(e_lo, 20.0):
 		return false
-	## 显式护栏表优先
+	## 有真队但 κ×S 低于层下限：不得抬高到显著强于玩家（S=10 → 12.5）
+	var e_soft := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 10.0)
+	if not is_equal_approx(e_soft, 12.5):
+		return false
+	## 显式护栏表优先；S=40 → κ×S=50 落在 [30,50] 上沿
 	var mins: Array[float] = [30.0]
 	var maxs: Array[float] = [50.0]
 	cfg.floor_e_min = mins

@@ -45,8 +45,8 @@ func grant_kill_gold(_unit_data: UnitData) -> void:
 	return
 
 
-## 层结算金：第 n 层胜利发 n+1 金（取代波次金主路径）。
-## floor_index：地图层号（1=第1层）；若传入 0-based 下标 0，按第 1 层发 2 金。
+## 层结算金：第 n 层胜利发 n+3 金（原 n+1，再多给 2）。
+## floor_index：地图层号（1=第1层）；若传入 0-based 下标 0，按第 1 层发 4 金。
 func grant_floor_gold(floor_index: int) -> int:
 	var amount := resolve_floor_gold_amount(floor_index)
 	grant(amount)
@@ -56,9 +56,9 @@ func grant_floor_gold(floor_index: int) -> int:
 static func resolve_floor_gold_amount(floor_index: int) -> int:
 	if floor_index < 0:
 		return 0
-	## 1-based 层号 +1；0 视为第 1 层（0-based 兼容）。
+	## 1-based 层号 +1 +2；0 视为第 1 层（0-based 兼容）。
 	var n := floor_index if floor_index >= 1 else 1
-	return n + 1
+	return n + 1 + 2
 
 
 ## 【遗留】旧网格/编辑器波次金；实时主路径请用 grant_floor_gold。
