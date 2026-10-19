@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
 stat_name = &"max_hp"
-value = 2
+value = 4
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -19,5 +19,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "death_buff_nearby_def_mid"
-display_name = "死亡时 附近其他友方生命上限+2（承伤感等效）"
+display_name = "死亡时 附近其他友方生命上限+4（承伤感等效）"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

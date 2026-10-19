@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
 action_type = 1
-value = 1
+value = 2
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -17,5 +17,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "heal_on_move"
-display_name = "移动时 对自身 恢复 1 生命"
+display_name = "移动时 对自身 恢复 2 生命"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

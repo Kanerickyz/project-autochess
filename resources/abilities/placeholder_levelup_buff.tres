@@ -6,4 +6,4 @@
 [resource]
 script = ExtResource("1_ab")
 id = "placeholder_levelup_buff"
-display_name = "升级时 对两名队友 +1 攻击与 +1 生命上限（商店阶段待实现）"
+display_name = "升级时 对两名队友 +1 攻击与 +2 生命上限（商店阶段待实现）"

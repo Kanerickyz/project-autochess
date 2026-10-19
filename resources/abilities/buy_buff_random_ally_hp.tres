@@ -8,7 +8,7 @@
 script = ExtResource("3_act")
 action_type = 6
 stat_name = &"max_hp"
-value = 1
+value = 2
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -20,5 +20,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "buy_buff_random_ally_hp"
-display_name = "购买时 对随机队友 +1 生命上限"
+display_name = "购买时 对随机队友 +2 生命上限"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

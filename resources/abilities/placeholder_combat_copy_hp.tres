@@ -6,4 +6,4 @@
 [resource]
 script = ExtResource("1_ab")
 id = "placeholder_combat_copy_hp"
-display_name = "开战时 复制最健康队友 50% 生命（待实现）"
+display_name = "开战时 复制最健康队友 100% 生命（待实现）"

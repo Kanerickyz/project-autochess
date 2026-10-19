@@ -90,8 +90,9 @@ static func _test_ant_faint_buffs_random_ally() -> void:
 	_run_death(grid, ant, true)
 
 	_assert_eq(friend.get_effective_attack(), 2, "ally attack after ant faint")
-	_assert_eq(friend.get_effective_max_hp(), 3, "ally max hp after ant faint")
-	_assert_eq(friend.current_hp, 2, "ally current hp after ant faint (+1 max +1 heal from 1/2)")
+	_assert_eq(friend.get_effective_max_hp(), 4, "ally max hp after ant faint")
+	## max_hp 临时层会同步抬当前生命，再吃 heal：1→3→4。
+	_assert_eq(friend.current_hp, 4, "ally current hp after ant faint (+2 max sync +2 heal from 1/2)")
 
 
 static func _test_ant_faint_no_allies() -> void:
@@ -120,5 +121,5 @@ static func _test_ant_faint_after_removal() -> void:
 	_run_death(grid, ant, false)
 
 	_assert_eq(friend.get_effective_attack(), 2, "ally attack after ant removed from grid")
-	_assert_eq(friend.get_effective_max_hp(), 3, "ally max hp after ant removed from grid")
-	_assert_eq(friend.current_hp, 3, "ally current hp at full after +1/+1 from 2/2")
+	_assert_eq(friend.get_effective_max_hp(), 4, "ally max hp after ant removed from grid")
+	_assert_eq(friend.current_hp, 4, "ally current hp at full after +2 max +2 heal from 2/2")
