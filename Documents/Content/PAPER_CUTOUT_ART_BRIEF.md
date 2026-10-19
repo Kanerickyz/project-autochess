@@ -126,6 +126,7 @@
 | `mirror_warden` | 羽饰高盔 + 长戟 + 镜面圆盾 | mirror_warden 禁卫 |
 | `dirge_horn` | 兜帽 + 吹大号角 | dirge_horn 号手 |
 | `wardrum` | 胸前大鼓 + 双鼓槌（无旗） | wardrum 鼓手 |
+| `apothecary` | 蓝帽白围裙 + 药匣 + 高举绿药瓶 | apothecary 药师 |
 | `echo_spear` | 骷髅面长枪兵 + 青色残影 | echo_spear 残影 |
 | `spear_goblin` | 皮帽 + 投掷姿势 + 背后标枪束 | spear_goblin 标枪 |
 | `goblin` | 火纹长袍 + 提炭火吊炉 | goblin 余烬 |
