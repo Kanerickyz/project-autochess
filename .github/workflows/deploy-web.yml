@@ -3,6 +3,13 @@
 #
 # Private repos: GitHub Pages requires Pro/Team/Enterprise (or make the repo public).
 # Even without Pages, this workflow uploads a downloadable web-build Artifact.
+#
+# Concurrency / stuck deploy notes (see Documents/WEB_DEPLOY.md):
+# - Match official Pages starter: cancel-in-progress MUST stay false.
+#   Cancelling an in-flight deploy-pages job can leave github-pages in
+#   "waiting"/"building", after which Cancel UI fails and the group blocks.
+# - Group name is pages-deploy (not legacy "pages") so a one-time rename
+#   can escape a deadlocked group; do not flip cancel-in-progress back to true.
 
 name: Deploy Web
 
@@ -16,10 +23,8 @@ permissions:
   pages: write
   id-token: write
 
-# Official Pages starter uses cancel-in-progress: false. Cancelling an in-flight
-# deploy-pages job can leave the github-pages environment stuck in "waiting",
-# which then blocks the whole concurrency group (queued forever; Cancel UI fails).
-# Group renamed off legacy "pages" so a fresh deploy is not gated by any stuck run.
+# Allow one concurrent deployment; skip runs queued between in-progress and
+# the latest queued. Do NOT cancel in-progress production deploys.
 concurrency:
   group: pages-deploy
   cancel-in-progress: false
@@ -34,6 +39,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
       - name: Cache Godot editor + export templates
         id: cache-godot
@@ -107,4 +115,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
