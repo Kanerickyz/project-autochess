@@ -149,6 +149,8 @@ var _press_ms: int = -1
 var _press_info: Dictionary = {}
 var _press_tap: Callable
 var _info_shown := false
+## 当前信息卡对应的单位（用于角色库把该剪影画到最上层）。
+var _shown_info: Dictionary = {}
 ## 技能触发自动弹出的信息卡：到期自动收起（长按中不抢收）。
 var _auto_info_until_clock: float = -1.0
 const SKILL_INFO_SECONDS := 1.35
@@ -199,6 +201,7 @@ func _process(delta: float) -> void:
 		if not _press_active:
 			_info_card.hide_info()
 			_info_shown = false
+			_shown_info = {}
 		_auto_info_until_clock = -1.0
 	if not _fx.is_empty():
 		var alive: Array = []
@@ -593,6 +596,7 @@ func _cancel_press() -> void:
 	_press_info = {}
 	_press_tap = Callable()
 	_info_shown = false
+	_shown_info = {}
 	_info_card.hide_info()
 
 
@@ -625,11 +629,13 @@ func _show_info_card(info: Dictionary) -> void:
 	if info.is_empty():
 		return
 	_info_shown = true
+	_shown_info = info
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
 	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size))
+	queue_redraw()
 
 
 ## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
@@ -1358,6 +1364,17 @@ func _draw_catalog_units(px: float) -> void:
 			return ac.x < bc.x
 		return ac.y < bc.y
 	)
+	## 长按查看技能时，把该角色画到最后，避免被邻格剪影挡住（不改列表排序）。
+	if _info_shown:
+		var focus_key := String(_shown_info.get("inspect_key", ""))
+		if focus_key.begins_with("catalog:"):
+			var focus_idx := int(focus_key.get_slice(":", 1))
+			if focus_idx >= 0 and focus_idx < catalog_units.size():
+				var focus_entry: Variant = catalog_units[focus_idx]
+				var at := ordered.find(focus_entry)
+				if at >= 0:
+					ordered.remove_at(at)
+					ordered.append(focus_entry)
 	var badges: Array[Dictionary] = []
 	for info in ordered:
 		if not (info is Dictionary):
