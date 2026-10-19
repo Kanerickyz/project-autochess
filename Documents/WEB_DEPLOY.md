@@ -16,6 +16,37 @@
 
 `https://kanerickyz.github.io/project-autochess/`
 
+## 部署并发与防卡死
+
+工作流 `.github/workflows/deploy-web.yml` 对齐官方 Pages starter：
+
+- `concurrency.group: pages-deploy`
+- **`cancel-in-progress: false`**（禁止改回 `true`）
+
+原因：中途 Cancel / 打断进行中的 `deploy-pages` 容易把 `github-pages` 环境留在 **waiting** / Pages 状态 **building**。该状态不算 in progress，普通 **Cancel** 无效，同组后续 run 会一直 **queued**。
+
+GitHub 在同组有新 run 排队时会取消**更早的 pending**，只保留进行中的那次 + 最新排队；因此连推 `main` 时中间提交会被跳过，最终以最新一次部署为准——这是预期行为。
+
+### 若再次卡住（waiting / queued / Pages building 过久）
+
+1. 对本机有写权限的 `gh` 执行 **force-cancel**（普通 Cancel 对 waiting/queued 常失败）：
+
+```bash
+# 先列出未完成的 Deploy Web
+gh run list --workflow=deploy-web.yml --limit 10
+
+# 对卡住的 run id：
+gh api -X POST repos/OWNER/REPO/actions/runs/RUN_ID/force-cancel
+```
+
+网页：打开该 run → 右上角 `···` → **Force cancel workflow**。
+
+2. 确认 **Settings → Pages → Source** 仍为 **GitHub Actions**（不要长期切成 Deploy from a branch，以免和本工作流抢部署）。
+
+3. 若 Pages 状态长时间 **building** 且部署 `error`：把 Source 暂时改成非 GitHub Actions，保存后再改回 **GitHub Actions**，然后 **Actions → Deploy Web → Run workflow**。
+
+4. 不要在 `deploy` 已开始（或环境 waiting）时连点 Cancel；需要中止时用 force-cancel，并准备好重新 **Run workflow**。
+
 ## 私有仓库注意
 
 当前仓库是 **Private**。GitHub Pages 对私有库需要 **Pro / Team / Enterprise**（免费账号仅 Public 可用 Pages）。
