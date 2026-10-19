@@ -22,7 +22,7 @@ static func run_all() -> bool:
 
 	ok = _check("team_target_with_floor_guards", _test_team_target_with_floor_guards()) and ok
 	ok = _check("overflow_melee_to_back", _test_overflow_melee_to_back()) and ok
-	ok = _check("combat_count_n_or_n_plus_1", _test_combat_count_n_or_n_plus_1()) and ok
+	ok = _check("combat_count_at_most_n", _test_combat_count_at_most_n()) and ok
 	ok = _check("elite_count_n_or_n_plus_2", _test_elite_count_n_or_n_plus_2()) and ok
 	ok = _check("boss_ignores_roster_count", _test_boss_ignores_roster_count()) and ok
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
@@ -387,30 +387,28 @@ static func _test_team_target_with_floor_guards() -> bool:
 	return is_equal_approx(e_table, 50.0)
 
 
-static func _test_combat_count_n_or_n_plus_1() -> bool:
+static func _test_combat_count_at_most_n() -> bool:
 	var pool: Array[UnitData] = []
 	for i in 6:
 		pool.append(_make_unit("p%d" % i, 10, 3, 1.0, 1, 0.0, 0.0, true))
 	var cfg := _make_config(pool)
-	cfg.combat_plus_one_chance = 0.0
+	## 即使旧字段仍为 1，普通战斗也不得超过 N。
+	cfg.combat_plus_one_chance = 1.0
 	var wave := _make_wave(8)
 	var team: Array = []
 	for i in 3:
 		team.append(_make_entry(pool[i]))
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	## 第 2 层起才允许偶发 N＋1；floor=2。
-	var seated := EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 2, MapNodeType.Type.COMBAT, 2, 5, rng, team
-	)
-	if seated.size() != 3:
-		return false
-	cfg.combat_plus_one_chance = 1.0
-	rng.seed = 12
-	seated = EnemyBudgetSpawner.roll(
-		wave, cfg, [], 0, 2, MapNodeType.Type.COMBAT, 2, 5, rng, team
-	)
-	return seated.size() == 4
+	for seed_i in 30:
+		rng.seed = 11 + seed_i
+		var seated := EnemyBudgetSpawner.roll(
+			wave, cfg, [], 0, 2, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		)
+		if seated.size() > 3:
+			return false
+		if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 2) != 3:
+			return false
+	return true
 
 
 static func _test_elite_count_n_or_n_plus_2() -> bool:
@@ -462,10 +460,10 @@ static func _test_first_floor_count_cap() -> bool:
 		)
 		if seated.size() > 3:
 			return false
-	## 配置层：第一关 roll_enemy_count 永不 N＋1。
+	## 配置层：普通战斗任意层均为＝N。
 	if cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 1) != 3:
 		return false
-	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 2) == 4
+	return cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 3, rng, 2) == 3
 
 
 static func _test_first_floor_max_one_ranged() -> bool:
