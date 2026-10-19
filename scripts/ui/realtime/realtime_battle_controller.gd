@@ -741,27 +741,41 @@ func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
 			"RealtimeBattleController: %d enemies but only %d enemy seats; extra enemies dropped"
 			% [units.size(), seat_count]
 		)
-	var center_seat := EnemyBudgetSpawner.front_center_seat_index(_enemy_slots.seat_cols)
+	var boss_seat := EnemyBudgetSpawner.back_center_seat_index(
+		_enemy_slots.seat_cols, seat_count
+	)
+	var seat_fill := SeatLayout.iter_seats_center_out(
+		_enemy_slots.seat_rows, _enemy_slots.seat_cols
+	)
 	var taken: Dictionary = {}
 	var result: Array = []
 	for i in mini(units.size(), seat_count):
 		var ud: UnitData = units[i]
 		var seat_i: int
-		## Boss 首领（或 Boss 遭遇唯一敌）落前排水平居中。
+		## Boss 首领（或 Boss 遭遇唯一敌）落后排水平居中。
 		var want_center := (
 			ud != null and ud.is_boss_leader
 		) or (
 			_encounter != null and _encounter.is_boss and units.size() == 1
 		)
-		if want_center and not taken.has(center_seat):
-			seat_i = center_seat
+		if want_center and not taken.has(boss_seat):
+			seat_i = boss_seat
 		else:
 			seat_i = -1
-			for s in seat_count:
+			for s in seat_fill:
+				if s < 0 or s >= seat_count:
+					continue
 				if taken.has(s):
 					continue
 				seat_i = s
 				break
+			if seat_i < 0:
+				for s2 in seat_count:
+					if taken.has(s2):
+						continue
+					seat_i = s2
+					break
+
 		if seat_i < 0:
 			break
 		taken[seat_i] = true

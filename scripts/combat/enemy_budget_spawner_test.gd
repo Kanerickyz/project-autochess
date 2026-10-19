@@ -16,8 +16,10 @@ static func run_all() -> bool:
 	ok = _check("player_tier_caps_enemy_pool", _test_player_tier_caps_enemy_pool()) and ok
 	ok = _check("boss_fixed_only_no_fill", _test_boss_fixed_only_no_fill()) and ok
 	ok = _check("boss_ignores_team_power", _test_boss_ignores_team_power()) and ok
-	ok = _check("boss_front_center_seat", _test_boss_front_center_seat()) and ok
+	ok = _check("boss_back_center_seat", _test_boss_back_center_seat()) and ok
+	ok = _check("seat_center_out_row_order", _test_seat_center_out_row_order()) and ok
 	ok = _check("disabled_keeps_legacy_path_marker", _test_config_disabled_flag()) and ok
+
 	ok = _check("team_target_with_floor_guards", _test_team_target_with_floor_guards()) and ok
 	ok = _check("overflow_melee_to_back", _test_overflow_melee_to_back()) and ok
 	ok = _check("combat_count_n_or_n_plus_1", _test_combat_count_n_or_n_plus_1()) and ok
@@ -299,7 +301,7 @@ static func _test_boss_ignores_team_power() -> bool:
 	return is_equal_approx(cfg.get_target_pressure(0, MapNodeType.Type.BOSS, 999.0), 0.0)
 
 
-static func _test_boss_front_center_seat() -> bool:
+static func _test_boss_back_center_seat() -> bool:
 	var boss := _make_unit("boss", 40, 8, 1.5, 3, 0.0, 0.0, true)
 	boss.is_boss_leader = true
 	var cfg := _make_config([boss])
@@ -311,8 +313,31 @@ static func _test_boss_front_center_seat() -> bool:
 	)
 	if seated.size() != 1:
 		return false
-	var expect := EnemyBudgetSpawner.front_center_seat_index(5)
+	var expect := EnemyBudgetSpawner.back_center_seat_index(5, 10)
 	return int(seated[0].get("seat_index", -1)) == expect
+
+
+## 5 列同行中心向外：首个近战占前排中（列序 53124 → 索引 2）。
+static func _test_seat_center_out_row_order() -> bool:
+	var a := _make_unit("a", 30, 3, 1.0, 1, 0.0, 0.0, true)
+	var b := _make_unit("b", 20, 3, 1.0, 1, 0.0, 0.0, true)
+	var c := _make_unit("c", 10, 3, 1.0, 1, 0.0, 0.0, true)
+	var cfg := _make_config([a, b, c])
+	var seated := EnemyBudgetSpawner._seat_units([a, b, c], 5, 10, cfg)
+	var by_id: Dictionary = {}
+	for item in seated:
+		var ud: UnitData = item.get("unit_data") as UnitData
+		by_id[ud.id] = int(item.get("seat_index", -1))
+	var expect: Array[int] = SeatLayout.row_column_fill_order(5)
+	if int(by_id.get("a", -1)) != expect[0]:
+		return false
+	if int(by_id.get("b", -1)) != expect[1]:
+		return false
+	if int(by_id.get("c", -1)) != expect[2]:
+		return false
+	return true
+
+
 
 
 static func _test_config_disabled_flag() -> bool:

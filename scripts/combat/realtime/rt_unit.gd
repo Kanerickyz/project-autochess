@@ -2,7 +2,9 @@ class_name RtUnit
 extends RefCounted
 ## 战斗单位运行态：逻辑格坐标 + 一动内落格顿步表现插值。属性只读自 UnitInstance。
 
-enum State { DEPLOYING, MOVING, ATTACKING, DEAD }
+## Boss 一动三态可读：MOVING（含瞬移）、ATTACKING、SUMMONING。
+enum State { DEPLOYING, MOVING, ATTACKING, SUMMONING, DEAD }
+
 
 const NEVER := -1000.0
 

@@ -41,8 +41,12 @@ static func run_all() -> bool:
 	ok = _check("boss_summon_minions_advance", _test_boss_summon_minions_advance()) and ok
 	ok = _check("boss_footprint_horiz_centered", _test_boss_footprint_horiz_centered()) and ok
 	ok = _check("boss_visual_centers_in_footprint", _test_boss_visual_centers_in_footprint()) and ok
+	ok = _check("boss_low_hp_flees_threat", _test_boss_low_hp_flees_threat()) and ok
+	ok = _check("boss_summon_sets_summoning_state", _test_boss_summon_sets_summoning_state()) and ok
+	ok = _check("ranged_attack_reach_clamped_to_2", _test_ranged_attack_reach_clamped_to_2()) and ok
 	ok = _check("acquire_prefers_lane_on_chebyshev_tie", _test_acquire_prefers_lane_on_chebyshev_tie()) and ok
 	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
+
 	for sim in _created:
 		sim.dispose()
 	_created.clear()
@@ -101,7 +105,14 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 		data.summon_unit = overrides["summon_unit"] as UnitData
 	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))
 	data.summon_per_action = int(overrides.get("summon_per_action", 1))
-	return UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	## 测例可显式覆盖攻距（绕过远程硬顶），专用 clamp 用例直接测 from_unit_data。
+	if overrides.has("attack_range"):
+		unit.stats.attack_range = int(overrides["attack_range"])
+	if overrides.has("attack_reach"):
+		unit.stats.attack_reach = float(overrides["attack_reach"])
+	return unit
+
 
 
 static func make_summon_body() -> UnitData:
@@ -1253,6 +1264,138 @@ static func _test_boss_summon_minions_advance() -> bool:
 			break
 	if not saw_move:
 		push_error("summon_advance: minion never left spawn cell %s" % str(first_cell))
+		return false
+	return true
+
+
+## 低血且受威胁：优先瞬移拉开，不贴脸出手。
+static func _test_boss_low_hp_flees_threat() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 71)
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 50, "attack": 1, "steps_per_turn": 0, "attack_reach": 2.0, "id": "threat",
+		}),
+		Vector2(4.5, 5.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 100, "attack": 20, "steps_per_turn": 1, "attack_reach": 1.5,
+			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+		}),
+		Vector2(4.5, 3.5),
+	)
+	if ally == null or boss == null:
+		push_error("flee: place failed")
+		return false
+	boss.unit.current_hp = 30
+	boss.skip_deploy()
+	var can_summon := func(_actor: RtUnit) -> bool: return false
+	var can_tp := func(actor: RtUnit, origin: Vector2i) -> bool:
+		return sim._boss_can_teleport_to(actor, origin)
+
+	var before := boss.cell
+	var before_d := boss.cell_distance_to(ally)
+	var decision := RtUnitBrain.decide_boss_leader_turn(
+		boss, sim.get_units(), 0.05, 1, false, can_summon, can_tp
+	)
+	if decision.teleport_cell == Vector2i(-1, -1):
+		push_error("flee: expected flee teleport")
+		return false
+	if decision.fire or decision.summon:
+		push_error("flee: must not attack/summon while fleeing")
+		return false
+	## 目标锚点相对威胁的足迹距须严格变大（落格动画完成前 cell 仍为旧锚）。
+	var planned_d := _footprint_chebyshev_between(boss, decision.teleport_cell, ally, ally.cell)
+	if planned_d <= before_d:
+		push_error(
+			"flee: planned dist %d not > %d (from %s to %s)"
+			% [planned_d, before_d, str(before), str(decision.teleport_cell)]
+		)
+		return false
+	if not sim.try_boss_teleport_for_test(boss, decision.teleport_cell):
+		push_error("flee: teleport apply failed")
+		return false
+	if boss.get_occupied_cell() != decision.teleport_cell:
+		push_error("flee: occupied %s != %s" % [boss.get_occupied_cell(), decision.teleport_cell])
+		return false
+	if boss.state != RtUnit.State.MOVING:
+		push_error("flee: expected MOVING state got %d" % boss.state)
+		return false
+	return true
+
+
+static func _footprint_chebyshev_between(
+	a: RtUnit, a_origin: Vector2i, b: RtUnit, b_origin: Vector2i
+) -> int:
+	var mine := a.get_footprint_cells(a_origin)
+	var theirs := b.get_footprint_cells(b_origin)
+	var best := 999999
+	for c1 in mine:
+		for c2 in theirs:
+			best = mini(best, RtUnit.chebyshev(c1, c2))
+	return best
+
+
+
+## 召唤分支切到 SUMMONING 状态（与移动/攻击可区分）。
+static func _test_boss_summon_sets_summoning_state() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 72)
+	var body := make_summon_body()
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 50, "steps_per_turn": 0, "attack_reach": 0.0, "sight_range": 0.0, "id": "far",
+		}),
+		Vector2(16.5, 28.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 100, "steps_per_turn": 1, "attack_reach": 1.0,
+			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": body, "summon_max_alive": 2, "summon_per_action": 1,
+		}),
+		Vector2(4.5, 3.5),
+	)
+	if ally == null or boss == null:
+		push_error("summon_state: place failed")
+		return false
+	boss.skip_deploy()
+	boss.unit.current_hp = 100
+	var can_summon := func(actor: RtUnit) -> bool: return sim._boss_can_summon(actor)
+	var can_tp := func(actor: RtUnit, origin: Vector2i) -> bool:
+		return sim._boss_can_teleport_to(actor, origin)
+	var decision := RtUnitBrain.decide_boss_leader_turn(
+		boss, sim.get_units(), 0.05, 1, false, can_summon, can_tp
+	)
+	if not decision.summon:
+		push_error("summon_state: expected summon decision (state=%d fire=%s tp=%s)" % [
+			boss.state, decision.fire, str(decision.teleport_cell)
+		])
+		return false
+	if boss.state != RtUnit.State.SUMMONING:
+		push_error("summon_state: expected SUMMONING got %d" % boss.state)
+		return false
+	return true
+
+
+## 远程单位 attack_range / attack_reach 硬顶 2 格。
+static func _test_ranged_attack_reach_clamped_to_2() -> bool:
+	var stats := UnitStats.new()
+	stats.max_hp = 3
+	stats.attack = 5
+	stats.attack_range = 5
+	stats.attack_reach = 5.0
+	stats.projectile_speed = 12.0
+	var data := UnitData.new()
+	data.id = "longbow"
+	data.stats = stats
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, UnitInstance.Team.PLAYER)
+	if unit.stats.attack_range > 2 or unit.stats.attack_reach > 2.0 + 0.001:
+		push_error(
+			"ranged_clamp: range=%d reach=%s"
+			% [unit.stats.attack_range, unit.stats.attack_reach]
+		)
 		return false
 	return true
 

@@ -8,6 +8,9 @@ const REACH_EPSILON := 0.02
 ## 已锁定目标时允许超出 reach 的滞回（格）
 const REACH_HYSTERESIS := 0.25
 const TIME_EPSILON := 0.000001
+## Boss 低血阈值：≤ 此比例时优先瞬移拉开威胁
+const BOSS_LOW_HP_RATIO := 0.4
+
 
 ## 八方向：先正四向再对角（平局稳定次序）
 const DIR8: Array[Vector2i] = [
@@ -119,7 +122,8 @@ static func decide_turn(
 	return decision
 
 
-## 召唤统领一动三选一：已在攻距→出手；否则可召则召；否则瞬移到任意空足迹锚点。
+## 召唤统领一动三态互斥：移动(瞬移) / 攻击 / 召唤。
+## 低血且受威胁时优先瞬移拉开；否则已在攻距→出手；可召则召；否则瞬移靠近（低血则拉远）。
 static func decide_boss_leader_turn(
 	unit: RtUnit,
 	units: Array,
@@ -148,6 +152,14 @@ static func decide_boss_leader_turn(
 		return decision
 
 	_refresh_target(unit, units)
+	var low_hp := is_boss_low_hp(unit)
+	if low_hp and steps_left > 0 and is_boss_threatened(unit, units):
+		var flee := pick_boss_flee_teleport(unit, units, can_boss_teleport)
+		if flee != Vector2i(-1, -1):
+			unit.state = RtUnit.State.MOVING
+			decision.teleport_cell = flee
+			return decision
+
 	var stats := unit.get_stats()
 	if unit.target != null:
 		var dist := float(unit.cell_distance_to(unit.target))
@@ -162,18 +174,45 @@ static func decide_boss_leader_turn(
 			return decision
 
 	if can_summon.is_valid() and bool(can_summon.call(unit)):
-		unit.state = RtUnit.State.MOVING
+		unit.state = RtUnit.State.SUMMONING
 		decision.summon = true
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	if steps_left <= 0 or unit.target == null:
+	if steps_left <= 0:
 		decision.turn_done = true
 		return decision
-	decision.teleport_cell = pick_boss_teleport(unit, unit.target, can_boss_teleport)
+	if low_hp:
+		decision.teleport_cell = pick_boss_flee_teleport(unit, units, can_boss_teleport)
+	elif unit.target != null:
+		decision.teleport_cell = pick_boss_teleport(unit, unit.target, can_boss_teleport)
 	if decision.teleport_cell == Vector2i(-1, -1):
 		decision.turn_done = true
 	return decision
+
+
+static func is_boss_low_hp(unit: RtUnit) -> bool:
+	if unit == null or unit.unit == null:
+		return false
+	var max_hp := unit.unit.get_effective_max_hp()
+	if max_hp <= 0:
+		return false
+	return float(unit.unit.current_hp) / float(max_hp) <= BOSS_LOW_HP_RATIO
+
+
+## 任意存活敌对单位已进入其攻距，或切比雪夫格距 ≤ 其 reach。
+static func is_boss_threatened(unit: RtUnit, units: Array) -> bool:
+	if unit == null or not unit.is_alive():
+		return false
+	for item in units:
+		var other := item as RtUnit
+		if other == null or not other.is_alive() or other.get_team() == unit.get_team():
+			continue
+		var reach := grid_reach(other.get_stats().attack_reach)
+		var dist := float(unit.cell_distance_to(other))
+		if dist <= reach + REACH_EPSILON:
+			return true
+	return false
 
 
 ## Boss 瞬移：在任意空足迹锚点中选缩短最近格距者（由 can_boss_teleport(origin) 判定占格）。
@@ -207,6 +246,66 @@ static func pick_boss_teleport(unit: RtUnit, target: RtUnit, can_boss_teleport: 
 	if best_d == cur_d and best_man >= _footprint_manhattan_at(unit, target, unit.cell):
 		return Vector2i(-1, -1)
 	return best_origin
+
+
+## 低血躲避：选使「距最近敌对」最大化的空足迹锚点；须严格优于当前位置。
+static func pick_boss_flee_teleport(
+	unit: RtUnit,
+	units: Array,
+	can_boss_teleport: Callable,
+) -> Vector2i:
+	if unit == null or not can_boss_teleport.is_valid():
+		return Vector2i(-1, -1)
+	var threats: Array[RtUnit] = []
+	for item in units:
+		var other := item as RtUnit
+		if other == null or not other.is_alive() or other.get_team() == unit.get_team():
+			continue
+		threats.append(other)
+	if threats.is_empty():
+		return Vector2i(-1, -1)
+	var cur_min := _min_threat_chebyshev_at(unit, threats, unit.cell)
+	var best_origin := Vector2i(-1, -1)
+	var best_min := cur_min
+	var best_sum := _sum_threat_chebyshev_at(unit, threats, unit.cell)
+	var found := false
+	var arena := _boss_teleport_scan_bounds(unit)
+	for y in range(arena.position.y, arena.end.y):
+		for x in range(arena.position.x, arena.end.x):
+			var origin := Vector2i(x, y)
+			if origin == unit.cell:
+				continue
+			if not bool(can_boss_teleport.call(unit, origin)):
+				continue
+			var d_min := _min_threat_chebyshev_at(unit, threats, origin)
+			var d_sum := _sum_threat_chebyshev_at(unit, threats, origin)
+			if (
+				not found
+				or d_min > best_min
+				or (d_min == best_min and d_sum > best_sum)
+			):
+				found = true
+				best_min = d_min
+				best_sum = d_sum
+				best_origin = origin
+	if not found or best_min <= cur_min:
+		return Vector2i(-1, -1)
+	return best_origin
+
+
+static func _min_threat_chebyshev_at(unit: RtUnit, threats: Array[RtUnit], origin: Vector2i) -> int:
+	var best := 999999
+	for t in threats:
+		best = mini(best, _footprint_chebyshev_at(unit, t, origin))
+	return best
+
+
+static func _sum_threat_chebyshev_at(unit: RtUnit, threats: Array[RtUnit], origin: Vector2i) -> int:
+	var total := 0
+	for t in threats:
+		total += _footprint_chebyshev_at(unit, t, origin)
+	return total
+
 
 
 ## 扫描足迹锚点的可行矩形（调用方需保证 unit 有有效 arena；无则退回宽松范围）。
