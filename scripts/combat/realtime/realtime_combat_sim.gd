@@ -238,6 +238,10 @@ func try_boss_step_for_test(rt: RtUnit, dir: Vector2i) -> bool:
 	return _boss_try_step(rt, dir)
 
 
+func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
+	return _boss_try_teleport(rt, origin)
+
+
 ## 标记开战：广播游戏开始 → 排出敌我混排行动队列。未显式调用时首个固定步会自动调用。
 func begin_combat() -> void:
 	if _started or _finished:
@@ -335,6 +339,7 @@ func advance_fixed_step() -> void:
 
 
 ## COMBAT §7.1：友入座序与敌配置序交错（友0敌0友1敌1…）；一侧用尽续另一侧。
+## Boss 遭遇：每名友方行动后插入首领一次（友0、Boss、友1、Boss…）；其余敌方小兵队尾。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
@@ -346,6 +351,21 @@ func _build_action_queue_from_lock_order() -> void:
 		else:
 			enemies.append(rt)
 	_action_queue.clear()
+	var boss: RtUnit = null
+	for e in enemies:
+		if e != null and e.is_boss_leader():
+			boss = e
+			break
+	if boss != null:
+		for f in friends:
+			_action_queue.append(f)
+			_action_queue.append(boss)
+		for e2 in enemies:
+			if e2 != null and e2 != boss:
+				_action_queue.append(e2)
+		if friends.is_empty():
+			_action_queue.append(boss)
+		return
 	var i := 0
 	while i < friends.size() or i < enemies.size():
 		if i < friends.size():
@@ -445,8 +465,8 @@ func _advance_current_actor() -> void:
 		return _is_cell_free_for(rt, cell)
 	var can_summon_fn := func(actor: RtUnit) -> bool:
 		return _boss_can_summon(actor)
-	var can_boss_step_fn := func(actor: RtUnit, dir: Vector2i) -> bool:
-		return _boss_can_step(actor, dir)
+	var can_boss_teleport_fn := func(actor: RtUnit, origin: Vector2i) -> bool:
+		return _boss_can_teleport_to(actor, origin)
 	var decision := RtUnitBrain.decide_turn(
 		rt,
 		_units,
@@ -455,7 +475,7 @@ func _advance_current_actor() -> void:
 		_actor_steps_left,
 		_actor_has_attacked,
 		can_summon_fn,
-		can_boss_step_fn,
+		can_boss_teleport_fn,
 	)
 
 	if (
@@ -476,17 +496,21 @@ func _advance_current_actor() -> void:
 		_end_current_actor_turn()
 		return
 
-	if decision.step != Vector2i.ZERO and _actor_steps_left > 0:
-		if rt.is_boss_leader():
-			if _boss_try_step(rt, decision.step):
-				_actor_steps_left -= 1
-				return
-		else:
-			var dest: Vector2i = rt.cell + decision.step
-			if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
-				_move_unit_to_cell(rt, dest)
-				_actor_steps_left -= 1
-				return
+	if (
+		rt.is_boss_leader()
+		and decision.teleport_cell != Vector2i(-1, -1)
+		and _actor_steps_left > 0
+	):
+		if _boss_try_teleport(rt, decision.teleport_cell):
+			_actor_steps_left -= 1
+			return
+
+	if decision.step != Vector2i.ZERO and _actor_steps_left > 0 and not rt.is_boss_leader():
+		var dest: Vector2i = rt.cell + decision.step
+		if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
+			_move_unit_to_cell(rt, dest)
+			_actor_steps_left -= 1
+			return
 
 	if decision.turn_done:
 		_end_current_actor_turn()
@@ -927,6 +951,30 @@ func _find_boss_summon_cell(actor: RtUnit) -> Vector2i:
 	if half.is_empty():
 		return Vector2i(-1, -1)
 	return half[0]
+
+
+## 足迹锚点瞬移：目标足迹全在界内且对首领为空（可覆盖自身旧足迹）。
+func _boss_can_teleport_to(actor: RtUnit, origin: Vector2i) -> bool:
+	if actor == null or not actor.is_alive():
+		return false
+	if origin == actor.cell:
+		return false
+	var cells: Array[Vector2i] = actor.get_footprint_cells(origin)
+	if cells.is_empty():
+		return false
+	for c in cells:
+		if not _in_arena(c):
+			return false
+		if not _is_cell_free_for(actor, c):
+			return false
+	return true
+
+
+func _boss_try_teleport(actor: RtUnit, origin: Vector2i) -> bool:
+	if not _boss_can_teleport_to(actor, origin):
+		return false
+	_move_unit_to_cell(actor, origin)
+	return true
 
 
 func _boss_can_step(actor: RtUnit, dir: Vector2i) -> bool:

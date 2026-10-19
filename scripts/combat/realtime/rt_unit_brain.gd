@@ -26,8 +26,10 @@ class Decision:
 	## 本步要踏入的邻格相对偏移；ZERO = 不移动（攻击中 / 等待占格）
 	var step: Vector2i = Vector2i.ZERO
 	var fire: bool = false
-	## Boss 首领：本动选择召唤（与出手/移动互斥）
+	## Boss 首领：本动选择召唤（与出手/移动/瞬移互斥）
 	var summon: bool = false
+	## Boss 首领：瞬移到足迹锚点（-1,-1 = 不瞬移）
+	var teleport_cell: Vector2i = Vector2i(-1, -1)
 	## 一动决策：true = 本动已无事可做（交给 sim 结束当前行动者）
 	var turn_done: bool = false
 
@@ -51,8 +53,8 @@ static func turn_step_budget(unit_or_stats: Variant) -> int:
 
 
 ## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
-## Boss 首领走三选一策略机（出手 / 召唤 / 移动），不套普通「靠近并出手」。
-## can_summon / can_boss_step 由 sim 注入；空 Callable 时首领跳过对应分支。
+## Boss 首领走三选一策略机（出手 / 召唤 / 瞬移），不套普通「靠近并出手」。
+## can_summon / can_boss_teleport 由 sim 注入；空 Callable 时首领跳过对应分支。
 static func decide_turn(
 	unit: RtUnit,
 	units: Array,
@@ -61,11 +63,11 @@ static func decide_turn(
 	steps_left: int,
 	has_attacked: bool,
 	can_summon: Callable = Callable(),
-	can_boss_step: Callable = Callable(),
+	can_boss_teleport: Callable = Callable(),
 ) -> Decision:
 	if unit != null and unit.is_boss_leader():
 		return decide_boss_leader_turn(
-			unit, units, dt, steps_left, has_attacked, can_summon, can_boss_step
+			unit, units, dt, steps_left, has_attacked, can_summon, can_boss_teleport
 		)
 	var decision := Decision.new()
 	if not unit.is_alive():
@@ -117,7 +119,7 @@ static func decide_turn(
 	return decision
 
 
-## 召唤统领一动三选一：已在攻距→出手；否则可召则召；否则可挪（含推开）则挪。
+## 召唤统领一动三选一：已在攻距→出手；否则可召则召；否则瞬移到任意空足迹锚点。
 static func decide_boss_leader_turn(
 	unit: RtUnit,
 	units: Array,
@@ -125,7 +127,7 @@ static func decide_boss_leader_turn(
 	steps_left: int,
 	has_attacked: bool,
 	can_summon: Callable,
-	can_boss_step: Callable,
+	can_boss_teleport: Callable,
 ) -> Decision:
 	var decision := Decision.new()
 	if not unit.is_alive():
@@ -137,7 +139,7 @@ static func decide_boss_leader_turn(
 	if has_attacked:
 		decision.turn_done = true
 		return decision
-	## 本动已挪过一步：不再出手/再召（三选一互斥）
+	## 本动已瞬移过：不再出手/再召（三选一互斥）
 	var budget := turn_step_budget(unit)
 	if budget > 0 and steps_left < budget:
 		decision.turn_done = true
@@ -168,48 +170,73 @@ static func decide_boss_leader_turn(
 	if steps_left <= 0 or unit.target == null:
 		decision.turn_done = true
 		return decision
-	decision.step = pick_boss_step(unit, unit.target, can_boss_step)
-	if decision.step == Vector2i.ZERO:
+	decision.teleport_cell = pick_boss_teleport(unit, unit.target, can_boss_teleport)
+	if decision.teleport_cell == Vector2i(-1, -1):
 		decision.turn_done = true
 	return decision
 
 
-## Boss 足迹刚性平移：选合法且缩短最近格距的一步（含推开由 can_boss_step 判定）。
-static func pick_boss_step(unit: RtUnit, target: RtUnit, can_boss_step: Callable) -> Vector2i:
-	if unit == null or target == null or not can_boss_step.is_valid():
-		return Vector2i.ZERO
+## Boss 瞬移：在任意空足迹锚点中选缩短最近格距者（由 can_boss_teleport(origin) 判定占格）。
+static func pick_boss_teleport(unit: RtUnit, target: RtUnit, can_boss_teleport: Callable) -> Vector2i:
+	if unit == null or target == null or not can_boss_teleport.is_valid():
+		return Vector2i(-1, -1)
 	var cur_d := unit.cell_distance_to(target)
-	var best_dir := Vector2i.ZERO
+	var best_origin := Vector2i(-1, -1)
 	var best_d := cur_d
-	var best_man := _footprint_manhattan(unit, target, Vector2i.ZERO)
+	var best_man := _footprint_manhattan_at(unit, target, unit.cell)
 	var found := false
-	for dir in DIR8:
-		if not bool(can_boss_step.call(unit, dir)):
-			continue
-		var d := _footprint_chebyshev_after_step(unit, target, dir)
-		var man := _footprint_manhattan(unit, target, dir)
-		if not found or d < best_d or (d == best_d and man < best_man):
-			found = true
-			best_d = d
-			best_man = man
-			best_dir = dir
+	var arena := _boss_teleport_scan_bounds(unit)
+	for y in range(arena.position.y, arena.end.y):
+		for x in range(arena.position.x, arena.end.x):
+			var origin := Vector2i(x, y)
+			if origin == unit.cell:
+				continue
+			if not bool(can_boss_teleport.call(unit, origin)):
+				continue
+			var d := _footprint_chebyshev_at(unit, target, origin)
+			var man := _footprint_manhattan_at(unit, target, origin)
+			if not found or d < best_d or (d == best_d and man < best_man):
+				found = true
+				best_d = d
+				best_man = man
+				best_origin = origin
 	if not found:
-		return Vector2i.ZERO
+		return Vector2i(-1, -1)
 	if best_d > cur_d:
-		return Vector2i.ZERO
-	if best_d == cur_d and best_man >= _footprint_manhattan(unit, target, Vector2i.ZERO):
-		return Vector2i.ZERO
-	return best_dir
+		return Vector2i(-1, -1)
+	if best_d == cur_d and best_man >= _footprint_manhattan_at(unit, target, unit.cell):
+		return Vector2i(-1, -1)
+	return best_origin
 
 
-static func _footprint_chebyshev_after_step(unit: RtUnit, target: RtUnit, dir: Vector2i) -> int:
-	var origin: Vector2i = unit.cell + dir
+## 扫描足迹锚点的可行矩形（调用方需保证 unit 有有效 arena；无则退回宽松范围）。
+static func _boss_teleport_scan_bounds(unit: RtUnit) -> Rect2i:
+	var fw := 1
+	var fh := 1
+	if unit != null and unit.unit != null and unit.unit.unit_data != null:
+		fw = maxi(1, unit.unit.unit_data.footprint_w)
+		fh = maxi(1, unit.unit.unit_data.footprint_h)
+	## 宽松扫描窗；合法锚点由 sim 的 can_boss_teleport 过滤。
+	return Rect2i(0, 0, maxi(1, 24 - fw + 1), maxi(1, 24 - fh + 1))
+
+
+static func _footprint_chebyshev_at(unit: RtUnit, target: RtUnit, origin: Vector2i) -> int:
 	var mine := unit.get_footprint_cells(origin)
 	var theirs := target.get_footprint_cells(target.cell)
 	var best := 999999
 	for a in mine:
 		for b in theirs:
 			best = mini(best, RtUnit.chebyshev(a, b))
+	return best
+
+
+static func _footprint_manhattan_at(unit: RtUnit, target: RtUnit, origin: Vector2i) -> int:
+	var mine := unit.get_footprint_cells(origin)
+	var theirs := target.get_footprint_cells(target.cell)
+	var best := 999999
+	for a in mine:
+		for b in theirs:
+			best = mini(best, absi(a.x - b.x) + absi(a.y - b.y))
 	return best
 
 

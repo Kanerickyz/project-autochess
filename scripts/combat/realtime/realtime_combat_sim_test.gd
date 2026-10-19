@@ -36,7 +36,8 @@ static func run_all() -> bool:
 	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
-	ok = _check("boss_push_ally_on_step", _test_boss_push_ally_on_step()) and ok
+	ok = _check("boss_teleport_to_empty_cell", _test_boss_teleport_to_empty_cell()) and ok
+	ok = _check("boss_queue_after_each_ally", _test_boss_queue_after_each_ally()) and ok
 	ok = _check("boss_summon_minions_advance", _test_boss_summon_minions_advance()) and ok
 	ok = _check("boss_footprint_horiz_centered", _test_boss_footprint_horiz_centered()) and ok
 	ok = _check("boss_visual_centers_in_footprint", _test_boss_visual_centers_in_footprint()) and ok
@@ -1128,8 +1129,8 @@ static func _test_boss_decapitation_beats_mutual_wipe() -> bool:
 	return true
 
 
-## Boss 足迹平移可推开友方；无伤害；无空位则整步失败。
-static func _test_boss_push_ally_on_step() -> bool:
+## Boss 可瞬移到任意空足迹锚点；不可落到被占格。
+static func _test_boss_teleport_to_empty_cell() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 55)
 	var ally := sim.add_unit(
@@ -1138,12 +1139,6 @@ static func _test_boss_push_ally_on_step() -> bool:
 		}),
 		Vector2(5.5, 5.5),
 	)
-	var ally2 := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {
-			"max_hp": 50, "attack": 1, "steps_per_turn": 0, "id": "blocker2",
-		}),
-		Vector2(6.5, 5.5),
-	)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"max_hp": 80, "steps_per_turn": 1, "id": "boss",
@@ -1151,58 +1146,61 @@ static func _test_boss_push_ally_on_step() -> bool:
 		}),
 		Vector2(5.5, 3.5),
 	)
-	if ally == null or ally2 == null or boss == null:
-		push_error("push: place failed")
+	if ally == null or boss == null:
+		push_error("teleport: place failed")
 		return false
-	## 确认首领足迹在 (5,3) 起 2×2，一步 +y 将覆盖两名友方。
 	if boss.cell != Vector2i(5, 3):
-		push_error("push: unexpected boss origin %s" % str(boss.cell))
+		push_error("teleport: unexpected boss origin %s" % str(boss.cell))
 		return false
-	var ally_hp := ally.unit.current_hp
-	if not sim.try_boss_step_for_test(boss, Vector2i(0, 1)):
-		push_error("push: expected step+push to succeed")
+	## 空锚点 (1,1) 应可瞬移
+	if not sim.try_boss_teleport_for_test(boss, Vector2i(1, 1)):
+		push_error("teleport: expected empty-cell teleport to succeed")
 		return false
-	## begin_step 未落稳前站立格仍为 from，占格看 step_dest。
-	if boss.get_occupied_cell() != Vector2i(5, 4):
-		push_error("push: boss dest %s expected (5,4)" % str(boss.get_occupied_cell()))
+	if boss.get_occupied_cell() != Vector2i(1, 1):
+		push_error("teleport: boss dest %s expected (1,1)" % str(boss.get_occupied_cell()))
 		return false
-	if ally.get_occupied_cell() == Vector2i(5, 5) or ally2.get_occupied_cell() == Vector2i(6, 5):
-		push_error(
-			"push: allies still occupying old cells %s %s"
-			% [str(ally.get_occupied_cell()), str(ally2.get_occupied_cell())]
-		)
+	## 落到友方占格应失败
+	var blocked := sim.try_boss_teleport_for_test(boss, Vector2i(5, 5))
+	if blocked:
+		push_error("teleport: must not land on occupied cells")
 		return false
-	if ally.unit.current_hp != ally_hp:
-		push_error("push: must not damage")
-		return false
-	## 堵死正前与斜前，整步应失败。
-	var sim2 := _new_sim()
-	sim2.configure(Vector2i(8, 8), 56)
-	var a := sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "a"}), Vector2(2.5, 3.5))
-	var b := sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "b"}), Vector2(3.5, 3.5))
-	## 推开落点全堵
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "c"}), Vector2(2.5, 4.5))
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "d"}), Vector2(3.5, 4.5))
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "e"}), Vector2(1.5, 4.5))
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "f"}), Vector2(4.5, 4.5))
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "g"}), Vector2(2.5, 5.5))
-	sim2.add_unit(make_dummy(UnitInstance.Team.PLAYER, 10, {"id": "h"}), Vector2(3.5, 5.5))
-	var boss2 := sim2.add_unit(
+	return true
+
+
+## Boss 遭遇行动队列：友0、Boss、友1、Boss…
+static func _test_boss_queue_after_each_ally() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 57)
+	var a0 := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 20, "attack": 1, "steps_per_turn": 0, "attack_windup": 5.0, "id": "a0",
+		}),
+		Vector2(1.5, 6.5),
+	)
+	var a1 := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"max_hp": 20, "attack": 1, "steps_per_turn": 0, "attack_windup": 5.0, "id": "a1",
+		}),
+		Vector2(3.5, 6.5),
+	)
+	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
-			"max_hp": 80, "id": "boss2",
+			"max_hp": 80, "attack": 1, "steps_per_turn": 0, "attack_windup": 5.0,
+			"sight_range": 0.0, "id": "boss",
 			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
 		}),
-		Vector2(2.5, 1.5),
+		Vector2(2.5, 2.5),
 	)
-	if a == null or b == null or boss2 == null:
-		push_error("push_fail: place failed")
+	if a0 == null or a1 == null or boss == null:
+		push_error("boss_queue: place failed")
 		return false
-	var origin2 := boss2.cell
-	if sim2.try_boss_step_for_test(boss2, Vector2i(0, 1)):
-		push_error("push_fail: step should fail when no push landing")
+	sim.begin_combat()
+	var q: Array = sim.get_action_queue()
+	if q.size() < 4:
+		push_error("boss_queue: expected at least 4 slots, got %d" % q.size())
 		return false
-	if boss2.cell != origin2 or a.cell != Vector2i(2, 3):
-		push_error("push_fail: positions should roll back / stay")
+	if q[0] != a0 or q[1] != boss or q[2] != a1 or q[3] != boss:
+		push_error("boss_queue: expected F0,Boss,F1,Boss pattern")
 		return false
 	return true
 
