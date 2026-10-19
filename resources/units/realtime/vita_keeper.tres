@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="UnitStats_vita_keeper"]
 script = ExtResource("2_stats")
-max_hp = 5
-attack = 3
+max_hp = 4
+attack = 4
 steps_per_turn = 2
 crit_rate_percent = 0
 attack_interval = 1.0

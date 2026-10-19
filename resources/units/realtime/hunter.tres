@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_hunter"]
 script = ExtResource("2_stats")
-max_hp = 4
+max_hp = 3
 attack = 5
 steps_per_turn = 1
 crit_rate_percent = 0
