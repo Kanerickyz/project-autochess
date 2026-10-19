@@ -1,17 +1,15 @@
 extends Control
-## 角色库：列出招募池全部单位，按战斗卡片样式网格展示，可按 tier 筛选。
+## 角色库：用战斗棋盘同款剪影铺招募池单位，按 tier 筛选；长按弹出技能卡。
 
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const RECRUIT_CONFIG_PATH := "res://resources/recruit/default_recruit_config.tres"
-const CARD_SCENE := preload("res://scenes/ui/unit_card_display.tscn")
-const ENTRY_SIZE := Vector2(120, 168)
-const GRID_COLUMNS := 4
+const CATALOG_COLUMNS := 5
 
 @onready var _back_button: Button = %BackButton
 @onready var _tier_filter: HBoxContainer = %TierFilter
-@onready var _unit_grid: GridContainer = %UnitGrid
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
+@onready var _arena: RealtimeArenaView = %CodexArena
 
 var _all_units: Array[UnitData] = []
 ## 0 = 全部；1–6 = 对应 tier
@@ -23,10 +21,9 @@ var _tier_button_group: ButtonGroup = ButtonGroup.new()
 func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	_tier_button_group.allow_unpress = false
-	_unit_grid.columns = GRID_COLUMNS
 	_load_pool()
 	_build_tier_filters()
-	_rebuild_grid()
+	_rebuild_board()
 	_back_button.grab_focus()
 
 
@@ -85,76 +82,35 @@ func _on_tier_pressed(tier: int) -> void:
 	if _selected_tier == tier:
 		return
 	_selected_tier = tier
-	_rebuild_grid()
+	_rebuild_board()
 
 
-func _rebuild_grid() -> void:
-	for child in _unit_grid.get_children():
-		child.queue_free()
-	var shown := 0
+func _filtered_units() -> Array[UnitData]:
+	var out: Array[UnitData] = []
 	for unit in _all_units:
 		if _selected_tier > 0 and maxi(1, unit.tier) != _selected_tier:
 			continue
-		_unit_grid.add_child(_make_entry(unit))
-		shown += 1
-	_empty_label.visible = shown == 0
-	_count_label.text = "共 %d 名" % shown if _selected_tier == 0 else "T%d · %d 名" % [_selected_tier, shown]
+		out.append(unit)
+	return out
 
 
-func _make_entry(unit: UnitData) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = ENTRY_SIZE
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var bg := ColorRect.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.color = Color(0.16, 0.14, 0.12, 0.92)
-	root.add_child(bg)
-
-	var vbox := VBoxContainer.new()
-	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vbox.add_theme_constant_override("separation", 2)
-	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(vbox)
-
-	var name_label := Label.new()
-	name_label.text = unit.display_name if not unit.display_name.is_empty() else unit.id
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.clip_text = true
-	name_label.add_theme_font_size_override("font_size", 12)
-	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(name_label)
-
-	var card_host := Control.new()
-	card_host.custom_minimum_size = Vector2(110, 130)
-	card_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	card_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(card_host)
-
-	var card := CARD_SCENE.instantiate() as UnitCardDisplay
-	if card != null:
-		card_host.add_child(card)
-		card.set_anchors_preset(Control.PRESET_FULL_RECT)
-		card.configure(UnitCardDisplay.SIZE_DEFAULT)
-		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.bind_unit_data(unit)
-		card.set_level(1)
-
-	var tier_label := Label.new()
-	tier_label.text = "T%d" % maxi(1, unit.tier)
-	tier_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tier_label.add_theme_font_size_override("font_size", 13)
-	var tier_color := UnitCardDisplay.TIER_LABEL_COLORS[
-		clampi(maxi(1, unit.tier) - 1, 0, UnitCardDisplay.TIER_LABEL_COLORS.size() - 1)
-	]
-	tier_label.add_theme_color_override("font_color", tier_color)
-	tier_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(tier_label)
-
-	return root
+func _rebuild_board() -> void:
+	var shown := _filtered_units()
+	_empty_label.visible = shown.is_empty()
+	_count_label.text = (
+		"共 %d 名" % shown.size()
+		if _selected_tier == 0
+		else "T%d · %d 名" % [_selected_tier, shown.size()]
+	)
+	if _arena == null:
+		return
+	if shown.is_empty():
+		_arena.clear_catalog_mode()
+		return
+	_arena.set_catalog_units(shown, CATALOG_COLUMNS)
 
 
 func _on_back_pressed() -> void:
+	if _arena != null:
+		_arena.clear_catalog_mode()
 	get_tree().change_scene_to_file(MAIN_MENU_PATH)

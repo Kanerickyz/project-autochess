@@ -99,12 +99,16 @@ var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
+## 角色库模式：整盘铺单位剪影，长按弹技能卡（不走战斗 / 招募）。
+var catalog_active: bool = false
 ## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
 ## Array[Dictionary]：{index, item, cell, cost?, affordable?, label?}
 var recruit_items: Array = []
+## Array[Dictionary]：{unit: UnitData, cell: Vector2i}
+var catalog_units: Array = []
 var recruit_selected_candidate: int = -1
 var recruit_selected_replace_id: int = -1
 var recruit_needs_replace: bool = false
@@ -116,6 +120,7 @@ var recruit_sell_cell: Vector2i = NO_CELL
 var recruit_lock_cell: Vector2i = NO_CELL
 ## 拖到出售落点时预览退金（由控制器写入）。
 var recruit_sell_preview_gold: int = 0
+
 
 var _hover_cell: Vector2i = NO_CELL
 var _drag_active: bool = false
@@ -426,6 +431,7 @@ func _gui_input(event: InputEvent) -> void:
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
+	## catalog_active 走与战斗相同的长按信息卡路径。
 	if event is InputEventMouseMotion:
 		var motion_pos := (event as InputEventMouseMotion).position
 		_hover_cell = tile_to_cell(local_to_tile(motion_pos))
@@ -659,6 +665,18 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	if catalog_active:
+		for i in catalog_units.size():
+			var entry: Variant = catalog_units[i]
+			if not (entry is Dictionary):
+				continue
+			var unit: UnitData = (entry as Dictionary).get("unit") as UnitData
+			var cell: Vector2i = (entry as Dictionary).get("cell", NO_CELL)
+			if unit == null or cell == NO_CELL:
+				continue
+			var tile := Vector2(cell) + Vector2(0.5, 0.5)
+			out.append(_info_from_unit_data(unit, tile_to_local(tile), "catalog:%d" % i))
+		return out
 	if recruit_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
@@ -1055,6 +1073,38 @@ func clear_recruit_mode() -> void:
 	queue_redraw()
 
 
+## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
+func set_catalog_units(units: Array[UnitData], columns: int = 5) -> void:
+	_cancel_press()
+	clear_recruit_mode()
+	sim = null
+	prepare_slots = null
+	enemy_slots = null
+	enemy_previews.clear()
+	catalog_active = true
+	catalog_units.clear()
+	var cols := maxi(1, columns)
+	var rows := maxi(4, int(ceili(float(maxi(1, units.size())) / float(cols))))
+	board_size = Vector2i(cols, rows)
+	for i in units.size():
+		var unit := units[i]
+		if unit == null:
+			continue
+		catalog_units.append({
+			"unit": unit,
+			"cell": Vector2i(i % cols, int(i / cols)),
+		})
+	queue_redraw()
+
+
+func clear_catalog_mode() -> void:
+	_cancel_press()
+	catalog_active = false
+	catalog_units.clear()
+	board_size = Vector2i(5, 8)
+	queue_redraw()
+
+
 func set_half_slide_offscreen(travel: float) -> void:
 	enemy_half_slide_y = -absf(travel)
 	ally_half_slide_y = absf(travel)
@@ -1078,7 +1128,7 @@ func _draw() -> void:
 		PLAYER_TINT,
 	)
 
-	var showing_placement := (placement_active or _drag_active) and not recruit_active
+	var showing_placement := (placement_active or _drag_active) and not recruit_active and not catalog_active
 	if showing_placement:
 		draw_rect(
 			Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
@@ -1086,9 +1136,12 @@ func _draw() -> void:
 		)
 	var mid_y := rect.position.y + mid * px
 	## 中线仅作半场暗示，避免画成明显格网线。
-	draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), Color(MIDLINE, MIDLINE.a * 0.45), 1.0)
+	if not catalog_active:
+		draw_line(Vector2(rect.position.x, mid_y), Vector2(rect.end.x, mid_y), Color(MIDLINE, MIDLINE.a * 0.45), 1.0)
 
-	if recruit_active:
+	if catalog_active:
+		_draw_catalog_units(px)
+	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
 		_draw_recruit_candidates(px, ally_off)
@@ -1293,6 +1346,45 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
+
+
+func _draw_catalog_units(px: float) -> void:
+	var rect := get_board_rect()
+	var ordered := catalog_units.duplicate()
+	ordered.sort_custom(func(a: Variant, b: Variant) -> bool:
+		var ac: Vector2i = (a as Dictionary).get("cell", NO_CELL)
+		var bc: Vector2i = (b as Dictionary).get("cell", NO_CELL)
+		if ac.y == bc.y:
+			return ac.x < bc.x
+		return ac.y < bc.y
+	)
+	var badges: Array[Dictionary] = []
+	for info in ordered:
+		if not (info is Dictionary):
+			continue
+		var cell: Vector2i = info.get("cell", NO_CELL)
+		var unit: UnitData = info.get("unit") as UnitData
+		if cell == NO_CELL or unit == null:
+			continue
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
+		draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.35), false, 1.0)
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var stats := unit.stats
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		_draw_body(
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
+			true, unit.id,
+		)
+		badges.append({
+			"center": tile_to_local(center_tile),
+			"attack": stats.attack if stats != null else 0,
+			"hp": stats.max_hp if stats != null else 0,
+		})
+	for badge in badges:
+		_draw_stat_badges(badge["center"], badge["attack"], badge["hp"], 0.95, px)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
