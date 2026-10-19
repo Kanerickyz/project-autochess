@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="UnitStats_boss_minion_t5"]
 script = ExtResource("2_stats")
-max_hp = 18
-attack = 14
+max_hp = 9
+attack = 7
 steps_per_turn = 2
 crit_rate_percent = 5
 attack_interval = 1.5
