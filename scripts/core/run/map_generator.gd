@@ -1,20 +1,25 @@
 class_name MapGenerator
 extends RefCounted
 
-## 每一层（横向排布）最多节点数。
-const MAX_NODES_PER_FLOOR := 3
+## 未定型连通节点的类型权重（其余填 COMBAT）。
+const _WEIGHT_MYSTERY := 0.22
+const _WEIGHT_ELITE := 0.08
+const _WEIGHT_SHOP := 0.05
+const _WEIGHT_EVENT := 0.10
+const _WEIGHT_ENCHANT := 0.08
 
-## 每条 start→boss 路径必须覆盖的节点类型。
-const _PATH_REQUIRED_TYPES: Array[MapNodeType.Type] = [
+## 邻接/兄弟约束：这些类型不可与已连接父节点或同父兄弟相同。
+const _UNIQUE_ADJ_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.ELITE,
 	MapNodeType.Type.SHOP,
-	MapNodeType.Type.EVENT,
+	MapNodeType.Type.ENCHANT,
 ]
 
 const _MYSTERY_RESOLVE_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.COMBAT,
 	MapNodeType.Type.EVENT,
-	MapNodeType.Type.TREASURE,
+	MapNodeType.Type.SHOP,
+	MapNodeType.Type.ENCHANT,
 ]
 
 
@@ -31,29 +36,25 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	var floor_nodes: Array = []
 
 	# Floor 0: START
-	var start_data := _make_node(next_id, 0, config.column_count / 2, MapNodeType.Type.START, config, rng)
+	var start_data := _make_node(next_id, 0, config.column_count / 2, MapNodeType.Type.START)
 	next_id += 1
 	var start_node := MapNodeRuntime.new(start_data)
 	state.nodes.append(start_node)
 	state.start_node_id = start_node.get_id()
 	floor_nodes.append([start_data])
 
-	# Middle floors
-	for floor_index in range(1, config.floor_count + 1):
-		var count := _pick_node_count(config, floor_index, rng)
-		var columns := _pick_columns(config.column_count, count, rng)
-		var floor_list: Array[MapNodeData] = []
-		for column in columns:
-			var node_type := _pick_node_type(config, floor_index, rng)
-			var node_data := _make_node(next_id, floor_index, column, node_type, config, rng)
-			next_id += 1
+	# Middle floors 1..floor_count：尖塔式不交叉上行路径，共享格合并。
+	var path_result: Dictionary = _build_path_network(config, rng, next_id)
+	next_id = int(path_result["next_id"])
+	var middle_floors: Array = path_result["floor_nodes"]
+	for floor_list in middle_floors:
+		for node_data in floor_list:
 			state.nodes.append(MapNodeRuntime.new(node_data))
-			floor_list.append(node_data)
 		floor_nodes.append(floor_list)
 
 	# Boss floor (top)
 	var boss_floor := config.floor_count + 1
-	var boss_data := _make_node(next_id, boss_floor, config.column_count / 2, MapNodeType.Type.BOSS, config, rng)
+	var boss_data := _make_node(next_id, boss_floor, config.column_count / 2, MapNodeType.Type.BOSS)
 	if config.boss_encounter != null:
 		boss_data.encounter = config.boss_encounter
 	next_id += 1
@@ -62,8 +63,8 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	state.boss_node_id = boss_node.get_id()
 	floor_nodes.append([boss_data])
 
-	_connect_floors(floor_nodes, rng)
-	_ensure_path_guarantees(state, config, rng)
+	_link_start_and_boss(floor_nodes)
+	_assign_node_types(state, config, rng)
 	_assign_encounters(floor_nodes, config, rng)
 	_assign_events(floor_nodes, config, rng)
 
@@ -99,244 +100,308 @@ static func _make_node(
 	floor_index: int,
 	column: int,
 	node_type: MapNodeType.Type,
-	config: RunMapConfig,
-	rng: RandomNumberGenerator,
 ) -> MapNodeData:
 	var node := MapNodeData.new()
 	node.id = id
 	node.floor = floor_index
 	node.column = column
 	node.node_type = node_type
-	if MapNodeType.is_combat(node_type) and node_type != MapNodeType.Type.BOSS:
-		node.encounter = _roll_encounter(config, node_type, rng)
 	return node
 
 
-static func _pick_node_count(config: RunMapConfig, _floor_index: int, rng: RandomNumberGenerator) -> int:
-	var min_count := mini(config.min_nodes_per_floor, config.column_count)
-	var max_count := mini(config.max_nodes_per_floor, config.column_count)
-	min_count = clampi(min_count, 1, MAX_NODES_PER_FLOOR)
-	max_count = clampi(max_count, min_count, MAX_NODES_PER_FLOOR)
-	return rng.randi_range(min_count, max_count)
+static func _resolve_path_count(config: RunMapConfig) -> int:
+	if config.path_count > 0:
+		return clampi(config.path_count, 1, config.column_count)
+	return mini(6, config.column_count)
 
 
-static func _pick_columns(column_count: int, node_count: int, rng: RandomNumberGenerator) -> Array[int]:
-	## 在列宽内尽量均匀取样，减少挤在同一侧（视图层也会再均分，但生成侧先铺开）。
-	var count := clampi(node_count, 1, column_count)
-	if count == 1:
-		return [column_count / 2]
-	var result: Array[int] = []
-	for i in count:
-		var t := float(i) / float(count - 1)
-		var col := int(round(t * float(column_count - 1)))
-		result.append(col)
-	## 轻微抖动一列，避免每层完全垂直对齐成「铁轨」。
-	if column_count > 2 and rng.randf() < 0.55:
-		var jitter_i := rng.randi_range(0, count - 1)
-		var delta := -1 if rng.randf() < 0.5 else 1
-		result[jitter_i] = clampi(result[jitter_i] + delta, 0, column_count - 1)
-	## 去重：冲突时向空列挪。
-	var used: Dictionary = {}
-	for i in result.size():
-		var col: int = int(result[i])
-		if used.has(col):
-			var placed := false
-			for d in range(1, column_count):
-				var left: int = col - d
-				var right: int = col + d
-				if left >= 0 and not used.has(left):
-					result[i] = left
-					used[left] = true
-					placed = true
-					break
-				if right < column_count and not used.has(right):
-					result[i] = right
-					used[right] = true
-					placed = true
-					break
-			if not placed:
-				used[col] = true
-		else:
-			used[col] = true
-	result.sort()
-	return result
+static func _resolve_elite_min_floor(config: RunMapConfig) -> int:
+	if config.elite_min_floor > 0:
+		return config.elite_min_floor
+	return maxi(4, int(config.floor_count / 3))
 
 
-static func _pick_node_type(config: RunMapConfig, floor_index: int, rng: RandomNumberGenerator) -> MapNodeType.Type:
-	if floor_index % config.elite_interval == 0:
-		return MapNodeType.Type.ELITE if rng.randf() < 0.35 else MapNodeType.Type.COMBAT
-	if floor_index >= config.shop_min_floor and rng.randf() < 0.12:
-		return MapNodeType.Type.SHOP
-	if rng.randf() < 0.14:
-		return MapNodeType.Type.EVENT
-	if rng.randf() < 0.10:
-		return MapNodeType.Type.ENCHANT
-	return MapNodeType.Type.COMBAT
-
-
-static func _connect_floors(floor_nodes: Array, rng: RandomNumberGenerator) -> void:
-	for floor_index in range(floor_nodes.size() - 1):
-		var lower: Array = floor_nodes[floor_index]
-		var upper: Array = floor_nodes[floor_index + 1]
-		var incoming_counts: Dictionary = {}
-		for upper_node in upper:
-			incoming_counts[upper_node.id] = 0
-
-		for lower_node in lower:
-			var candidates: Array[MapNodeData] = []
-			for upper_node in upper:
-				if abs(upper_node.column - lower_node.column) <= 2:
-					candidates.append(upper_node)
-			if candidates.is_empty():
-				var nearest := _nearest_node(lower_node, upper)
-				if nearest != null:
-					candidates.append(nearest)
-			candidates.shuffle()
-			var link_count := mini(2, candidates.size())
-			for i in link_count:
-				var target: MapNodeData = candidates[i]
-				if target.id not in lower_node.outgoing_ids:
-					lower_node.outgoing_ids.append(target.id)
-					incoming_counts[target.id] = int(incoming_counts.get(target.id, 0)) + 1
-
-		for upper_node in upper:
-			if int(incoming_counts.get(upper_node.id, 0)) == 0:
-				var source := _nearest_node(upper_node, lower)
-				if source != null and upper_node.id not in source.outgoing_ids:
-					source.outgoing_ids.append(upper_node.id)
-
-
-static func _nearest_node(from_node: MapNodeData, candidates: Array) -> MapNodeData:
-	var best: MapNodeData = null
-	var best_dist := 999
-	for item in candidates:
-		var node := item as MapNodeData
-		if node == null:
-			continue
-		var dist := absi(node.column - from_node.column)
-		if dist < best_dist:
-			best_dist = dist
-			best = node
-	return best
-
-
-## 保证每条 start→boss 路至少含精英、商店、事件各一。
-## 多轮修复：先改战斗/附魔；必要时才挤占其它类型，并在后续轮次补回。
-static func _ensure_path_guarantees(
-	state: MapState,
+## 在 column_count × floor_count 格上画多条不交叉上行路径；共享格合并为同一节点。
+static func _build_path_network(
 	config: RunMapConfig,
 	rng: RandomNumberGenerator,
-) -> void:
-	if state == null or config == null or rng == null:
-		return
-	for _round in 24:
-		var dirty := false
-		for required in _PATH_REQUIRED_TYPES:
-			var avoiding := _find_path_avoiding_type(state, required)
-			if avoiding.is_empty():
-				continue
-			dirty = true
-			if not _convert_node_on_path(state, avoiding, required, config, rng, true):
-				if not _convert_node_on_path(state, avoiding, required, config, rng, false):
-					push_warning(
-						"MapGenerator: could not guarantee %s on all paths"
-						% MapNodeType.display_name(required)
-					)
-					return
-		if not dirty:
-			return
-	push_warning("MapGenerator: path guarantees did not fully converge")
+	next_id: int,
+) -> Dictionary:
+	var column_count := config.column_count
+	var floor_count := config.floor_count
+	var path_count := _resolve_path_count(config)
+
+	## key: Vector2i(floor, column) -> MapNodeData
+	var cell_nodes: Dictionary = {}
+	## floor -> Array[Vector2i(from_col, to_col)] 已画边，用于防交叉
+	var edges_by_floor: Dictionary = {}
+
+	var starts := _pick_path_start_columns(column_count, path_count, rng)
+	for start_col in starts:
+		var col: int = int(start_col)
+		var prev: MapNodeData = null
+		for floor_index in range(1, floor_count + 1):
+			var key := Vector2i(floor_index, col)
+			var node_data: MapNodeData
+			if cell_nodes.has(key):
+				node_data = cell_nodes[key]
+			else:
+				## 占位 COMBAT；类型在 _assign_node_types 中重写。
+				node_data = _make_node(next_id, floor_index, col, MapNodeType.Type.COMBAT)
+				next_id += 1
+				cell_nodes[key] = node_data
+			if prev != null and node_data.id not in prev.outgoing_ids:
+				prev.outgoing_ids.append(node_data.id)
+				var edge_floor := prev.floor
+				if not edges_by_floor.has(edge_floor):
+					edges_by_floor[edge_floor] = []
+				edges_by_floor[edge_floor].append(Vector2i(prev.column, node_data.column))
+			if floor_index < floor_count:
+				col = _pick_next_column(
+					col,
+					column_count,
+					edges_by_floor.get(floor_index, []),
+					rng,
+				)
+			prev = node_data
+
+	var floor_nodes: Array = []
+	for floor_index in range(1, floor_count + 1):
+		var floor_list: Array[MapNodeData] = []
+		var cols: Array[int] = []
+		for key in cell_nodes.keys():
+			var cell: Vector2i = key
+			if cell.x == floor_index:
+				cols.append(cell.y)
+		cols.sort()
+		for c in cols:
+			floor_list.append(cell_nodes[Vector2i(floor_index, c)])
+		## 空层兜底：至少一格，避免断图。
+		if floor_list.is_empty():
+			var fallback_col := column_count / 2
+			var fallback := _make_node(next_id, floor_index, fallback_col, MapNodeType.Type.COMBAT)
+			next_id += 1
+			cell_nodes[Vector2i(floor_index, fallback_col)] = fallback
+			floor_list.append(fallback)
+		floor_nodes.append(floor_list)
+
+	return {"floor_nodes": floor_nodes, "next_id": next_id}
 
 
-static func _find_path_avoiding_type(
-	state: MapState,
-	avoided: MapNodeType.Type,
+static func _pick_path_start_columns(
+	column_count: int,
+	path_count: int,
+	rng: RandomNumberGenerator,
 ) -> Array[int]:
-	## DFS：找一条不含 avoided 类型的 start→boss 路径（起点/Boss 除外）。
-	var path: Array[int] = []
-	var visiting: Dictionary = {}
-	if _dfs_avoiding(state, state.start_node_id, state.boss_node_id, avoided, path, visiting):
-		return path
-	return []
+	var pool: Array[int] = []
+	for c in column_count:
+		pool.append(c)
+	## 洗牌后取前 path_count；不足则允许重复随机列。
+	for i in pool.size():
+		var j := rng.randi_range(i, pool.size() - 1)
+		var tmp: int = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	var starts: Array[int] = []
+	for i in path_count:
+		if i < pool.size():
+			starts.append(pool[i])
+		else:
+			starts.append(rng.randi_range(0, column_count - 1))
+	return starts
 
 
-static func _dfs_avoiding(
-	state: MapState,
-	current_id: int,
-	boss_id: int,
-	avoided: MapNodeType.Type,
-	path: Array[int],
-	visiting: Dictionary,
-) -> bool:
-	if current_id in visiting:
-		return false
-	var node := state.get_node(current_id)
-	if node == null:
-		return false
-	var node_type := node.get_node_type()
-	if (
-		node_type == avoided
-		and node_type != MapNodeType.Type.START
-		and node_type != MapNodeType.Type.BOSS
-	):
-		return false
-	visiting[current_id] = true
-	path.append(current_id)
-	if current_id == boss_id:
-		return true
-	for outgoing_id in node.get_outgoing_ids():
-		if _dfs_avoiding(state, outgoing_id, boss_id, avoided, path, visiting):
+static func _pick_next_column(
+	from_col: int,
+	column_count: int,
+	existing_edges: Array,
+	rng: RandomNumberGenerator,
+) -> int:
+	var candidates: Array[int] = []
+	for delta in [-1, 0, 1]:
+		var to_col: int = from_col + int(delta)
+		if to_col < 0 or to_col >= column_count:
+			continue
+		if _edge_would_cross(from_col, to_col, existing_edges):
+			continue
+		candidates.append(to_col)
+	if candidates.is_empty():
+		## 无合法候选时直行（钳制），避免断路。
+		return clampi(from_col, 0, column_count - 1)
+	return candidates[rng.randi_range(0, candidates.size() - 1)]
+
+
+static func _edge_would_cross(from_col: int, to_col: int, existing_edges: Array) -> bool:
+	for item in existing_edges:
+		var edge: Vector2i = item
+		var a := edge.x
+		var b := edge.y
+		if a == from_col:
+			continue
+		if (from_col < a and to_col > b) or (from_col > a and to_col < b):
 			return true
-	path.pop_back()
-	visiting.erase(current_id)
 	return false
 
 
-static func _convert_node_on_path(
+static func _link_start_and_boss(floor_nodes: Array) -> void:
+	if floor_nodes.size() < 3:
+		return
+	var start_list: Array = floor_nodes[0]
+	var first_floor: Array = floor_nodes[1]
+	var top_floor: Array = floor_nodes[floor_nodes.size() - 2]
+	var boss_list: Array = floor_nodes[floor_nodes.size() - 1]
+	if start_list.is_empty() or boss_list.is_empty():
+		return
+	var start_data: MapNodeData = start_list[0]
+	var boss_data: MapNodeData = boss_list[0]
+	for node in first_floor:
+		var mid: MapNodeData = node
+		if mid.id not in start_data.outgoing_ids:
+			start_data.outgoing_ids.append(mid.id)
+	for node in top_floor:
+		var top: MapNodeData = node
+		if boss_data.id not in top.outgoing_ids:
+			top.outgoing_ids.append(boss_data.id)
+
+
+static func _assign_node_types(
 	state: MapState,
-	path: Array[int],
-	required: MapNodeType.Type,
-	config: RunMapConfig,
-	rng: RandomNumberGenerator,
-	combat_only: bool,
-) -> bool:
-	var candidates: Array[MapNodeRuntime] = []
-	for node_id in path:
-		var runtime := state.get_node(node_id)
-		if runtime == null or runtime.data == null:
-			continue
-		var node_type := runtime.get_node_type()
-		if node_type == MapNodeType.Type.START or node_type == MapNodeType.Type.BOSS:
-			continue
-		if node_type == required:
-			continue
-		if combat_only:
-			if node_type == MapNodeType.Type.COMBAT or node_type == MapNodeType.Type.ENCHANT:
-				candidates.append(runtime)
-		else:
-			candidates.append(runtime)
-	if candidates.is_empty():
-		return false
-	var pick := candidates[rng.randi_range(0, candidates.size() - 1)]
-	_retype_node(pick.data, required, config, rng)
-	return true
-
-
-static func _retype_node(
-	data: MapNodeData,
-	new_type: MapNodeType.Type,
 	config: RunMapConfig,
 	rng: RandomNumberGenerator,
 ) -> void:
-	if data == null:
-		return
-	data.node_type = new_type
-	data.encounter = null
-	data.event_data = null
-	if MapNodeType.is_combat(new_type) and new_type != MapNodeType.Type.BOSS:
-		data.encounter = _roll_encounter(config, new_type, rng)
-	elif new_type == MapNodeType.Type.EVENT and not config.event_pool.is_empty():
-		data.event_data = config.event_pool[rng.randi_range(0, config.event_pool.size() - 1)]
+	var elite_min := _resolve_elite_min_floor(config)
+	## Floor 1：全部 COMBAT。
+	for node in state.nodes:
+		if node.data == null:
+			continue
+		if node.get_floor() == 1:
+			node.data.node_type = MapNodeType.Type.COMBAT
+			node.data.encounter = null
+			node.data.event_data = null
+
+	var assignable: Array[MapNodeData] = []
+	for node in state.nodes:
+		if node.data == null:
+			continue
+		var floor_index := node.get_floor()
+		if floor_index < 2 or floor_index > config.floor_count:
+			continue
+		## 先清空为「未定型」，权重领取失败后再填 COMBAT。
+		node.data.node_type = MapNodeType.Type.COMBAT
+		node.data.encounter = null
+		node.data.event_data = null
+		assignable.append(node.data)
+
+	assignable.sort_custom(func(a: MapNodeData, b: MapNodeData) -> bool:
+		if a.floor != b.floor:
+			return a.floor < b.floor
+		return a.column < b.column
+	)
+
+	var bucket := _build_type_bucket(assignable.size(), rng)
+	var pending: Array[MapNodeData] = []
+	for data in assignable:
+		var placed := false
+		for i in bucket.size():
+			var candidate: MapNodeType.Type = bucket[i]
+			if _is_type_legal(state, data, candidate, config, elite_min):
+				data.node_type = candidate
+				bucket.remove_at(i)
+				placed = true
+				break
+		if not placed:
+			pending.append(data)
+
+	for data in pending:
+		data.node_type = MapNodeType.Type.COMBAT
+
+
+static func _build_type_bucket(count: int, rng: RandomNumberGenerator) -> Array[MapNodeType.Type]:
+	var result: Array[MapNodeType.Type] = []
+	if count <= 0:
+		return result
+	var specs: Array[Dictionary] = [
+		{"type": MapNodeType.Type.MYSTERY, "weight": _WEIGHT_MYSTERY},
+		{"type": MapNodeType.Type.ELITE, "weight": _WEIGHT_ELITE},
+		{"type": MapNodeType.Type.SHOP, "weight": _WEIGHT_SHOP},
+		{"type": MapNodeType.Type.EVENT, "weight": _WEIGHT_EVENT},
+		{"type": MapNodeType.Type.ENCHANT, "weight": _WEIGHT_ENCHANT},
+	]
+	for spec in specs:
+		var n := int(round(float(count) * float(spec["weight"])))
+		for _i in n:
+			result.append(spec["type"])
+	while result.size() < count:
+		result.append(MapNodeType.Type.COMBAT)
+	## 四舍五入可能超额：优先丢掉 COMBAT，再从末尾裁。
+	while result.size() > count:
+		var combat_i := result.rfind(MapNodeType.Type.COMBAT)
+		if combat_i >= 0:
+			result.remove_at(combat_i)
+		else:
+			result.pop_back()
+	## 洗牌
+	for i in result.size():
+		var j := rng.randi_range(i, result.size() - 1)
+		var tmp: MapNodeType.Type = result[i]
+		result[i] = result[j]
+		result[j] = tmp
+	return result
+
+
+static func _is_type_legal(
+	state: MapState,
+	data: MapNodeData,
+	node_type: MapNodeType.Type,
+	config: RunMapConfig,
+	elite_min: int,
+) -> bool:
+	if node_type == MapNodeType.Type.ELITE and data.floor < elite_min:
+		return false
+	if node_type == MapNodeType.Type.SHOP and data.floor < config.shop_min_floor:
+		return false
+	if node_type not in _UNIQUE_ADJ_TYPES:
+		return true
+
+	var parents := _parent_nodes(state, data.id)
+	for parent in parents:
+		if parent.get_node_type() == node_type:
+			return false
+
+	var siblings := _sibling_nodes(state, data.id, parents)
+	for sibling in siblings:
+		if sibling.get_id() == data.id:
+			continue
+		if sibling.get_node_type() == node_type:
+			return false
+	return true
+
+
+static func _parent_nodes(state: MapState, node_id: int) -> Array[MapNodeRuntime]:
+	var result: Array[MapNodeRuntime] = []
+	for node in state.nodes:
+		if node_id in node.get_outgoing_ids():
+			result.append(node)
+	return result
+
+
+static func _sibling_nodes(
+	state: MapState,
+	node_id: int,
+	parents: Array[MapNodeRuntime],
+) -> Array[MapNodeRuntime]:
+	var seen: Dictionary = {}
+	var result: Array[MapNodeRuntime] = []
+	for parent in parents:
+		for outgoing_id in parent.get_outgoing_ids():
+			if outgoing_id == node_id or seen.has(outgoing_id):
+				continue
+			var sibling := state.get_node(outgoing_id)
+			if sibling == null:
+				continue
+			seen[outgoing_id] = true
+			result.append(sibling)
+	return result
 
 
 static func _assign_encounters(floor_nodes: Array, config: RunMapConfig, rng: RandomNumberGenerator) -> void:

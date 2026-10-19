@@ -11,7 +11,8 @@ static func run_all() -> bool:
 	passed = _test_batch_generation() and passed
 	passed = _test_only_v1_node_types() and passed
 	passed = _test_max_nodes_per_floor() and passed
-	passed = _test_path_guarantees() and passed
+	passed = _test_sts_constraints() and passed
+	passed = _test_edges_do_not_cross() and passed
 	if passed:
 		print("MapGeneratorTest: all passed")
 	else:
@@ -23,9 +24,11 @@ static func _make_test_config() -> RunMapConfig:
 	var config := RunMapConfig.new()
 	config.floor_count = 10
 	config.min_nodes_per_floor = 2
-	config.max_nodes_per_floor = 3
+	config.max_nodes_per_floor = 7
 	config.column_count = 7
+	config.path_count = 6
 	config.shop_min_floor = 4
+	config.elite_min_floor = 6
 	config.elite_interval = 3
 
 	var wave := WaveData.new()
@@ -73,7 +76,7 @@ static func _test_all_floors_connected() -> bool:
 	for node in state.nodes:
 		if node.get_node_type() == MapNodeType.Type.BOSS:
 			continue
-		if node.get_outgoing_ids().is_empty() and node.get_node_type() != MapNodeType.Type.BOSS:
+		if node.get_outgoing_ids().is_empty():
 			push_error("MapGeneratorTest: node %d has no outgoing edges" % node.get_id())
 			return false
 	return true
@@ -107,6 +110,30 @@ static func _test_mystery_resolves() -> bool:
 	if node.resolved_type == MapNodeType.Type.MYSTERY:
 		push_error("MapGeneratorTest: mystery did not resolve")
 		return false
+	var allowed: Array[MapNodeType.Type] = [
+		MapNodeType.Type.COMBAT,
+		MapNodeType.Type.EVENT,
+		MapNodeType.Type.SHOP,
+		MapNodeType.Type.ENCHANT,
+	]
+	if node.resolved_type not in allowed:
+		push_error(
+			"MapGeneratorTest: mystery resolved to disallowed type %s"
+			% MapNodeType.display_name(node.resolved_type)
+		)
+		return false
+	## 多样本：解析池不含 TREASURE / REST / ELITE / BOSS。
+	for seed in 40:
+		rng.seed = seed
+		var sample := MapNodeRuntime.new(data.duplicate(true) as MapNodeData)
+		sample.data.node_type = MapNodeType.Type.MYSTERY
+		MapGenerator.resolve_mystery(sample, rng)
+		if sample.resolved_type not in allowed:
+			push_error(
+				"MapGeneratorTest: seed %d mystery resolved to %s"
+				% [seed, MapNodeType.display_name(sample.resolved_type)]
+			)
+			return false
 	return true
 
 
@@ -131,6 +158,12 @@ static func _test_only_v1_node_types() -> bool:
 		MapNodeType.Type.SHOP,
 		MapNodeType.Type.EVENT,
 		MapNodeType.Type.ENCHANT,
+		MapNodeType.Type.MYSTERY,
+	]
+	var forbidden: Array[MapNodeType.Type] = [
+		MapNodeType.Type.REST,
+		MapNodeType.Type.TREASURE,
+		MapNodeType.Type.SACRIFICE,
 	]
 	var config := _make_test_config()
 	var seen: Dictionary = {}
@@ -140,7 +173,7 @@ static func _test_only_v1_node_types() -> bool:
 		var state := MapGenerator.generate(config, rng)
 		for node in state.nodes:
 			var node_type := node.get_node_type()
-			if node_type not in allowed:
+			if node_type in forbidden or node_type not in allowed:
 				push_error(
 					"MapGeneratorTest: seed %d produced non-v1 node type %s"
 					% [seed, MapNodeType.display_name(node_type)]
@@ -150,14 +183,18 @@ static func _test_only_v1_node_types() -> bool:
 	if not seen.has(MapNodeType.Type.ENCHANT):
 		push_error("MapGeneratorTest: enchant node never generated in 100 seeds")
 		return false
+	if not seen.has(MapNodeType.Type.MYSTERY):
+		push_error("MapGeneratorTest: mystery node never generated in 100 seeds")
+		return false
 	return true
 
 
 static func _test_max_nodes_per_floor() -> bool:
 	var config := _make_test_config()
-	## 即便配置写大，生成器也应钳到 MAX_NODES_PER_FLOOR。
+	## 路径合并后每层节点数不超过 column_count。
 	config.max_nodes_per_floor = 9
 	config.min_nodes_per_floor = 3
+	config.path_count = 6
 	for seed in 50:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed
@@ -170,33 +207,115 @@ static func _test_max_nodes_per_floor() -> bool:
 			by_floor[floor_index] = int(by_floor.get(floor_index, 0)) + 1
 		for floor_index in by_floor.keys():
 			var count: int = int(by_floor[floor_index])
-			if count > MapGenerator.MAX_NODES_PER_FLOOR:
+			if count > config.column_count:
 				push_error(
 					"MapGeneratorTest: seed %d floor %d has %d nodes (max %d)"
-					% [seed, floor_index, count, MapGenerator.MAX_NODES_PER_FLOOR]
+					% [seed, floor_index, count, config.column_count]
 				)
 				return false
 	return true
 
 
-static func _test_path_guarantees() -> bool:
+static func _test_sts_constraints() -> bool:
 	var config := _make_test_config()
-	var required: Array[MapNodeType.Type] = [
+	var unique_types: Array[MapNodeType.Type] = [
 		MapNodeType.Type.ELITE,
 		MapNodeType.Type.SHOP,
-		MapNodeType.Type.EVENT,
+		MapNodeType.Type.ENCHANT,
 	]
 	for seed in 80:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed
 		var state := MapGenerator.generate(config, rng)
-		for req in required:
-			if not MapGenerator._find_path_avoiding_type(state, req).is_empty():
+		for node in state.nodes:
+			var node_type := node.get_node_type()
+			var floor_index := node.get_floor()
+			if floor_index == 1 and node_type != MapNodeType.Type.COMBAT:
 				push_error(
-					"MapGeneratorTest: seed %d has a path missing %s"
-					% [seed, MapNodeType.display_name(req)]
+					"MapGeneratorTest: seed %d floor1 node %d is %s (expected COMBAT)"
+					% [seed, node.get_id(), MapNodeType.display_name(node_type)]
 				)
 				return false
+			if node_type == MapNodeType.Type.ELITE and floor_index < config.elite_min_floor:
+				push_error(
+					"MapGeneratorTest: seed %d elite on floor %d < elite_min %d"
+					% [seed, floor_index, config.elite_min_floor]
+				)
+				return false
+			if node_type == MapNodeType.Type.SHOP and floor_index < config.shop_min_floor:
+				push_error(
+					"MapGeneratorTest: seed %d shop on floor %d < shop_min %d"
+					% [seed, floor_index, config.shop_min_floor]
+				)
+				return false
+			if node_type not in unique_types:
+				continue
+			## 父节点不可同为 ELITE/SHOP/ENCHANT。
+			for other in state.nodes:
+				if node.get_id() not in other.get_outgoing_ids():
+					continue
+				if other.get_node_type() == node_type:
+					push_error(
+						"MapGeneratorTest: seed %d node %d type %s matches parent %d"
+						% [seed, node.get_id(), MapNodeType.display_name(node_type), other.get_id()]
+					)
+					return false
+				## 同父兄弟不可相同。
+				for sibling_id in other.get_outgoing_ids():
+					if sibling_id == node.get_id():
+						continue
+					var sibling := state.get_node(sibling_id)
+					if sibling != null and sibling.get_node_type() == node_type:
+						push_error(
+							"MapGeneratorTest: seed %d siblings %d/%d share type %s"
+							% [
+								seed,
+								node.get_id(),
+								sibling_id,
+								MapNodeType.display_name(node_type),
+							]
+						)
+						return false
+	return true
+
+
+static func _test_edges_do_not_cross() -> bool:
+	var config := _make_test_config()
+	for seed in 50:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		var state := MapGenerator.generate(config, rng)
+		## 按层收集出边 (from_col -> to_col)，同层边不可交叉。
+		var edges_by_floor: Dictionary = {}
+		for node in state.nodes:
+			var from_floor := node.get_floor()
+			if node.get_node_type() == MapNodeType.Type.BOSS:
+				continue
+			for outgoing_id in node.get_outgoing_ids():
+				var target := state.get_node(outgoing_id)
+				if target == null:
+					continue
+				if target.get_floor() != from_floor + 1:
+					continue
+				if not edges_by_floor.has(from_floor):
+					edges_by_floor[from_floor] = []
+				edges_by_floor[from_floor].append(
+					Vector2i(node.get_column(), target.get_column())
+				)
+		for floor_index in edges_by_floor.keys():
+			var edges: Array = edges_by_floor[floor_index]
+			for i in edges.size():
+				var a: Vector2i = edges[i]
+				for j in range(i + 1, edges.size()):
+					var b: Vector2i = edges[j]
+					if a.x == b.x:
+						continue
+					if (a.x < b.x and a.y > b.y) or (a.x > b.x and a.y < b.y):
+						push_error(
+							"MapGeneratorTest: seed %d crossing edges on floor %d (%d→%d vs %d→%d)"
+							% [seed, floor_index, a.x, a.y, b.x, b.y]
+						)
+						return false
 	return true
 
 
