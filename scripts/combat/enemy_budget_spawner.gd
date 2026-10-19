@@ -7,9 +7,10 @@ extends RefCounted
 const MAX_SEATS_HARD := 10
 
 
-## 返回书写顺序（前排左→右，再后排）的字典数组：
+## 返回书写顺序（前排→后排，同行中心向外）的字典数组：
 ## { "unit_data": UnitData, "seat_index": int, "power_u": float }
 ## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略。
+
 static func roll(
 	wave: WaveData,
 	config: SpawnBudgetConfig,
@@ -465,11 +466,16 @@ static func _pick_closest_unit(
 
 ## 敌方前排水平居中座位索引（5 列 → 2）。
 static func front_center_seat_index(cols: int) -> int:
-	return maxi(1, cols) / 2
+	return SeatLayout.front_center_seat_index(cols)
 
 
-## 落座：近战→前排、远程→后排；同行 max_hp→U→id；溢出对向；书写序前排再后排。
-## 首领（is_boss_leader）强制落在前排水平居中座。
+## 敌方最后一排水平居中（Boss 落点；5 列 × 满座 → 后排中）。
+static func back_center_seat_index(cols: int, seat_count: int) -> int:
+	return SeatLayout.back_center_seat_index(cols, seat_count)
+
+
+## 落座：近战→前排、远程→后排；同行 max_hp→U→id、中心向外（53124）；溢出对向。
+## 首领（is_boss_leader）强制落在最后一排水平居中座。
 static func _seat_units(
 	units: Array[UnitData],
 	cols: int,
@@ -478,6 +484,7 @@ static func _seat_units(
 ) -> Array:
 	var front_cap := mini(cols, seat_count)
 	var back_cap := maxi(0, seat_count - front_cap)
+	var col_order := SeatLayout.row_column_fill_order(cols)
 	var melee: Array[UnitData] = []
 	var ranged: Array[UnitData] = []
 	for u in units:
@@ -495,34 +502,40 @@ static func _seat_units(
 
 	var front_q: Array[UnitData] = melee.duplicate()
 	var back_q: Array[UnitData] = ranged.duplicate()
-	## 前排满：近战溢后排；后排满：远程溢前排。
+	## 前排满：近战溢后排；后排满：远程溢前排。同行按中心向外填列。
 	var front_filled := 0
 	var back_filled := 0
 	var overflow_melee: Array[UnitData] = []
 	while not front_q.is_empty():
 		var u: UnitData = front_q.pop_front()
 		if front_filled < front_cap:
-			seats[front_filled] = u
+			var front_seat := col_order[front_filled]
+			seats[front_seat] = u
 			front_filled += 1
 		else:
 			overflow_melee.append(u)
 	var overflow_ranged: Array[UnitData] = []
 	while not back_q.is_empty():
 		var u2: UnitData = back_q.pop_front()
-		var back_index := front_cap + back_filled
-		if back_filled < back_cap and back_index < seat_count:
-			seats[back_index] = u2
-			back_filled += 1
+		if back_filled < back_cap:
+			var back_seat := front_cap + col_order[back_filled]
+			if back_seat < seat_count:
+				seats[back_seat] = u2
+				back_filled += 1
+			else:
+				overflow_ranged.append(u2)
 		else:
 			overflow_ranged.append(u2)
 	for u3 in overflow_melee:
-		var back_index2 := front_cap + back_filled
-		if back_filled < back_cap and back_index2 < seat_count:
-			seats[back_index2] = u3
-			back_filled += 1
+		if back_filled < back_cap:
+			var back_seat2 := front_cap + col_order[back_filled]
+			if back_seat2 < seat_count:
+				seats[back_seat2] = u3
+				back_filled += 1
 	for u4 in overflow_ranged:
 		if front_filled < front_cap:
-			seats[front_filled] = u4
+			var front_seat2 := col_order[front_filled]
+			seats[front_seat2] = u4
 			front_filled += 1
 		else:
 			## 仍满则找任意空座
@@ -531,7 +544,7 @@ static func _seat_units(
 					seats[s] = u4
 					break
 
-	_place_boss_leaders_front_center(seats, cols, front_cap)
+	_place_boss_leaders_back_center(seats, cols, seat_count)
 
 	var result: Array = []
 	for seat_i in seat_count:
@@ -546,12 +559,12 @@ static func _seat_units(
 	return result
 
 
-## 将 is_boss_leader 与前排居中座交换（已在居中则不动）。
-static func _place_boss_leaders_front_center(seats: Array, cols: int, front_cap: int) -> void:
-	if seats.is_empty() or front_cap <= 0:
+## 将 is_boss_leader 与后排居中座交换（已在居中则不动）。
+static func _place_boss_leaders_back_center(seats: Array, cols: int, seat_count: int) -> void:
+	if seats.is_empty() or seat_count <= 0:
 		return
-	var center_i := front_center_seat_index(cols)
-	if center_i < 0 or center_i >= front_cap or center_i >= seats.size():
+	var center_i := back_center_seat_index(cols, seat_count)
+	if center_i < 0 or center_i >= seats.size():
 		return
 	for s in seats.size():
 		var u: UnitData = seats[s] as UnitData
@@ -563,6 +576,7 @@ static func _place_boss_leaders_front_center(seats: Array, cols: int, front_cap:
 		seats[center_i] = u
 		seats[s] = displaced
 		return
+
 
 
 static func _sort_for_seat(units: Array[UnitData], cfg: SpawnBudgetConfig) -> void:

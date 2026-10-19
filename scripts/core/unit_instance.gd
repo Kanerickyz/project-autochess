@@ -81,12 +81,25 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 	return unit
 
 
+## 远程（projectile_speed>0）攻距硬顶：attack_range / attack_reach 最多 2 格。
+const RANGED_ATTACK_CELLS_MAX := 2
+
+
 static func from_unit_data(data: UnitData, cell: Vector2i, team: Team) -> UnitInstance:
 	var unit := UnitInstance.new(data.id, cell, team)
 	unit.unit_data = data
 	unit.stats = data.stats.duplicate_stats() if data.stats else UnitStats.new()
+	_clamp_ranged_attack_distance(unit.stats)
 	unit.current_hp = unit.stats.max_hp
 	return unit
+
+
+static func _clamp_ranged_attack_distance(stats: UnitStats) -> void:
+	if stats == null or stats.projectile_speed <= 0.0:
+		return
+	stats.attack_range = mini(stats.attack_range, RANGED_ATTACK_CELLS_MAX)
+	stats.attack_reach = minf(stats.attack_reach, float(RANGED_ATTACK_CELLS_MAX))
+
 
 
 func is_alive() -> bool:

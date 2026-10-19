@@ -258,14 +258,23 @@ func remove_entry(entry_id: int) -> bool:
 	return true
 
 
-## 第一个空友方座位（0 .. slot_count-1 固定遍历）；无空返回 -1。
+## 第一个空友方座位：先前排到后排，同行中心向外（5 列序 53124）；无空返回 -1。
 func find_first_empty_seat() -> int:
 	var occupied := _occupied_seat_set()
+	var rows := get_seat_rows()
+	var cols := get_seat_cols()
 	var n := get_slot_count()
+	for seat_i in SeatLayout.iter_seats_center_out(rows, cols):
+		if seat_i < 0 or seat_i >= n:
+			continue
+		if not occupied.has(seat_i):
+			return seat_i
+	## 网格外残留空座（配置异常时兜底）
 	for i in n:
 		if not occupied.has(i):
 			return i
 	return -1
+
 
 
 func is_seat_free(seat_index: int) -> bool:

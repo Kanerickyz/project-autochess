@@ -491,6 +491,7 @@ func _advance_current_actor() -> void:
 		return
 
 	if decision.summon:
+		rt.state = RtUnit.State.SUMMONING
 		_boss_perform_summon(rt)
 		_actor_has_attacked = true
 		_end_current_actor_turn()
@@ -501,9 +502,11 @@ func _advance_current_actor() -> void:
 		and decision.teleport_cell != Vector2i(-1, -1)
 		and _actor_steps_left > 0
 	):
+		rt.state = RtUnit.State.MOVING
 		if _boss_try_teleport(rt, decision.teleport_cell):
 			_actor_steps_left -= 1
 			return
+
 
 	if decision.step != Vector2i.ZERO and _actor_steps_left > 0 and not rt.is_boss_leader():
 		var dest: Vector2i = rt.cell + decision.step
