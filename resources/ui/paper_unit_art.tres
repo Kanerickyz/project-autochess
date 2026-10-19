@@ -33,6 +33,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_vita_keeper_blue.png" id="b_vita_keeper"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_blue.png" id="b_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_blue.png" id="b_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
@@ -65,10 +66,12 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_vita_keeper_red.png" id="r_vita_keeper"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_red.png" id="r_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
 
 [resource]
 script = ExtResource("1_cat")
 archetype_by_unit_id = {
+"apothecary": &"apothecary",
 "archer": &"archer",
 "banner": &"banner",
 "barbarian": &"axe",
@@ -112,6 +115,7 @@ archetype_by_unit_id = {
 }
 default_archetype = &"spear"
 player_textures = {
+&"apothecary": ExtResource("b_apothecary"),
 &"archer": ExtResource("b_archer"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
@@ -148,6 +152,7 @@ player_textures = {
 &"wardrum": ExtResource("b_wardrum")
 }
 enemy_textures = {
+&"apothecary": ExtResource("r_apothecary"),
 &"archer": ExtResource("r_archer"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
