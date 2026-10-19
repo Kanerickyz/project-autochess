@@ -32,7 +32,7 @@ static func roll(
 	seat_count = mini(seat_count, MAX_SEATS_HARD)
 	var cols := maxi(1, seat_cols)
 
-	var pool := _resolve_pool(cfg, fallback_pool, tier_index)
+	var pool := _resolve_pool(cfg, fallback_pool, tier_index, team_entries)
 	if pool.is_empty():
 		push_warning("EnemyBudgetSpawner: filtered enemy pool empty (tier_index=%d)" % tier_index)
 		return _seat_units(_collect_fixed_units(wave), cols, seat_count, cfg)
@@ -116,6 +116,7 @@ static func _resolve_pool(
 	cfg: SpawnBudgetConfig,
 	fallback_pool: Array[UnitData],
 	tier_index: int,
+	team_entries: Array = [],
 ) -> Array[UnitData]:
 	var source: Array[UnitData] = []
 	if cfg != null and not cfg.enemy_pool.is_empty():
@@ -124,13 +125,34 @@ static func _resolve_pool(
 		source = fallback_pool
 		push_warning("EnemyBudgetSpawner: enemy budget pool empty; falling back to LevelData.enemy_pool")
 
-	var max_tier := TierUnlock.get_max_unlocked_tier(tier_index + 1)
+	## 品阶硬过滤：进度解锁 ∩ 玩家现有队伍最高品阶（有队伍时），避免刷出高于玩家持有的角色。
+	var progress_tier := TierUnlock.get_max_unlocked_tier(tier_index + 1)
+	var max_tier := progress_tier
+	var player_max := _player_roster_max_tier(team_entries)
+	if player_max > 0:
+		max_tier = mini(progress_tier, player_max)
 	var filtered: Array = TierUnlock.filter_by_tier(source, _get_unit_tier, max_tier)
 	var pool: Array[UnitData] = []
 	for item in filtered:
 		if item is UnitData and (item as UnitData).stats != null:
 			pool.append(item as UnitData)
 	return pool
+
+
+static func _player_roster_max_tier(team_entries: Array) -> int:
+	var max_tier := 0
+	for entry in team_entries:
+		if entry == null:
+			continue
+		var unit: UnitData = null
+		if entry is DeckEntry:
+			unit = (entry as DeckEntry).unit
+		elif entry is UnitData:
+			unit = entry as UnitData
+		if unit == null:
+			continue
+		max_tier = maxi(max_tier, maxi(1, unit.tier))
+	return max_tier
 
 
 static func _get_unit_tier(item: Variant) -> int:

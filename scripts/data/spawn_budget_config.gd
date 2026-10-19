@@ -162,7 +162,8 @@ func get_floor_e_max(floor_index: int) -> float:
 	return maxf(get_floor_e_min(floor_i), get_p_mid(floor_i) * GUARD_MAX_RATIO)
 
 
-## 普通/精英：E＝clamp(κ×S, 层下限, 层上限)。Boss：不吃真队，返回 0。
+## 普通/精英：E＝κ×S，再经层护栏。有真队（S>0）时下限不得高于 κ×S，
+## 避免把目标抬到显著强于玩家；无真队时仍用层下限保底。Boss：返回 0。
 ## team_power_s 为进点瞬间整局队伍强度；负值按 0 处理。
 func get_target_pressure(
 	floor_index: int,
@@ -175,7 +176,9 @@ func get_target_pressure(
 	var e_raw := get_kappa(node_type) * s
 	var e_min := get_floor_e_min(floor_index)
 	var e_max := get_floor_e_max(floor_index)
-	return clampf(e_raw, e_min, e_max)
+	if s > 0.0:
+		e_min = minf(e_min, e_raw)
+	return clampf(e_raw, e_min, maxf(e_min, e_max))
 
 
 func get_enemy_pool_or_empty() -> Array[UnitData]:

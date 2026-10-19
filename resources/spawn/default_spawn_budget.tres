@@ -12,11 +12,29 @@
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_rider.tres" id="u_rider"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_valkyrie.tres" id="u_valk"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_mini_pekka.tres" id="u_pekka"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_spike_shield.tres" id="u_spike"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_rune_plate.tres" id="u_rune"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_banner.tres" id="u_banner"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_relic_aegis.tres" id="u_relic"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_dirge_horn.tres" id="u_dirge"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_wardrum.tres" id="u_drum"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_crossbow.tres" id="u_xbow"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_hunter.tres" id="u_hunt"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_maul.tres" id="u_maul"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_gravewright.tres" id="u_grave"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_soulcaller.tres" id="u_soul"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_echo_spear.tres" id="u_echo"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mirror_warden.tres" id="u_mirror"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_horsebow.tres" id="u_hbow"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_blood_acolyte.tres" id="u_blood"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_vita_keeper.tres" id="u_vita"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_iron_heart.tres" id="u_iron"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mend_friar.tres" id="u_mend"]
 
 [resource]
 script = ExtResource("1_cfg")
 enabled = true
-enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka")])
+enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend")])
 floor_mid_power = Array[float]([0.0, 40.0, 54.0, 68.0, 76.0, 84.0, 90.0, 96.0, 102.0, 106.0, 110.0, 112.0, 114.0, 118.0])
 floor_e_min = Array[float]([19.8, 22.0, 29.7, 37.4, 41.8, 46.2, 49.5, 52.8, 56.1, 58.3, 60.5, 61.6, 62.7, 64.9])
 floor_e_max = Array[float]([57.6, 64.0, 86.4, 108.8, 121.6, 134.4, 144.0, 153.6, 163.2, 169.6, 176.0, 179.2, 182.4, 188.8])
