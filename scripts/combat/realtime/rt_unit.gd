@@ -28,6 +28,8 @@ var spawn_time: float = 0.0
 var step_t: float = 1.0
 var step_from: Vector2 = Vector2.ZERO
 var step_to: Vector2 = Vector2.ZERO
+## 首领召唤冷却：剩余几次自己的行动后才可再召（见 UnitData.summon_cooldown_actions）。
+var boss_summon_cooldown_left: int = 0
 
 
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:

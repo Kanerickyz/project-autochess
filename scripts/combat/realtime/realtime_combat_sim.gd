@@ -424,6 +424,9 @@ func _begin_next_actor_turn() -> void:
 			_actor_turn_active = true
 			_actor_has_attacked = false
 			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate)
+			## 首领召唤冷却按「自己的行动次数」递减。
+			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
+				candidate.boss_summon_cooldown_left -= 1
 			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
 			var payload := CombatEventPayload.new()
 			payload.source = candidate.unit
@@ -861,6 +864,8 @@ func _count_alive_boss_summons() -> int:
 func _boss_can_summon(actor: RtUnit) -> bool:
 	if actor == null or not actor.is_boss_leader() or not actor.is_alive():
 		return false
+	if actor.boss_summon_cooldown_left > 0:
+		return false
 	var data := actor.unit.unit_data if actor.unit != null else null
 	if data == null or data.pick_summon_unit(_rng) == null:
 		return false
@@ -895,6 +900,7 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 			body.summon_pool = []
 			body.summon_max_alive = 0
 			body.summon_per_action = 0
+			body.summon_cooldown_actions = 0
 			minion.unit_data = body
 		minion.is_combat_summon = true
 		minion.cannot_move = false
@@ -910,6 +916,8 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		if rt.state == RtUnit.State.DEPLOYING:
 			rt.state = RtUnit.State.MOVING
 		spawned += 1
+	if spawned > 0:
+		actor.boss_summon_cooldown_left = maxi(0, data.summon_cooldown_actions)
 
 
 ## 足迹邻格空位优先 → 再敌半场空格。

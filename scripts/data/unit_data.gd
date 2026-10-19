@@ -31,6 +31,8 @@ extends Resource
 @export_range(0, 20, 1) var summon_max_alive: int = 0
 ## 单次召唤只数。
 @export_range(0, 10, 1) var summon_per_action: int = 1
+## 召唤成功后，首领需再过多少次自己的行动才能再次召唤；0 = 无冷却。
+@export_range(0, 20, 1) var summon_cooldown_actions: int = 0
 
 
 func pick_summon_unit(rng: RandomNumberGenerator = null) -> UnitData:

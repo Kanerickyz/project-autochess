@@ -35,6 +35,7 @@ static func run_all() -> bool:
 	ok = _check("boss_no_counter_when_targeted", _test_boss_no_counter_when_targeted()) and ok
 	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
+	ok = _check("boss_summon_respects_cooldown", _test_boss_summon_respects_cooldown()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
 	ok = _check("boss_teleport_to_empty_cell", _test_boss_teleport_to_empty_cell()) and ok
 	ok = _check("boss_queue_after_each_ally", _test_boss_queue_after_each_ally()) and ok
@@ -105,6 +106,7 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 		data.summon_unit = overrides["summon_unit"] as UnitData
 	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))
 	data.summon_per_action = int(overrides.get("summon_per_action", 1))
+	data.summon_cooldown_actions = int(overrides.get("summon_cooldown_actions", 0))
 	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
 	## 测例可显式覆盖攻距（绕过远程硬顶），专用 clamp 用例直接测 from_unit_data。
 	if overrides.has("attack_range"):
@@ -1105,6 +1107,46 @@ static func _test_boss_summon_respects_cap() -> bool:
 		if n2 > 3:
 			push_error("summon_cap: drifted above 3 (%d)" % n2)
 			return false
+	return true
+
+
+## 召后冷却：成功召唤后进入冷却；冷却归零前不可再召。
+static func _test_boss_summon_respects_cooldown() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 55)
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"sight_range": 0.0, "attack_reach": 0.0, "id": "far_ally",
+		}),
+		Vector2(16.5, 30.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "sight_range": 40.0, "id": "boss_cd",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": make_summon_body(), "summon_max_alive": 3, "summon_per_action": 1,
+			"summon_cooldown_actions": 2,
+		}),
+		Vector2(4.5, 2.5),
+	)
+	if boss == null:
+		push_error("summon_cd: boss null")
+		return false
+	if not sim._boss_can_summon(boss):
+		push_error("summon_cd: expected can summon before first")
+		return false
+	sim._boss_perform_summon(boss)
+	if boss.boss_summon_cooldown_left != 2:
+		push_error("summon_cd: expected cooldown 2 got %d" % boss.boss_summon_cooldown_left)
+		return false
+	if sim._boss_can_summon(boss):
+		push_error("summon_cd: must not summon while cooling down")
+		return false
+	boss.boss_summon_cooldown_left = 0
+	if not sim._boss_can_summon(boss):
+		push_error("summon_cd: expected can summon after cooldown cleared")
+		return false
 	return true
 
 
