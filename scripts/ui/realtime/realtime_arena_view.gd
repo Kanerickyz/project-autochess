@@ -1364,7 +1364,7 @@ func _draw_catalog_units(px: float) -> void:
 			return ac.x < bc.x
 		return ac.y < bc.y
 	)
-	## 长按查看技能时，把该角色画到最后，避免被邻格剪影挡住（不改列表排序）。
+	## 长按查看技能时，把该角色（含攻血标）画到最后，避免被邻格剪影/数值挡住（不改列表排序）。
 	if _info_shown:
 		var focus_key := String(_shown_info.get("inspect_key", ""))
 		if focus_key.begins_with("catalog:"):
@@ -1375,7 +1375,7 @@ func _draw_catalog_units(px: float) -> void:
 				if at >= 0:
 					ordered.remove_at(at)
 					ordered.append(focus_entry)
-	var badges: Array[Dictionary] = []
+	## 身体与攻血标同序绘制：后画的整组在上；勿先画完全员身体再叠标，否则邻格数值会盖住置顶剪影。
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -1395,13 +1395,13 @@ func _draw_catalog_units(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
 			true, unit.id,
 		)
-		badges.append({
-			"center": tile_to_local(center_tile),
-			"attack": stats.attack if stats != null else 0,
-			"hp": stats.max_hp if stats != null else 0,
-		})
-	for badge in badges:
-		_draw_stat_badges(badge["center"], badge["attack"], badge["hp"], 0.95, px)
+		_draw_stat_badges(
+			tile_to_local(center_tile),
+			stats.attack if stats != null else 0,
+			stats.max_hp if stats != null else 0,
+			0.95,
+			px,
+		)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
