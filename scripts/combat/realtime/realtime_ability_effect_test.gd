@@ -29,7 +29,9 @@ static var _failures: int = 0
 static func run_all() -> bool:
 	_failures = 0
 	_check("mount_bindings", _test_mount_bindings())
+	_check("ability_merge_value_multiplier", _test_ability_merge_value_multiplier())
 	_check("combat_start_charge_atk", _test_combat_start_charge_atk())
+	_check("combat_start_charge_atk_star2_x6", _test_combat_start_charge_atk_star2_x6())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
 	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
@@ -107,6 +109,19 @@ static func _dummy(team: UnitInstance.Team, hp: int = 100000, overrides: Diction
 	return RealtimeCombatSimTest.make_dummy(team, hp, overrides)
 
 
+static func _test_ability_merge_value_multiplier() -> bool:
+	if UnitInstance.ability_value_multiplier(1) != 1:
+		push_error("ability mult: 1★ expected 1")
+		return false
+	if UnitInstance.ability_value_multiplier(2) != 6:
+		push_error("ability mult: 2★ expected 6")
+		return false
+	if UnitInstance.ability_value_multiplier(3) != 36:
+		push_error("ability mult: 3★ expected 36")
+		return false
+	return true
+
+
 static func _test_combat_start_charge_atk() -> bool:
 	var data := _load_unit("res://resources/units/realtime/rider.tres")
 	if data == null or data.ability == null or data.ability.id != "combat_start_charge":
@@ -127,6 +142,31 @@ static func _test_combat_start_charge_atk() -> bool:
 		return false
 	if after_steps != base_steps + 2:
 		push_error("charge: steps %d -> %d, expected +2" % [base_steps, after_steps])
+		return false
+	return true
+
+
+## 2★（一次三合一）技能数值 ×6：开战冲锋 +2 → +12。
+static func _test_combat_start_charge_atk_star2_x6() -> bool:
+	var data := _load_unit("res://resources/units/realtime/rider.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_charge":
+		push_error("charge2: rider ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 43)
+	var rider := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	rider.unit.level = 2
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 8.5))
+	var base_atk := rider.unit.get_effective_attack()
+	var base_steps := rider.unit.get_steps_per_turn()
+	sim.begin_combat()
+	var after := rider.unit.get_effective_attack()
+	var after_steps := rider.unit.get_steps_per_turn()
+	if after != base_atk + 12:
+		push_error("charge2: atk %d -> %d, expected +12" % [base_atk, after])
+		return false
+	if after_steps != base_steps + 12:
+		push_error("charge2: steps %d -> %d, expected +12" % [base_steps, after_steps])
 		return false
 	return true
 

@@ -83,6 +83,17 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 
 ## 远程（projectile_speed>0）攻距硬顶：attack_range / attack_reach 最多 2 格。
 const RANGED_ATTACK_CELLS_MAX := 2
+## 三合一技能数值倍率：每升一星 ×6 → 1★×1、2★×6、3★×36。
+const ABILITY_MERGE_VALUE_MULT := 6
+
+
+## 星级对应的技能效果数值倍率（与 EffectResolver / 商店 / UI 共用）。
+static func ability_value_multiplier(level: int) -> int:
+	var lv := maxi(1, level)
+	var mult := 1
+	for _i in range(lv - 1):
+		mult *= ABILITY_MERGE_VALUE_MULT
+	return mult
 
 
 static func from_unit_data(data: UnitData, cell: Vector2i, team: Team) -> UnitInstance:
