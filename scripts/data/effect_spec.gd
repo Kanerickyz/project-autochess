@@ -24,7 +24,12 @@ enum TargetSelector {
 	EVENT_SOURCE,
 	## 持有者附近友方（切比雪夫 ≤ NEARBY_ALLY_RADIUS）；可 exclude_owner。
 	NEARBY_ALLIES,
+	## 当前生命最低的友方（可 exclude_owner）；平局先比生命上限再比 instance_id。
+	LOWEST_CURRENT_HP_ALLY,
+	## 附近友方中当前生命最低者（半径同 NEARBY_ALLY_RADIUS）。
+	LOWEST_CURRENT_HP_NEARBY_ALLY,
 }
+
 
 ## 「附近友方」切比雪夫半径（格）。
 const NEARBY_ALLY_RADIUS := 2
@@ -42,7 +47,9 @@ const TRIGGER_NAMES: PackedStringArray = [
 	"OnFriendSummoned",
 	"OnSummoned",
 	"OnFriendDeath",
+	"OnFriendDamageTaken",
 	"OnDamageTaken",
+
 	"OnDealDamage",
 	"OnCrit",
 	"OnKill",

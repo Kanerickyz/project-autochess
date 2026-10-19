@@ -2,8 +2,10 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/death_heal_nearby_ally_mid.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_skeleton"]
+
 script = ExtResource("2_stats")
 max_hp = 1
 attack = 1
@@ -29,3 +31,4 @@ cost = 1
 tier = 1
 command_cost = 1
 stats = SubResource("UnitStats_skeleton")
+ability = ExtResource("3_ability")

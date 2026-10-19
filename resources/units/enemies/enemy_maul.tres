@@ -2,8 +2,10 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://bdealdmgadjsplash" path="res://resources/abilities/deal_damage_adj_splash_small.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_enemy_maul"]
+
 script = ExtResource("2_stats")
 max_hp = 5
 attack = 4
@@ -28,3 +30,4 @@ tier = 2
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_maul")
+ability = ExtResource("3_ability")

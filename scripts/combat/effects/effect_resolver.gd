@@ -190,12 +190,13 @@ func _owner_qualifies_for_event(
 				and payload.target != owner
 				and payload.target.team == owner.team
 			)
-		CombatEvents.ON_FRIEND_DEATH:
+		CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_FRIEND_DAMAGE_TAKEN:
 			return (
 				payload.target != null
 				and payload.target != owner
 				and payload.target.team == owner.team
 			)
+
 		CombatEvents.ON_SUMMONED:
 			return payload.target == owner
 		CombatEvents.ON_ATTACK_HIT:
@@ -294,7 +295,16 @@ func _resolve_targets(
 				result.append(payload.source)
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
 			result.append_array(_pick_nearby_allies(owner, spec.exclude_owner))
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
+			var lowest := _pick_lowest_current_hp_ally(owner, spec.exclude_owner)
+			if lowest != null:
+				result.append(lowest)
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_NEARBY_ALLY:
+			var lowest_near := _pick_lowest_current_hp_nearby_ally(owner, spec.exclude_owner)
+			if lowest_near != null:
+				result.append(lowest_near)
 	return result
+
 
 
 static func cell_ahead_of_move(payload: CombatEventPayload, grid: BoardGrid) -> Vector2i:
@@ -423,6 +433,54 @@ func _pick_highest_current_hp_ally(owner: UnitInstance, exclude_owner: bool) -> 
 			elif max_hp == best_max and best != null and unit.instance_id < best.instance_id:
 				best = unit
 	return best
+
+
+func _pick_lowest_current_hp_ally(owner: UnitInstance, exclude_owner: bool) -> UnitInstance:
+	if owner == null:
+		return null
+	var best: UnitInstance = null
+	var best_hp := 999999
+	var best_max := 999999
+	for unit in _grid.get_units_by_team(owner.team, true):
+		if exclude_owner and unit.instance_id == owner.instance_id:
+			continue
+		var hp := unit.current_hp
+		var max_hp := unit.get_effective_max_hp()
+		if hp < best_hp:
+			best_hp = hp
+			best_max = max_hp
+			best = unit
+		elif hp == best_hp:
+			if max_hp < best_max:
+				best_max = max_hp
+				best = unit
+			elif max_hp == best_max and best != null and unit.instance_id < best.instance_id:
+				best = unit
+	return best
+
+
+func _pick_lowest_current_hp_nearby_ally(owner: UnitInstance, exclude_owner: bool) -> UnitInstance:
+	var nearby := _pick_nearby_allies(owner, exclude_owner)
+	if nearby.is_empty():
+		return null
+	var best: UnitInstance = null
+	var best_hp := 999999
+	var best_max := 999999
+	for unit in nearby:
+		var hp := unit.current_hp
+		var max_hp := unit.get_effective_max_hp()
+		if hp < best_hp:
+			best_hp = hp
+			best_max = max_hp
+			best = unit
+		elif hp == best_hp:
+			if max_hp < best_max:
+				best_max = max_hp
+				best = unit
+			elif max_hp == best_max and best != null and unit.instance_id < best.instance_id:
+				best = unit
+	return best
+
 
 
 static func _spec_trigger_matches(spec: EffectSpec, event_type: StringName) -> bool:

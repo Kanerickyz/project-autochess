@@ -67,9 +67,11 @@ func apply_damage(
 	payload.target_hp_before = hp_before
 
 	_bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
+	_bus.emit_event(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, payload)
 	_bus.emit_event(CombatEvents.ON_DEAL_DAMAGE, payload)
 	if is_crit and source != null:
 		_bus.emit_event(CombatEvents.ON_CRIT, payload)
+
 
 	if not target.is_alive():
 		_grid.sync_unit_grid_pos(target)
