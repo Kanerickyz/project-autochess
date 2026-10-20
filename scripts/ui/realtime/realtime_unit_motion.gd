@@ -12,6 +12,15 @@ const IDLE_BOB_TILES := 0.045
 const IDLE_SQUASH := Vector2(1.04, 0.96)
 const IDLE_CYCLE := 1.15
 const IDLE_PHASE_STEP := 0.07
+## 长按焦点：小丑牌式抬起 / 倾斜 / 放大。
+const INSPECT_LIFT_TILES := 0.18
+const INSPECT_SCALE := 1.14
+const INSPECT_KICK_TILES := 0.22
+const INSPECT_KICK_TILT := 0.28
+const INSPECT_SETTLE_SEC := 0.2
+const INSPECT_KICK_DECAY := 9.0
+const INSPECT_DIM_ALPHA := 0.58
+const INSPECT_DIM_SCALE := 0.94
 ## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
 const WINDUP_PULL_TILES := 0.16
 const WINDUP_SQUASH := Vector2(1.1, 0.88)
@@ -111,6 +120,46 @@ static func sample_idle(time_sec: float, seed: int) -> Dictionary:
 	return {
 		"offset": Vector2(0.0, -IDLE_BOB_TILES * wave),
 		"scale": Vector2.ONE.lerp(IDLE_SQUASH, wave),
+	}
+
+
+## 长按焦点：小丑牌式抬起 / 倾斜 / 放大（格单位偏移 + 弧度旋转）。
+## elapsed：本焦点开始后的秒；kick_dir：滑动切换水平方向（-1/0/+1）；
+## finger_delta_tiles：手指相对焦点中心的格偏移（已钳制更好）。
+## 返回 { offset, rotation, scale, alpha, shadow_mul }。
+static func sample_inspect_focus(
+	elapsed: float,
+	kick_dir: float,
+	finger_delta_tiles: Vector2,
+	focused: bool,
+) -> Dictionary:
+	if not focused:
+		return {
+			"offset": Vector2(0.0, 0.02),
+			"rotation": 0.0,
+			"scale": Vector2.ONE * INSPECT_DIM_SCALE,
+			"alpha": INSPECT_DIM_ALPHA,
+			"shadow_mul": 0.7,
+		}
+	var t := clampf(elapsed / INSPECT_SETTLE_SEC, 0.0, 1.0)
+	## 近似 TRANS_BACK 落位：先略过冲再回。
+	var overshoot := 1.0 + 1.7 * pow(1.0 - t, 3.0) * sin(t * PI)
+	var lift := clampf(t * overshoot, 0.0, 1.35)
+	var kick := exp(-maxf(0.0, elapsed) * INSPECT_KICK_DECAY)
+	var dir := signf(kick_dir)
+	var finger := Vector2(
+		clampf(finger_delta_tiles.x, -0.55, 0.55),
+		clampf(finger_delta_tiles.y, -0.4, 0.4),
+	)
+	return {
+		"offset": Vector2(
+			dir * INSPECT_KICK_TILES * kick + finger.x * 0.14,
+			-INSPECT_LIFT_TILES * lift + finger.y * 0.08 - kick * 0.06,
+		),
+		"rotation": dir * INSPECT_KICK_TILT * kick + finger.x * 0.1,
+		"scale": Vector2.ONE * (1.0 + (INSPECT_SCALE - 1.0) * lift + 0.08 * kick),
+		"alpha": 1.0,
+		"shadow_mul": 1.0 + 0.9 * lift + 0.4 * kick,
 	}
 
 
