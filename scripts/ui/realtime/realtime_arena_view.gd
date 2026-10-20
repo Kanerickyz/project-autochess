@@ -22,6 +22,8 @@ signal recruit_item_pressed(item_slot: int)
 signal recruit_item_drop(item_slot: int, entry_id: int)
 ## 附魔：队伍成员拖到时机格 A / 效果格 B。
 signal enchant_forge_drop(entry_id: int, slot: StringName)
+## 附魔：下半场队伍换座（与招募上区同规则）。
+signal enchant_team_seat_drop(entry_id: int, target_seat: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -709,6 +711,15 @@ func _find_enchant_team_entry_at(hover: Vector2i) -> int:
 	return -1
 
 
+func _find_enchant_team_seat_at(hover: Vector2i) -> int:
+	if prepare_slots == null or hover == NO_CELL:
+		return -1
+	var mid := BoardHalf.midline_row(board_size.y)
+	if hover.y < mid:
+		return -1
+	return prepare_slots.find_slot_at_cell(_enchant_hit_cell(hover))
+
+
 func _begin_enchant_team_drag(entry_id: int) -> void:
 	if entry_id < 0 or prepare_slots == null:
 		return
@@ -742,10 +753,63 @@ func _finish_enchant_team_drag(hover: Vector2i) -> void:
 	if entry_id < 0:
 		queue_redraw()
 		return
-	var slot := EnchantLayout.forge_slot_name_at(hover, board_size)
-	if not slot.is_empty():
-		enchant_forge_drop.emit(entry_id, slot)
+	var mid := BoardHalf.midline_row(board_size.y)
+	if hover != NO_CELL and hover.y < mid:
+		var slot := EnchantLayout.forge_slot_name_at(hover, board_size)
+		if not slot.is_empty():
+			enchant_forge_drop.emit(entry_id, slot)
+		queue_redraw()
+		return
+	var seat_i := _find_enchant_team_seat_at(hover)
+	if seat_i < 0 and prepare_slots != null and hover != NO_CELL:
+		var logical := _enchant_hit_cell(hover)
+		seat_i = prepare_slots.find_nearest_empty_slot(logical)
+		if seat_i >= 0:
+			var sc := prepare_slots.get_cell(seat_i)
+			if absi(sc.x - logical.x) + absi(sc.y - logical.y) > 4:
+				seat_i = -1
+	if seat_i >= 0:
+		enchant_team_seat_drop.emit(entry_id, seat_i)
 	queue_redraw()
+
+
+func _draw_enchant_team_seat_hint(px: float) -> void:
+	var hover := _hover_cell
+	if hover == NO_CELL:
+		return
+	var seat_i := _find_enchant_team_seat_at(hover)
+	if seat_i < 0 and prepare_slots != null:
+		var logical := _enchant_hit_cell(hover)
+		seat_i = prepare_slots.find_nearest_empty_slot(logical)
+		if seat_i >= 0:
+			var sc := prepare_slots.get_cell(seat_i)
+			if absi(sc.x - logical.x) + absi(sc.y - logical.y) > 4:
+				seat_i = -1
+	var ok := seat_i >= 0
+	var cell := hover
+	if ok:
+		cell = prepare_slots.get_cell(seat_i)
+	var rect := get_board_rect()
+	var scroll_y := 0.0
+	if enchant_team_scroll_enabled:
+		scroll_y = enchant_team_scroll_rows * px
+	var off := Vector2(0.0, ally_half_slide_y - scroll_y)
+	var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	_draw_body(
+		Vector2(cell) + Vector2(0.5, 0.5),
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		0.45,
+		_drag_label,
+		px,
+		true,
+		off,
+		true,
+		_drag_unit_id,
+	)
 
 
 func _draw_enchant_forge_drop_hint(px: float, off: Vector2) -> void:
@@ -1523,7 +1587,10 @@ func _draw() -> void:
 		_draw_enchant_forge(px, enemy_off)
 		_draw_prepare_slots(px)
 		if _enchant_team_drag_id >= 0 and _hover_cell != NO_CELL:
-			_draw_enchant_forge_drop_hint(px, enemy_off)
+			if _hover_cell.y < mid:
+				_draw_enchant_forge_drop_hint(px, enemy_off)
+			else:
+				_draw_enchant_team_seat_hint(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)

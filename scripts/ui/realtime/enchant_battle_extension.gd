@@ -33,6 +33,10 @@ func set_expanded_team(enabled: bool) -> void:
 	_expanded_team = enabled
 
 
+func is_expanded_team() -> bool:
+	return _expanded_team
+
+
 func show_hud() -> void:
 	_ensure_hud()
 	_hud.visible = true

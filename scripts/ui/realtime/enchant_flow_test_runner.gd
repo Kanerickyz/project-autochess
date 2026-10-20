@@ -14,6 +14,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_enchant_fuse_flow()
 	await _test_enchant_sandbox_skip_no_map_signal()
+	await _test_enchant_team_seat_swap()
 	if _failures == 0:
 		print("EnchantFlowTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -118,6 +119,44 @@ func _test_enchant_sandbox_skip_no_map_signal() -> void:
 	await _process_n_frames(2)
 	_expect(finished.is_empty(), "sandbox skip does not emit enchant_finished")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.IDLE, "idle after skip")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_enchant_team_seat_swap() -> void:
+	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
+	await process_frame
+
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 5
+	deck_cfg.starting_units = []
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	for i in 3:
+		var u := UnitData.new()
+		u.id = "swap_%d" % i
+		u.stats = UnitStats.new()
+		u.stats.attack = 2 + i
+		u.stats.max_hp = 4
+		u.ability = HURT
+		var e := deck.add_entry(u)
+		deck.assign_seat(e.entry_id, i)
+	_expect(deck.size() == 3, "three members")
+
+	var economy := RunEconomy.new()
+	var level := load("res://resources/levels/board_act1.tres") as LevelData
+	battle.setup(deck, economy, level)
+	await battle.enter_enchant(0.0)
+
+	var mover := deck.get_entries()[0]
+	var before := mover.seat_index
+	battle.get_arena().enchant_team_seat_drop.emit(mover.entry_id, 2)
+	await _process_n_frames(1)
+	_expect(mover.seat_index == 2, "seat swapped via enchant drop")
+	_expect(mover.seat_index != before, "seat changed")
 
 	battle.queue_free()
 	await process_frame
