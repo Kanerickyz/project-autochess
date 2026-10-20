@@ -1043,6 +1043,9 @@ func _spawn_unit(
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
 		spawned.is_combat_summon = true
+		## 战中技能随从立即接敌（与 Boss 衍生一致）；勿沿用 token 资源上的部署等待。
+		if spawned.stats != null:
+			spawned.stats.deploy_time = 0.0
 		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
 			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
 			var pct := action.spawn_owner_base_percent

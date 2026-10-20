@@ -199,12 +199,24 @@ static func format_effect_spec(spec: EffectSpec, value_scale: int = 1) -> String
 	var trigger: String = String(TRIGGER_LABELS.get(spec.trigger, String(spec.trigger)))
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
+	var has_spawn_or_split := false
+	var has_other_action := false
 	for action in spec.actions:
 		if action == null:
 			continue
+		if (
+			action.action_type == EffectAction.Type.SPAWN_UNIT
+			or action.action_type == EffectAction.Type.SPLIT_SELF
+		):
+			has_spawn_or_split = true
+		else:
+			has_other_action = true
 		var text: String = format_action(action, value_scale)
 		if not text.is_empty():
 			actions.append(text)
+	## 生成/分裂不写「对自身/对事件目标」——目标选择器只服务批处理，不表示作用对象。
+	if has_spawn_or_split and not has_other_action:
+		target_text = ""
 	var action_text: String = "，".join(actions) if not actions.is_empty() else ""
 	if target_text.is_empty():
 		if action_text.is_empty():

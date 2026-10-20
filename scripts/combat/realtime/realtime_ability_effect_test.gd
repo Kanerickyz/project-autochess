@@ -43,6 +43,7 @@ static func run_all() -> bool:
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("death_spawn_pack", _test_death_spawn_pack())
+	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("deal_heal_lowest_ally", _test_deal_heal_lowest_ally())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
@@ -599,6 +600,68 @@ static func _test_death_spawn_pack() -> bool:
 			tokens += 1
 	if tokens < 1:
 		push_error("spawn: expected token_ember on field, got %d (units=%d)" % [tokens, sim.get_units().size()])
+		return false
+	return true
+
+
+## 召魂：友方死亡时生成 token_weak×1；随从立即可交战（无部署等待）。
+static func _test_ally_death_spawn_weak() -> bool:
+	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_death_spawn_weak":
+		push_error("ally_death_spawn: soulcaller ability not mounted")
+		return false
+	## 用正式棋盘规格，避免大沙盘掩盖半场落点问题。
+	const BOARD := Vector2i(5, 8)
+	var sim := _new_sim()
+	sim.configure(BOARD, 11)
+	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(0.5, 7.5))
+	var fodder := sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.PLAYER,
+			{
+				"id": "fodder",
+				"max_hp": 5,
+				"attack": 1,
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"attack_reach": 0.0,
+			},
+		),
+		Vector2(4.5, 5.5),
+	)
+	## 木桩敌人：避免清场；不用近身杀手误伤召魂。
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(0.5, 0.5),
+	)
+	sim.begin_combat()
+	if not sim._pipeline.apply_damage(null, fodder, 999):
+		push_error("ally_death_spawn: fodder should have died")
+		return false
+	sim._drain_effects()
+	var token: RtUnit = null
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt != null and rt.is_alive() and rt.unit.id == "token_weak":
+			token = rt
+			break
+	if token == null:
+		push_error(
+			"ally_death_spawn: expected token_weak (summons_spawned=%d)"
+			% caller.unit.combat_summons_spawned
+		)
+		return false
+	if caller.unit.combat_summons_spawned != 1:
+		push_error("ally_death_spawn: combat_summons_spawned=%d, expected 1" % caller.unit.combat_summons_spawned)
+		return false
+	if token.is_deploying() or token.get_stats().deploy_time > 0.0:
+		push_error(
+			"ally_death_spawn: token should skip deploy (state=%d deploy_time=%s)"
+			% [token.state, token.get_stats().deploy_time]
+		)
+		return false
+	if not BoardHalf.is_player_deploy_cell(token.get_cell(), BOARD.y):
+		push_error("ally_death_spawn: token should land on player half, cell=%s" % token.get_cell())
 		return false
 	return true
 
