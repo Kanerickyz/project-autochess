@@ -1,8 +1,8 @@
 class_name RealtimeEffectFeedback
 extends RefCounted
 ## 将 ON_EFFECT_RESOLVED 映射为战场结果数字 / 短提示（Features/COMBAT_FEEDBACK）。
-## 仅表现层映射；实时战斗内是否时停由 RealtimeBattleController 播报队列决定。
-## 高频也入队时停；短提示可从简。不读普攻 ON_DAMAGE_TAKEN。
+## 仅表现层映射；战斗内先卡再结算由 RealtimeBattleController 播报队列驱动。
+## 高频也入行动内播报；短提示可从简。不读普攻 ON_DAMAGE_TAKEN。
 
 const KIND_DAMAGE := &"damage"
 const KIND_HEAL := &"heal"

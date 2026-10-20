@@ -58,6 +58,13 @@ func has_pending_steps() -> bool:
 	return not _pending_batches.is_empty()
 
 
+## 只读队首批次（用于结算前展示角色+技能介绍卡）；不弹出。
+func peek_next_batch() -> QueuedEffectBatch:
+	if _pending_batches.is_empty():
+		return null
+	return _pending_batches[0]
+
+
 func process_next_step() -> bool:
 	if _pending_batches.is_empty():
 		return false

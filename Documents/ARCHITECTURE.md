@@ -219,7 +219,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 **战斗节奏（tick 加速）**：单波战斗内，`CombatPaceConfig` 按当前 `combat_tick` 缩放 `action_interval` 与全部战斗 Tween 基准时长（`CombatAnimationConfig`）。公式：`pace_scale = clamp(1 - tick × scale_per_combat_tick, min_pace_scale, 1)`；首回合 tick=0 为 100% 基准，新波开战重置。`skill_callout_hold_sec` 保证技能说明 callout 最短可读时间（默认 1.2s），**不受** tick 加速影响。默认资源 `resources/combat/default_combat_pace.tres`。此为**旧网格工具环**自动随战斗推进加速，**非**全局 `Engine.time_scale`。**Run 主路径观战手动倍速**见 `RealtimeBattleController.time_scale`（1×/2×/3× UI），只缩短表现墙钟，不改结算与行动序。
 
-表现层监听 `combat_event`（伤害数字、死亡、技能特效）播放，不改变模拟结果。战斗步进时高亮当前行动单位；`ON_EFFECT_RESOLVED` 时在单位附近弹出对应 `EffectSpec` 技能说明 callout。
+表现层监听 `combat_event`（伤害数字、死亡、技能特效）播放。战斗内技能触发插入行动内播报：先角色+技能介绍卡，再 `process_next_step` 结算并播结果数字；`ON_EFFECT_RESOLVED` 供结果拍订阅。
 
 ### 3.5 Units & Abilities（单位与联动技能）
 

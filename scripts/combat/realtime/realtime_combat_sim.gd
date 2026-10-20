@@ -39,8 +39,10 @@ var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
 var _adding_effect_spawn: bool = false
-## 表现层时停兼容钩子：为 true 时 step 不再推进固定步（主通道已改为行动队列，不依赖时停）。
+## 表现层时停钩子：为 true 时 step 不再推进固定步（技能展示步期间）。
 var presentation_hold: bool = false
+## 为 true 时：效果只入队不立刻排空，留给控制器「先卡再结算」（COMBAT_FEEDBACK §5.2）。
+var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
@@ -173,7 +175,7 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
 	if not _adding_effect_spawn:
 		_emit_spawn_events(unit, rt.get_cell())
-		_drain_effects()
+		_drain_effects(true)
 	return rt
 
 
@@ -248,7 +250,7 @@ func begin_combat() -> void:
 		return
 	_started = true
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
-	_drain_effects()
+	_drain_effects(true)
 	_build_action_queue_from_lock_order()
 	_queue_cursor = 0
 	_round_index = 1
@@ -311,6 +313,27 @@ func hold_for_presentation() -> void:
 
 func release_presentation() -> void:
 	presentation_hold = false
+
+
+func has_pending_effects() -> bool:
+	return _effect_resolver != null and _effect_resolver.has_pending_steps()
+
+
+## 结算前只读队首技能批次（展示介绍卡用）。
+func peek_pending_effect_batch() -> QueuedEffectBatch:
+	if _effect_resolver == null:
+		return null
+	return _effect_resolver.peek_next_batch()
+
+
+## 执行队首一批技能（真值写入）；同步生成/死亡。供「先卡再结算」第二拍调用。
+func resolve_next_pending_effect() -> bool:
+	if _effect_resolver == null or not _effect_resolver.has_pending_steps():
+		return false
+	_effect_resolver.process_next_step()
+	_sync_effect_spawns_from_grid()
+	_sync_deaths_from_hp()
+	return true
 
 
 func advance_fixed_step() -> void:
@@ -1193,8 +1216,11 @@ func _emit_spawn_events(unit: UnitInstance, cell: Vector2i) -> void:
 	_bus_emit(CombatEvents.ON_SUMMONED, payload)
 
 
-func _drain_effects() -> void:
+## force=true：无视 defer（锁阵生成 / 开战广播须当下排空）。
+func _drain_effects(force: bool = false) -> void:
 	if _effect_resolver == null:
+		return
+	if defer_effect_resolve and not force:
 		return
 	var guard := EFFECT_DRAIN_GUARD
 	while _effect_resolver.has_pending_steps() and guard > 0:

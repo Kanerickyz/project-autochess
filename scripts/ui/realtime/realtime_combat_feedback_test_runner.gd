@@ -68,10 +68,14 @@ func _make_battle(seed: int) -> RealtimeBattleController:
 
 
 func _seat_first_hand(battle: RealtimeBattleController) -> bool:
+	var slots := battle.get_slot_board()
+	## 准备主路径可能已持久占位自动入座。
+	if slots.occupied_count() > 0:
+		return true
 	var hand := battle.get_hand()
 	if hand.is_empty():
 		return false
-	var err := battle.try_assign_to_slot(hand[0].entry_id, battle.get_slot_board().get_cell(0))
+	var err := battle.try_assign_to_slot(hand[0].entry_id, slots.get_cell(0))
 	return err.is_empty()
 
 
@@ -261,6 +265,13 @@ func _test_basic_attack_does_not_float() -> void:
 		dmg.amount = 7
 		battle._bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, dmg)
 		battle._bus.emit_event(CombatEvents.ON_ATTACK_HIT, dmg)
+	## 受伤钩子可能入队技能；本断言只关心普攻事件本身不产生飘字/结果拍。
+	var atk_sim := battle.get_sim()
+	if atk_sim != null and atk_sim.get_effect_resolver() != null:
+		atk_sim.get_effect_resolver().clear_pending()
+	battle._timestop_queue.clear()
+	if atk_sim != null:
+		atk_sim.release_presentation()
 	await process_frame
 	_expect(arena.get_feedback_count() == before, "atk: basic-attack events do not add float text")
 	_expect(not battle.is_timestop_blocking(), "atk: basic-attack does not enter timestop queue")
@@ -270,6 +281,7 @@ func _test_basic_attack_does_not_float() -> void:
 
 
 func _test_timestop_queue_blocks_sim() -> void:
+	## 先卡再结算：待结算批次入队后先阻塞并展示，卡拍结束才写入真值。
 	var battle := _make_battle(99)
 	await process_frame
 	_expect(_seat_first_hand(battle), "timestop: seat one unit")
@@ -277,8 +289,10 @@ func _test_timestop_queue_blocks_sim() -> void:
 	var sim := battle.get_sim()
 	var arena := battle.get_arena()
 	arena.clear_fx()
-	## 清空开战可能入队的播报（锁阵阶段不入队；此处仅防残留）。
 	battle._timestop_queue.clear()
+	var resolver := sim.get_effect_resolver()
+	if resolver != null:
+		resolver.clear_pending()
 	sim.release_presentation()
 	var steps_before := sim.fixed_step_count
 	var target: UnitInstance = null
@@ -288,29 +302,47 @@ func _test_timestop_queue_blocks_sim() -> void:
 			target = rt.unit
 			break
 	_expect(target != null, "timestop: player unit")
+	if target == null:
+		battle.queue_free()
+		await process_frame
+		return
+
+	## 故意压血，便于断言治疗在卡拍之后才结算。
+	target.current_hp = maxi(1, target.get_effective_max_hp() - 10)
+	var hp_before := target.current_hp
 	var action := EffectAction.new()
 	action.action_type = EffectAction.Type.HEAL
 	action.value = 5
-	var payload := CombatEventPayload.new()
-	payload.effect_owner = target
-	payload.source = target
-	payload.target = target
-	payload.effect_action = action
-	payload.effect_entries = [{"action": action, "target": target}]
-	battle._bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
-	_expect(battle.is_timestop_blocking(), "timestop: queue blocks after effect")
-	_expect(arena.get_feedback_count() > 0, "timestop: feedback shown for active item")
-	## 推进若干帧：时停中 fixed_step 不应增加。
+	var step := QueuedEffectStep.new()
+	step.action = action
+	step.target = target
+	step.owner = target
+	var batch := QueuedEffectBatch.new()
+	batch.owner = target
+	batch.payload = CombatEventPayload.new()
+	batch.entries.append(step)
+	_expect(resolver != null, "timestop: effect resolver")
+	resolver._pending_batches.append(batch)
+	_expect(sim.has_pending_effects(), "timestop: pending before card")
+
+	await process_frame
+	_expect(battle.is_timestop_blocking(), "timestop: card phase blocks after pending")
+	_expect(sim.has_pending_effects(), "timestop: not resolved during card")
+	_expect(target.current_hp == hp_before, "timestop: hp unchanged during card")
 	for _i in 3:
 		await process_frame
 	_expect(sim.fixed_step_count == steps_before, "timestop: sim steps frozen while queue active")
-	## 加速耗尽队列（0.4s / scale）；time_scale=8 → 墙钟约 0.05s+
+
+	## 加速耗尽卡拍+结果拍（约 1.0+0.4 / scale）
 	battle.time_scale = 8.0
 	var guard := 0
-	while battle.is_timestop_blocking() and guard < 60:
+	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
 		await process_frame
 		guard += 1
 	_expect(not battle.is_timestop_blocking(), "timestop: queue drains")
+	_expect(not sim.has_pending_effects(), "timestop: effects resolved after card")
+	_expect(target.current_hp == hp_before + 5, "timestop: heal applied after card")
+	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
 	_expect(not sim.presentation_hold, "timestop: presentation hold released")
 
 	battle.queue_free()
