@@ -12,6 +12,15 @@ const IDLE_BOB_TILES := 0.045
 const IDLE_SQUASH := Vector2(1.04, 0.96)
 const IDLE_CYCLE := 1.15
 const IDLE_PHASE_STEP := 0.07
+## 长按焦点：小丑牌式抬起 / 倾斜 / 放大。
+const INSPECT_LIFT_TILES := 0.18
+const INSPECT_SCALE := 1.14
+const INSPECT_KICK_TILES := 0.22
+const INSPECT_KICK_TILT := 0.28
+const INSPECT_SETTLE_SEC := 0.2
+const INSPECT_KICK_DECAY := 9.0
+const INSPECT_DIM_ALPHA := 0.58
+const INSPECT_DIM_SCALE := 0.94
 ## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
 const WINDUP_PULL_TILES := 0.16
 const WINDUP_SQUASH := Vector2(1.1, 0.88)
@@ -118,16 +127,6 @@ static func sample_idle(time_sec: float, seed: int) -> Dictionary:
 ## elapsed：本焦点开始后的秒；kick_dir：滑动切换水平方向（-1/0/+1）；
 ## finger_delta_tiles：手指相对焦点中心的格偏移（已钳制更好）。
 ## 返回 { offset, rotation, scale, alpha, shadow_mul }。
-const INSPECT_LIFT_TILES := 0.18
-const INSPECT_SCALE := 1.14
-const INSPECT_KICK_TILES := 0.22
-const INSPECT_KICK_TILT := 0.28
-const INSPECT_SETTLE_SEC := 0.2
-const INSPECT_KICK_DECAY := 9.0
-const INSPECT_DIM_ALPHA := 0.58
-const INSPECT_DIM_SCALE := 0.94
-
-
 static func sample_inspect_focus(
 	elapsed: float,
 	kick_dir: float,
