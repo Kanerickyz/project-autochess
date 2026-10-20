@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://bfsminsumselfhp" path="res://resources/abilities/friend_summon_minion_self_hp_small.tres" id="3_ability"]
+
+[sub_resource type="Resource" id="UnitStats_arcane"]
+script = ExtResource("2_stats")
+max_hp = 2
+attack = 7
+steps_per_turn = 1
+attack_range = 2
+crit_rate_percent = 0
+attack_interval = 1.2
+attack_windup = 0.4
+attack_reach = 2.0
+sight_range = 5.5
+body_radius = 0.35
+visual_half_width = 0.55
+visual_half_height = 0.75
+mass = 1.0
+projectile_speed = 11.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "arcane"
+display_name = "奥术"
+cost = 3
+tier = 2
+command_cost = 4
+stats = SubResource("UnitStats_arcane")
+ability = ExtResource("3_ability")

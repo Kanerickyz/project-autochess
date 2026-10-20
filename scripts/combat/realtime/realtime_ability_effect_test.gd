@@ -32,6 +32,7 @@ static func run_all() -> bool:
 	_check("ability_merge_value_multiplier", _test_ability_merge_value_multiplier())
 	_check("combat_start_charge_atk", _test_combat_start_charge_atk())
 	_check("combat_start_charge_atk_star2_x6", _test_combat_start_charge_atk_star2_x6())
+	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
 	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
@@ -142,6 +143,38 @@ static func _test_combat_start_charge_atk() -> bool:
 		return false
 	if after_steps != base_steps + 2:
 		push_error("charge: steps %d -> %d, expected +2" % [base_steps, after_steps])
+		return false
+	return true
+
+
+## 奥术：仅友方战斗随从上场时自身 max_hp+当前 +2；普通友方入座不触发。
+static func _test_arcane_friend_summon_minion_self_hp() -> bool:
+	var data := _load_unit("res://resources/units/realtime/arcane.tres")
+	if data == null or data.ability == null or data.ability.id != "friend_summon_minion_self_hp_small":
+		push_error("arcane: ability not mounted")
+		return false
+	var bus := CombatEventBus.new()
+	var sim := _new_sim(bus)
+	sim.configure(ARENA, 91)
+	var mage := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	var base_max := mage.unit.get_effective_max_hp()
+	var base_hp := mage.unit.current_hp
+	## 普通友方入座：不应触发。
+	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(10.5, 22.5))
+	if mage.unit.get_effective_max_hp() != base_max:
+		push_error("arcane: roster ally spawn should not buff")
+		return false
+	## 战斗随从上场：应 +2 上限与当前。
+	var minion := _dummy(UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1})
+	minion.is_combat_summon = true
+	sim.add_unit(minion, Vector2(9.5, 20.5))
+	var after_max := mage.unit.get_effective_max_hp()
+	var after_hp := mage.unit.current_hp
+	if after_max != base_max + 2:
+		push_error("arcane: max_hp %d -> %d, expected +2" % [base_max, after_max])
+		return false
+	if after_hp != base_hp + 2:
+		push_error("arcane: current_hp %d -> %d, expected +2" % [base_hp, after_hp])
 		return false
 	return true
 

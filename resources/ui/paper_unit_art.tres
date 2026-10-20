@@ -34,6 +34,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_blue.png" id="b_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_blue.png" id="b_apothecary"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_blue.png" id="b_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
@@ -67,11 +68,13 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_red.png" id="r_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_red.png" id="r_arcane"]
 
 [resource]
 script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "apothecary": &"apothecary",
+"arcane": &"arcane",
 "archer": &"archer",
 "banner": &"banner",
 "barbarian": &"axe",
@@ -116,6 +119,7 @@ archetype_by_unit_id = {
 default_archetype = &"spear"
 player_textures = {
 &"apothecary": ExtResource("b_apothecary"),
+&"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
@@ -153,6 +157,7 @@ player_textures = {
 }
 enemy_textures = {
 &"apothecary": ExtResource("r_apothecary"),
+&"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
