@@ -1,6 +1,10 @@
 class_name UnitInfoText
 extends RefCounted
 
+## 技能介绍卡内联攻/血图标占位；RichTextLabel 再换成脚下同款贴图。
+const STAT_ICON_ATK := "⟦ATK⟧"
+const STAT_ICON_HP := "⟦HP⟧"
+
 const TRIGGER_LABELS := {
 	CombatEvents.ON_COMBAT_START: "开战时",
 	CombatEvents.ON_FRIEND_SUMMONED: "友方召唤时",
@@ -94,78 +98,99 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
-static func get_skills_block_from_unit_data(data: UnitData) -> String:
+static func get_skills_block_from_unit_data(
+	data: UnitData, level: int = 1, with_stat_icons: bool = false
+) -> String:
 	if data == null:
 		return "无技能"
 	var lines: PackedStringArray = []
 	if data.ability != null:
-		lines.append(format_ability("技能", data.ability))
+		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
+		lines.append(format_ability("技能", data.ability, scale, with_stat_icons))
 	for passive in data.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, level)
+			lines.append(format_ability("被动", passive, pscale, with_stat_icons))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
 
 
-static func get_skills_block_from_entry(entry: DeckEntry) -> String:
+## 角色库预览：三合一后攻/血按三只同星加总（1★→×3，2★→×9）。
+static func catalog_preview_stat_mult(level: int) -> int:
+	var lv := clampi(level, 1, 3)
+	var mult := 1
+	for _i in range(lv - 1):
+		mult *= 3
+	return mult
+
+
+static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool = false) -> String:
 	if entry == null or entry.unit == null:
 		return "无技能"
-	var scale := 1
-	if entry.get_star_display_level() > 0:
-		scale = UnitInstance.ability_value_multiplier(entry.level)
 	var lines: PackedStringArray = []
 	var main_ab := entry.get_main_ability()
 	if main_ab != null:
-		lines.append(format_ability("技能", main_ab, scale))
+		var scale := 1
+		if entry.get_star_display_level() > 0:
+			scale = UnitInstance.ability_value_multiplier_for(main_ab, entry.level)
+		lines.append(format_ability("技能", main_ab, scale, with_stat_icons))
 	for passive in entry.unit.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive, scale))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)
+			lines.append(format_ability("被动", passive, pscale, with_stat_icons))
 	for attached in entry.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached, scale))
+			var ascale := UnitInstance.ability_value_multiplier_for(attached, entry.level)
+			lines.append(format_ability("移植", attached, ascale, with_stat_icons))
 	for buff in entry.attached_buffs:
 		if buff != null:
-			lines.append(format_buff(buff))
+			lines.append(format_buff(buff, with_stat_icons))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
 
 
-static func get_skills_block(unit: UnitInstance) -> String:
+static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
 
-	var scale := UnitInstance.ability_value_multiplier(unit.level)
 	var lines: PackedStringArray = []
 	if unit.unit_data.ability != null:
-		lines.append(format_ability("技能", unit.unit_data.ability, scale))
+		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
+		lines.append(format_ability("技能", unit.unit_data.ability, scale, with_stat_icons))
 	for passive in unit.unit_data.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive, scale))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, unit.level)
+			lines.append(format_ability("被动", passive, pscale, with_stat_icons))
 	for attached in unit.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached, scale))
+			var ascale := UnitInstance.ability_value_multiplier_for(attached, unit.level)
+			lines.append(format_ability("移植", attached, ascale, with_stat_icons))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
 
 
-static func format_buff(buff: BuffCardData) -> String:
+static func format_buff(buff: BuffCardData, with_stat_icons: bool = false) -> String:
 	var title: String = (
 		buff.display_name if not buff.display_name.is_empty() else buff.id
 	)
-	var body := _buff_effect_description(buff)
+	var body := _buff_effect_description(buff, with_stat_icons)
 	return "【增益】%s — %s" % [title, body]
 
 
-static func _buff_effect_description(buff: BuffCardData) -> String:
+static func _buff_effect_description(buff: BuffCardData, with_stat_icons: bool = false) -> String:
 	if buff == null:
 		return ""
 	match buff.effect_type:
 		BuffCardData.EffectType.PERMANENT_ATTACK:
+			if with_stat_icons:
+				return "永久 +%s%d" % [STAT_ICON_ATK, buff.value]
 			return "永久 +%d 攻击" % buff.value
 		BuffCardData.EffectType.PERMANENT_MAX_HP:
+			if with_stat_icons:
+				return "永久 +%s%d 生命上限" % [STAT_ICON_HP, buff.value]
 			return "永久 +%d 生命上限" % buff.value
 		BuffCardData.EffectType.CANNOT_MOVE:
 			return "无法行走，仍可攻击"
@@ -174,12 +199,14 @@ static func _buff_effect_description(buff: BuffCardData) -> String:
 	return ""
 
 
-static func get_ability_description(ability: AbilityData, value_scale: int = 1) -> String:
+static func get_ability_description(
+	ability: AbilityData, value_scale: int = 1, with_stat_icons: bool = false
+) -> String:
 	if ability == null:
 		return ""
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
-		var line := format_effect_spec(spec, value_scale)
+		var line := format_effect_spec(spec, value_scale, with_stat_icons)
 		if not line.is_empty():
 			parts.append(line)
 	if not parts.is_empty():
@@ -189,14 +216,18 @@ static func get_ability_description(ability: AbilityData, value_scale: int = 1) 
 	return ability.id
 
 
-static func format_ability(kind: String, ability: AbilityData, value_scale: int = 1) -> String:
-	var desc := get_ability_description(ability, value_scale)
+static func format_ability(
+	kind: String, ability: AbilityData, value_scale: int = 1, with_stat_icons: bool = false
+) -> String:
+	var desc := get_ability_description(ability, value_scale, with_stat_icons)
 	if desc.is_empty():
 		desc = "无效果描述"
 	return "【%s】%s" % [kind, desc]
 
 
-static func format_effect_spec(spec: EffectSpec, value_scale: int = 1) -> String:
+static func format_effect_spec(
+	spec: EffectSpec, value_scale: int = 1, with_stat_icons: bool = false
+) -> String:
 	if spec == null:
 		return ""
 	var trigger: String = String(TRIGGER_LABELS.get(spec.trigger, String(spec.trigger)))
@@ -225,7 +256,7 @@ static func format_effect_spec(spec: EffectSpec, value_scale: int = 1) -> String
 			has_spawn_or_split = true
 		else:
 			has_other_action = true
-		var text: String = format_action(action, value_scale)
+		var text: String = format_action(action, value_scale, with_stat_icons)
 		if not text.is_empty():
 			actions.append(text)
 	## 生成/分裂不写「对自身/对事件目标」——目标选择器只服务批处理，不表示作用对象。
@@ -298,12 +329,23 @@ static func _format_target(spec: EffectSpec) -> String:
 	return ""
 
 
-static func format_action(action: EffectAction, value_scale: int = 1) -> String:
+static func format_action(
+	action: EffectAction, value_scale: int = 1, with_stat_icons: bool = false
+) -> String:
 	var scale := maxi(1, value_scale)
 	var scaled_value := action.value * scale
 	match action.action_type:
 		EffectAction.Type.MODIFY_STAT:
 			var stat: String = String(action.stat_name)
+			var sign: String = "+" if scaled_value >= 0 else ""
+			if with_stat_icons and stat == "attack":
+				if scaled_value >= 0:
+					return "+%s%d" % [STAT_ICON_ATK, scaled_value]
+				return "-%s%d" % [STAT_ICON_ATK, absi(scaled_value)]
+			if with_stat_icons and stat == "max_hp":
+				if scaled_value >= 0:
+					return "+%s%d 生命上限" % [STAT_ICON_HP, scaled_value]
+				return "-%s%d 生命上限" % [STAT_ICON_HP, absi(scaled_value)]
 			if stat == "attack":
 				stat = "攻击"
 			elif stat == "max_hp":
@@ -312,9 +354,10 @@ static func format_action(action: EffectAction, value_scale: int = 1) -> String:
 				stat = "暴击率"
 			elif stat == "steps_per_turn":
 				stat = "每回合步数"
-			var sign: String = "+" if scaled_value >= 0 else ""
 			return "%s%s %s" % [sign, scaled_value, stat]
 		EffectAction.Type.HEAL:
+			if with_stat_icons:
+				return "恢复 %s%d" % [STAT_ICON_HP, scaled_value]
 			return "恢复 %d 生命" % scaled_value
 		EffectAction.Type.SPAWN_UNIT:
 			var spawn_name: String = "单位"

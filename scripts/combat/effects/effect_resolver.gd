@@ -58,6 +58,13 @@ func has_pending_steps() -> bool:
 	return not _pending_batches.is_empty()
 
 
+## 只读队首批次（用于结算前展示角色+技能介绍卡）；不弹出。
+func peek_next_batch() -> QueuedEffectBatch:
+	if _pending_batches.is_empty():
+		return null
+	return _pending_batches[0]
+
+
 func process_next_step() -> bool:
 	if _pending_batches.is_empty():
 		return false
@@ -741,7 +748,10 @@ func _execute_action(
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
 			if owner == null or target == null or not owner.is_alive():
 				return false
-			var scaled_percent := action.value * UnitInstance.ability_value_multiplier(owner.level)
+			var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+			var scaled_percent := (
+				action.value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
+			)
 			var new_hp := maxi(
 				1,
 				target.get_effective_max_hp() * scaled_percent / 100,
@@ -957,7 +967,8 @@ func _execute_fuse_explode_batch(
 func _scaled_action_value(owner: UnitInstance, value: int) -> int:
 	if owner == null:
 		return value
-	return value * UnitInstance.ability_value_multiplier(owner.level)
+	var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+	return value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
 
 
 func _resolve_damage_value(owner: UnitInstance, action: EffectAction) -> int:

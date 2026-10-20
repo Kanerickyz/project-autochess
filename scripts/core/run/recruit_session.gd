@@ -27,6 +27,9 @@ var _snapshot_entries: Array[DeckEntry] = []
 var _snapshot_next_entry_id: int = 0
 var _snapshot_candidates: Array[UnitData] = []
 var _snapshot_locked: Array[bool] = []
+## 跨场招募保留：上一场结束时仍锁定的候选人（按槽）。
+var _persisted_candidates: Array[UnitData] = []
+var _persisted_locked: Array[bool] = []
 
 
 func configure(
@@ -50,11 +53,21 @@ func begin(p_progress_ratio: float = 0.0) -> void:
 		push_error("RecruitSession.begin: deck/economy missing")
 		return
 	progress_ratio = clampf(p_progress_ratio, 0.0, 1.0)
+	## 开局招募不继承上一场锁定。
+	if require_nonempty_roster:
+		clear_persisted_locks()
 	candidates.clear()
 	_roll_candidates()
+	_apply_persisted_locks()
 	_capture_snapshot()
 	is_active = true
 	session_changed.emit()
+
+
+## 清空跨场锁定（新 Run / 开局招募）。
+func clear_persisted_locks() -> void:
+	_persisted_candidates.clear()
+	_persisted_locked.clear()
 
 
 func get_candidates() -> Array[UnitData]:
@@ -315,6 +328,8 @@ func can_skip() -> bool:
 func skip() -> void:
 	if not can_skip():
 		return
+	## 先记下当前锁定，再 reset 队伍/金币；锁定跨场保留，本场养成改动仍丢弃。
+	_persist_locks_for_next_session()
 	reset()
 	is_active = false
 	session_finished.emit(false)
@@ -323,6 +338,7 @@ func skip() -> void:
 func finish() -> void:
 	if not can_finish():
 		return
+	_persist_locks_for_next_session()
 	is_active = false
 	session_finished.emit(true)
 
@@ -375,6 +391,44 @@ func _roll_candidates() -> void:
 	for _i in count:
 		candidates.append(_pick_one(preferred))
 		candidate_locked.append(false)
+
+
+## 离开招募时写入跨场锁定；下一场 begin 时套回锁定槽。
+func _persist_locks_for_next_session() -> void:
+	_persisted_candidates.clear()
+	_persisted_locked.clear()
+	_ensure_lock_slots()
+	var count := get_candidate_slot_count()
+	for i in count:
+		var locked := i < candidate_locked.size() and candidate_locked[i]
+		var unit: UnitData = candidates[i] if i < candidates.size() else null
+		if locked and unit != null:
+			_persisted_candidates.append(unit)
+			_persisted_locked.append(true)
+		else:
+			_persisted_candidates.append(null)
+			_persisted_locked.append(false)
+
+
+func _apply_persisted_locks() -> void:
+	if _persisted_locked.is_empty():
+		return
+	_ensure_lock_slots()
+	var count := get_candidate_slot_count()
+	var preferred := get_preferred_tier()
+	for i in count:
+		if i >= _persisted_locked.size() or not _persisted_locked[i]:
+			continue
+		var unit: UnitData = _persisted_candidates[i] if i < _persisted_candidates.size() else null
+		if unit == null:
+			continue
+		## 锁定单位须仍在当前解锁池内，否则改抽并解锁。
+		if unit.tier > preferred:
+			candidates[i] = _pick_one(preferred)
+			candidate_locked[i] = false
+			continue
+		candidates[i] = unit
+		candidate_locked[i] = true
 
 
 ## 刷新：锁定槽保留角色；未锁定槽重抽。

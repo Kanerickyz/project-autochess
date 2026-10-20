@@ -96,12 +96,21 @@ const ABILITY_MERGE_VALUE_MULT := 6
 
 
 ## 星级对应的技能效果数值倍率（与 EffectResolver / 商店 / UI 共用）。
-static func ability_value_multiplier(level: int) -> int:
+static func ability_value_multiplier(level: int, step_mult: int = 0) -> int:
+	var step := step_mult if step_mult > 0 else ABILITY_MERGE_VALUE_MULT
 	var lv := maxi(1, level)
 	var mult := 1
 	for _i in range(lv - 1):
-		mult *= ABILITY_MERGE_VALUE_MULT
+		mult *= step
 	return mult
+
+
+## 按技能配置的 merge_value_mult（0=全局×6）计算倍率。
+static func ability_value_multiplier_for(ability: AbilityData, level: int) -> int:
+	var step := 0
+	if ability != null:
+		step = ability.merge_value_mult
+	return ability_value_multiplier(level, step)
 
 
 static func from_unit_data(data: UnitData, cell: Vector2i, team: Team) -> UnitInstance:

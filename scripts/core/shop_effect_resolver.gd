@@ -114,8 +114,14 @@ func _execute_action(
 ) -> void:
 	if action == null:
 		return
-	var scale := UnitInstance.ability_value_multiplier(
-		owner_entry.level if owner_entry != null else 1
+	var owner_ability: AbilityData = (
+		owner_entry.unit.ability
+		if owner_entry != null and owner_entry.unit != null
+		else null
+	)
+	var scale := UnitInstance.ability_value_multiplier_for(
+		owner_ability,
+		owner_entry.level if owner_entry != null else 1,
 	)
 	match action.action_type:
 		EffectAction.Type.GRANT_GOLD:

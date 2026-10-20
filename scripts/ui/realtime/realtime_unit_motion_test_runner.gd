@@ -46,6 +46,18 @@ func _test_sample_idle() -> void:
 	_expect(not off_a.is_equal_approx(off_c), "different seeds phase-shift idle")
 	var scl_b: Vector2 = b.get("scale", Vector2.ONE)
 	_expect(scl_b.y < 1.0 and scl_b.x > 1.0, "idle mid-cycle soft squash")
+	_test_sample_inspect_focus()
+
+
+func _test_sample_inspect_focus() -> void:
+	var dim: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.0, 1.0, Vector2.ZERO, false)
+	_expect(float(dim.get("alpha", 1.0)) < 0.8, "non-focus units dim while inspecting")
+	var kick: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.0, 1.0, Vector2.ZERO, true)
+	_expect(float(kick.get("rotation", 0.0)) > 0.05, "focus kick tilts with slide dir")
+	_expect((kick.get("scale", Vector2.ONE) as Vector2).x > 1.02, "focus kick scales up")
+	var settled: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.35, 1.0, Vector2.ZERO, true)
+	_expect((settled.get("offset", Vector2.ZERO) as Vector2).y < -0.05, "focus settles lifted")
+	_expect(absf(float(settled.get("rotation", 1.0))) < absf(float(kick.get("rotation", 0.0))), "kick tilt decays")
 
 
 func _expect(ok: bool, label: String) -> void:
@@ -78,6 +90,27 @@ func _arena(battle: RealtimeBattleController) -> RealtimeArenaView:
 	return battle.find_child("ArenaView", true, false) as RealtimeArenaView
 
 
+## 中心外扩落座后槽 0 常空；取前几个实际占用槽。
+func _occupied_slot_indices(slots: PrepareSlotBoard, limit: int = 8) -> Array[int]:
+	var out: Array[int] = []
+	if slots == null:
+		return out
+	for i in slots.slot_count:
+		if slots.get_entry(i) == null:
+			continue
+		out.append(i)
+		if out.size() >= limit:
+			break
+	return out
+
+
+func _slot_center(arena: RealtimeArenaView, slots: PrepareSlotBoard, slot_index: int) -> Vector2:
+	return (
+		arena.tile_to_local(Vector2(slots.get_cell(slot_index)) + Vector2(0.5, 0.5))
+		+ Vector2(0.0, arena.ally_half_slide_y)
+	)
+
+
 func _press(arena: RealtimeArenaView, pos: Vector2, pressed: bool) -> void:
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
@@ -97,11 +130,17 @@ func _test_long_press_info() -> void:
 	var slots := battle.get_slot_board()
 	var seated_before := slots.occupied_count()
 	_expect(seated_before > 0, "units seated for prepare")
-	var center := arena.tile_to_local(Vector2(slots.get_cell(0)) + Vector2(0.5, 0.5)) + Vector2(0.0, arena.ally_half_slide_y)
+	var occupied := _occupied_slot_indices(slots, 2)
+	_expect(not occupied.is_empty(), "need an occupied slot for inspect")
+	if occupied.is_empty():
+		battle.queue_free()
+		return
+	var seat0: int = occupied[0]
+	var center := _slot_center(arena, slots, seat0)
 	var info := arena.inspect_at(center)
 	_expect(not info.is_empty(), "inspect seated unit")
 	_expect(
-		String(info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(slots.get_entry(0)),
+		String(info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(slots.get_entry(seat0), true),
 		"seated unit shows its own skill text",
 	)
 	## 点在头部（贴图上半）也能命中。
@@ -120,11 +159,17 @@ func _test_long_press_info() -> void:
 	_press(arena, center, true)
 	_press(arena, center, false)
 	_expect(slots.occupied_count() == seated_before, "quick tap selects for swap, does not recall")
-	_expect(battle._selected_entry_id == slots.get_entry(0).entry_id, "quick tap selects seated unit")
+	_expect(battle._selected_entry_id == slots.get_entry(seat0).entry_id, "quick tap selects seated unit")
 	## 准备换座写回 DeckState；刷新手牌不可用。
 	var sel_id := battle._selected_entry_id
 	var from_seat := slots.find_slot_by_entry(sel_id)
-	var to_seat := 1 if from_seat != 1 else 2
+	var to_seat := -1
+	for i in slots.slot_count:
+		if i != from_seat and slots.is_empty(i):
+			to_seat = i
+			break
+	if to_seat < 0:
+		to_seat = 1 if from_seat != 1 else 2
 	_expect(battle.try_swap_prepare_seats(from_seat, to_seat), "prepare swap seats ok")
 	var deck_entry := battle.get_slot_board().get_entry(to_seat)
 	_expect(deck_entry != null and deck_entry.entry_id == sel_id, "prepare swap moved unit on board")
@@ -154,21 +199,24 @@ func _test_long_press_slide_inspect() -> void:
 		return
 	var slots := battle.get_slot_board()
 	_expect(slots.occupied_count() >= 2, "need two seated units for slide inspect")
-	if slots.occupied_count() < 2:
+	var occupied := _occupied_slot_indices(slots, 2)
+	if occupied.size() < 2:
 		battle.queue_free()
 		return
-	var entry0 := slots.get_entry(0)
-	var entry1 := slots.get_entry(1)
-	_expect(entry0 != null and entry1 != null, "seat 0/1 occupied")
-	var c0 := arena.tile_to_local(Vector2(slots.get_cell(0)) + Vector2(0.5, 0.5)) + Vector2(0.0, arena.ally_half_slide_y)
-	var c1 := arena.tile_to_local(Vector2(slots.get_cell(1)) + Vector2(0.5, 0.5)) + Vector2(0.0, arena.ally_half_slide_y)
+	var seat_a: int = occupied[0]
+	var seat_b: int = occupied[1]
+	var entry0 := slots.get_entry(seat_a)
+	var entry1 := slots.get_entry(seat_b)
+	_expect(entry0 != null and entry1 != null, "two occupied seats for slide")
+	var c0 := _slot_center(arena, slots, seat_a)
+	var c1 := _slot_center(arena, slots, seat_b)
 	_press(arena, c0, true)
 	var until := Time.get_ticks_msec() + RealtimeArenaView.LONG_PRESS_MS + 120
 	while Time.get_ticks_msec() < until:
 		await process_frame
 	_expect(arena.is_info_card_visible(), "long press opens first unit")
 	_expect(
-		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry0),
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry0, true),
 		"first long-press shows seat0 skills",
 	)
 	## 保持按下，滑到另一单位。
@@ -178,13 +226,21 @@ func _test_long_press_slide_inspect() -> void:
 	arena._gui_input(move)
 	_expect(arena.is_info_card_visible(), "info stays open while sliding")
 	_expect(
-		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry1),
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry1, true),
 		"slide switches to seat1 skills",
 	)
 	_expect(
 		String(arena._press_info.get("inspect_key", "")) == "entry:%d" % entry1.entry_id,
 		"slide updates inspect_key to seat1",
 	)
+	## 切换瞬间应有倾斜/放大（小丑牌式），内容已换。
+	var card := arena._info_card
+	_expect(card != null and card.visible, "info card node visible after slide")
+	if card != null:
+		_expect(
+			absf(card.rotation_degrees) > 0.5 or card.scale.x > 1.01,
+			"slide switch kicks tilt or scale punch",
+		)
 	_press(arena, c1, false)
 	_expect(not arena.is_info_card_visible(), "release after slide hides card")
 	battle.queue_free()

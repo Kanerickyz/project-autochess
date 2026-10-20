@@ -65,12 +65,6 @@ custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
 text = "角色库"
 
-[node name="SandboxButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 48)
-layout_mode = 2
-text = "沙盒模式"
-
 [node name="SettingsButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(280, 48)

@@ -14,7 +14,7 @@ const MOUNT_TABLE := {
 	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
 	"spear_goblin": "hurt_heal_self_2",
-	"skeleton": "death_heal_nearby_ally_mid",
+	"skeleton": "death_heal_random_ally_2",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
 }
@@ -120,6 +120,31 @@ static func _test_ability_merge_value_multiplier() -> bool:
 		return false
 	if UnitInstance.ability_value_multiplier(3) != 36:
 		push_error("ability mult: 3★ expected 36")
+		return false
+	## 血僧：merge_value_mult=2 → 1★×1 / 2★×2 / 3★×4；基础 4 → 三合一后 +8。
+	var blood := load("res://resources/abilities/hurt_gain_max_hp.tres") as AbilityData
+	if blood == null or blood.merge_value_mult != 2:
+		push_error("ability mult: hurt_gain_max_hp should use merge_value_mult=2")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 1) != 1:
+		push_error("ability mult: blood 1★ scale expected 1")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 2) != 2:
+		push_error("ability mult: blood 2★ scale expected 2")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 3) != 4:
+		push_error("ability mult: blood 3★ scale expected 4")
+		return false
+	var act: EffectAction = null
+	if not blood.effect_specs.is_empty() and blood.effect_specs[0] != null:
+		var specs_actions: Array = blood.effect_specs[0].actions
+		if not specs_actions.is_empty():
+			act = specs_actions[0] as EffectAction
+	if act == null or act.value != 4:
+		push_error("ability mult: blood base value expected 4")
+		return false
+	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 8:
+		push_error("ability mult: blood 2★ effective expected +8")
 		return false
 	return true
 
@@ -474,9 +499,9 @@ static func _test_first_hurt_harden_once() -> bool:
 		push_error("first_hurt: expected >=2 plate hits, got %d" % plate_hits[0])
 		return false
 	var after_max := rt.unit.get_effective_max_hp()
-	if after_max != base_max + 4:
+	if after_max != base_max + 1:
 		push_error(
-			"first_hurt: max_hp %d -> %d, expected +4 once (max_triggers=1)"
+			"first_hurt: max_hp %d -> %d, expected +1 once (max_triggers=1)"
 			% [base_max, after_max]
 		)
 		return false
@@ -717,10 +742,10 @@ static func _test_ally_death_spawn_weak() -> bool:
 	return true
 
 
-## 枯骨死亡 → 附近最低血友方回血 4。
+## 枯骨死亡 → 随机友方回血 2。
 static func _test_death_heal_nearby_ally() -> bool:
 	var data := _load_unit("res://resources/units/realtime/skeleton.tres")
-	if data == null or data.ability == null or data.ability.id != "death_heal_nearby_ally_mid":
+	if data == null or data.ability == null or data.ability.id != "death_heal_random_ally_2":
 		push_error("death_heal: skeleton ability not mounted")
 		return false
 	var sim := _new_sim()
@@ -738,9 +763,9 @@ static func _test_death_heal_nearby_ally() -> bool:
 		push_error("death_heal: apply_damage should kill skeleton")
 		return false
 	sim._drain_effects()
-	if ally.unit.current_hp != hp_before + 4:
+	if ally.unit.current_hp != hp_before + 2:
 		push_error(
-			"death_heal: ally hp %d → %d, expected +4"
+			"death_heal: ally hp %d → %d, expected +2"
 			% [hp_before, ally.unit.current_hp]
 		)
 		return false

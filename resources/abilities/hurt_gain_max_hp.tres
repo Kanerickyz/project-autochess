@@ -18,4 +18,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 script = ExtResource("1_ab")
 id = "hurt_gain_max_hp"
 display_name = "受伤时 对自身 +4 生命上限"
+merge_value_mult = 2
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

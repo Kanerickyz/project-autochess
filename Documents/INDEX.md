@@ -95,7 +95,7 @@ Project Autochess/
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
 | `resources/levels/dev_6x6.tres` | **8×8** 线性开发关，**15 波**（`wave_01`–`wave_15`）；`main.tscn` 直接 F5 | **M1 已实现** |
 | `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 5×8 + 座位见 COMBATLEVEL） | **Run 已实现** |
-| `resources/levels/board_legacy_4x8.tres` | 沙盒用旧 4×8 格子棋盘 | **Legacy** |
+| `resources/levels/board_legacy_4x8.tres` | 旧 4×8 格子棋盘（线性开发关工具） | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
 | `scripts/combat/realtime/` | `RealtimeCombatSim` 固定时间步模拟（As-Is 实时并行弱滑动；To-Be 回合制依次 + 一动内落格顿步） | **已实现 / 待对齐** |
@@ -105,9 +105,6 @@ Project Autochess/
 | `resources/runs/act1_map.tres` | Act1 地图配置 + 遭遇池 | **Run 已实现** |
 | `resources/encounters/` | `EncounterData`（自 `wave_*.tres` 拆分） | **Run 已实现** |
 | `scenes/main/run_game.tscn` | 爬塔 Run 主入口（地图 + 遭遇） | **Run 已实现** |
-| `scenes/main/sandbox.tscn` | 沙盒模式（手动摆盘、试战斗） | **已实现** |
-| `scenes/ui/sandbox/` | 沙盒单位选择面板 | **已实现** |
-| `scripts/core/sandbox_controller.gd` | 沙盒 EDIT/COMBAT 流程 | **已实现** |
 | `scenes/ui/map/` | 地图选路 UI | **Run 已实现** |
 | `scripts/core/run/` | RunController、MapGenerator、RunGameController | **Run 已实现** |
 | `scenes/ui/`（其余） | 商店、手牌、弹窗、HUD | **M3b 已实现** |

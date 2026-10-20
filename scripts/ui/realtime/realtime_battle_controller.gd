@@ -32,7 +32,7 @@ var _economy: RunEconomy
 var _level: LevelData
 var _encounter: EncounterData
 var _tier_index: int = 0
-## 层预算抽阵上下文（Run 传入；沙盒/测试可省略并按 encounter 旗标推断）。
+## 层预算抽阵上下文（Run 传入；测试可省略并按 encounter 旗标推断）。
 var _floor_index: int = 0
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 var _spawn_budget_config: SpawnBudgetConfig = null
@@ -53,9 +53,12 @@ var _hint_text: String = ""
 var _hint_remaining: float = 0.0
 var _enemy_spawns: Array = []
 var _encounter_rng: RandomNumberGenerator
-## 开战锁阵阶段：部署/开战技能只播动画·UI，不走时停队列。
+## 开战锁阵阶段：部署/开战技能只播动画·UI，不走行动内播报队列。
 var _lock_phase_active: bool = false
 var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
+## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
+var _resolving_presented_skill: bool = false
+var _last_resolved_payload: CombatEventPayload = null
 ## 胜后半场退出后保留 slide，供招募同屏滑入（不重置边框/草地）。
 var _preserve_half_slide_for_recruit: bool = false
 var _recruit_session: RecruitSession
@@ -143,17 +146,8 @@ func _process(delta: float) -> void:
 		## 观战加速：缩短单动格步/出手与反馈寿命；不改行动序与已结算数值。
 		_arena.presentation_time_scale = time_scale
 	if _phase == Phase.COMBAT and _sim != null:
-		## 时停队列仅兼容钩子（COMBAT_FEEDBACK 已废止为主通道）；主推进为行动队列依次一动。
-		if _timestop_queue.is_blocking():
-			_sim.hold_for_presentation()
-			var started := _timestop_queue.tick(delta, time_scale)
-			if started != null:
-				_present_effect_feedback(started, true)
-			if not _timestop_queue.is_blocking():
-				_sim.release_presentation()
-		else:
-			_sim.release_presentation()
-			_sim.step(delta * time_scale)
+		## 行动内播报：先卡再结算插入待执行队列；与行动队列串行（COMBAT_FEEDBACK §5.2）。
+		_tick_combat_presentation(delta)
 		if _arena != null:
 			_arena.queue_redraw()
 	_refresh_hud()
@@ -773,6 +767,8 @@ func _begin_combat_from_prepare() -> void:
 
 	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
 	_sim.begin_combat()
+	## 开战广播已强制排空；此后技能入队延迟结算，由播报队列先卡再执行。
+	_sim.defer_effect_resolve = true
 	_lock_phase_active = false
 	_set_phase(Phase.COMBAT)
 
@@ -1809,26 +1805,83 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 		_economy.grant(payload.target.death_grant_gold)
 
 
-## 锁阵：立刻播动画/UI；实时战斗：入时停播报队列（含高频；普攻不经此路径）。
+## 锁阵：立刻播动画/UI。战斗内：由「先卡再结算」拍捕获；其它路径入结果拍。
 func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 	if payload == null:
+		return
+	if _resolving_presented_skill:
+		_last_resolved_payload = payload
 		return
 	if _lock_phase_active or _phase != Phase.COMBAT:
 		_present_effect_feedback(payload, true)
 		return
-	var started := _timestop_queue.enqueue(payload, time_scale)
+	## 非门控路径（兼容）：已结算则只播结果拍。
+	if _timestop_queue.is_blocking():
+		return
 	if _sim != null:
 		_sim.hold_for_presentation()
-	if started:
-		_present_effect_feedback(payload, true)
+	if _timestop_queue.enqueue_resolved(payload, time_scale):
+		_present_effect_result(payload, true)
 
 
-## 技能因果反馈：只接效果管线已结算；普攻命中不走此路径。
+## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
+func _tick_combat_presentation(delta: float) -> void:
+	if _timestop_queue.is_blocking():
+		_sim.hold_for_presentation()
+		var done := _timestop_queue.tick(delta, time_scale)
+		if done == &"card_done":
+			_on_skill_card_done()
+		elif done == &"result_done":
+			_on_skill_result_done()
+		return
+	if _sim.has_pending_effects():
+		_sim.hold_for_presentation()
+		_start_next_skill_card()
+		return
+	_sim.release_presentation()
+	_sim.step(delta * time_scale)
+
+
+func _start_next_skill_card() -> void:
+	var batch := _sim.peek_pending_effect_batch()
+	if batch == null:
+		_sim.release_presentation()
+		return
+	_timestop_queue.begin_card(batch.owner, batch.spec, time_scale)
+	_show_skill_trigger_info_for_owner(batch.owner)
+
+
+func _on_skill_card_done() -> void:
+	_last_resolved_payload = null
+	_resolving_presented_skill = true
+	_sim.resolve_next_pending_effect()
+	_resolving_presented_skill = false
+	var payload := _last_resolved_payload
+	_last_resolved_payload = null
+	_timestop_queue.begin_result(payload, time_scale)
+	if payload != null:
+		_present_effect_result(payload, true)
+
+
+func _on_skill_result_done() -> void:
+	if _sim != null and _sim.has_pending_effects():
+		_start_next_skill_card()
+		return
+	_timestop_queue.clear()
+	if _sim != null:
+		_sim.release_presentation()
+
+
+## 锁阵等：介绍卡 + 结果数字（已结算）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
+	_show_skill_trigger_info_card(payload)
+	_present_effect_result(payload, with_callout)
+
+
+## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
+func _present_effect_result(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
-	## 先弹出与长按相同的技能介绍卡，再播数字/短提示。
-	_show_skill_trigger_info_card(payload)
 	var pops := RealtimeEffectFeedback.build_popups(payload)
 	var callout_center := Vector2.ZERO
 	var callout_player := true
@@ -1869,7 +1922,9 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 			return rt.position
 	if target != null:
 		return Vector2(target.grid_pos) + Vector2(0.5, 0.5)
-	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	var owner: UnitInstance = null
+	if payload != null:
+		owner = payload.effect_owner if payload.effect_owner != null else payload.source
 	if _sim != null and owner != null:
 		var owner_rt := _sim.find_unit(owner)
 		if owner_rt != null:
@@ -1880,12 +1935,16 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 
 
 func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
-	if _arena == null or payload == null:
+	if payload == null:
 		return
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
-	if owner == null:
+	_show_skill_trigger_info_for_owner(owner)
+
+
+func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
+	if _arena == null or owner == null:
 		return
-	var tile := _resolve_feedback_center(owner, payload)
+	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
 	var atk := owner.get_effective_attack() if owner.has_method("get_effective_attack") else 0
 	var hp := owner.current_hp
 	if _sim != null:

@@ -10,3 +10,5 @@ extends Resource
 @export var line_attack_uses_attack: bool = true
 @export_range(1, 99, 1) var line_attack_damage: int = 2
 @export var effect_specs: Array[EffectSpec] = []
+## 每次三合一的技能数值倍率；0 = 用全局 ×6（1★×1 / 2★×6 / 3★×36）。
+@export_range(0, 99, 1) var merge_value_mult: int = 0
