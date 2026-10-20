@@ -565,36 +565,37 @@ static func _test_persistent_seats_recruit_replace_sell_swap_merge() -> bool:
 		push_error("RecruitSessionTest: recruit default first empty failed")
 		return false
 	var e1 := buy1["entry"] as DeckEntry
-	if e1 == null or e1.seat_index != 0:
-		push_error("RecruitSessionTest: first empty seat should be 0, got %d" % (e1.seat_index if e1 else -1))
+	## 5 列中心外扩：首空为前排中心列索引 2（序 53124）。
+	if e1 == null or e1.seat_index != 2:
+		push_error("RecruitSessionTest: first empty seat should be 2, got %d" % (e1.seat_index if e1 else -1))
 		return false
 
-	## 换座：骑士 0 ↔ 空座 2
-	if not session.try_swap_seat(e1.entry_id, 2):
+	## 换座：骑士 2 ↔ 空座 0
+	if not session.try_swap_seat(e1.entry_id, 0):
 		push_error("RecruitSessionTest: recruit swap to empty seat failed")
 		return false
 	e1 = deck.get_entry(e1.entry_id)
-	if e1 == null or e1.seat_index != 2:
-		push_error("RecruitSessionTest: swap should move knight to seat 2")
+	if e1 == null or e1.seat_index != 0:
+		push_error("RecruitSessionTest: swap should move knight to seat 0")
 		return false
-	if deck.get_entry_at_seat(0) != null:
-		push_error("RecruitSessionTest: seat 0 should be empty after move")
+	if deck.get_entry_at_seat(2) != null:
+		push_error("RecruitSessionTest: seat 2 should be empty after move")
 		return false
 
-	## 互换：弓箭手(3) ↔ 骑士(2)
+	## 互换：弓箭手(3) ↔ 骑士(0)
 	var archer_id := e0.entry_id
 	var knight_id := e1.entry_id
-	if not session.try_swap_seat(archer_id, 2):
+	if not session.try_swap_seat(archer_id, 0):
 		push_error("RecruitSessionTest: recruit swap between members failed")
 		return false
-	if deck.get_entry(archer_id).seat_index != 2:
-		push_error("RecruitSessionTest: archer should be on seat 2 after swap")
+	if deck.get_entry(archer_id).seat_index != 0:
+		push_error("RecruitSessionTest: archer should be on seat 0 after swap")
 		return false
 	if deck.get_entry(knight_id).seat_index != 3:
 		push_error("RecruitSessionTest: knight should be on seat 3 after swap")
 		return false
 
-	## 出售腾座（当前 deck：弓 seat2、骑 seat3）
+	## 出售腾座（当前 deck：弓 seat0、骑 seat3）
 	var sell_seat := deck.get_entry(archer_id).seat_index
 	var sold := session.try_sell(archer_id)
 	if not sold.get("ok", false):
