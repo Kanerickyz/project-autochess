@@ -54,7 +54,7 @@ horizontal_alignment = 1
 
 [node name="CountLabel" type="Label" parent="Root/Hud/HudMargin/HudVBox/Header"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 0)
+custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.74, 0.78, 1)
 theme_override_font_sizes/font_size = 14
@@ -62,37 +62,49 @@ text = "共 0 名"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="TierFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox"]
+[node name="FilterToggle" type="Button" parent="Root/Hud/HudMargin/HudVBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 36)
+layout_mode = 2
+tooltip_text = "折叠或展开上方筛选栏"
+text = "筛选 ▴"
+
+[node name="FilterBody" type="VBoxContainer" parent="Root/Hud/HudMargin/HudVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TierFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="TriggerScroll" type="ScrollContainer" parent="Root/Hud/HudMargin/HudVBox"]
+[node name="TriggerScroll" type="ScrollContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 vertical_scroll_mode = 0
 
-[node name="TriggerFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/TriggerScroll"]
+[node name="TriggerFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody/TriggerScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="EffectFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox"]
+[node name="EffectFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="StarFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox"]
+[node name="StarFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="HintLabel" type="Label" parent="Root/Hud/HudMargin/HudVBox"]
+[node name="HintLabel" type="Label" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
 theme_override_font_sizes/font_size = 13
