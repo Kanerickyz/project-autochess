@@ -121,6 +121,31 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	if UnitInstance.ability_value_multiplier(3) != 36:
 		push_error("ability mult: 3★ expected 36")
 		return false
+	## 血僧：merge_value_mult=2 → 1★×1 / 2★×2 / 3★×4；基础 4 → 三合一后 +8。
+	var blood := load("res://resources/abilities/hurt_gain_max_hp.tres") as AbilityData
+	if blood == null or blood.merge_value_mult != 2:
+		push_error("ability mult: hurt_gain_max_hp should use merge_value_mult=2")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 1) != 1:
+		push_error("ability mult: blood 1★ scale expected 1")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 2) != 2:
+		push_error("ability mult: blood 2★ scale expected 2")
+		return false
+	if UnitInstance.ability_value_multiplier_for(blood, 3) != 4:
+		push_error("ability mult: blood 3★ scale expected 4")
+		return false
+	var act: EffectAction = null
+	if not blood.effect_specs.is_empty() and blood.effect_specs[0] != null:
+		var specs_actions: Array = blood.effect_specs[0].actions
+		if not specs_actions.is_empty():
+			act = specs_actions[0] as EffectAction
+	if act == null or act.value != 4:
+		push_error("ability mult: blood base value expected 4")
+		return false
+	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 8:
+		push_error("ability mult: blood 2★ effective expected +8")
+		return false
 	return true
 
 
