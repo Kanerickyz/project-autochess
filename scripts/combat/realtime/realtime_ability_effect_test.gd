@@ -11,7 +11,7 @@ const MOUNT_TABLE := {
 	"musketeer": "crit_extra_damage_mid",
 	"valkyrie": "deal_damage_gain_atk_small",
 	"barbarian": "ally_death_self_atk_mid",
-	"archer": "deploy_self_atk_small",
+	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
 	"spear_goblin": "deal_heal_lowest_ally_small",
 	"skeleton": "death_heal_nearby_ally_mid",
@@ -38,7 +38,7 @@ static func run_all() -> bool:
 	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
 	_check("kill_gain_atk_mid", _test_kill_gain_atk_mid())
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
-	_check("deploy_self_atk_small", _test_deploy_self_atk_small())
+	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
@@ -400,20 +400,27 @@ static func _test_ally_death_self_atk_mid() -> bool:
 	return true
 
 
-static func _test_deploy_self_atk_small() -> bool:
+## 游侠：其他友方生成时自身攻击 +1；自己上场不触发。
+static func _test_ally_deploy_self_atk_small() -> bool:
 	var data := _load_unit("res://resources/units/realtime/archer.tres")
-	if data == null or data.ability == null or data.ability.id != "deploy_self_atk_small":
-		push_error("deploy_self: archer ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "ally_deploy_self_atk_small":
+		push_error("ally_deploy: archer ability not mounted")
 		return false
 	var expected_base := data.stats.attack if data.stats != null else 0
 	var sim := _new_sim()
 	sim.configure(ARENA, 19)
-	## add_unit 生成当下发 ON_SUMMONED，应立刻自加攻。
 	var archer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	if archer.unit.get_effective_attack() != expected_base:
+		push_error(
+			"ally_deploy: self spawn should not buff (atk %d, base %d)"
+			% [archer.unit.get_effective_attack(), expected_base]
+		)
+		return false
+	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(10.5, 24.5))
 	var after := archer.unit.get_effective_attack()
 	if after != expected_base + 1:
 		push_error(
-			"deploy_self: archer atk %d, expected base %d +1 on OnSummoned"
+			"ally_deploy: archer atk %d, expected base %d +1 on OnFriendSummoned"
 			% [after, expected_base]
 		)
 		return false
