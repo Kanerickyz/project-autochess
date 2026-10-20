@@ -7,7 +7,7 @@
 截至文档编写时，仓库为 **Godot 4.6 工程（M2a–M3 已可运行）**：
 
 - **Run 主路径战斗**：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController`；2D 俯视竖屏；**【As-Is/To-Be 时钟】** `RealtimeCombatSim` 已按**敌我混排行动队列**依次推进一动（一动内八向落格顿步；见 [COMBAT](./Features/COMBAT.md) / [COMBATLEVEL](./Features/COMBATLEVEL.md)）；固定步长仍用于一动内格步插值（见 §3.4）。角色为 `resources/units/realtime/`（Content 十人基础兵种；见 [Content/UNITS_ROSTER](./Content/UNITS_ROSTER.md)）；地图非战斗节点为占位界面 `scenes/ui/placeholder/`
-- **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关与沙盒，不再是 Run 主路径
+- **旧网格工具环**：以下 M1–M2 回合制格子战斗、3D `BoardWorld` 仍用于 `main.tscn` 线性开发关，不再是 Run 主路径
 - **M1**：可变棋盘、玩家布阵
 - **M2a–M2c**：`UnitData` / `WaveData`、`SpawnSystem`、`GridMovement`、回合制逐单位行动战斗、`CombatArena` + `CombatEventBus` + `DamagePipeline` + `UnitBrain`、`MatchStateMachine` 多波循环（dev 关卡 **15 波**，通关后循环）
 - **M3.5 Effect**：`EffectSpec` / `EffectAction` / `AbilityData`、`EffectResolver`、`StatModifierStack`；样本：受伤+2攻、死亡召唤2HP、移动+1血
@@ -195,7 +195,7 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 `CombatEventBus` 生命周期：进入遭遇时由控制器创建，准备阶段不发战斗事件；结算后「继续」时随模拟一起释放。
 
-**旧网格回合制（`main.tscn` / 沙盒）** 职责拆分：
+**旧网格回合制（`main.tscn`）** 职责拆分：
 
 | 模块 | 职责 |
 |------|------|
@@ -272,7 +272,7 @@ flowchart LR
 
 #### CombatEventBus（战斗域）
 
-- **生命周期**：进入 `COMBAT` 时由 `CombatArena.start_combat` 创建；战斗结束经 `CombatArena.stop_combat` 销毁（主流程与沙盒均须调用）。不注册为 Autoload。
+- **生命周期**：进入 `COMBAT` 时由 `CombatArena.start_combat` 创建；战斗结束经 `CombatArena.stop_combat` 销毁。不注册为 Autoload。
 - **v1 战斗事件**（[`CombatEvents`](../scripts/combat/events/combat_events.gd)，`StringName`）：
 
 ```

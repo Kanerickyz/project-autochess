@@ -140,7 +140,7 @@ func _test_long_press_info() -> void:
 	var info := arena.inspect_at(center)
 	_expect(not info.is_empty(), "inspect seated unit")
 	_expect(
-		String(info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(slots.get_entry(seat0)),
+		String(info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(slots.get_entry(seat0), true),
 		"seated unit shows its own skill text",
 	)
 	## 点在头部（贴图上半）也能命中。
@@ -216,7 +216,7 @@ func _test_long_press_slide_inspect() -> void:
 		await process_frame
 	_expect(arena.is_info_card_visible(), "long press opens first unit")
 	_expect(
-		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry0),
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry0, true),
 		"first long-press shows seat0 skills",
 	)
 	## 保持按下，滑到另一单位。
@@ -226,7 +226,7 @@ func _test_long_press_slide_inspect() -> void:
 	arena._gui_input(move)
 	_expect(arena.is_info_card_visible(), "info stays open while sliding")
 	_expect(
-		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry1),
+		String(arena._press_info.get("skills", "")) == UnitInfoText.get_skills_block_from_entry(entry1, true),
 		"slide switches to seat1 skills",
 	)
 	_expect(

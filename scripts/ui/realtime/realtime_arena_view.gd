@@ -852,7 +852,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
 		"tier": entry.unit.tier if entry.unit != null else 0,
 		"attack": maxi(1, stats.attack + entry.bonus_attack) if stats != null else 0,
 		"hp": maxi(1, stats.max_hp + entry.bonus_max_hp) if stats != null else 0,
-		"skills": UnitInfoText.get_skills_block_from_entry(entry),
+		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
 	}
 
@@ -879,7 +879,7 @@ func _info_from_unit_data(
 		"tier": data.tier,
 		"attack": atk * stat_mult,
 		"hp": hp * stat_mult,
-		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level),
+		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level, true),
 		"texture": _art.get_texture(data.id, true) if _art != null else null,
 	}
 
@@ -894,7 +894,7 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
 		"attack": attack,
 		"hp": hp,
-		"skills": UnitInfoText.get_skills_block(unit),
+		"skills": UnitInfoText.get_skills_block(unit, true),
 		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
 	}
 
