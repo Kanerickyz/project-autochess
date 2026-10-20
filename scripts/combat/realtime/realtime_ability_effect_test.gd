@@ -604,11 +604,15 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-## 召魂：友方死亡时生成 token_weak×1；随从立即可交战（无部署等待）。
+## 召魂：友方死亡可反复触发；随从立即可交战（无部署等待）。生成只数仍受每角色本场随从上限约束。
 static func _test_ally_death_spawn_weak() -> bool:
 	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_death_spawn_weak":
 		push_error("ally_death_spawn: soulcaller ability not mounted")
+		return false
+	var specs: Array = data.ability.effect_specs
+	if specs.is_empty() or specs[0] == null or int(specs[0].max_triggers_per_combat) > 0:
+		push_error("ally_death_spawn: max_triggers_per_combat must be unlimited (<=0)")
 		return false
 	## 用正式棋盘规格，避免大沙盘掩盖半场落点问题。
 	const BOARD := Vector2i(5, 8)
