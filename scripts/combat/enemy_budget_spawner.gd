@@ -77,10 +77,8 @@ static func roll(
 		var target_total := cfg.roll_enemy_count(node_type, player_n, rng, floor_index)
 		## 座位硬上限仍有效。
 		target_total = clampi(target_total, 0, seat_count)
-		## 普通战斗：人数不得超过玩家队伍角色数（含固定位合计）。
-		## 第一关：精英同样不得超过 N。
-		var cap_to_player := node_type == MapNodeType.Type.COMBAT or first_floor
-		if cap_to_player:
+		## 第一关精英：人数仍不得超过 N。普通关改按层掷点，不再封顶到队伍人数。
+		if first_floor and node_type == MapNodeType.Type.ELITE:
 			target_total = mini(target_total, player_n)
 			if fixed_units.size() > player_n:
 				var trim_fixed: Array[UnitData] = []
@@ -121,9 +119,9 @@ static func roll(
 			capped.append(all_units[i])
 		all_units = capped
 	if node_type != MapNodeType.Type.BOSS:
-		var player_cap := _player_roster_count(team_entries)
-		## 普通战斗（及第一关任意非 Boss）最终名单硬封顶 ≤ 队伍人数。
-		if node_type == MapNodeType.Type.COMBAT or first_floor:
+		## 第一关精英最终名单硬封顶 ≤ 队伍人数；普通关仅座位硬顶。
+		if first_floor and node_type == MapNodeType.Type.ELITE:
+			var player_cap := _player_roster_count(team_entries)
 			if all_units.size() > player_cap:
 				var capped_n: Array[UnitData] = []
 				for i in player_cap:
