@@ -121,6 +121,7 @@ func _ready() -> void:
 	_arena.recruit_item_pressed.connect(_on_recruit_item_pressed)
 	_arena.recruit_item_drop.connect(_on_recruit_item_drop)
 	_arena.enchant_forge_drop.connect(_on_enchant_forge_drop)
+	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
@@ -682,6 +683,38 @@ func _on_enchant_forge_drop(entry_id: int, slot: StringName) -> void:
 		flash_hint("无法放入该格")
 		return
 	_sync_enchant_arena()
+
+
+func _on_enchant_team_seat_drop(entry_id: int, target_seat: int) -> void:
+	if _phase != Phase.ENCHANT or _deck_state == null:
+		return
+	if _enchant_session == null or not _enchant_session.is_active or _enchant_session.fused_this_visit:
+		return
+	var from_slot := _enchant_slots.find_slot_by_entry(entry_id)
+	if from_slot < 0 or target_seat < 0 or from_slot == target_seat:
+		return
+	if _enchant_ui.is_expanded_team():
+		if not _enchant_slots.try_swap_slots(from_slot, target_seat):
+			flash_hint("无法换座")
+			return
+		_sync_enchant_expanded_seat_indices()
+	else:
+		if not _deck_state.swap_seats(entry_id, target_seat):
+			flash_hint("无法换座")
+			_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
+			return
+		_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
+	_sync_enchant_arena()
+
+
+func _sync_enchant_expanded_seat_indices() -> void:
+	for i in _enchant_slots.slot_count:
+		var entry := _enchant_slots.get_entry(i)
+		if entry == null:
+			continue
+		entry.seat_index = i
+		if i < _enchant_slots.seat_assign_seq.size():
+			entry.seat_assign_seq = _enchant_slots.seat_assign_seq[i]
 
 
 func _sync_enchant_arena() -> void:

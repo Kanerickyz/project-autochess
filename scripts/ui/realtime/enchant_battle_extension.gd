@@ -33,6 +33,10 @@ func set_expanded_team(enabled: bool) -> void:
 	_expanded_team = enabled
 
 
+func is_expanded_team() -> bool:
+	return _expanded_team
+
+
 func show_hud() -> void:
 	_ensure_hud()
 	_hud.visible = true
@@ -93,12 +97,8 @@ func _build_forge_previews() -> Array:
 		var entry: DeckEntry = null
 		if i < 2 and ids[i] >= 0 and _session.deck != null:
 			entry = _session.deck.get_entry(ids[i])
-		elif i == 2 and _session.can_fuse():
-			var preview := _session.preview_ability()
-			if preview != null:
-				entry = DeckEntry.new()
-				entry.unit = EnchantFusionService.FUSED_UNIT
-				entry.runtime_main_ability = preview
+		elif i == 2:
+			entry = _session.build_preview_fused_entry()
 		out.append({
 			"cell": slot_cells[i],
 			"label": labels[i],
