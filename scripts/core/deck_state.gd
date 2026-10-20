@@ -180,6 +180,8 @@ func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
 	for entry in _entries:
 		if entry == null or entry.unit == null:
 			continue
+		if entry.is_fused_enchant() or FusedEnchantIds.is_fused_unit_id(unit_data.id):
+			continue
 		if entry.get_unit_id() == unit_data.id and entry.level == level:
 			count += 1
 	return count >= 2
