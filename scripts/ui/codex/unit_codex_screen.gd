@@ -42,6 +42,8 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 ]
 
 @onready var _back_button: Button = %BackButton
+@onready var _filter_toggle: Button = %FilterToggle
+@onready var _filter_body: VBoxContainer = %FilterBody
 @onready var _tier_filter: HBoxContainer = %TierFilter
 @onready var _trigger_filter: HBoxContainer = %TriggerFilter
 @onready var _effect_filter: HBoxContainer = %EffectFilter
@@ -58,6 +60,8 @@ var _selected_trigger: StringName = &""
 var _selected_effect: EffectCategory = EffectCategory.ALL
 ## 1 = 一星；2 = 一次三合一预览
 var _preview_level: int = 1
+## 顶部筛选栏展开；收起后棋盘更高。
+var _filters_expanded: bool = true
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
 var _effect_buttons: Dictionary = {} # EffectCategory -> Button
@@ -70,6 +74,8 @@ var _star_button_group: ButtonGroup = ButtonGroup.new()
 
 func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
+	if _filter_toggle != null:
+		_filter_toggle.pressed.connect(_on_filter_toggle_pressed)
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
 	_effect_button_group.allow_unpress = false
@@ -79,8 +85,24 @@ func _ready() -> void:
 	_build_trigger_filters()
 	_build_effect_filters()
 	_build_star_filters()
+	_apply_filter_collapsed()
 	_rebuild_board()
 	_back_button.grab_focus()
+
+
+func _on_filter_toggle_pressed() -> void:
+	_filters_expanded = not _filters_expanded
+	_apply_filter_collapsed()
+
+
+func _apply_filter_collapsed() -> void:
+	if _filter_body != null:
+		_filter_body.visible = _filters_expanded
+	if _filter_toggle != null:
+		_filter_toggle.text = "筛选 ▴" if _filters_expanded else "筛选 ▾"
+		_filter_toggle.tooltip_text = (
+			"收起筛选栏，扩大棋盘" if _filters_expanded else "展开品阶 / 触发 / 效果 / 星级筛选"
+		)
 
 
 func _load_pool() -> void:
