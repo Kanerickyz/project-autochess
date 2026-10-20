@@ -1,7 +1,6 @@
 class_name EffectResolverGunnerTest
 extends RefCounted
 
-const _GunnerAbility := preload("res://resources/abilities/gunner_dual_crit.tres")
 const _EffectResolver := preload("res://scripts/combat/effects/effect_resolver.gd")
 
 static var _failures: int = 0
@@ -19,6 +18,27 @@ static func run_all() -> bool:
 	return _failures == 0
 
 
+static func _dual_crit_ability() -> AbilityData:
+	var ab := AbilityData.new()
+	ab.id = "test_dual_crit"
+	var act_perm := EffectAction.new()
+	act_perm.action_type = EffectAction.Type.PERMANENT_DECK_STAT
+	act_perm.stat_name = &"crit_rate_percent"
+	act_perm.value = 5
+	var spec_hurt := EffectSpec.new()
+	spec_hurt.trigger = CombatEvents.ON_DAMAGE_TAKEN
+	spec_hurt.actions = [act_perm]
+	var act_crit := EffectAction.new()
+	act_crit.action_type = EffectAction.Type.MODIFY_STAT
+	act_crit.stat_name = &"crit_rate_percent"
+	act_crit.value = 10
+	var spec_crit := EffectSpec.new()
+	spec_crit.trigger = CombatEvents.ON_CRIT
+	spec_crit.actions = [act_crit]
+	ab.effect_specs = [spec_hurt, spec_crit]
+	return ab
+
+
 static func _grid() -> BoardGrid:
 	var grid := BoardGrid.new()
 	grid.configure(Vector2i(8, 8))
@@ -28,7 +48,7 @@ static func _grid() -> BoardGrid:
 static func _gunner(cell: Vector2i, team: UnitInstance.Team, entry_id: int = 1) -> UnitInstance:
 	var data := UnitData.new()
 	data.id = "gunner"
-	data.ability = _GunnerAbility
+	data.ability = _dual_crit_ability()
 	data.stats = UnitStats.new()
 	data.stats.attack = 3
 	data.stats.max_hp = 4

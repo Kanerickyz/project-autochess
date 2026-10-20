@@ -129,9 +129,12 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	if entry.unit.ability != null:
-		var scale := UnitInstance.ability_value_multiplier_for(entry.unit.ability, entry.level)
-		lines.append(format_ability("技能", entry.unit.ability, scale, with_stat_icons))
+	var main_ab := entry.get_main_ability()
+	if main_ab != null:
+		var scale := 1
+		if entry.get_star_display_level() > 0:
+			scale = UnitInstance.ability_value_multiplier_for(main_ab, entry.level)
+		lines.append(format_ability("技能", main_ab, scale, with_stat_icons))
 	for passive in entry.unit.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)

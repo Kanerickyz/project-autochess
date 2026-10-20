@@ -22,6 +22,8 @@ var stat_modifiers: StatModifierStack = StatModifierStack.new()
 var is_combat_summon: bool = false
 ## 本场已成功生成的随从只数（统计用；不设每角色上限）。
 var combat_summons_spawned: int = 0
+## 队伍条目 runtime 主技能（熔印者等）；优先于 unit_data.ability。
+var main_ability_override: AbilityData = null
 
 
 func is_boss_leader() -> bool:
@@ -64,6 +66,10 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	unit.cannot_move = entry.rule_flags.get("cannot_move", false)
 	unit.death_grant_gold = 0
 	unit.attached_abilities = entry.attached_abilities.duplicate()
+	if entry.runtime_main_ability != null:
+		unit.main_ability_override = entry.runtime_main_ability
+	else:
+		unit.main_ability_override = null
 	for buff in entry.attached_buffs:
 		if buff == null:
 			continue
@@ -76,6 +82,8 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 		return null
 	var unit := from_unit_data(entry.unit, cell, team)
 	unit.deck_entry_id = entry.entry_id
+	if entry.runtime_main_ability != null:
+		unit.main_ability_override = entry.runtime_main_ability
 	sync_from_deck_entry(unit, entry)
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
@@ -159,36 +167,49 @@ func uses_teleport_move_presentation() -> bool:
 	return get_movement_pattern() == UnitStats.MovementPattern.TELEPORT
 
 
+func get_main_ability() -> AbilityData:
+	if main_ability_override != null:
+		return main_ability_override
+	if unit_data != null:
+		return unit_data.ability
+	return null
+
+
 func skips_attack_after_move() -> bool:
-	if unit_data == null or unit_data.ability == null:
+	var ability := get_main_ability()
+	if ability == null:
 		return false
-	return unit_data.ability.skip_attack_after_move
+	return ability.skip_attack_after_move
 
 
 func can_perform_normal_attack() -> bool:
-	if unit_data == null or unit_data.ability == null:
+	var ability := get_main_ability()
+	if ability == null:
 		return true
-	return unit_data.ability.can_normal_attack
+	return ability.can_normal_attack
 
 
 func uses_line_attack() -> bool:
-	if unit_data == null or unit_data.ability == null:
+	var ability := get_main_ability()
+	if ability == null:
 		return false
-	return unit_data.ability.uses_line_attack
+	return ability.uses_line_attack
 
 
 func get_line_attack_damage() -> int:
-	if unit_data == null or unit_data.ability == null:
+	var ability := get_main_ability()
+	if ability == null:
 		return 0
-	if unit_data.ability.line_attack_uses_attack:
+	if ability.line_attack_uses_attack:
 		return get_effective_attack()
-	return maxi(0, unit_data.ability.line_attack_damage)
+	return maxi(0, ability.line_attack_damage)
 
 
 func can_move_ahead_damage() -> bool:
-	if unit_data == null or unit_data.ability == null:
+	var ability := get_main_ability()
+	if ability == null:
 		return false
-	for spec in unit_data.ability.effect_specs:
+	for spec in ability.effect_specs:
 		if spec == null:
 			continue
 		if (
@@ -222,8 +243,9 @@ func get_all_effect_specs() -> Array[EffectSpec]:
 	var specs: Array[EffectSpec] = []
 	if unit_data == null:
 		return specs
-	if unit_data.ability != null:
-		specs.append_array(unit_data.ability.effect_specs)
+	var main_ab := get_main_ability()
+	if main_ab != null:
+		specs.append_array(main_ab.effect_specs)
 	for passive in unit_data.passives:
 		if passive != null:
 			specs.append_array(passive.effect_specs)

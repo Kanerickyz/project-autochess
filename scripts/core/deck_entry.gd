@@ -15,6 +15,8 @@ var bonus_crit_rate_percent: int = 0
 var seat_index: int = -1
 ## 落座时间序：越大越晚；0 表示从未成功落座。开战生成序 / 三合一最早座用。
 var seat_assign_seq: int = 0
+## 附魔熔印者等 runtime 主技能；优先于 unit.ability。
+var runtime_main_ability: AbilityData = null
 
 
 func get_unit_id() -> String:
@@ -24,11 +26,32 @@ func get_unit_id() -> String:
 
 
 func get_display_name() -> String:
+	if is_fused_enchant():
+		return FusedEnchantIds.DISPLAY_NAME
 	if unit != null and not unit.display_name.is_empty():
 		return unit.display_name
 	if unit != null:
 		return unit.id
 	return "未知"
+
+
+func is_fused_enchant() -> bool:
+	return FusedEnchantIds.is_fused_unit_id(get_unit_id())
+
+
+func get_main_ability() -> AbilityData:
+	if runtime_main_ability != null:
+		return runtime_main_ability
+	if unit != null:
+		return unit.ability
+	return null
+
+
+## 0 = 无星展示（熔印者）；否则 1～3。
+func get_star_display_level() -> int:
+	if is_fused_enchant():
+		return 0
+	return clampi(level, 1, 3)
 
 
 ## 【已停用】号令费用；保留兼容旧调用。

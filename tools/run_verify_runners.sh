@@ -28,6 +28,8 @@ runners=(
   "res://scripts/core/draw_service_test_runner.gd"
   "res://scripts/core/run/map_generator_test_runner.gd"
   "res://scripts/core/run/recruit_session_test_runner.gd"
+  "res://scripts/core/run/enchant_session_test_runner.gd"
+  "res://scripts/ui/realtime/enchant_flow_test_runner.gd"
   "res://scripts/core/run/sacrifice_service_test_runner.gd"
   "res://scripts/core/wfc/wfc_generator_test_runner.gd"
 )

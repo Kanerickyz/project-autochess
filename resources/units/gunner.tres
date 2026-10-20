@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Resource" uid="uid://lmun83uvc8xw" path="res://resources/abilities/gunner_dual_crit.tres" id="3_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/crit_extra_damage_mid.tres" id="3_ability"]
 [ext_resource type="Texture2D" uid="uid://bea7nqalprhmr" path="res://assets/sprites/units/gunner.png" id="icon_tex"]
 
 [sub_resource type="Resource" id="UnitStats_gunner"]

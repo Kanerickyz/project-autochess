@@ -99,6 +99,9 @@ var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
+## 附魔：上炉下队；上半场熔炉三格，下半场队伍座位。
+var enchant_active: bool = false
+var enchant_forge_previews: Array = []
 ## 角色库模式：整盘铺单位剪影，长按弹技能卡（不走战斗 / 招募）。
 var catalog_active: bool = false
 ## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
@@ -1178,6 +1181,13 @@ func reset_half_slide() -> void:
 	queue_redraw()
 
 
+func clear_enchant_mode() -> void:
+	_cancel_press()
+	enchant_active = false
+	enchant_forge_previews.clear()
+	queue_redraw()
+
+
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
@@ -1271,6 +1281,10 @@ func _draw() -> void:
 
 	if catalog_active:
 		_draw_catalog_units(px)
+	elif enchant_active:
+		_draw_enchant_zone_labels(px, mid, enemy_off, ally_off)
+		_draw_enchant_forge(px, enemy_off)
+		_draw_prepare_slots(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -1329,6 +1343,53 @@ func _draw() -> void:
 	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
+
+
+func _draw_enchant_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.55), 11, 18)
+	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	draw_string(font, top_pos, "附魔台", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.75, 0.90, 1.0, 0.9))
+	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+
+
+func _draw_enchant_forge(px: float, off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.38), 9, 14)
+	for item in enchant_forge_previews:
+		if item is not Dictionary:
+			continue
+		var cell: Vector2i = item.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
+		draw_rect(cell_rect, RECRUIT_CAND_BORDER, false, 2.0)
+		var label: String = item.get("label", "")
+		var entry: DeckEntry = item.get("entry", null)
+		if entry != null and entry.unit != null:
+			draw_rect(cell_rect, RECRUIT_CAND_FILL)
+			var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+			_draw_body(
+				center_tile,
+				0.65,
+				0.0,
+				0.0,
+				Color(0.55, 0.75, 0.95),
+				0.85,
+				entry.get_display_name(),
+				px,
+				true,
+				off,
+				true,
+				entry.get_unit_id(),
+			)
+		if not label.is_empty():
+			var pos := cell_rect.position + Vector2(px * 0.05, px * 0.12)
+			draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.85))
 
 
 func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
