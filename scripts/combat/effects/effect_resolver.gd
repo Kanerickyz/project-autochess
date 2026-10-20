@@ -741,7 +741,10 @@ func _execute_action(
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
 			if owner == null or target == null or not owner.is_alive():
 				return false
-			var scaled_percent := action.value * UnitInstance.ability_value_multiplier(owner.level)
+			var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+			var scaled_percent := (
+				action.value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
+			)
 			var new_hp := maxi(
 				1,
 				target.get_effective_max_hp() * scaled_percent / 100,
@@ -957,7 +960,8 @@ func _execute_fuse_explode_batch(
 func _scaled_action_value(owner: UnitInstance, value: int) -> int:
 	if owner == null:
 		return value
-	return value * UnitInstance.ability_value_multiplier(owner.level)
+	var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+	return value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
 
 
 func _resolve_damage_value(owner: UnitInstance, action: EffectAction) -> int:

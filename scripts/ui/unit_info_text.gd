@@ -111,16 +111,18 @@ static func get_skills_block_from_unit_data(data: UnitData) -> String:
 static func get_skills_block_from_entry(entry: DeckEntry) -> String:
 	if entry == null or entry.unit == null:
 		return "无技能"
-	var scale := UnitInstance.ability_value_multiplier(entry.level)
 	var lines: PackedStringArray = []
 	if entry.unit.ability != null:
+		var scale := UnitInstance.ability_value_multiplier_for(entry.unit.ability, entry.level)
 		lines.append(format_ability("技能", entry.unit.ability, scale))
 	for passive in entry.unit.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive, scale))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)
+			lines.append(format_ability("被动", passive, pscale))
 	for attached in entry.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached, scale))
+			var ascale := UnitInstance.ability_value_multiplier_for(attached, entry.level)
+			lines.append(format_ability("移植", attached, ascale))
 	for buff in entry.attached_buffs:
 		if buff != null:
 			lines.append(format_buff(buff))
@@ -133,16 +135,18 @@ static func get_skills_block(unit: UnitInstance) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
 
-	var scale := UnitInstance.ability_value_multiplier(unit.level)
 	var lines: PackedStringArray = []
 	if unit.unit_data.ability != null:
+		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(format_ability("技能", unit.unit_data.ability, scale))
 	for passive in unit.unit_data.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive, scale))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, unit.level)
+			lines.append(format_ability("被动", passive, pscale))
 	for attached in unit.attached_abilities:
 		if attached != null:
-			lines.append(format_ability("移植", attached, scale))
+			var ascale := UnitInstance.ability_value_multiplier_for(attached, unit.level)
+			lines.append(format_ability("移植", attached, ascale))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
