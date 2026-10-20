@@ -28,7 +28,7 @@
 |--------|----------|----------|----------|------------|
 | 枯骨 | 亡灵炮灰 | 近战单体 | 死后附近友方回血 | 退场·回血 |
 
-| 游侠 | 脆皮短弓 | 远程投射物单体 | 风帽短弓；部署自强 | 部署 |
+| 游侠 | 脆皮短弓 | 远程投射物单体 | 风帽短弓；听友方进场自加攻 | 成长·上场 |
 | 蛮斧 | 均衡近战 | 近战单体 | 角盔巨斧；听友亡叠攻 | 成长·阵亡 |
 | 余烬 | 廉价杂兵 | 近战单体 | 死后生成 1 随从 | 生成·随从 |
 | 标枪 | 脆皮投掷 | 远程投射物单体 | 出手时为残血友方回血 | 出手·回血 |
@@ -173,7 +173,7 @@
 
 > 效果与相对强度见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)。  
 > 流派名仅内部备注，不对玩家 UI 露出。  
-> **【资源已挂】** 二十四人主技能已绑到对应 `.tres`。援军呼应为 `deploy_self_atk_small`（OnSummoned）。
+> **【资源已挂】** 二十四人主技能已绑到对应 `.tres`。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
 
 
 | 显示名 | 主技能 | 技能 id（暂定） | 内部备注 | 挂载理由（摘要） |
@@ -184,7 +184,7 @@
 | 火铳 | 穿甲点射 | `crit_extra_damage_mid` | 点射 | 远射；暴击兑现（资源暴击率 As-Is） |
 | 链枷 | 血怒一击 | `deal_damage_gain_atk_small` | 厮杀 | 溅射多次出手叠攻 |
 | 蛮斧 | 同仇敌忾 | `ally_death_self_atk_mid` | 成长·阵亡 | 听友亡自强 |
-| 游侠 | 援军呼应 | `deploy_self_atk_small` | 部署 | **自己部署完成时**小幅自加攻（改写；旧 id `ally_deploy_self_atk_small` 弃用） |
+| 游侠 | 援军呼应 | `ally_deploy_self_atk_small` | 成长·上场 | **其他友方**生成完成时小幅自加攻（`OnFriendSummoned`） |
 | 余烬 | 散兵余烬 | `death_spawn_pack` | 生成·随从 | 死后生成 1 随从 |
 | 标枪 | 血贯补给 | `deal_heal_lowest_ally_small` | 出手·回血 | 造成伤害时疗最低血友方 |
 
