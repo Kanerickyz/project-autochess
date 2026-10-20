@@ -20,6 +20,8 @@ signal recruit_team_seat_drop(entry_id: int, target_seat: int)
 signal recruit_item_pressed(item_slot: int)
 ## 招募道具行：药水拖到上区队伍成员。
 signal recruit_item_drop(item_slot: int, entry_id: int)
+## 附魔：队伍成员拖到时机格 A / 效果格 B。
+signal enchant_forge_drop(entry_id: int, slot: StringName)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -102,6 +104,10 @@ var recruit_active: bool = false
 ## 附魔：上炉下队；上半场熔炉三格，下半场队伍座位。
 var enchant_active: bool = false
 var enchant_forge_previews: Array = []
+## 友方队伍区纵向滚动（行）；试验场单位过多时启用。
+var enchant_team_scroll_rows: float = 0.0
+var enchant_team_scroll_enabled: bool = false
+var enchant_team_max_scroll_rows: float = 0.0
 ## 角色库模式：整盘铺单位剪影，长按弹技能卡（不走战斗 / 招募）。
 var catalog_active: bool = false
 ## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
@@ -144,6 +150,10 @@ var _recruit_press_index: int = -1
 var _recruit_item_drag_index: int = -1
 var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
+var _enchant_team_drag_id: int = -1
+var _enchant_team_press_id: int = -1
+var _enchant_team_pan_active: bool = false
+var _enchant_team_pan_last_y: float = 0.0
 var _recruit_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
@@ -442,6 +452,9 @@ func _trim_feedback_for_unit(unit_id: int) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if enchant_active:
+		_gui_input_enchant(event)
+		return
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
@@ -550,6 +563,162 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			recruit_item_pressed.emit(item_pressed)
 			accept_event()
 		_recruit_team_press_id = -1
+
+
+func _gui_input_enchant(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		if _enchant_team_pan_active and enchant_team_scroll_enabled:
+			var px := get_cell_px()
+			if px > 0.0:
+				var delta_rows := (motion.position.y - _enchant_team_pan_last_y) / px
+				_enchant_team_pan_last_y = motion.position.y
+				enchant_team_scroll_rows = clampf(
+					enchant_team_scroll_rows - delta_rows,
+					0.0,
+					enchant_team_max_scroll_rows,
+				)
+				queue_redraw()
+			accept_event()
+			return
+		_track_press_motion(motion.position)
+		if _enchant_team_press_id >= 0 and _enchant_team_drag_id < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_enchant_team_drag(_enchant_team_press_id)
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and enchant_team_scroll_enabled:
+			enchant_team_scroll_rows = maxf(0.0, enchant_team_scroll_rows - 0.5)
+			queue_redraw()
+			accept_event()
+			return
+		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and enchant_team_scroll_enabled:
+			enchant_team_scroll_rows = minf(
+				enchant_team_max_scroll_rows,
+				enchant_team_scroll_rows + 0.5,
+			)
+			queue_redraw()
+			accept_event()
+			return
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var cell := tile_to_cell(local_to_tile(mb.position))
+		if mb.pressed:
+			var entry_id := _find_enchant_team_entry_at(cell)
+			if entry_id >= 0:
+				_enchant_team_press_id = entry_id
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+			elif enchant_team_scroll_enabled and _is_enchant_team_scroll_cell(cell):
+				_enchant_team_pan_active = true
+				_enchant_team_pan_last_y = mb.position.y
+				accept_event()
+			return
+		if _info_shown:
+			_enchant_team_press_id = -1
+			_end_press()
+			accept_event()
+			return
+		if _end_press():
+			accept_event()
+		if _enchant_team_drag_id >= 0:
+			_finish_enchant_team_drag(cell)
+			accept_event()
+			return
+		if _enchant_team_pan_active:
+			_enchant_team_pan_active = false
+			accept_event()
+			return
+		_enchant_team_press_id = -1
+
+
+func _enchant_hit_cell(hover: Vector2i) -> Vector2i:
+	if hover == NO_CELL:
+		return NO_CELL
+	if not enchant_active:
+		return hover
+	return Vector2i(hover.x, hover.y + int(floor(enchant_team_scroll_rows)))
+
+
+func _is_enchant_team_scroll_cell(cell: Vector2i) -> bool:
+	if cell == NO_CELL:
+		return false
+	var mid := BoardHalf.midline_row(board_size.y)
+	return cell.y >= mid
+
+
+func _find_enchant_team_entry_at(hover: Vector2i) -> int:
+	if prepare_slots == null or hover == NO_CELL:
+		return -1
+	var cell := _enchant_hit_cell(hover)
+	for i in prepare_slots.slot_count:
+		var entry: DeckEntry = prepare_slots.get_entry(i)
+		if entry == null:
+			continue
+		if prepare_slots.get_cell(i) == cell:
+			return entry.entry_id
+	return -1
+
+
+func _begin_enchant_team_drag(entry_id: int) -> void:
+	if entry_id < 0 or prepare_slots == null:
+		return
+	var entry: DeckEntry = null
+	for i in prepare_slots.slot_count:
+		var e := prepare_slots.get_entry(i)
+		if e != null and e.entry_id == entry_id:
+			entry = e
+			break
+	if entry == null:
+		return
+	_enchant_team_drag_id = entry_id
+	_enchant_team_press_id = -1
+	_drag_active = true
+	var stats := entry.unit.stats if entry.unit != null else null
+	_drag_radius = stats.body_radius if stats != null else 0.7
+	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
+	_drag_label = entry.get_display_name()
+	_drag_unit_id = entry.get_unit_id()
+	queue_redraw()
+
+
+func _finish_enchant_team_drag(hover: Vector2i) -> void:
+	var entry_id := _enchant_team_drag_id
+	_enchant_team_drag_id = -1
+	_enchant_team_press_id = -1
+	_enchant_team_pan_active = false
+	_enchant_team_pan_last_y = 0.0
+	_drag_active = false
+	if entry_id < 0:
+		queue_redraw()
+		return
+	var slot := EnchantLayout.forge_slot_name_at(hover, board_size)
+	if not slot.is_empty():
+		enchant_forge_drop.emit(entry_id, slot)
+	queue_redraw()
+
+
+func _draw_enchant_forge_drop_hint(px: float, off: Vector2) -> void:
+	var hover := _hover_cell
+	if hover == NO_CELL:
+		return
+	var slot := EnchantLayout.forge_slot_name_at(hover, board_size)
+	var ok := not slot.is_empty()
+	var cells := EnchantLayout.forge_slot_cells(board_size)
+	var target := NO_CELL
+	if slot == &"a" and cells.size() > 0:
+		target = cells[0]
+	elif slot == &"b" and cells.size() > 1:
+		target = cells[1]
+	if target == NO_CELL:
+		return
+	var cell_rect := Rect2(get_board_rect().position + Vector2(target) * px + off, Vector2(px, px))
+	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.45) if ok else Color(1.0, 0.25, 0.2, 0.25))
 
 
 func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
@@ -1185,6 +1354,13 @@ func clear_enchant_mode() -> void:
 	_cancel_press()
 	enchant_active = false
 	enchant_forge_previews.clear()
+	enchant_team_scroll_rows = 0.0
+	enchant_team_scroll_enabled = false
+	enchant_team_max_scroll_rows = 0.0
+	_enchant_team_drag_id = -1
+	_enchant_team_press_id = -1
+	_enchant_team_pan_active = false
+	_enchant_team_pan_last_y = 0.0
 	queue_redraw()
 
 
@@ -1285,6 +1461,8 @@ func _draw() -> void:
 		_draw_enchant_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_enchant_forge(px, enemy_off)
 		_draw_prepare_slots(px)
+		if _enchant_team_drag_id >= 0 and _hover_cell != NO_CELL:
+			_draw_enchant_forge_drop_hint(px, enemy_off)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -1813,7 +1991,10 @@ func _draw_prepare_slots(px: float) -> void:
 	if prepare_slots == null or prepare_slots.cells.is_empty():
 		return
 	var rect := get_board_rect()
-	var off := Vector2(0.0, ally_half_slide_y)
+	var scroll_y := 0.0
+	if enchant_active and enchant_team_scroll_enabled:
+		scroll_y = enchant_team_scroll_rows * px
+	var off := Vector2(0.0, ally_half_slide_y - scroll_y)
 	## 先画底色，再按 y 排序画角色（靠下压上）。
 	var occupied_indices: Array[int] = []
 	for i in prepare_slots.cells.size():

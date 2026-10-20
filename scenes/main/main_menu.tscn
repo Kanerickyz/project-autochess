@@ -65,6 +65,12 @@ custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
 text = "角色库"
 
+[node name="EnchantSandboxButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+text = "附魔试验场"
+
 [node name="SettingsButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(280, 48)
