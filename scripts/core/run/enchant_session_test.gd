@@ -12,6 +12,7 @@ static func run_all() -> bool:
 	_failures = 0
 	_test_forge_slot_spacing()
 	_test_fuse_creates_fused_enchant()
+	_test_preview_fused_entry_panel()
 	_test_fused_skips_triple_merge()
 	_test_session_once_per_visit()
 	if _failures == 0:
@@ -67,6 +68,8 @@ static func _test_fuse_creates_fused_enchant() -> void:
 	var fused := deck.get_entries()[0]
 	_assert(fused.is_fused_enchant(), "is fused")
 	_assert(fused.get_star_display_level() == 0, "no star display")
+	_assert(DeckUpgradeService.get_display_attack(fused) == 12, "fused atk sum")
+	_assert(DeckUpgradeService.get_display_max_hp(fused) == 10, "fused hp sum")
 	var ab := fused.get_main_ability()
 	_assert(ab != null and ab.effect_specs.size() == 1, "one composed spec")
 	if ab != null and not ab.effect_specs.is_empty():
@@ -89,6 +92,22 @@ static func _test_fused_skips_triple_merge() -> void:
 	_assert(deck.size() == 3, "three fused do not auto-merge")
 	deck.try_auto_merge()
 	_assert(deck.size() == 3, "still three after try_auto_merge")
+
+
+static func _test_preview_fused_entry_panel() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var session := EnchantSession.new()
+	session.configure(deck)
+	session.begin()
+	session.set_slot(&"a", entries[0].entry_id)
+	session.set_slot(&"b", entries[1].entry_id)
+	var preview := session.build_preview_fused_entry()
+	_assert(preview != null, "preview entry")
+	if preview != null:
+		_assert(DeckUpgradeService.get_display_attack(preview) == 12, "preview atk sum")
+		_assert(DeckUpgradeService.get_display_max_hp(preview) == 10, "preview hp sum")
+		_assert(preview.get_main_ability() != null, "preview ability")
 
 
 static func _test_session_once_per_visit() -> void:

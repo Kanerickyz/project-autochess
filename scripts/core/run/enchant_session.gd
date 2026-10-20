@@ -96,6 +96,21 @@ func preview_ability() -> AbilityData:
 	return AbilityComposer.compose(a, b)
 
 
+func build_preview_fused_entry() -> DeckEntry:
+	if not can_fuse() or deck == null:
+		return null
+	var a := deck.get_entry(slot_a_entry_id)
+	var b := deck.get_entry(slot_b_entry_id)
+	var ability := AbilityComposer.compose(a, b)
+	if ability == null or EnchantFusionService.FUSED_UNIT == null:
+		return null
+	var entry := DeckEntry.new()
+	entry.unit = EnchantFusionService.FUSED_UNIT
+	entry.runtime_main_ability = ability
+	EnchantFusionService.apply_fused_panel_to_entry(entry, a, b)
+	return entry
+
+
 func skip() -> void:
 	if not is_active:
 		return

@@ -154,6 +154,7 @@ var _enchant_team_drag_id: int = -1
 var _enchant_team_press_id: int = -1
 var _enchant_team_pan_active: bool = false
 var _enchant_team_pan_last_y: float = 0.0
+var _enchant_forge_press: bool = false
 var _recruit_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
@@ -583,7 +584,12 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			accept_event()
 			return
 		_track_press_motion(motion.position)
-		if _enchant_team_press_id >= 0 and _enchant_team_drag_id < 0 and not _info_shown:
+		if (
+			_enchant_team_press_id >= 0
+			and _enchant_team_drag_id < 0
+			and not _info_shown
+			and not _enchant_forge_press
+		):
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_enchant_team_drag(_enchant_team_press_id)
@@ -608,18 +614,25 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			return
 		var cell := tile_to_cell(local_to_tile(mb.position))
 		if mb.pressed:
+			var forge_info := _inspect_enchant_forge_at(mb.position)
+			if not forge_info.is_empty():
+				_enchant_forge_press = true
+				_begin_press(mb.position, forge_info, Callable())
+				accept_event()
+				return
 			var entry_id := _find_enchant_team_entry_at(cell)
 			if entry_id >= 0:
 				_enchant_team_press_id = entry_id
 				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
-			elif enchant_team_scroll_enabled and _is_enchant_team_scroll_cell(cell):
+			if enchant_team_scroll_enabled and _is_enchant_team_scroll_cell(cell):
 				_enchant_team_pan_active = true
 				_enchant_team_pan_last_y = mb.position.y
 				accept_event()
 			return
 		if _info_shown:
 			_enchant_team_press_id = -1
+			_enchant_forge_press = false
 			_end_press()
 			accept_event()
 			return
@@ -634,6 +647,38 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			accept_event()
 			return
 		_enchant_team_press_id = -1
+		_enchant_forge_press = false
+
+
+func _enchant_forge_draw_offset() -> Vector2:
+	return Vector2(0.0, enemy_half_slide_y)
+
+
+func _inspect_enchant_forge_at(local_pos: Vector2) -> Dictionary:
+	if not enchant_active:
+		return {}
+	var px := get_cell_px()
+	var rect := get_board_rect()
+	var off := _enchant_forge_draw_offset()
+	var best: Dictionary = {}
+	var best_d := INF
+	for fi in enchant_forge_previews.size():
+		var item: Variant = enchant_forge_previews[fi]
+		if not (item is Dictionary):
+			continue
+		var forge_entry: DeckEntry = (item as Dictionary).get("entry", null)
+		var forge_cell: Vector2i = (item as Dictionary).get("cell", NO_CELL)
+		if forge_entry == null or forge_cell == NO_CELL:
+			continue
+		var cell_rect := Rect2(rect.position + Vector2(forge_cell) * px + off, Vector2(px, px))
+		if not cell_rect.has_point(local_pos):
+			continue
+		var center := cell_rect.position + cell_rect.size * 0.5
+		var d := local_pos.distance_squared_to(center)
+		if d < best_d:
+			best_d = d
+			best = _info_from_entry(forge_entry, center, "enchant_forge:%d" % fi)
+	return best
 
 
 func _enchant_hit_cell(hover: Vector2i) -> Vector2i:
@@ -784,6 +829,7 @@ func _cancel_press() -> void:
 	_press_tap = Callable()
 	_info_shown = false
 	_shown_info = {}
+	_enchant_forge_press = false
 	_clear_inspect_focus()
 	_info_card.hide_info()
 
@@ -932,6 +978,10 @@ func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, h
 
 ## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
 func inspect_at(local_pos: Vector2) -> Dictionary:
+	if enchant_active:
+		var forge_info := _inspect_enchant_forge_at(local_pos)
+		if not forge_info.is_empty():
+			return forge_info
 	var px := get_cell_px()
 	var best: Dictionary = {}
 	var best_d := INF
@@ -996,11 +1046,12 @@ func _collect_inspectables() -> Array[Dictionary]:
 			))
 		return out
 	if prepare_slots != null:
+		var team_off := _prepare_slots_inspect_offset(ally_off)
 		for i in prepare_slots.cells.size():
 			var entry := prepare_slots.get_entry(i)
 			if entry != null:
 				var tile := Vector2(prepare_slots.cells[i]) + Vector2(0.5, 0.5)
-				out.append(_info_from_entry(entry, tile_to_local(tile) + ally_off))
+				out.append(_info_from_entry(entry, tile_to_local(tile) + team_off))
 	for preview in enemy_previews:
 		if not (preview is Dictionary):
 			continue
@@ -1014,16 +1065,25 @@ func _collect_inspectables() -> Array[Dictionary]:
 	return out
 
 
-func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
-	var stats := entry.unit.stats if entry.unit != null else null
+func _prepare_slots_inspect_offset(ally_off: Vector2) -> Vector2:
+	var scroll_y := 0.0
+	if enchant_active and enchant_team_scroll_enabled:
+		scroll_y = enchant_team_scroll_rows * get_cell_px()
+	return ally_off + Vector2(0.0, -scroll_y)
+
+
+func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "") -> Dictionary:
+	var key := inspect_key
+	if key.is_empty():
+		key = "entry:%d" % entry.entry_id
 	return {
-		"inspect_key": "entry:%d" % entry.entry_id,
+		"inspect_key": key,
 		"center": center,
 		"name": entry.get_display_name(),
 		"side_player": true,
 		"tier": entry.unit.tier if entry.unit != null else 0,
-		"attack": maxi(1, stats.attack + entry.bonus_attack) if stats != null else 0,
-		"hp": maxi(1, stats.max_hp + entry.bonus_max_hp) if stats != null else 0,
+		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
+		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
 	}
@@ -1361,6 +1421,7 @@ func clear_enchant_mode() -> void:
 	_enchant_team_press_id = -1
 	_enchant_team_pan_active = false
 	_enchant_team_pan_last_y = 0.0
+	_enchant_forge_press = false
 	queue_redraw()
 
 
@@ -1537,7 +1598,16 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
 	var font := get_theme_default_font()
 	var font_size := clampi(int(px * 0.38), 9, 14)
-	for item in enchant_forge_previews:
+	var ordered := enchant_forge_previews.duplicate()
+	if _info_shown:
+		var focus_key := String(_shown_info.get("inspect_key", ""))
+		if focus_key.begins_with("enchant_forge:"):
+			var focus_idx := int(focus_key.get_slice(":", 1))
+			if focus_idx >= 0 and focus_idx < ordered.size():
+				var focus_item: Variant = ordered[focus_idx]
+				ordered.remove_at(focus_idx)
+				ordered.append(focus_item)
+	for item in ordered:
 		if item is not Dictionary:
 			continue
 		var cell: Vector2i = item.get("cell", NO_CELL)
@@ -1564,6 +1634,13 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 				off,
 				true,
 				entry.get_unit_id(),
+			)
+			_draw_stat_badges(
+				tile_to_local(center_tile) + off,
+				DeckUpgradeService.get_display_attack(entry),
+				DeckUpgradeService.get_display_max_hp(entry),
+				0.95,
+				px,
 			)
 		if not label.is_empty():
 			var pos := cell_rect.position + Vector2(px * 0.05, px * 0.12)

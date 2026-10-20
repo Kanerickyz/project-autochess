@@ -25,25 +25,11 @@ static func fuse(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionar
 		result["error"] = "compose_failed"
 		return result
 
-	var atk := ceili(
-		(
-			float(DeckUpgradeService.get_display_attack(a))
-			+ float(DeckUpgradeService.get_display_attack(b))
-		)
-		/ 2.0
-	)
-	var hp := ceili(
-		(
-			float(DeckUpgradeService.get_display_max_hp(a))
-			+ float(DeckUpgradeService.get_display_max_hp(b))
-		)
-		/ 2.0
-	)
-	var base_atk := 1
-	var base_hp := 1
-	if FUSED_UNIT != null and FUSED_UNIT.stats != null:
-		base_atk = FUSED_UNIT.stats.attack
-		base_hp = FUSED_UNIT.stats.max_hp
+	var panel := compute_fused_panel(a, b)
+	var atk: int = panel["display_attack"]
+	var hp: int = panel["display_max_hp"]
+	var base_atk: int = panel["base_attack"]
+	var base_hp: int = panel["base_max_hp"]
 
 	var inherit_seat := a.seat_index
 	var inherit_seq := a.seat_assign_seq
@@ -68,6 +54,34 @@ static func fuse(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionar
 	result["ok"] = true
 	result["entry"] = product
 	return result
+
+
+## 熔印者面板：攻、血为两名原料当前展示值之和（与 unit.stats + bonus 一致）。
+static func compute_fused_panel(a: DeckEntry, b: DeckEntry) -> Dictionary:
+	var base_atk := 1
+	var base_hp := 1
+	if FUSED_UNIT != null and FUSED_UNIT.stats != null:
+		base_atk = FUSED_UNIT.stats.attack
+		base_hp = FUSED_UNIT.stats.max_hp
+	return {
+		"display_attack": (
+			DeckUpgradeService.get_display_attack(a) + DeckUpgradeService.get_display_attack(b)
+		),
+		"display_max_hp": (
+			DeckUpgradeService.get_display_max_hp(a) + DeckUpgradeService.get_display_max_hp(b)
+		),
+		"base_attack": base_atk,
+		"base_max_hp": base_hp,
+	}
+
+
+static func apply_fused_panel_to_entry(entry: DeckEntry, a: DeckEntry, b: DeckEntry) -> void:
+	if entry == null or a == null or b == null:
+		return
+	var panel := compute_fused_panel(a, b)
+	entry.bonus_attack = int(panel["display_attack"]) - int(panel["base_attack"])
+	entry.bonus_max_hp = int(panel["display_max_hp"]) - int(panel["base_max_hp"])
+	entry.bonus_crit_rate_percent = a.bonus_crit_rate_percent + b.bonus_crit_rate_percent
 
 
 static func _merge_buffs(product: DeckEntry, sources: Array) -> void:
