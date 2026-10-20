@@ -556,9 +556,10 @@ func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
 func _track_press_motion(pos: Vector2) -> void:
 	if not _press_active:
 		return
-	## 信息卡已弹出：保持按住时滑到其他单位即切换介绍。
+	## 信息卡已弹出：保持按住时滑到其他单位即切换介绍，并跟手微倾。
 	if _info_shown:
 		_update_info_card_under_finger(pos)
+		_info_card.follow_finger(pos)
 		return
 	if _press_ms >= 0 and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 		_press_ms = -1
@@ -576,8 +577,13 @@ func _update_info_card_under_finger(pos: Vector2) -> void:
 		prev_key = "%s|%s" % [String(_press_info.get("name", "")), str(_press_info.get("center", Vector2.ZERO))]
 	if next_key == prev_key:
 		return
+	var prev_center: Vector2 = _press_info.get("center", pos) as Vector2
+	var next_center: Vector2 = info.get("center", pos) as Vector2
+	var slide_dir := signf(next_center.x - prev_center.x)
+	if is_zero_approx(slide_dir):
+		slide_dir = signf(pos.x - _press_pos.x)
 	_press_info = info
-	_show_info_card(info)
+	_show_info_card(info, slide_dir)
 
 
 ## 松手：信息卡已弹出则只收起；否则执行推迟的点按。返回是否有待处理的按下。
@@ -627,7 +633,7 @@ func show_deck_entry_info(entry: DeckEntry, local_anchor: Vector2) -> bool:
 	return true
 
 
-func _show_info_card(info: Dictionary) -> void:
+func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
 	_info_shown = true
@@ -636,7 +642,7 @@ func _show_info_card(info: Dictionary) -> void:
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
-	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size))
+	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size), slide_dir)
 	queue_redraw()
 
 
