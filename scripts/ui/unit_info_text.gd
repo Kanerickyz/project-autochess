@@ -94,18 +94,29 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
-static func get_skills_block_from_unit_data(data: UnitData) -> String:
+static func get_skills_block_from_unit_data(data: UnitData, level: int = 1) -> String:
 	if data == null:
 		return "无技能"
 	var lines: PackedStringArray = []
 	if data.ability != null:
-		lines.append(format_ability("技能", data.ability))
+		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
+		lines.append(format_ability("技能", data.ability, scale))
 	for passive in data.passives:
 		if passive != null:
-			lines.append(format_ability("被动", passive))
+			var pscale := UnitInstance.ability_value_multiplier_for(passive, level)
+			lines.append(format_ability("被动", passive, pscale))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)
+
+
+## 角色库预览：三合一后攻/血按三只同星加总（1★→×3，2★→×9）。
+static func catalog_preview_stat_mult(level: int) -> int:
+	var lv := clampi(level, 1, 3)
+	var mult := 1
+	for _i in range(lv - 1):
+		mult *= 3
+	return mult
 
 
 static func get_skills_block_from_entry(entry: DeckEntry) -> String:

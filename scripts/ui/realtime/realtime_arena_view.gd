@@ -109,6 +109,8 @@ var recruit_candidates: Array = []
 var recruit_items: Array = []
 ## Array[Dictionary]：{unit: UnitData, cell: Vector2i}
 var catalog_units: Array = []
+## 角色库预览星级：1=一星，2=一次三合一。
+var catalog_preview_level: int = 1
 var recruit_selected_candidate: int = -1
 var recruit_selected_replace_id: int = -1
 var recruit_needs_replace: bool = false
@@ -681,7 +683,9 @@ func _collect_inspectables() -> Array[Dictionary]:
 			if unit == null or cell == NO_CELL:
 				continue
 			var tile := Vector2(cell) + Vector2(0.5, 0.5)
-			out.append(_info_from_unit_data(unit, tile_to_local(tile), "catalog:%d" % i))
+			out.append(_info_from_unit_data(
+				unit, tile_to_local(tile), "catalog:%d" % i, catalog_preview_level
+			))
 		return out
 	if recruit_active:
 		if recruit_team_slots != null:
@@ -746,19 +750,29 @@ func _info_from_entry(entry: DeckEntry, center: Vector2) -> Dictionary:
 	}
 
 
-func _info_from_unit_data(data: UnitData, center: Vector2, inspect_key: String = "") -> Dictionary:
+func _info_from_unit_data(
+	data: UnitData,
+	center: Vector2,
+	inspect_key: String = "",
+	preview_level: int = 1,
+) -> Dictionary:
 	var key := inspect_key
 	if key.is_empty():
 		key = "unit:%s@%s" % [data.id, str(center)]
+	var level := clampi(preview_level, 1, 3)
+	var stat_mult := UnitInfoText.catalog_preview_stat_mult(level)
+	var atk := data.stats.attack if data.stats != null else 0
+	var hp := data.stats.max_hp if data.stats != null else 0
+	var star_tag := "" if level <= 1 else " · %d★" % level
 	return {
 		"inspect_key": key,
 		"center": center,
-		"name": UnitInfoText.get_display_name_from_unit_data(data),
+		"name": UnitInfoText.get_display_name_from_unit_data(data) + star_tag,
 		"side_player": true,
 		"tier": data.tier,
-		"attack": data.stats.attack if data.stats != null else 0,
-		"hp": data.stats.max_hp if data.stats != null else 0,
-		"skills": UnitInfoText.get_skills_block_from_unit_data(data),
+		"attack": atk * stat_mult,
+		"hp": hp * stat_mult,
+		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level),
 		"texture": _art.get_texture(data.id, true) if _art != null else null,
 	}
 
@@ -1080,7 +1094,8 @@ func clear_recruit_mode() -> void:
 
 
 ## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
-func set_catalog_units(units: Array[UnitData], columns: int = 5) -> void:
+## preview_level：1=一星，2=三合一预览（攻血×3、技能按星级缩放）。
+func set_catalog_units(units: Array[UnitData], columns: int = 5, preview_level: int = 1) -> void:
 	_cancel_press()
 	clear_recruit_mode()
 	sim = null
@@ -1088,6 +1103,7 @@ func set_catalog_units(units: Array[UnitData], columns: int = 5) -> void:
 	enemy_slots = null
 	enemy_previews.clear()
 	catalog_active = true
+	catalog_preview_level = clampi(preview_level, 1, 3)
 	catalog_units.clear()
 	var cols := maxi(1, columns)
 	var rows := maxi(4, int(ceili(float(maxi(1, units.size())) / float(cols))))
@@ -1106,6 +1122,7 @@ func set_catalog_units(units: Array[UnitData], columns: int = 5) -> void:
 func clear_catalog_mode() -> void:
 	_cancel_press()
 	catalog_active = false
+	catalog_preview_level = 1
 	catalog_units.clear()
 	board_size = Vector2i(5, 8)
 	queue_redraw()
@@ -1395,10 +1412,11 @@ func _draw_catalog_units(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
 			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, cell.x + cell.y * 8),
 		)
+		var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
 		_draw_stat_badges(
 			tile_to_local(center_tile),
-			stats.attack if stats != null else 0,
-			stats.max_hp if stats != null else 0,
+			(stats.attack if stats != null else 0) * preview_mult,
+			(stats.max_hp if stats != null else 0) * preview_mult,
 			0.95,
 			px,
 		)

@@ -45,6 +45,7 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 @onready var _tier_filter: HBoxContainer = %TierFilter
 @onready var _trigger_filter: HBoxContainer = %TriggerFilter
 @onready var _effect_filter: HBoxContainer = %EffectFilter
+@onready var _star_filter: HBoxContainer = %StarFilter
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
 @onready var _arena: RealtimeArenaView = %CodexArena
@@ -55,12 +56,16 @@ var _selected_tier: int = 0
 ## &"" = 全部时机；TRIGGER_NONE = 无技能；其余为 CombatEvents / ShopEvents
 var _selected_trigger: StringName = &""
 var _selected_effect: EffectCategory = EffectCategory.ALL
+## 1 = 一星；2 = 一次三合一预览
+var _preview_level: int = 1
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
 var _effect_buttons: Dictionary = {} # EffectCategory -> Button
+var _star_buttons: Dictionary = {} # level -> Button
 var _tier_button_group: ButtonGroup = ButtonGroup.new()
 var _trigger_button_group: ButtonGroup = ButtonGroup.new()
 var _effect_button_group: ButtonGroup = ButtonGroup.new()
+var _star_button_group: ButtonGroup = ButtonGroup.new()
 
 
 func _ready() -> void:
@@ -68,10 +73,12 @@ func _ready() -> void:
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
 	_effect_button_group.allow_unpress = false
+	_star_button_group.allow_unpress = false
 	_load_pool()
 	_build_tier_filters()
 	_build_trigger_filters()
 	_build_effect_filters()
+	_build_star_filters()
 	_rebuild_board()
 	_back_button.grab_focus()
 
@@ -235,6 +242,36 @@ func _on_effect_pressed(category: EffectCategory) -> void:
 	_rebuild_board()
 
 
+func _build_star_filters() -> void:
+	if _star_filter == null:
+		return
+	for child in _star_filter.get_children():
+		child.queue_free()
+	_star_buttons.clear()
+	_add_star_button(1, "一星")
+	_add_star_button(2, "三合一")
+	if _star_buttons.has(_preview_level):
+		(_star_buttons[_preview_level] as Button).button_pressed = true
+
+
+func _add_star_button(level: int, label: String) -> void:
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_group = _star_button_group
+	button.custom_minimum_size = Vector2(96, 36)
+	button.text = label
+	button.pressed.connect(_on_star_pressed.bind(level))
+	_star_filter.add_child(button)
+	_star_buttons[level] = button
+
+
+func _on_star_pressed(level: int) -> void:
+	if _preview_level == level:
+		return
+	_preview_level = clampi(level, 1, 3)
+	_rebuild_board()
+
+
 func _unit_triggers(unit: UnitData) -> Array[StringName]:
 	var out: Array[StringName] = []
 	var seen: Dictionary = {}
@@ -338,11 +375,12 @@ func _rebuild_board() -> void:
 	if shown.is_empty():
 		_arena.clear_catalog_mode()
 		return
-	_arena.set_catalog_units(shown, CATALOG_COLUMNS)
+	_arena.set_catalog_units(shown, CATALOG_COLUMNS, _preview_level)
 
 
 func _format_count(count: int) -> String:
 	var parts: PackedStringArray = []
+	parts.append("一星" if _preview_level <= 1 else "三合一")
 	if _selected_tier > 0:
 		parts.append("T%d" % _selected_tier)
 	if _selected_trigger == TRIGGER_NONE:
@@ -351,8 +389,6 @@ func _format_count(count: int) -> String:
 		parts.append(_trigger_label(_selected_trigger))
 	if _selected_effect != EffectCategory.ALL:
 		parts.append(_effect_category_label(_selected_effect))
-	if parts.is_empty():
-		return "共 %d 名" % count
 	return "%s · %d 名" % [" · ".join(parts), count]
 
 
