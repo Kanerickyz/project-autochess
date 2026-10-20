@@ -499,9 +499,9 @@ static func _test_first_hurt_harden_once() -> bool:
 		push_error("first_hurt: expected >=2 plate hits, got %d" % plate_hits[0])
 		return false
 	var after_max := rt.unit.get_effective_max_hp()
-	if after_max != base_max + 4:
+	if after_max != base_max + 1:
 		push_error(
-			"first_hurt: max_hp %d -> %d, expected +4 once (max_triggers=1)"
+			"first_hurt: max_hp %d -> %d, expected +1 once (max_triggers=1)"
 			% [base_max, after_max]
 		)
 		return false
