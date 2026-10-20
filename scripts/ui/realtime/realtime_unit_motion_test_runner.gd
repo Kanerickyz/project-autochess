@@ -21,6 +21,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_test_sample_idle()
 	await _test_long_press_info()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
@@ -31,6 +32,20 @@ func _run() -> void:
 	if _failures == 0:
 		print("RealtimeUnitMotionTest: all passed")
 	quit(0 if _failures == 0 else 1)
+
+
+func _test_sample_idle() -> void:
+	var a: Dictionary = RealtimeUnitMotion.sample_idle(0.0, 0)
+	var b: Dictionary = RealtimeUnitMotion.sample_idle(RealtimeUnitMotion.IDLE_CYCLE * 0.5, 0)
+	var c: Dictionary = RealtimeUnitMotion.sample_idle(0.0, 3)
+	var off_a: Vector2 = a.get("offset", Vector2.ZERO)
+	var off_b: Vector2 = b.get("offset", Vector2.ZERO)
+	var off_c: Vector2 = c.get("offset", Vector2.ZERO)
+	_expect(off_a.y <= 0.001, "idle at t0 starts near rest")
+	_expect(off_b.y < -0.02, "idle mid-cycle bob peaks up")
+	_expect(not off_a.is_equal_approx(off_c), "different seeds phase-shift idle")
+	var scl_b: Vector2 = b.get("scale", Vector2.ONE)
+	_expect(scl_b.y < 1.0 and scl_b.x > 1.0, "idle mid-cycle soft squash")
 
 
 func _expect(ok: bool, label: String) -> void:

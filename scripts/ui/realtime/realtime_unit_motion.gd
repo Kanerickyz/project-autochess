@@ -7,9 +7,9 @@ extends Node
 ## 一格步进内左右各摆一次；脚底为旋转轴。
 const WALK_TILT := 0.13
 const WALK_HOP_TILES := 0.07
-## 非行动者待机：轻呼吸起伏（独立 idle_tween，不占用出手 tween）。
-const IDLE_BOB_TILES := 0.035
-const IDLE_SQUASH := Vector2(1.035, 0.965)
+## 非行动者 / 准备席待机：轻呼吸起伏（战斗用 idle_tween；准备/招募用 sample_idle）。
+const IDLE_BOB_TILES := 0.045
+const IDLE_SQUASH := Vector2(1.04, 0.96)
 const IDLE_CYCLE := 1.15
 const IDLE_PHASE_STEP := 0.07
 ## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
@@ -101,6 +101,17 @@ func get_shake_offset() -> Vector2:
 	if shake_strength <= 0.01:
 		return Vector2.ZERO
 	return Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_strength
+
+
+## 时钟采样待机（准备席 / 招募 / 图鉴）：与战斗 Tween 呼吸同参数，无节点开销。
+## 返回 { "offset": Vector2（格）, "scale": Vector2 }。
+static func sample_idle(time_sec: float, seed: int) -> Dictionary:
+	var phase := float(absi(seed) % 17) * IDLE_PHASE_STEP
+	var wave := (1.0 - cos((time_sec + phase) * TAU / IDLE_CYCLE)) * 0.5
+	return {
+		"offset": Vector2(0.0, -IDLE_BOB_TILES * wave),
+		"scale": Vector2.ONE.lerp(IDLE_SQUASH, wave),
+	}
 
 
 ## 每帧由战场视图调用：同步场上单位，识别蓄力 / 出手 / 受击，并更新行走摆动。
