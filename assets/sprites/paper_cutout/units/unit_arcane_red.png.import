@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://carcaneredtex01"
-path="res://.godot/imported/unit_arcane_red.png-placeholder.ctex"
+uid="uid://cmoqar1ptn2to"
+path="res://.godot/imported/unit_arcane_red.png-abf30f0d2b6050ab9d33d905691b9a0b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/sprites/paper_cutout/units/unit_arcane_red.png"
-dest_files=["res://.godot/imported/unit_arcane_red.png-placeholder.ctex"]
+dest_files=["res://.godot/imported/unit_arcane_red.png-abf30f0d2b6050ab9d33d905691b9a0b.ctex"]
 
 [params]
 
