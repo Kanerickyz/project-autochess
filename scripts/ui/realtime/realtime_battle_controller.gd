@@ -9,8 +9,9 @@ signal phase_changed(phase: Phase)
 signal combat_resolved(won: bool)
 ## 招募阶段结束（完成/跳过）；由 Run 接线回地图。
 signal recruit_finished(kept_changes: bool)
+signal enchant_finished(did_fuse: bool)
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -75,6 +76,9 @@ var _recruit_animating: bool = false
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _recruit_shop_config: RecruitShopConfig = null
 var _recruit_pending_item_slot: int = -1
+var _enchant_session: EnchantSession = EnchantSession.new()
+var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
+var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -117,6 +121,8 @@ func _ready() -> void:
 	_ensure_refresh_button()
 	_ensure_speed_button()
 	_ensure_recruit_hud()
+	_enchant_ui.setup(self)
+	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
@@ -282,6 +288,14 @@ func get_arena() -> RealtimeArenaView:
 
 func get_board_size() -> Vector2i:
 	return _board_size
+
+
+func get_dock() -> Control:
+	return _dock
+
+
+func flash_hint(text: String) -> void:
+	_show_hint(text)
 
 
 func get_hand() -> Array[DeckEntry]:
@@ -610,6 +624,58 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	_recruit_animating = false
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
+
+
+## 地图附魔节点：上附魔台、下队伍；规则走 EnchantSession。
+func enter_enchant(enter_seconds: float = -1.0) -> void:
+	if not is_node_ready():
+		await ready
+	if _deck_state == null:
+		push_error("RealtimeBattleController.enter_enchant: deck missing")
+		return
+	_enchant_session.configure(_deck_state)
+	_enchant_session.begin()
+	_enchant_ui.set_session(_enchant_session)
+	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
+	_set_phase(Phase.ENCHANT)
+	_hide_combat_chrome_for_recruit()
+	_enchant_ui.show_hud()
+	await get_tree().process_frame
+	if _arena != null:
+		var travel := _half_slide_travel()
+		_arena.set_half_slide_offscreen(travel)
+	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
+	_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
+	if _arena != null:
+		_arena.queue_redraw()
+	await _play_half_field_enter_animation(seconds)
+	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
+
+
+func exit_enchant() -> void:
+	_enchant_ui.hide_hud()
+	_enchant_ui.clear_arena(_arena)
+	_enchant_ui.clear_session()
+	_enchant_slots.clear()
+	if _arena != null:
+		_arena.reset_half_slide()
+	_restore_combat_chrome_after_recruit()
+	if _phase == Phase.ENCHANT:
+		_set_phase(Phase.IDLE)
+
+
+func on_enchant_fused() -> void:
+	_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
+	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
+
+
+func get_enchant_session() -> EnchantSession:
+	return _enchant_session
+
+
+func _on_enchant_session_finished(did_fuse: bool) -> void:
+	exit_enchant()
+	enchant_finished.emit(did_fuse)
 
 
 func exit_recruit() -> void:
@@ -1998,6 +2064,8 @@ func _refresh_hud() -> void:
 			_phase_label.text = "胜利" if _won else "失败"
 		Phase.RECRUIT:
 			_phase_label.text = "招募"
+		Phase.ENCHANT:
+			_phase_label.text = "附魔"
 		_:
 			_phase_label.text = "等待"
 

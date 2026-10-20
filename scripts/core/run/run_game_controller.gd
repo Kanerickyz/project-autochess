@@ -20,6 +20,7 @@ var _battle: RealtimeBattleController
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
+var _enchant_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
@@ -40,6 +41,7 @@ func _ready() -> void:
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
 	_battle.encounter_completed.connect(_on_encounter_completed)
 	_battle.recruit_finished.connect(_on_recruit_finished)
+	_battle.enchant_finished.connect(_on_enchant_finished)
 
 	run_controller.configure(DEFAULT_RUN_MAP, _rng.randi())
 	run_controller.phase_changed.connect(_on_run_phase_changed)
@@ -112,6 +114,9 @@ func _on_map_node_selected(node_id: int) -> void:
 		return
 	if node_type == MapNodeType.Type.SHOP:
 		run_controller.register_shop_visit()
+	if node_type == MapNodeType.Type.ENCHANT:
+		await _open_enchant()
+		return
 	## 非战斗节点仍留世界底图，占位 UI 叠在上面。
 	_battle_root.visible = true
 	if _battle != null:
@@ -169,6 +174,24 @@ func _open_opening_recruit() -> void:
 
 
 ## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
+func _open_enchant() -> void:
+	if _enchant_busy:
+		return
+	_enchant_busy = true
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(false)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
+	await _battle.enter_enchant(enter_s)
+
+
+func _on_enchant_finished(_did_fuse: bool) -> void:
+	_enchant_busy = false
+	run_controller.complete_encounter()
+
+
 func _open_recruit() -> void:
 	if _recruit_busy:
 		return

@@ -111,10 +111,13 @@ static func get_skills_block_from_unit_data(data: UnitData) -> String:
 static func get_skills_block_from_entry(entry: DeckEntry) -> String:
 	if entry == null or entry.unit == null:
 		return "无技能"
-	var scale := UnitInstance.ability_value_multiplier(entry.level)
+	var scale := 1
+	if entry.get_star_display_level() > 0:
+		scale = UnitInstance.ability_value_multiplier(entry.level)
 	var lines: PackedStringArray = []
-	if entry.unit.ability != null:
-		lines.append(format_ability("技能", entry.unit.ability, scale))
+	var main_ab := entry.get_main_ability()
+	if main_ab != null:
+		lines.append(format_ability("技能", main_ab, scale))
 	for passive in entry.unit.passives:
 		if passive != null:
 			lines.append(format_ability("被动", passive, scale))

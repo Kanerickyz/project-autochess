@@ -185,6 +185,29 @@ func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
 	return count >= 2
 
 
+func add_fused_enchant_entry(
+	runtime_ability: AbilityData,
+	display_attack: int,
+	display_max_hp: int,
+	base_attack: int,
+	base_max_hp: int,
+	crit_rate_bonus: int = 0,
+) -> DeckEntry:
+	if EnchantFusionService.FUSED_UNIT == null or runtime_ability == null:
+		return null
+	if not can_add():
+		return null
+	var entry := _create_entry(EnchantFusionService.FUSED_UNIT)
+	entry.level = 1
+	entry.runtime_main_ability = runtime_ability
+	entry.bonus_attack = display_attack - base_attack
+	entry.bonus_max_hp = display_max_hp - base_max_hp
+	entry.bonus_crit_rate_percent = crit_rate_bonus
+	_entries.append(entry)
+	deck_changed.emit()
+	return entry
+
+
 func add_entry(
 	unit_data: UnitData,
 	shop_bonus_max_hp: int = 0,
@@ -458,6 +481,8 @@ func _find_mergeable_triple() -> Array[DeckEntry]:
 	for entry in _entries:
 		if entry == null or entry.unit == null:
 			continue
+		if entry.is_fused_enchant():
+			continue
 		if entry.level >= 3:
 			continue
 		var key := "%s#%d" % [entry.get_unit_id(), entry.level]
@@ -622,6 +647,8 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.bonus_crit_rate_percent = source.bonus_crit_rate_percent
 	entry.seat_index = source.seat_index
 	entry.seat_assign_seq = source.seat_assign_seq
+	if source.runtime_main_ability != null:
+		entry.runtime_main_ability = source.runtime_main_ability.duplicate(true) as AbilityData
 	return entry
 
 
