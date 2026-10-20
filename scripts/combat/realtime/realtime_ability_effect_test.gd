@@ -14,7 +14,7 @@ const MOUNT_TABLE := {
 	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
 	"spear_goblin": "hurt_heal_self_2",
-	"skeleton": "death_heal_nearby_ally_mid",
+	"skeleton": "death_heal_random_ally_2",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
 }
@@ -742,10 +742,10 @@ static func _test_ally_death_spawn_weak() -> bool:
 	return true
 
 
-## 枯骨死亡 → 附近最低血友方回血 4。
+## 枯骨死亡 → 随机友方回血 2。
 static func _test_death_heal_nearby_ally() -> bool:
 	var data := _load_unit("res://resources/units/realtime/skeleton.tres")
-	if data == null or data.ability == null or data.ability.id != "death_heal_nearby_ally_mid":
+	if data == null or data.ability == null or data.ability.id != "death_heal_random_ally_2":
 		push_error("death_heal: skeleton ability not mounted")
 		return false
 	var sim := _new_sim()
@@ -763,9 +763,9 @@ static func _test_death_heal_nearby_ally() -> bool:
 		push_error("death_heal: apply_damage should kill skeleton")
 		return false
 	sim._drain_effects()
-	if ally.unit.current_hp != hp_before + 4:
+	if ally.unit.current_hp != hp_before + 2:
 		push_error(
-			"death_heal: ally hp %d → %d, expected +4"
+			"death_heal: ally hp %d → %d, expected +2"
 			% [hp_before, ally.unit.current_hp]
 		)
 		return false

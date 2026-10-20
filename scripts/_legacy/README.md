@@ -7,4 +7,4 @@
 | `ui/board_view.gd` + `scenes/_legacy/ui/board_view.tscn` | 旧 2D 棋盘视图；现行为 `BoardWorld` / `BoardScene3D` |
 | `ui/board_combat_stage.gd` + 对应场景 | 旧 2D 战斗舞台过渡 |
 
-**不要**在 `main.tscn` / `run_game.tscn` / `sandbox.tscn` 中重新挂载这些场景。
+**不要**在 `main.tscn` / `run_game.tscn` 中重新挂载这些场景。

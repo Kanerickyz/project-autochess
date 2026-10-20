@@ -100,7 +100,7 @@ func roll_enemy_count(
 	return bounds.x
 
 
-## 地图第 1 层（及沙盒传入的 0）视为第一关。
+## 地图第 1 层（及测试传入的 0）视为第一关。
 static func is_first_floor(floor_index: int) -> bool:
 	return floor_index >= 0 and floor_index <= 1
 

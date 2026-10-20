@@ -169,7 +169,7 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 - Run 主路径战场：竖屏、我下敌上、中线对半；没有河、桥、塔。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。  
 - **【To-Be】** 双方各有可见**角色座位**（默认 4×5 铺满半场）；友方席位内全体入座；敌方占座由关卡配置、开战一次出齐。开战后在 **5×8** 逻辑格网上走**回合制依次行动**（敌我混排固定序）；每一动内八向寻路、落格顿步、一格一体，可越线交战。  
-- 旧线性开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres)（8×8）与沙盒仍是旧网格工具环（象棋式走法身份等；**非**本篇主路径规格）。
+- 旧线性开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres)（8×8）仍是旧网格工具环（象棋式走法身份等；**非**本篇主路径规格）。
 
 ### 敌情节奏【设计定稿】
 
@@ -213,7 +213,6 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 ## 游戏模式
 
 - **Roguelike Run**：[`run_game.tscn`](../scenes/main/run_game.tscn)
-- **沙盒**：[`sandbox.tscn`](../scenes/main/sandbox.tscn)
 - **线性波次（开发）**：[`main.tscn`](../scenes/main/main.tscn)
 
 ---

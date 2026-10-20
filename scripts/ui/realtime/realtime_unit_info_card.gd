@@ -53,7 +53,7 @@ var _name_label: Label
 var _side_label: Label
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
-var _skills_label: Label
+var _skills_label: RichTextLabel
 var _style: StyleBoxFlat
 var _motion: Tween
 var _rest_position := Vector2.ZERO
@@ -127,11 +127,15 @@ func _init() -> void:
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(rule)
 
-	_skills_label = Label.new()
+	_skills_label = RichTextLabel.new()
+	_skills_label.bbcode_enabled = true
+	_skills_label.fit_content = true
+	_skills_label.scroll_active = false
 	_skills_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_skills_label.custom_minimum_size = Vector2(CARD_WIDTH - 20.0, 0.0)
-	_skills_label.add_theme_font_size_override("font_size", 14)
-	_skills_label.add_theme_color_override("font_color", INK)
+	_skills_label.add_theme_font_size_override("normal_font_size", 14)
+	_skills_label.add_theme_color_override("default_color", INK)
+	_skills_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_skills_label)
 
 
@@ -208,7 +212,8 @@ func _apply_content(info: Dictionary) -> void:
 	_hp_badge.value = int(info.get("hp", 0))
 	_attack_badge.queue_redraw()
 	_hp_badge.queue_redraw()
-	_skills_label.text = _format_skills(String(info.get("skills", "")))
+	_skills_label.clear()
+	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", ""))))
 
 
 func _compute_position(anchor: Vector2, foot: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
@@ -306,8 +311,8 @@ func _kill_motion() -> void:
 	_motion = null
 
 
-## 去掉「【技能】」等标签前缀，SAP 式直接读效果句。
-func _format_skills(raw: String) -> String:
+## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标。
+func _format_skills_bbcode(raw: String) -> String:
 	if raw.is_empty() or raw == "无技能":
 		return "无技能：只会普通攻击。"
 	var lines: PackedStringArray = []
@@ -316,7 +321,23 @@ func _format_skills(raw: String) -> String:
 		if text.begins_with("【技能】"):
 			text = text.trim_prefix("【技能】")
 		lines.append(text)
-	return "\n".join(lines)
+	var plain := "\n".join(lines)
+	## BBCode 字面量方括号。
+	var escaped := plain.replace("[", "[lb]")
+	var icon_h := 16.0
+	var atk_tex: Texture2D = RealtimeArenaView.STAT_ATTACK_TEX
+	var hp_tex: Texture2D = RealtimeArenaView.STAT_HP_TEX
+	var atk_w := icon_h * atk_tex.get_width() / maxf(1.0, float(atk_tex.get_height()))
+	var hp_w := icon_h * hp_tex.get_width() / maxf(1.0, float(hp_tex.get_height()))
+	escaped = escaped.replace(
+		UnitInfoText.STAT_ICON_ATK,
+		"[img=%dx%d]%s[/img]" % [int(round(atk_w)), int(icon_h), atk_tex.resource_path],
+	)
+	escaped = escaped.replace(
+		UnitInfoText.STAT_ICON_HP,
+		"[img=%dx%d]%s[/img]" % [int(round(hp_w)), int(icon_h), hp_tex.resource_path],
+	)
+	return escaped
 
 
 func _make_badge(texture: Texture2D) -> StatBadge:
