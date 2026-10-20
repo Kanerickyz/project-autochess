@@ -185,6 +185,14 @@ func _test_long_press_slide_inspect() -> void:
 		String(arena._press_info.get("inspect_key", "")) == "entry:%d" % entry1.entry_id,
 		"slide updates inspect_key to seat1",
 	)
+	## 切换瞬间应有倾斜/放大（小丑牌式），内容已换。
+	var card := arena._info_card
+	_expect(card != null and card.visible, "info card node visible after slide")
+	if card != null:
+		_expect(
+			absf(card.rotation_degrees) > 0.5 or card.scale.x > 1.01,
+			"slide switch kicks tilt or scale punch",
+		)
 	_press(arena, c1, false)
 	_expect(not arena.is_info_card_visible(), "release after slide hides card")
 	battle.queue_free()
