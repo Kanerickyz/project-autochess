@@ -16,6 +16,7 @@ static func run_all() -> bool:
 	passed = _test_snapshot_reset_restores_gold_team_candidates() and passed
 	passed = _test_refresh_keeps_recruited() and passed
 	passed = _test_refresh_keeps_locked_candidate() and passed
+	passed = _test_lock_persists_across_sessions() and passed
 	passed = _test_replace_no_refund() and passed
 	passed = _test_skip_discards_finish_keeps() and passed
 	passed = _test_opening_require_nonempty_roster() and passed
@@ -229,6 +230,66 @@ static func _test_refresh_keeps_locked_candidate() -> bool:
 		return false
 	## 未锁定槽应被重抽（种子固定下通常会变；若碰巧同 id 仍算合法，只断言锁槽）。
 	var _ignore := unlocked_id
+	return true
+
+
+static func _test_lock_persists_across_sessions() -> bool:
+	## 胜后 finish：锁定槽跨下一场招募保留；开局招募清空；清空后不再继承。
+	var deck := _make_deck([ARCHER])
+	var economy := _make_economy(20)
+	var session := RecruitSession.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	session.configure(_make_config(), deck, economy, rng)
+	session.require_nonempty_roster = false
+	session.begin(0.2)
+	var locked_unit := session.get_candidate(0)
+	if locked_unit == null:
+		push_error("RecruitSessionTest: persist lock fixture missing candidate 0")
+		return false
+	var locked_id := locked_unit.id
+	if not session.toggle_candidate_lock(0):
+		push_error("RecruitSessionTest: persist lock toggle failed")
+		return false
+	session.finish()
+	if session.is_active:
+		push_error("RecruitSessionTest: finish should end session before next begin")
+		return false
+
+	session.begin(0.2)
+	var after := session.get_candidate(0)
+	if after == null or after.id != locked_id:
+		push_error(
+			"RecruitSessionTest: locked candidate must persist across sessions; got %s expected %s"
+			% [after.id if after else "<null>", locked_id]
+		)
+		return false
+	if not session.is_candidate_locked(0):
+		push_error("RecruitSessionTest: lock flag must persist across sessions")
+		return false
+
+	## skip 也保留当前锁定（先 persist 再 reset 队伍）。
+	var skip_locked := session.get_candidate(0)
+	var skip_id := skip_locked.id if skip_locked != null else ""
+	session.skip()
+	session.begin(0.2)
+	var after_skip := session.get_candidate(0)
+	if after_skip == null or after_skip.id != skip_id:
+		push_error("RecruitSessionTest: lock must persist after skip across sessions")
+		return false
+	if not session.is_candidate_locked(0):
+		push_error("RecruitSessionTest: lock flag must persist after skip")
+		return false
+
+	## 开局招募（require_nonempty）清空跨场锁定。
+	session.require_nonempty_roster = true
+	session.finish()
+	session.begin(0.0)
+	if session.is_candidate_locked(0):
+		push_error("RecruitSessionTest: opening recruit must clear persisted locks")
+		return false
+	session.require_nonempty_roster = false
+	session.clear_persisted_locks()
 	return true
 
 
