@@ -1028,14 +1028,8 @@ func _spawn_unit(
 		origin = payload.target.grid_pos
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
 	var summon_context := owner if owner != null else payload.target
-	## 每角色最多生成 1 只随从（本场累计）。
-	const MAX_MINIONS_PER_UNIT := 1
-	if summon_context != null and summon_context.combat_summons_spawned >= MAX_MINIONS_PER_UNIT:
-		return false
-	var remaining := MAX_MINIONS_PER_UNIT
-	if summon_context != null:
-		remaining = MAX_MINIONS_PER_UNIT - summon_context.combat_summons_spawned
-	var spawn_total := mini(maxi(1, action.spawn_count), remaining)
+	## 每次数以 spawn_count 为准；不再按本场累计限制每角色随从只数。
+	var spawn_total := maxi(1, action.spawn_count)
 	var spawned_any := false
 	for i in spawn_total:
 		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
