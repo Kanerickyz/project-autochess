@@ -604,7 +604,7 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-## 召魂：友方死亡可反复触发；随从立即可交战（无部署等待）。生成只数仍受每角色本场随从上限约束。
+## 召魂：友方死亡可反复触发、可多次生成；随从立即可交战（无部署等待）。
 static func _test_ally_death_spawn_weak() -> bool:
 	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_death_spawn_weak":
@@ -619,11 +619,11 @@ static func _test_ally_death_spawn_weak() -> bool:
 	var sim := _new_sim()
 	sim.configure(BOARD, 11)
 	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(0.5, 7.5))
-	var fodder := sim.add_unit(
+	var fodder_a := sim.add_unit(
 		RealtimeCombatSimTest.make_unit(
 			UnitInstance.Team.PLAYER,
 			{
-				"id": "fodder",
+				"id": "fodder_a",
 				"max_hp": 5,
 				"attack": 1,
 				"steps_per_turn": 0,
@@ -633,40 +633,58 @@ static func _test_ally_death_spawn_weak() -> bool:
 		),
 		Vector2(4.5, 5.5),
 	)
+	var fodder_b := sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.PLAYER,
+			{
+				"id": "fodder_b",
+				"max_hp": 5,
+				"attack": 1,
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"attack_reach": 0.0,
+			},
+		),
+		Vector2(3.5, 5.5),
+	)
 	## 木桩敌人：避免清场；不用近身杀手误伤召魂。
 	sim.add_unit(
 		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
 		Vector2(0.5, 0.5),
 	)
 	sim.begin_combat()
-	if not sim._pipeline.apply_damage(null, fodder, 999):
-		push_error("ally_death_spawn: fodder should have died")
+	if not sim._pipeline.apply_damage(null, fodder_a, 999):
+		push_error("ally_death_spawn: fodder_a should have died")
 		return false
 	sim._drain_effects()
-	var token: RtUnit = null
+	if not sim._pipeline.apply_damage(null, fodder_b, 999):
+		push_error("ally_death_spawn: fodder_b should have died")
+		return false
+	sim._drain_effects()
+	var tokens: Array[RtUnit] = []
 	for item in sim.get_units():
 		var rt := item as RtUnit
 		if rt != null and rt.is_alive() and rt.unit.id == "token_weak":
-			token = rt
-			break
-	if token == null:
+			tokens.append(rt)
+	if tokens.size() != 2:
 		push_error(
-			"ally_death_spawn: expected token_weak (summons_spawned=%d)"
-			% caller.unit.combat_summons_spawned
+			"ally_death_spawn: expected 2 token_weak, got %d (summons_spawned=%d)"
+			% [tokens.size(), caller.unit.combat_summons_spawned]
 		)
 		return false
-	if caller.unit.combat_summons_spawned != 1:
-		push_error("ally_death_spawn: combat_summons_spawned=%d, expected 1" % caller.unit.combat_summons_spawned)
+	if caller.unit.combat_summons_spawned != 2:
+		push_error("ally_death_spawn: combat_summons_spawned=%d, expected 2" % caller.unit.combat_summons_spawned)
 		return false
-	if token.is_deploying() or token.get_stats().deploy_time > 0.0:
-		push_error(
-			"ally_death_spawn: token should skip deploy (state=%d deploy_time=%s)"
-			% [token.state, token.get_stats().deploy_time]
-		)
-		return false
-	if not BoardHalf.is_player_deploy_cell(token.get_cell(), BOARD.y):
-		push_error("ally_death_spawn: token should land on player half, cell=%s" % token.get_cell())
-		return false
+	for token in tokens:
+		if token.is_deploying() or token.get_stats().deploy_time > 0.0:
+			push_error(
+				"ally_death_spawn: token should skip deploy (state=%d deploy_time=%s)"
+				% [token.state, token.get_stats().deploy_time]
+			)
+			return false
+		if not BoardHalf.is_player_deploy_cell(token.get_cell(), BOARD.y):
+			push_error("ally_death_spawn: token should land on player half, cell=%s" % token.get_cell())
+			return false
 	return true
 
 
