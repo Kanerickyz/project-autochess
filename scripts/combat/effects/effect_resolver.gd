@@ -509,6 +509,12 @@ func _spec_condition_met(
 				else payload.target.current_hp
 			)
 			return target_hp > owner.current_hp
+		EffectSpec.Condition.EVENT_TARGET_IS_COMBAT_SUMMON:
+			return (
+				payload != null
+				and payload.target != null
+				and payload.target.is_combat_summon
+			)
 		_:
 			return true
 
