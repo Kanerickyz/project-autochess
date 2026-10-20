@@ -1344,7 +1344,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(),
+			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var atk := 0
 		var hp := 0
@@ -1393,7 +1393,7 @@ func _draw_catalog_units(px: float) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
-			true, unit.id,
+			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, cell.x + cell.y * 8),
 		)
 		_draw_stat_badges(
 			tile_to_local(center_tile),
@@ -1435,7 +1435,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
-			true, unit.id,
+			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
@@ -1640,7 +1640,7 @@ func _draw_prepare_slots(px: float) -> void:
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(),
+			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var atk := 0
 		var hp := 0
@@ -1732,6 +1732,7 @@ func _draw_body(
 	pose: RealtimeUnitMotion.Pose = null,
 	walk: Vector2 = Vector2.ZERO,
 	footprint_span: float = 1.0,
+	idle_seed: int = -1,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
@@ -1742,7 +1743,7 @@ func _draw_body(
 		ry *= 1.35
 	var tex: Texture2D = _art.get_texture(unit_id, is_player) if _art != null else null
 	if tex != null:
-		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span)
+		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
 	var fill := Color(color, alpha)
@@ -1765,6 +1766,7 @@ func _draw_body(
 
 ## 贴图脚底：单格落在格心略下方；多格足迹则把整张贴图垂向居中于足迹中心。
 ## pose / walk 为纯表现动画：以脚底为轴旋转缩放，偏移以格为单位。
+## idle_seed>=0 且无 pose 时：准备/招募时钟呼吸待机。
 func _draw_unit_sprite(
 	center: Vector2,
 	half_height_px: float,
@@ -1776,6 +1778,7 @@ func _draw_unit_sprite(
 	pose: RealtimeUnitMotion.Pose = null,
 	walk: Vector2 = Vector2.ZERO,
 	footprint_span: float = 1.0,
+	idle_seed: int = -1,
 ) -> void:
 	var h_cap := px * 1.9
 	if footprint_span >= 1.5:
@@ -1808,6 +1811,10 @@ func _draw_unit_sprite(
 		scl = pose.scale * pose.idle_scale
 		flash = pose.flash
 		a *= pose.alpha
+	elif idle_seed >= 0:
+		var idle: Dictionary = RealtimeUnitMotion.sample_idle(_fx_clock, idle_seed)
+		offset += (idle.get("offset", Vector2.ZERO) as Vector2) * px
+		scl = idle.get("scale", Vector2.ONE) as Vector2
 	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a)
 	var shadow_pos := feet + Vector2(offset.x + px * 0.06, px * 0.02 + maxf(0.0, offset.y))
 	_draw_ellipse_filled(shadow_pos, w * 0.30 * scl.x, maxf(2.0, px * 0.12), shadow)
@@ -1825,6 +1832,11 @@ func _rt_unit_id(rt: RtUnit) -> String:
 	if rt == null or rt.unit == null or rt.unit.unit_data == null:
 		return ""
 	return rt.unit.unit_data.id
+
+
+## 准备/招募待机相位种子：同兵种不同席位错开呼吸。
+func _idle_seed_for(unit_id: String, slot: int) -> int:
+	return absi(unit_id.hash() + slot * 31)
 
 
 func _resolve_visual_half(explicit: float, body_radius: float, fallback_mul: float) -> float:
