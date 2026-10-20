@@ -30,6 +30,20 @@ func clear() -> void:
 	seat_cols = 0
 
 
+func configure_custom_cells(custom_cells: Array[Vector2i]) -> void:
+	clear()
+	cells = custom_cells.duplicate()
+	slot_count = cells.size()
+	seat_rows = 0
+	seat_cols = 0
+	is_enemy_side = false
+	occupants.resize(slot_count)
+	seat_assign_seq.resize(slot_count)
+	for i in slot_count:
+		occupants[i] = null
+		seat_assign_seq[i] = -1
+
+
 func configure_grid(
 	rows: int,
 	cols: int,

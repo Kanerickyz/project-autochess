@@ -13,6 +13,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _test_enchant_fuse_flow()
+	await _test_enchant_sandbox_skip_no_map_signal()
 	if _failures == 0:
 		print("EnchantFlowTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -84,3 +85,39 @@ func _test_enchant_fuse_flow() -> void:
 func _process_n_frames(n: int) -> void:
 	for _i in n:
 		await process_frame
+
+
+func _test_enchant_sandbox_skip_no_map_signal() -> void:
+	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
+	await process_frame
+
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 4
+	deck_cfg.starting_units = []
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	var u := UnitData.new()
+	u.id = "solo"
+	u.stats = UnitStats.new()
+	u.ability = HURT
+	deck.add_entry(u)
+
+	var economy := RunEconomy.new()
+	var level := load("res://resources/levels/board_act1.tres") as LevelData
+	battle.setup(deck, economy, level)
+
+	var finished: Array = []
+	battle.enchant_finished.connect(func(did: bool) -> void: finished.append(did))
+
+	await battle.enter_enchant(0.0, true)
+	_expect(battle.is_enchant_sandbox_mode(), "sandbox flag")
+	var session := battle.get_enchant_session()
+	session.skip()
+	await _process_n_frames(2)
+	_expect(finished.is_empty(), "sandbox skip does not emit enchant_finished")
+	_expect(battle.get_phase() == RealtimeBattleController.Phase.IDLE, "idle after skip")
+
+	battle.queue_free()
+	await process_frame

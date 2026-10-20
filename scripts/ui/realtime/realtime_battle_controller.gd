@@ -82,6 +82,7 @@ var _recruit_pending_item_slot: int = -1
 var _enchant_session: EnchantSession = EnchantSession.new()
 var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
 var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
+var _enchant_sandbox_mode: bool = false
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -119,6 +120,7 @@ func _ready() -> void:
 	_arena.recruit_team_seat_drop.connect(_on_recruit_team_seat_drop)
 	_arena.recruit_item_pressed.connect(_on_recruit_item_pressed)
 	_arena.recruit_item_drop.connect(_on_recruit_item_drop)
+	_arena.enchant_forge_drop.connect(_on_enchant_forge_drop)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
@@ -621,12 +623,14 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 
 
 ## 地图附魔节点：上附魔台、下队伍；规则走 EnchantSession。
-func enter_enchant(enter_seconds: float = -1.0) -> void:
+func enter_enchant(enter_seconds: float = -1.0, expanded_team: bool = false) -> void:
 	if not is_node_ready():
 		await ready
 	if _deck_state == null:
 		push_error("RealtimeBattleController.enter_enchant: deck missing")
 		return
+	_enchant_sandbox_mode = expanded_team
+	_enchant_ui.set_expanded_team(expanded_team)
 	_enchant_session.configure(_deck_state)
 	_enchant_session.begin()
 	_enchant_ui.set_session(_enchant_session)
@@ -651,6 +655,8 @@ func exit_enchant() -> void:
 	_enchant_ui.clear_arena(_arena)
 	_enchant_ui.clear_session()
 	_enchant_slots.clear()
+	_enchant_sandbox_mode = false
+	_enchant_ui.set_expanded_team(false)
 	if _arena != null:
 		_arena.reset_half_slide()
 	_restore_combat_chrome_after_recruit()
@@ -667,9 +673,31 @@ func get_enchant_session() -> EnchantSession:
 	return _enchant_session
 
 
+func _on_enchant_forge_drop(entry_id: int, slot: StringName) -> void:
+	if _enchant_session == null or not _enchant_session.is_active:
+		return
+	if _enchant_session.fused_this_visit:
+		return
+	if not _enchant_session.set_slot(slot, entry_id):
+		flash_hint("无法放入该格")
+		return
+	_sync_enchant_arena()
+
+
+func _sync_enchant_arena() -> void:
+	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
+
+
 func _on_enchant_session_finished(did_fuse: bool) -> void:
+	var sandbox := _enchant_sandbox_mode
 	exit_enchant()
+	if sandbox:
+		return
 	enchant_finished.emit(did_fuse)
+
+
+func is_enchant_sandbox_mode() -> bool:
+	return _enchant_sandbox_mode
 
 
 func exit_recruit() -> void:

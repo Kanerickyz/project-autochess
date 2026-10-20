@@ -10,6 +10,7 @@ static var _failures: int = 0
 
 static func run_all() -> bool:
 	_failures = 0
+	_test_forge_slot_spacing()
 	_test_fuse_creates_fused_enchant()
 	_test_fused_skips_triple_merge()
 	_test_session_once_per_visit()
@@ -41,6 +42,14 @@ static func _deck_with_two() -> DeckState:
 	var e2 := deck.add_entry(u2)
 	_assert(e1 != null and e2 != null, "entries added")
 	return deck
+
+
+static func _test_forge_slot_spacing() -> void:
+	var cells := EnchantLayout.forge_slot_cells(Vector2i(5, 8))
+	_assert(cells.size() == 3, "three forge cells")
+	if cells.size() >= 3:
+		_assert(cells[0].x == 0 and cells[1].x == 2 and cells[2].x == 4, "A/B/C spaced")
+		_assert(cells[0].y == cells[1].y and cells[1].y == cells[2].y, "forge row aligned")
 
 
 static func _test_fuse_creates_fused_enchant() -> void:
