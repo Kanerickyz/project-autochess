@@ -604,15 +604,21 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-## 召魂：友方死亡可反复触发、可多次生成；随从立即可交战（无部署等待）。
+## 召魂：仅友方角色（非随从/代理）死亡触发；可多次生成；随从立即接敌。
 static func _test_ally_death_spawn_weak() -> bool:
 	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_death_spawn_weak":
 		push_error("ally_death_spawn: soulcaller ability not mounted")
 		return false
 	var specs: Array = data.ability.effect_specs
-	if specs.is_empty() or specs[0] == null or int(specs[0].max_triggers_per_combat) > 0:
+	if specs.is_empty() or specs[0] == null:
+		push_error("ally_death_spawn: missing effect spec")
+		return false
+	if int(specs[0].max_triggers_per_combat) > 0:
 		push_error("ally_death_spawn: max_triggers_per_combat must be unlimited (<=0)")
+		return false
+	if specs[0].condition != EffectSpec.Condition.EVENT_TARGET_IS_NOT_COMBAT_SUMMON:
+		push_error("ally_death_spawn: must require non-summon friend death")
 		return false
 	## 用正式棋盘规格，避免大沙盘掩盖半场落点问题。
 	const BOARD := Vector2i(5, 8)
@@ -668,14 +674,37 @@ static func _test_ally_death_spawn_weak() -> bool:
 			tokens.append(rt)
 	if tokens.size() != 2:
 		push_error(
-			"ally_death_spawn: expected 2 token_weak, got %d (summons_spawned=%d)"
+			"ally_death_spawn: expected 2 token_weak after character deaths, got %d (summons_spawned=%d)"
 			% [tokens.size(), caller.unit.combat_summons_spawned]
 		)
 		return false
 	if caller.unit.combat_summons_spawned != 2:
 		push_error("ally_death_spawn: combat_summons_spawned=%d, expected 2" % caller.unit.combat_summons_spawned)
 		return false
-	for token in tokens:
+	## 随从死亡不得再触发义士应召（避免连环生成）。
+	var first_token := tokens[0]
+	if not sim._pipeline.apply_damage(null, first_token, 999):
+		push_error("ally_death_spawn: token should have died")
+		return false
+	sim._drain_effects()
+	var tokens_after: Array[RtUnit] = []
+	for item2 in sim.get_units():
+		var rt2 := item2 as RtUnit
+		if rt2 != null and rt2.is_alive() and rt2.unit.id == "token_weak":
+			tokens_after.append(rt2)
+	if tokens_after.size() != 1:
+		push_error(
+			"ally_death_spawn: summon death must not spawn; alive tokens=%d summons_spawned=%d"
+			% [tokens_after.size(), caller.unit.combat_summons_spawned]
+		)
+		return false
+	if caller.unit.combat_summons_spawned != 2:
+		push_error(
+			"ally_death_spawn: summons_spawned should stay 2 after summon death, got %d"
+			% caller.unit.combat_summons_spawned
+		)
+		return false
+	for token in tokens_after:
 		if token.is_deploying() or token.get_stats().deploy_time > 0.0:
 			push_error(
 				"ally_death_spawn: token should skip deploy (state=%d deploy_time=%s)"
