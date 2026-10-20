@@ -68,10 +68,14 @@ func _make_battle(seed: int) -> RealtimeBattleController:
 
 
 func _seat_first_hand(battle: RealtimeBattleController) -> bool:
+	var slots := battle.get_slot_board()
+	## 准备主路径可能已持久占位自动入座。
+	if slots.occupied_count() > 0:
+		return true
 	var hand := battle.get_hand()
 	if hand.is_empty():
 		return false
-	var err := battle.try_assign_to_slot(hand[0].entry_id, battle.get_slot_board().get_cell(0))
+	var err := battle.try_assign_to_slot(hand[0].entry_id, slots.get_cell(0))
 	return err.is_empty()
 
 
