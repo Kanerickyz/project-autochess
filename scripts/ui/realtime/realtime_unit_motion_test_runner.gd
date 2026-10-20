@@ -46,6 +46,18 @@ func _test_sample_idle() -> void:
 	_expect(not off_a.is_equal_approx(off_c), "different seeds phase-shift idle")
 	var scl_b: Vector2 = b.get("scale", Vector2.ONE)
 	_expect(scl_b.y < 1.0 and scl_b.x > 1.0, "idle mid-cycle soft squash")
+	_test_sample_inspect_focus()
+
+
+func _test_sample_inspect_focus() -> void:
+	var dim: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.0, 1.0, Vector2.ZERO, false)
+	_expect(float(dim.get("alpha", 1.0)) < 0.8, "non-focus units dim while inspecting")
+	var kick: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.0, 1.0, Vector2.ZERO, true)
+	_expect(float(kick.get("rotation", 0.0)) > 0.05, "focus kick tilts with slide dir")
+	_expect((kick.get("scale", Vector2.ONE) as Vector2).x > 1.02, "focus kick scales up")
+	var settled: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.35, 1.0, Vector2.ZERO, true)
+	_expect((settled.get("offset", Vector2.ZERO) as Vector2).y < -0.05, "focus settles lifted")
+	_expect(absf(float(settled.get("rotation", 1.0))) < absf(float(kick.get("rotation", 0.0))), "kick tilt decays")
 
 
 func _expect(ok: bool, label: String) -> void:

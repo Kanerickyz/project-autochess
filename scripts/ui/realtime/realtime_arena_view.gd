@@ -153,6 +153,11 @@ var _press_tap: Callable
 var _info_shown := false
 ## 当前信息卡对应的单位（用于角色库把该剪影画到最上层）。
 var _shown_info: Dictionary = {}
+## 长按焦点单位：小丑牌式抬起 / 滑动弹跳（纯绘制）。
+var _inspect_focus_key := ""
+var _inspect_focus_at: float = -1.0
+var _inspect_kick_dir: float = 0.0
+var _inspect_finger := Vector2.ZERO
 ## 技能触发自动弹出的信息卡：到期自动收起（长按中不抢收）。
 var _auto_info_until_clock: float = -1.0
 const SKILL_INFO_SECONDS := 1.35
@@ -204,6 +209,7 @@ func _process(delta: float) -> void:
 			_info_card.hide_info()
 			_info_shown = false
 			_shown_info = {}
+			_clear_inspect_focus()
 		_auto_info_until_clock = -1.0
 	if not _fx.is_empty():
 		var alive: Array = []
@@ -558,6 +564,7 @@ func _track_press_motion(pos: Vector2) -> void:
 		return
 	## 信息卡已弹出：保持按住时滑到其他单位即切换介绍，并跟手微倾。
 	if _info_shown:
+		_inspect_finger = pos
 		_update_info_card_under_finger(pos)
 		_info_card.follow_finger(pos)
 		return
@@ -605,6 +612,7 @@ func _cancel_press() -> void:
 	_press_tap = Callable()
 	_info_shown = false
 	_shown_info = {}
+	_clear_inspect_focus()
 	_info_card.hide_info()
 
 
@@ -638,12 +646,105 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 		return
 	_info_shown = true
 	_shown_info = info
+	_begin_inspect_focus(info, slide_dir)
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
 	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size), slide_dir)
 	queue_redraw()
+
+
+func _begin_inspect_focus(info: Dictionary, slide_dir: float) -> void:
+	var key := String(info.get("inspect_key", ""))
+	if key.is_empty():
+		key = "%s|%s" % [String(info.get("name", "")), str(info.get("center", Vector2.ZERO))]
+	var switched := key != _inspect_focus_key
+	_inspect_focus_key = key
+	if switched or _inspect_focus_at < 0.0:
+		_inspect_focus_at = _fx_clock
+		_inspect_kick_dir = slide_dir
+	_inspect_finger = info.get("center", _inspect_finger) as Vector2
+
+
+func _clear_inspect_focus() -> void:
+	_inspect_focus_key = ""
+	_inspect_focus_at = -1.0
+	_inspect_kick_dir = 0.0
+	_inspect_finger = Vector2.ZERO
+
+
+## 长按焦点视觉：焦点单位抬起倾斜，其余略压暗缩小。
+func _sample_inspect_visual(sprite_center: Vector2) -> Dictionary:
+	if not _info_shown or _shown_info.is_empty():
+		return {}
+	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
+	var hit_r := get_cell_px() * 0.55
+	var focused := sprite_center.distance_squared_to(focus_c) <= hit_r * hit_r
+	var elapsed := 0.0 if _inspect_focus_at < 0.0 else maxf(0.0, _fx_clock - _inspect_focus_at)
+	var finger_tiles := Vector2.ZERO
+	if focused and get_cell_px() > 0.0:
+		finger_tiles = (_inspect_finger - focus_c) / get_cell_px()
+	return RealtimeUnitMotion.sample_inspect_focus(
+		elapsed,
+		_inspect_kick_dir if focused else 0.0,
+		finger_tiles,
+		focused,
+	)
+
+
+func _inspect_focus_hit_r2() -> float:
+	var r := get_cell_px() * 0.55
+	return r * r
+
+
+## 长按时把焦点座位画到最后，抬起不被邻格挡住。
+func _bring_inspect_slot_to_front(
+	indices: Array[int],
+	slots: PrepareSlotBoard,
+	half_off: Vector2,
+) -> void:
+	if not _info_shown or slots == null or indices.is_empty():
+		return
+	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
+	var hit_r2 := _inspect_focus_hit_r2()
+	var focus_at := -1
+	for idx in indices.size():
+		var slot_i: int = indices[idx]
+		if slot_i < 0 or slot_i >= slots.cells.size():
+			continue
+		var cell: Vector2i = slots.cells[slot_i]
+		var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+		if center.distance_squared_to(focus_c) <= hit_r2:
+			focus_at = idx
+			break
+	if focus_at < 0:
+		return
+	var moved: int = indices[focus_at]
+	indices.remove_at(focus_at)
+	indices.append(moved)
+
+
+func _bring_inspect_rt_to_front(ordered: Array) -> void:
+	if not _info_shown or ordered.is_empty():
+		return
+	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
+	var hit_r2 := _inspect_focus_hit_r2()
+	var focus_at := -1
+	for idx in ordered.size():
+		var rt := ordered[idx] as RtUnit
+		if rt == null:
+			continue
+		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
+		var center := tile_to_local(rt.position) + off
+		if center.distance_squared_to(focus_c) <= hit_r2:
+			focus_at = idx
+			break
+	if focus_at < 0:
+		return
+	var moved: Variant = ordered[focus_at]
+	ordered.remove_at(focus_at)
+	ordered.append(moved)
 
 
 ## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
@@ -1355,6 +1456,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			return ca.y < cb.y
 		return ca.x < cb.x
 	)
+	_bring_inspect_slot_to_front(occupied_indices, recruit_team_slots, off)
 	for i in occupied_indices:
 		var cell: Vector2i = recruit_team_slots.cells[i]
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
@@ -1430,7 +1532,27 @@ func _draw_catalog_units(px: float) -> void:
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
-	for info in recruit_candidates:
+	var ordered := recruit_candidates.duplicate()
+	if _info_shown and not ordered.is_empty():
+		var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
+		var hit_r2 := _inspect_focus_hit_r2()
+		var focus_at := -1
+		for idx in ordered.size():
+			var cand: Variant = ordered[idx]
+			if not (cand is Dictionary):
+				continue
+			var cell_i: Vector2i = (cand as Dictionary).get("cell", NO_CELL)
+			if cell_i == NO_CELL:
+				continue
+			var c := tile_to_local(Vector2(cell_i) + Vector2(0.5, 0.5)) + off
+			if c.distance_squared_to(focus_c) <= hit_r2:
+				focus_at = idx
+				break
+		if focus_at >= 0:
+			var moved: Variant = ordered[focus_at]
+			ordered.remove_at(focus_at)
+			ordered.append(moved)
+	for info in ordered:
 		if not (info is Dictionary):
 			continue
 		var cell: Vector2i = info.get("cell", NO_CELL)
@@ -1652,6 +1774,7 @@ func _draw_prepare_slots(px: float) -> void:
 			return ca.y < cb.y
 		return ca.x < cb.x
 	)
+	_bring_inspect_slot_to_front(occupied_indices, prepare_slots, off)
 	for i in occupied_indices:
 		var cell: Vector2i = prepare_slots.cells[i]
 		var entry: DeckEntry = prepare_slots.get_entry(i)
@@ -1688,6 +1811,7 @@ func _draw_units(px: float) -> void:
 			return a.position.x < b.position.x
 		return a.position.y < b.position.y
 	)
+	_bring_inspect_rt_to_front(ordered)
 	for item in ordered:
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR
@@ -1839,9 +1963,22 @@ func _draw_unit_sprite(
 		var idle: Dictionary = RealtimeUnitMotion.sample_idle(_fx_clock, idle_seed)
 		offset += (idle.get("offset", Vector2.ZERO) as Vector2) * px
 		scl = idle.get("scale", Vector2.ONE) as Vector2
-	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a)
-	var shadow_pos := feet + Vector2(offset.x + px * 0.06, px * 0.02 + maxf(0.0, offset.y))
-	_draw_ellipse_filled(shadow_pos, w * 0.30 * scl.x, maxf(2.0, px * 0.12), shadow)
+	## 长按信息卡焦点：小丑牌式抬起 / 倾斜；非焦点略压暗。
+	var inspect_v := _sample_inspect_visual(center)
+	var shadow_mul := 1.0
+	if not inspect_v.is_empty():
+		offset += (inspect_v.get("offset", Vector2.ZERO) as Vector2) * px
+		rot += float(inspect_v.get("rotation", 0.0))
+		scl *= inspect_v.get("scale", Vector2.ONE) as Vector2
+		a *= float(inspect_v.get("alpha", 1.0))
+		shadow_mul = float(inspect_v.get("shadow_mul", 1.0))
+	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a * clampf(shadow_mul, 0.4, 2.2))
+	var shadow_pos := feet + Vector2(
+		offset.x + px * 0.06,
+		px * 0.02 + maxf(0.0, offset.y) + px * 0.04 * maxf(0.0, shadow_mul - 1.0),
+	)
+	var shadow_rx := w * 0.30 * scl.x * (0.85 + 0.2 * shadow_mul)
+	_draw_ellipse_filled(shadow_pos, shadow_rx, maxf(2.0, px * 0.12 * shadow_mul), shadow)
 	var base := PLAYER_COLOR if is_player else ENEMY_COLOR
 	var lift := 1.0 + clampf(tint.get_luminance() - base.get_luminance(), 0.0, 0.5)
 	var modulate_color := Color(lift, lift, lift, a).lerp(
