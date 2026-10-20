@@ -515,6 +515,12 @@ func _spec_condition_met(
 				and payload.target != null
 				and payload.target.is_combat_summon
 			)
+		EffectSpec.Condition.EVENT_TARGET_IS_NOT_COMBAT_SUMMON:
+			return (
+				payload != null
+				and payload.target != null
+				and not payload.target.is_combat_summon
+			)
 		_:
 			return true
 

@@ -41,6 +41,8 @@ enum Condition {
 	EVENT_TARGET_HP_GT_OWNER,
 	## 事件目标是战斗随从（战中召唤体）；须追加在枚举末尾。
 	EVENT_TARGET_IS_COMBAT_SUMMON,
+	## 事件目标不是战斗随从/代理（正式角色单位）。
+	EVENT_TARGET_IS_NOT_COMBAT_SUMMON,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).

@@ -197,6 +197,17 @@ static func format_effect_spec(spec: EffectSpec, value_scale: int = 1) -> String
 	if spec == null:
 		return ""
 	var trigger: String = String(TRIGGER_LABELS.get(spec.trigger, String(spec.trigger)))
+	## 条件收窄触发文案，避免「友方死亡」被读成含随从/代理。
+	if (
+		spec.trigger == CombatEvents.ON_FRIEND_DEATH
+		and spec.condition == EffectSpec.Condition.EVENT_TARGET_IS_NOT_COMBAT_SUMMON
+	):
+		trigger = "友方角色死亡时"
+	elif (
+		spec.trigger == CombatEvents.ON_FRIEND_SUMMONED
+		and spec.condition == EffectSpec.Condition.EVENT_TARGET_IS_COMBAT_SUMMON
+	):
+		trigger = "友方随从被召唤时"
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
 	var has_spawn_or_split := false
