@@ -13,7 +13,7 @@ const MOUNT_TABLE := {
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
-	"spear_goblin": "deal_heal_lowest_ally_small",
+	"spear_goblin": "hurt_heal_self_2",
 	"skeleton": "death_heal_nearby_ally_mid",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
@@ -45,7 +45,7 @@ static func run_all() -> bool:
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
-	_check("deal_heal_lowest_ally", _test_deal_heal_lowest_ally())
+	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
 
@@ -747,38 +747,27 @@ static func _test_death_heal_nearby_ally() -> bool:
 	return true
 
 
-## 标枪造成伤害 → 最低血其他友方回血 2。
-static func _test_deal_heal_lowest_ally() -> bool:
+## 标枪受伤 → 自身恢复 2 生命（软顶）。
+static func _test_hurt_heal_self_2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "deal_heal_lowest_ally_small":
-		push_error("deal_heal: spear_goblin ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
+		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
 	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	spear.unit.stats.attack_windup = 0.0
-	spear.unit.stats.attack_interval = 0.3
-	spear.unit.stats.steps_per_turn = 0
-	spear.unit.stats.attack_reach = 2.0
-	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 8, {"steps_per_turn": 0, "sight_range": 0.0}),
-		Vector2(8.5, 22.5),
-	)
-	ally.unit.current_hp = 2
-	sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "sight_range": 0.0, "body_radius": 0.3}),
-		Vector2(9.5, 20.0),
-	)
+	## 抬高上限以便非致死受伤后验证回血。
+	spear.unit.stats.max_hp = 10
+	spear.unit.current_hp = 6
 	sim.begin_combat()
-	var hp_before := ally.unit.current_hp
-	var guard := 0
-	while ally.unit.current_hp <= hp_before and guard < 300:
-		sim.advance_fixed_step()
-		guard += 1
-	if ally.unit.current_hp < hp_before + 2:
+	var hp_mid := spear.unit.current_hp
+	sim._pipeline.apply_damage(null, spear, 2)
+	sim._drain_effects()
+	## 扣 2 后疗回 2 → 净 0
+	if spear.unit.current_hp != hp_mid - 2 + 2:
 		push_error(
-			"deal_heal: ally hp %d → %d, expected heal +2"
-			% [hp_before, ally.unit.current_hp]
+			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
+			% [spear.unit.current_hp, hp_mid]
 		)
 		return false
 	return true
