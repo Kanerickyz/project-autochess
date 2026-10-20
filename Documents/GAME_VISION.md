@@ -156,7 +156,7 @@ flowchart TD
 | 招募出售 | 正常退金腾位（细则见招募篇；点数见数值） |
 
 胜后招募半场含角色 5 槽与道具行，见 [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md)。  
-敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英按队伍强度定目标；人数约束见该文；Boss 不吃真队、不跟人数。
+敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英按队伍强度定目标；普通关人数与层绑定（第 F 层 F～F＋1），精英跟队伍人数；Boss 不吃真队、不跟人数。
 
 ```
 LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
