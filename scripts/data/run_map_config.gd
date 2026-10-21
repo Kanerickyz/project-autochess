@@ -14,6 +14,8 @@ extends Resource
 @export_range(5, 15, 1) var shop_min_floor: int = 5
 ## 精英最早出现层；≤0 时用 maxi(4, floor_count/3)。
 @export_range(0, 15, 1) var elite_min_floor: int = 0
+## 附魔最早出现层；≤0 时用中后期默认（见 MapGenerator._resolve_enchant_min_floor）。
+@export_range(0, 15, 1) var enchant_min_floor: int = 0
 @export_range(1, 4, 1) var max_shops_per_act: int = 2
 @export_range(1, 4, 1) var max_rests_per_act: int = 2
 @export_range(2, 6, 1) var elite_interval: int = 4

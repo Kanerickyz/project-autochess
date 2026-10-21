@@ -704,6 +704,16 @@ static func _test_ally_death_spawn_weak() -> bool:
 			% [tokens.size(), caller.unit.combat_summons_spawned]
 		)
 		return false
+	for token_rt in tokens:
+		if token_rt.is_deploying():
+			push_error("ally_death_spawn: token must be on field same round (not deploying)")
+			return false
+		if token_rt.action_eligible_from_round <= sim.get_round_index():
+			push_error(
+				"ally_death_spawn: token must wait until next round to act (eligible=%d round=%d)"
+				% [token_rt.action_eligible_from_round, sim.get_round_index()]
+			)
+			return false
 	if caller.unit.combat_summons_spawned != 2:
 		push_error("ally_death_spawn: combat_summons_spawned=%d, expected 2" % caller.unit.combat_summons_spawned)
 		return false

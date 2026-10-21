@@ -28,6 +28,7 @@ column_count = 7
 path_count = 6
 shop_min_floor = 4
 elite_min_floor = 6
+enchant_min_floor = 7
 board_defaults = ExtResource("2")
 combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
 elite_pool = Array[ExtResource("15_enc")]([ExtResource("16")])

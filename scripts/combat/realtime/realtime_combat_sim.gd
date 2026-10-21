@@ -170,6 +170,10 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	if not _started:
 		_lock_spawn_order.append(rt)
 	else:
+		## 触发当回合立即落子入队；仅行动轮推迟（见 _begin_next_actor_turn）。
+		rt.action_eligible_from_round = _round_index + 1
+		if unit.is_combat_summon:
+			rt.skip_deploy()
 		_insert_mid_combat_into_queue(rt)
 	unit_added.emit(rt)
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
@@ -398,21 +402,11 @@ func _build_action_queue_from_lock_order() -> void:
 		i += 1
 
 
-## 中途召唤：插到当前行动者之后；无当前行动者则队尾。
+## 中途召唤：入队尾；本回合不行动（见 action_eligible_from_round）。
 func _insert_mid_combat_into_queue(rt: RtUnit) -> void:
 	if rt == null:
 		return
-	if _action_queue.is_empty():
-		_action_queue.append(rt)
-		return
-	var insert_at := _action_queue.size()
-	if _actor_turn_active and _current_actor != null:
-		var cur_i := _action_queue.find(_current_actor)
-		if cur_i >= 0:
-			insert_at = cur_i + 1
-	elif _queue_cursor >= 0 and _queue_cursor < _action_queue.size():
-		insert_at = _queue_cursor + 1
-	_action_queue.insert(insert_at, rt)
+	_action_queue.append(rt)
 
 
 func _tick_all_deploying() -> void:
@@ -443,6 +437,10 @@ func _begin_next_actor_turn() -> void:
 			_round_index += 1
 		var candidate := _action_queue[_queue_cursor]
 		if candidate != null and candidate.is_alive() and _units.has(candidate):
+			if candidate.action_eligible_from_round > _round_index:
+				_queue_cursor += 1
+				scanned += 1
+				continue
 			_current_actor = candidate
 			_actor_turn_active = true
 			_actor_has_attacked = false

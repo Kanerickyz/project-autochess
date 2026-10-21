@@ -38,6 +38,10 @@ func _initialize() -> void:
 	_expect(catalog.get_archetype("fused_enchant") == &"fused_enchant", "fused_enchant archetype")
 	_expect(catalog.get_texture("fused_enchant", true) != null, "fused_enchant player sprite")
 	_expect(catalog.get_texture("fused_enchant", false) != null, "fused_enchant enemy sprite")
+	var fused_tex := catalog.get_texture("fused_enchant", true)
+	var knight_tex := catalog.get_texture("knight", true)
+	if fused_tex != null and knight_tex != null:
+		_expect(fused_tex.get_size() == knight_tex.get_size(), "fused_enchant canvas matches knight")
 	_expect(
 		catalog.get_texture("knight", true) != catalog.get_texture("knight", false),
 		"player and enemy sprites differ",
