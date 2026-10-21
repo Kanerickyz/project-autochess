@@ -1045,8 +1045,8 @@ func _spawn_unit(
 		origin = payload.target.grid_pos
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
 	var summon_context := owner if owner != null else payload.target
-	## 每次数以 spawn_count 为准；不再按本场累计限制每角色随从只数。
-	var spawn_total := maxi(1, action.spawn_count)
+	## 每次数以 spawn_count 为准；召魂 2★+ 见 AllyDeathSpawnRules。
+	var spawn_total := AllyDeathSpawnRules.spawn_count_for_owner(action, owner)
 	var spawned_any := false
 	for i in spawn_total:
 		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)

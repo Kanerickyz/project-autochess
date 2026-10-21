@@ -44,6 +44,7 @@ static func run_all() -> bool:
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
+	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
@@ -739,6 +740,69 @@ static func _test_ally_death_spawn_weak() -> bool:
 		if not BoardHalf.is_player_deploy_cell(token.get_cell(), BOARD.y):
 			push_error("ally_death_spawn: token should land on player half, cell=%s" % token.get_cell())
 			return false
+	return true
+
+
+## 召魂 2★+：每次友方角色死亡生成 3 只 2/2 随从。
+static func _test_ally_death_spawn_merged_triple() -> bool:
+	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
+	if data == null:
+		push_error("merged_spawn: missing soulcaller")
+		return false
+	const BOARD := Vector2i(5, 8)
+	var sim := _new_sim()
+	sim.configure(BOARD, 12)
+	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 7.5))
+	if caller == null or caller.unit == null:
+		push_error("merged_spawn: caller null")
+		return false
+	caller.unit.level = 2
+	var fodder := sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.PLAYER,
+			{
+				"id": "fodder",
+				"max_hp": 5,
+				"attack": 1,
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"attack_reach": 0.0,
+			},
+		),
+		Vector2(1.5, 5.5),
+	)
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(0.5, 0.5),
+	)
+	sim.begin_combat()
+	if not sim._pipeline.apply_damage(null, fodder, 999):
+		push_error("merged_spawn: fodder should die")
+		return false
+	sim._drain_effects()
+	var tokens: Array[RtUnit] = []
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or not rt.is_alive() or rt.unit == null:
+			continue
+		if rt.unit.id != "token_weak":
+			continue
+		if rt.get_stats().attack != 2 or rt.get_stats().max_hp != 2:
+			push_error(
+				"merged_spawn: token stats %d/%d expected 2/2"
+				% [rt.get_stats().attack, rt.get_stats().max_hp]
+			)
+			return false
+		tokens.append(rt)
+	if tokens.size() != 3:
+		push_error(
+			"merged_spawn: expected 3 token_weak, got %d (summons=%d)"
+			% [tokens.size(), caller.unit.combat_summons_spawned]
+		)
+		return false
+	if caller.unit.combat_summons_spawned != 3:
+		push_error("merged_spawn: summons_spawned=%d" % caller.unit.combat_summons_spawned)
+		return false
 	return true
 
 
