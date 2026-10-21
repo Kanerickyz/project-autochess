@@ -40,7 +40,7 @@
 | 链枷 | 群伤近战 | 近战溅射 | 甩链清杂；出手叠攻 | 厮杀 |
 | 刺盾 | 防反副坦 | 近战单体 | 带刺圆盾；挨打反伤 | 坚韧·反震 |
 | 石甲 | 首伤硬化 | 近战单体 | 符文板甲；首次受伤变硬 | 坚韧·首伤 |
-| 旗手 | 退场喂攻 | 近战单体 | 高旗；死后附近加攻 | 退场·惠攻 |
+| 旗手 | 开战鼓舞 | 近战单体 | 高旗；开战附近友方加攻 | 开场·惠攻 |
 | 圣骸 | 退场喂防 | 近战单体 | 空甲遗赠承伤 | 退场·惠防 |
 | 号手 | 听亡鼓舞 | 近战单体 | 骨号；友亡附近加攻 | 小队·鼓舞 |
 | 鼓手 | 回合鼓舞 | 近战单体 | 腹鼓；自己回合开始加附近攻 | 节奏 |
@@ -167,6 +167,10 @@
 | 骑弓 | `horsebow.tres` | `horsebow` |
 | 影刺 | `shinobi.tres` | `shinobi` |
 | 狂战士 | `berserker.tres` | `berserker` |
+| 血僧 | `blood_acolyte.tres` | `blood_acolyte` |
+| 命卫 | `vita_keeper.tres` | `vita_keeper` |
+| 铁心 | `iron_heart.tres` | `iron_heart` |
+| 愈修 | `mend_friar.tres` | `mend_friar` |
 
 敌方遭遇可复用上表模板。Boss 资源 `giant_knight.tres`（召唤统领）；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。
 
@@ -179,7 +183,7 @@
 
 > 效果与相对强度见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)。  
 > 流派名仅内部备注，不对玩家 UI 露出。  
-> **【资源已挂】** 二十四人主技能已绑到对应 `.tres`。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
+> **【资源已挂】** **三十二人**主技能已绑到对应 `.tres`（与招募池一致）。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
 
 
 | 显示名 | 主技能 | 技能 id（暂定） | 内部备注 | 挂载理由（摘要） |
@@ -196,11 +200,11 @@
 
 | 刺盾 | 铁壁反震 | `hurt_reflect_small` | 坚韧·反震 | 挨打回敬施害者 |
 | 石甲 | 一碰即硬 | `first_hurt_harden` | 坚韧·首伤 | 本场首次受伤后临时更耐打 |
-| 旗手 | 以身作则 | `death_buff_nearby_allies_mid` | 退场·惠攻 | 死后附近友方攻击 +4（三合一后 +12） |
+| 旗手 | 以身作则 | `combat_start_buff_nearby_allies_mid` | 开场·惠攻 | 开战时附近友方攻击 +4（三合一后 +12） |
 | 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后附近临时承伤感 |
 | 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时附近加攻 |
 | 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始附近小幅加攻 |
-| 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始附近生命上限与当前各 +2（本场临时） |
+| 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始附近生命上限与当前各 +2（三合一后 +8） |
 | 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方随从被召唤时自加血 +2（三合一后 +6） |
 | 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2 |
 
@@ -214,6 +218,10 @@
 | 枯骨 | 枯骨回馈 | `death_heal_random_ally_2` | 退场·回血 | 死后随机友方恢复 2 生命 |
 | 影刺 | 影袭落刃 | `turn_start_strike_weakest` | 刺杀·斩后 | 自己回合开始瞬移至最低血敌人旁；1★ 刺 **2** / 三合一后 **7**（单向技能伤，不走普攻 ×6） |
 | 狂战士 | 血怒再袭 | `kill_grant_actor_turn_refresh` | 收割·连动 | 击杀重置本动（再步+再攻）；不触发回合开始技能；**每场最多 3 次** |
+| 血僧 | 浴血凝脉 | `hurt_gain_max_hp` | 生命·成长 | 受伤时自身生命上限 +4（三合一后 +8；`merge_value_mult=2`） |
+| 命卫 | 饮命回春 | `kill_heal_self_mid` | 生命·收割 | 击杀时自身恢复 8 生命 |
+| 铁心 | 铁心蓄势 | `combat_start_self_max_hp_mid` | 生命·开场 | 开战时自身生命上限 +12 |
+| 愈修 | 痛彻回春 | `hurt_heal_self_small` | 生命·自愈 | 受伤时自身恢复 4 生命 |
 
 
 ### 6.1 生成代理（挂载侧自检）
