@@ -71,7 +71,7 @@ static func roll(
 	## Boss 节点：只出固定首领（及关卡写死的跟班若有），不预算填杂兵、不跟人数规则。
 	var fill: Array[UnitData] = []
 	var first_floor := SpawnBudgetConfig.is_first_floor(floor_index)
-	var max_ranged := 1 if first_floor else -1
+	var max_ranged := -1
 	if node_type != MapNodeType.Type.BOSS:
 		var player_n := _player_roster_count(team_entries)
 		var target_total := cfg.roll_enemy_count(node_type, player_n, rng, floor_index)
@@ -93,6 +93,8 @@ static func roll(
 					cfg.skill_alpha_default,
 				)
 				remain_e = maxf(0.0, target_e - fixed_u)
+		## 远程上限：杜绝全远程阵；第一关最多 1，其后 ≤⌈0.4n⌉ 且至少留 1 近战。
+		max_ranged = resolve_max_ranged(target_total, first_floor)
 		var fill_n := clampi(target_total - fixed_units.size(), 0, remain_seats)
 		if remain_seats > 0 and fill_n > 0 and not pool.is_empty():
 			## 人数硬约束优先：先定 fill_n，再在预算软约束下抽人。
@@ -127,7 +129,7 @@ static func roll(
 				for i in player_cap:
 					capped_n.append(all_units[i])
 				all_units = capped_n
-		if first_floor:
+		if max_ranged >= 0:
 			all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
 	if all_units.is_empty() and not pool.is_empty() and node_type != MapNodeType.Type.BOSS:
 		## 极端保底：至少 1 个最接近 E 的单位。
@@ -142,6 +144,19 @@ static func _player_roster_count(team_entries: Array) -> int:
 		if entry != null:
 			n += 1
 	return maxi(1, n)
+
+
+## 远程人数硬顶：第一关 1；其后 ⌈0.4n⌉（至少 1）；n≥2 时至少留 1 近战。
+static func resolve_max_ranged(enemy_count: int, first_floor: bool) -> int:
+	var n := maxi(0, enemy_count)
+	if n <= 0:
+		return 0
+	if first_floor:
+		return mini(1, n)
+	var cap := maxi(1, int(ceili(float(n) * 0.4)))
+	if n >= 2:
+		cap = mini(cap, n - 1)
+	return mini(cap, n)
 
 
 static func _resolve_pool(
@@ -433,9 +448,10 @@ static func _matches_formation(units: Array[UnitData], tag: SpawnBudgetConfig.Fo
 				return melee_n == 1
 			return float(melee_n) / float(n) >= 0.6
 		SpawnBudgetConfig.FormationTag.BACKLINE:
+			## 后排偏好远程，但 n≥2 时禁止全远程（至少 1 近战前排）。
 			if n == 1:
 				return ranged_n == 1
-			return float(ranged_n) / float(n) >= 0.6
+			return melee_n >= 1 and float(ranged_n) / float(n) >= 0.4
 		SpawnBudgetConfig.FormationTag.SKIRMISH:
 			if n == 1:
 				return true

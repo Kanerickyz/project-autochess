@@ -28,6 +28,8 @@ static func run_all() -> bool:
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
 	ok = _check("first_floor_elite_count_cap", _test_first_floor_elite_count_cap()) and ok
 	ok = _check("first_floor_max_one_ranged", _test_first_floor_max_one_ranged()) and ok
+	ok = _check("resolve_max_ranged_caps", _test_resolve_max_ranged_caps()) and ok
+	ok = _check("non_first_floor_not_all_ranged", _test_non_first_floor_not_all_ranged()) and ok
 	ok = _check("skill_expectation_differentiates", _test_skill_expectation_differentiates()) and ok
 	ok = _check("enemy_id_alpha_lookup_fallback", _test_enemy_id_alpha_lookup_fallback()) and ok
 	ok = _check("fused_entry_uses_runtime_ability", _test_fused_entry_uses_runtime_ability()) and ok
@@ -528,6 +530,60 @@ static func _test_first_floor_max_one_ranged() -> bool:
 			if UnitPowerScore.is_ranged(ud):
 				ranged_n += 1
 		if ranged_n > 1:
+			return false
+	return true
+
+
+static func _test_resolve_max_ranged_caps() -> bool:
+	if EnemyBudgetSpawner.resolve_max_ranged(1, true) != 1:
+		return false
+	if EnemyBudgetSpawner.resolve_max_ranged(5, true) != 1:
+		return false
+	## n=5 → ⌈2⌉ 且 ≤4
+	if EnemyBudgetSpawner.resolve_max_ranged(5, false) != 2:
+		return false
+	## n=2 → ⌈0.8⌉=1，且 n-1=1
+	if EnemyBudgetSpawner.resolve_max_ranged(2, false) != 1:
+		return false
+	## n=1 非首关：最多 1（单远程仍合法）
+	return EnemyBudgetSpawner.resolve_max_ranged(1, false) == 1
+
+
+static func _test_non_first_floor_not_all_ranged() -> bool:
+	## 深层：即使池里远程偏多，n≥2 时不得全远程。
+	var melee: Array[UnitData] = []
+	var ranged: Array[UnitData] = []
+	for i in 3:
+		melee.append(_make_unit("m%d" % i, 12, 3, 1.0, 1, 0.0, 0.0, true))
+	for i in 8:
+		ranged.append(_make_unit("r%d" % i, 8, 4, 1.2, 1, 6.0, 0.0, true))
+	var pool: Array[UnitData] = []
+	pool.append_array(melee)
+	pool.append_array(ranged)
+	var cfg := _make_config(pool)
+	cfg.formation_tags = ["backline", "backline", "skirmish"]
+	var wave := _make_wave(12)
+	var team: Array = []
+	for i in 4:
+		team.append(_make_entry(melee[i % melee.size()]))
+	var rng := RandomNumberGenerator.new()
+	for seed_i in 40:
+		rng.seed = 900 + seed_i
+		## floor_index=4 → 普通人数 4～5，非第一关
+		var seated := EnemyBudgetSpawner.roll(
+			wave, cfg, [], 0, 4, MapNodeType.Type.COMBAT, 2, 5, rng, team
+		)
+		if seated.size() < 2:
+			continue
+		var ranged_n := 0
+		for item in seated:
+			var ud: UnitData = item.get("unit_data") as UnitData
+			if UnitPowerScore.is_ranged(ud):
+				ranged_n += 1
+		if ranged_n >= seated.size():
+			return false
+		var cap := EnemyBudgetSpawner.resolve_max_ranged(seated.size(), false)
+		if ranged_n > cap:
 			return false
 	return true
 

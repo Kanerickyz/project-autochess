@@ -3,12 +3,11 @@ extends Control
 
 signal continue_pressed
 
-const ROSTER_HINT := "长按查看技能 · 上下滑动浏览本页"
+const ROSTER_HINT := "长按查看技能 · 按住可滑动切换"
 const ROSTER_COLUMNS := 5
 const PEAK_COLUMNS := 3
-## 统计条目标格边长；高度按行数匹配，避免「一行棋盘」把剪影撑满屏。
-const CATALOG_CELL_TARGET_PX := 56.0
-const CATALOG_STRIP_VISUAL_SCALE := 0.72
+## 接近角色库体量：竖屏宽约 5 列时单格 ~88–96px。
+const CATALOG_CELL_TARGET_PX := 96.0
 
 @onready var _title: Label = %TitleLabel
 @onready var _subtitle: Label = %SubtitleLabel
@@ -29,6 +28,9 @@ func _ready() -> void:
 	_configure_arena(_roster_arena)
 	_configure_arena(_peak_attack_arena)
 	_configure_arena(_peak_hp_arena)
+	## 避免 Scroll 裁切信息卡；卡本身已 top_level，仍关掉裁切作双保险。
+	if _scroll != null:
+		_scroll.clip_contents = false
 
 
 func _style_panels() -> void:
@@ -50,6 +52,7 @@ func _style_panels() -> void:
 		var panel := get_node_or_null(path) as PanelContainer
 		if panel != null:
 			panel.add_theme_stylebox_override("panel", style)
+			panel.clip_contents = false
 
 
 func show_snapshot(snapshot: RunStatsSnapshot) -> void:
@@ -128,7 +131,9 @@ static func _configure_arena(arena: RealtimeArenaView) -> void:
 		return
 	arena.mouse_filter = Control.MOUSE_FILTER_STOP
 	arena.focus_mode = Control.FOCUS_NONE
-	arena.catalog_visual_scale_override = CATALOG_STRIP_VISUAL_SCALE
+	arena.catalog_visual_scale_override = -1.0
+	arena.catalog_plain_backdrop = true
+	arena.clip_contents = false
 
 
 static func _clear_arena(arena: RealtimeArenaView) -> void:
@@ -139,13 +144,13 @@ static func _clear_arena(arena: RealtimeArenaView) -> void:
 func _paint_roster(arena: RealtimeArenaView, entries: Array[DeckEntry], columns: int) -> void:
 	if arena == null:
 		return
-	arena.catalog_visual_scale_override = CATALOG_STRIP_VISUAL_SCALE
+	arena.catalog_visual_scale_override = -1.0
 	if entries.is_empty():
 		arena.clear_catalog_mode()
 		arena.custom_minimum_size.y = CATALOG_CELL_TARGET_PX
 		return
 	var cols := maxi(1, columns)
-	arena.set_catalog_deck_entries(entries, cols)
+	arena.set_catalog_deck_entries(entries, cols, true)
 	_fit_catalog_arena(arena, entries.size(), cols)
 
 
@@ -159,8 +164,10 @@ func _fit_catalog_arena(arena: RealtimeArenaView, count: int, columns: int) -> v
 		width = arena.get_parent_area_size().x if arena.get_parent() != null else 0.0
 	var cell := CATALOG_CELL_TARGET_PX
 	if width >= 8.0:
-		cell = minf(CATALOG_CELL_TARGET_PX, width / float(cols))
-	arena.custom_minimum_size.y = rows * cell + 4.0
+		## 与角色库一致：按可用宽均分列，但不少于目标体量的 85%。
+		cell = maxf(CATALOG_CELL_TARGET_PX * 0.85, width / float(cols))
+		cell = minf(cell, CATALOG_CELL_TARGET_PX * 1.15)
+	arena.custom_minimum_size.y = rows * cell + 8.0
 	arena.queue_redraw()
 
 
