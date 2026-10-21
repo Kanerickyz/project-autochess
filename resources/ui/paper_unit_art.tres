@@ -35,6 +35,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_blue.png" id="b_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_blue.png" id="b_arcane"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_blue.png" id="b_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_archer_red.png" id="r_archer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_axe_red.png" id="r_axe"]
@@ -69,6 +70,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_red.png" id="r_arcane"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
 
 [resource]
 script = ExtResource("1_cat")
@@ -86,6 +88,7 @@ archetype_by_unit_id = {
 "crossbow": &"crossbow",
 "dirge_horn": &"dirge_horn",
 "echo_spear": &"echo_spear",
+"fused_enchant": &"fused_enchant",
 "giant_knight": &"giant_knight",
 "goblin": &"goblin",
 "gravewright": &"gravewright",
@@ -130,6 +133,7 @@ player_textures = {
 &"crossbow": ExtResource("b_crossbow"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
 &"echo_spear": ExtResource("b_echo_spear"),
+&"fused_enchant": ExtResource("b_fused_enchant"),
 &"giant_knight": ExtResource("b_giant_knight"),
 &"goblin": ExtResource("b_goblin"),
 &"gravewright": ExtResource("b_gravewright"),
@@ -168,6 +172,7 @@ enemy_textures = {
 &"crossbow": ExtResource("r_crossbow"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
 &"echo_spear": ExtResource("r_echo_spear"),
+&"fused_enchant": ExtResource("r_fused_enchant"),
 &"giant_knight": ExtResource("r_giant_knight"),
 &"goblin": ExtResource("r_goblin"),
 &"gravewright": ExtResource("r_gravewright"),
