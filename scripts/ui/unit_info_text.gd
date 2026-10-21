@@ -209,6 +209,14 @@ static func get_ability_description(
 ) -> String:
 	if ability == null:
 		return ""
+	if ability.id == "turn_start_strike_weakest":
+		var dmg := _strike_weakest_skill_damage(unit_level)
+		if unit_level <= 1:
+			return (
+				"自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害"
+				+ "（三合一升星后为 7 点）"
+			) % dmg
+		return "自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害" % dmg
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
 		var line := format_effect_spec(spec, value_scale, with_stat_icons, ability, unit_level)
@@ -339,6 +347,16 @@ static func _format_target(spec: EffectSpec) -> String:
 			if spec.exclude_owner:
 				return "对附近其他友方"
 			return "对附近友方"
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
+			if spec.exclude_owner:
+				return "对当前生命最低的其他队友"
+			return "对当前生命最低的队友"
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_NEARBY_ALLY:
+			if spec.exclude_owner:
+				return "对附近当前生命最低的其他队友"
+			return "对附近当前生命最低的队友"
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ENEMY:
+			return "对当前生命最低的敌人"
 	return ""
 
 
@@ -351,6 +369,8 @@ static func format_action(
 ) -> String:
 	var scale := maxi(1, value_scale)
 	var scaled_value := action.value * scale
+	if action.action_type == EffectAction.Type.DEAL_DAMAGE:
+		scaled_value = _display_damage_amount(action, ability, unit_level, scale)
 	match action.action_type:
 		EffectAction.Type.MODIFY_STAT:
 			var stat: String = String(action.stat_name)
@@ -444,7 +464,24 @@ static func format_action(
 			return "若本回合友方受伤≥%d 次，对全体敌人 %d 点伤害" % [need, scaled_value]
 		EffectAction.Type.SWAP_POSITIONS:
 			return "换位"
+		EffectAction.Type.TELEPORT_ADJACENT_TO_TARGET:
+			return "瞬移至目标邻格"
 		EffectAction.Type.FUSE_EXPLODE:
 			var round := maxi(1, action.threshold)
 			return "第%d回合开始时，对剩余血量范围内敌人造成当前攻击伤害并自身死亡" % round
 	return ""
+
+
+static func _strike_weakest_skill_damage(unit_level: int) -> int:
+	return 2 if unit_level <= 1 else 7
+
+
+static func _display_damage_amount(
+	action: EffectAction,
+	ability: AbilityData,
+	unit_level: int,
+	value_scale: int,
+) -> int:
+	if ability != null and ability.id == "turn_start_strike_weakest":
+		return _strike_weakest_skill_damage(unit_level)
+	return action.value * maxi(1, value_scale)

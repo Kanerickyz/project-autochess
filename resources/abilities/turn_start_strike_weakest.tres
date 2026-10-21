@@ -22,5 +22,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_teleport"), SubReso
 [resource]
 script = ExtResource("1_ab")
 id = "turn_start_strike_weakest"
-display_name = "自己回合开始时 瞬移至当前生命最低敌人旁并造成2点伤害（三合一后7点）"
+display_name = "影袭落刃"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

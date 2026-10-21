@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
 [ext_resource type="Resource" path="res://resources/abilities/turn_start_strike_weakest.tres" id="3_ability"]
+[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="icon_tex"]
 
 [sub_resource type="Resource" id="UnitStats_enemy_shinobi"]
 script = ExtResource("2_stats")
@@ -32,3 +33,4 @@ command_cost = 4
 stats = SubResource("UnitStats_enemy_shinobi")
 team_default = 1
 ability = ExtResource("3_ability")
+icon = ExtResource("icon_tex")
