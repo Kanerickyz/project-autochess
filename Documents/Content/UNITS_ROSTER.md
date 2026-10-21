@@ -215,6 +215,7 @@
 
 ## 7. 维护
 
+- **新建 / 大改角色**：先走 [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) 与 Cursor 技能 `characterdesign`（文档先于 `.tres`）。  
 - 改本版角色库：直接改本文；同步 [Content/INDEX.md](./INDEX.md) 与 [Documents/INDEX.md](../INDEX.md)。  
 - 写入 `resources/units/realtime/` 后：以资源为准回写 §3，并标清 As-Is / 已对齐。  
 - 改挂载：只改 §6 与技能库挂载状态；勿在角色行双写完整技能效果正文。

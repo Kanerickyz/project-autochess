@@ -12,6 +12,7 @@ description: Implements an already-agreed design in code, resources, or editor p
 | 技能 | 用途 |
 | --- | --- |
 | `design-brainstorm` | 玩法未定；只聊设计，不改代码/资源 |
+| `characterdesign` | 新建/修改角色：合同 → Content → 单位/技能/池子（默认轻量验收） |
 | **`implement`（本技能）** | 设计稿 / 上文共识已定；改代码、`resources/`、或 `addons/` 编辑器 |
 | `vertical-slice` | 跨模块完整纵切片（含设计核对 → 实现 → QA/审查），带明确 L0–L5 目标 |
 
