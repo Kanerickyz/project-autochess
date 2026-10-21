@@ -1628,12 +1628,15 @@ func _draw() -> void:
 	draw_set_transform(_frame_shake)
 	## 背景不随半场 slide，保证胜→招募同屏背景不断。
 	draw_texture_rect(ARENA_BACKGROUND, _get_background_rect().grow(SHAKE_BLEED_PX), false)
-	## 半场色调与单位/座位随内容滑动。
-	draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
-	draw_rect(
-		Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
-		PLAYER_TINT,
-	)
+	## 半场色调与单位/座位随内容滑动；角色库/统计条用统一淡色，避免一行棋盘被中线劈开。
+	if catalog_active:
+		draw_rect(Rect2(rect.position, rect.size), PLAYER_TINT)
+	else:
+		draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
+		draw_rect(
+			Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
+			PLAYER_TINT,
+		)
 
 	var showing_placement := (placement_active or _drag_active) and not recruit_active and not catalog_active
 	if showing_placement:
