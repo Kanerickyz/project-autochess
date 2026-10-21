@@ -170,7 +170,10 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	if not _started:
 		_lock_spawn_order.append(rt)
 	else:
+		## 触发当回合立即落子入队；仅行动轮推迟（见 _begin_next_actor_turn）。
 		rt.action_eligible_from_round = _round_index + 1
+		if unit.is_combat_summon:
+			rt.skip_deploy()
 		_insert_mid_combat_into_queue(rt)
 	unit_added.emit(rt)
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
