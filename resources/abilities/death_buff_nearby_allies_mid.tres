@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
-value = 2
+value = 4
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
@@ -18,5 +18,6 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "death_buff_nearby_allies_mid"
-display_name = "死亡时 附近其他友方攻击+2"
+display_name = "死亡时 附近其他友方攻击+4"
+merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

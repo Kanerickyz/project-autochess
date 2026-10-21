@@ -193,7 +193,7 @@
 
 | 刺盾 | 铁壁反震 | `hurt_reflect_small` | 坚韧·反震 | 挨打回敬施害者 |
 | 石甲 | 一碰即硬 | `first_hurt_harden` | 坚韧·首伤 | 本场首次受伤后临时更耐打 |
-| 旗手 | 以身作则 | `death_buff_nearby_allies_mid` | 退场·惠攻 | 死后附近加攻 |
+| 旗手 | 以身作则 | `death_buff_nearby_allies_mid` | 退场·惠攻 | 死后附近友方攻击 +4（三合一后 +12） |
 | 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后附近临时承伤感 |
 | 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时附近加攻 |
 | 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始附近小幅加攻 |
