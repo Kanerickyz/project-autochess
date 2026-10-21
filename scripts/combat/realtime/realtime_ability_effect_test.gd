@@ -50,6 +50,8 @@ static func run_all() -> bool:
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
+	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
+	_check("combat_skill_heal_budget", _test_combat_skill_heal_budget())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
@@ -979,6 +981,86 @@ static func _test_hurt_heal_self_2() -> bool:
 		push_error(
 			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
 			% [spear.unit.current_hp, hp_mid]
+		)
+		return false
+	return true
+
+
+## 伤 < 疗：受击疗截断为本击伤害，不能净回血。
+static func _test_hurt_heal_capped_to_hit() -> bool:
+	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
+	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
+		push_error("hurt_heal_capped: spear_goblin ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 4201)
+	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	spear.unit.stats.max_hp = 20
+	spear.unit.current_hp = 6
+	sim.begin_combat()
+	var hp_before := spear.unit.current_hp
+	sim._pipeline.apply_damage(null, spear, 1)
+	sim._drain_effects()
+	## 技能写 2，但本次伤 1 → 只回 1，净 0；不得回满 2。
+	if spear.unit.current_hp != hp_before:
+		push_error(
+			"hurt_heal_capped: hp=%d expected %d (net 0 after 1 dmg)"
+			% [spear.unit.current_hp, hp_before]
+		)
+		return false
+	if spear.unit.combat_skill_heal_received != 1:
+		push_error(
+			"hurt_heal_capped: combat_skill_heal_received=%d expected 1"
+			% spear.unit.combat_skill_heal_received
+		)
+		return false
+	return true
+
+
+## 本场技能受疗预算 100：累计达上限后不再疗。
+static func _test_combat_skill_heal_budget() -> bool:
+	var data := _load_unit("res://resources/units/realtime/blood_acolyte.tres")
+	if data == null or data.ability == null or data.ability.id != "hurt_gain_max_hp":
+		push_error("heal_budget: blood_acolyte / hurt_gain_max_hp not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 4202)
+	var monk := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	## 抬高上限：反复受 1 伤+疗 1，需撑过预算 100。
+	monk.unit.stats.max_hp = 200
+	monk.unit.current_hp = 150
+	sim.begin_combat()
+	var budget := UnitInstance.COMBAT_SKILL_HEAL_BUDGET
+	var hp_start := monk.unit.current_hp
+	for _i in range(budget):
+		sim._pipeline.apply_damage(null, monk, 1)
+		sim._drain_effects()
+	if monk.unit.combat_skill_heal_received != budget:
+		push_error(
+			"heal_budget: after %d hits received=%d expected %d"
+			% [budget, monk.unit.combat_skill_heal_received, budget]
+		)
+		return false
+	## 每击净 0 → hp 仍为起点。
+	if monk.unit.current_hp != hp_start:
+		push_error(
+			"heal_budget: hp=%d expected %d after budget fills (net 0)"
+			% [monk.unit.current_hp, hp_start]
+		)
+		return false
+	## 预算耗尽后再挨 1：只掉血不疗。
+	sim._pipeline.apply_damage(null, monk, 1)
+	sim._drain_effects()
+	if monk.unit.combat_skill_heal_received != budget:
+		push_error(
+			"heal_budget: received grew past budget to %d"
+			% monk.unit.combat_skill_heal_received
+		)
+		return false
+	if monk.unit.current_hp != hp_start - 1:
+		push_error(
+			"heal_budget: after over-budget hit hp=%d expected %d"
+			% [monk.unit.current_hp, hp_start - 1]
 		)
 		return false
 	return true
