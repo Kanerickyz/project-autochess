@@ -20,4 +20,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 script = ExtResource("1_ab")
 id = "turn_start_nearby_hp_small"
 display_name = "自己回合开始时 附近其他友方生命上限与当前各+2"
+merge_value_mult = 4
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
