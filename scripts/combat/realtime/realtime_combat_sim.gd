@@ -872,6 +872,15 @@ func _rout_non_leader_enemies() -> void:
 	_units = kept
 
 
+func _boss_summon_total_budget_left(actor: RtUnit) -> int:
+	if actor == null or actor.unit == null or actor.unit.unit_data == null:
+		return 0
+	var total_cap := maxi(0, actor.unit.unit_data.summon_max_total)
+	if total_cap <= 0:
+		return 999999
+	return maxi(0, total_cap - actor.boss_summons_spawned_total)
+
+
 func _count_alive_boss_summons() -> int:
 	var n := 0
 	for rt in _units:
@@ -897,6 +906,8 @@ func _boss_can_summon(actor: RtUnit) -> bool:
 		return false
 	if _count_alive_boss_summons() >= cap:
 		return false
+	if _boss_summon_total_budget_left(actor) <= 0:
+		return false
 	return _find_boss_summon_cell(actor) != Vector2i(-1, -1)
 
 
@@ -907,7 +918,7 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 	var per := maxi(1, data.summon_per_action)
 	var cap := maxi(0, data.summon_max_alive)
 	var spawned := 0
-	while spawned < per and _count_alive_boss_summons() < cap:
+	while spawned < per and _count_alive_boss_summons() < cap and _boss_summon_total_budget_left(actor) > 0:
 		var cell := _find_boss_summon_cell(actor)
 		if cell == Vector2i(-1, -1):
 			break
@@ -939,6 +950,7 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		if rt.state == RtUnit.State.DEPLOYING:
 			rt.state = RtUnit.State.MOVING
 		spawned += 1
+		actor.boss_summons_spawned_total += 1
 	if spawned > 0:
 		actor.boss_summon_cooldown_left = maxi(0, data.summon_cooldown_actions)
 

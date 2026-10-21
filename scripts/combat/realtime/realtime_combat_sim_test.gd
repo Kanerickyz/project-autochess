@@ -35,6 +35,7 @@ static func run_all() -> bool:
 	ok = _check("boss_no_counter_when_targeted", _test_boss_no_counter_when_targeted()) and ok
 	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
+	ok = _check("boss_summon_lifetime_total_cap", _test_boss_summon_lifetime_total_cap()) and ok
 	ok = _check("boss_summon_respects_cooldown", _test_boss_summon_respects_cooldown()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
 	ok = _check("boss_teleport_to_empty_cell", _test_boss_teleport_to_empty_cell()) and ok
@@ -105,6 +106,7 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	if overrides.has("summon_unit"):
 		data.summon_unit = overrides["summon_unit"] as UnitData
 	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))
+	data.summon_max_total = int(overrides.get("summon_max_total", 0))
 	data.summon_per_action = int(overrides.get("summon_per_action", 1))
 	data.summon_cooldown_actions = int(overrides.get("summon_cooldown_actions", 0))
 	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
@@ -1107,6 +1109,60 @@ static func _test_boss_summon_respects_cap() -> bool:
 		if n2 > 3:
 			push_error("summon_cap: drifted above 3 (%d)" % n2)
 			return false
+	return true
+
+
+## 整场战斗累计召唤上限（小兵死后不可再补员）。
+static func _test_boss_summon_lifetime_total_cap() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 54)
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"sight_range": 0.0, "attack_reach": 0.0, "id": "far_ally",
+		}),
+		Vector2(16.5, 30.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "sight_range": 40.0, "id": "boss_total",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": make_summon_body(), "summon_max_alive": 3,
+			"summon_max_total": 3, "summon_per_action": 1, "summon_cooldown_actions": 0,
+		}),
+		Vector2(4.5, 2.5),
+	)
+	if boss == null:
+		push_error("summon_total: boss null")
+		return false
+	sim.begin_combat()
+	var guard := 0
+	while guard < 500 and boss.boss_summons_spawned_total < 3:
+		sim.advance_fixed_step()
+		guard += 1
+	if boss.boss_summons_spawned_total < 3:
+		push_error("summon_total: expected 3 spawns, got %d" % boss.boss_summons_spawned_total)
+		return false
+	for u in sim.get_units():
+		var rt := u as RtUnit
+		if rt == null or not rt.is_alive() or rt.unit == null:
+			continue
+		if rt.unit.is_combat_summon:
+			rt.unit.current_hp = 0
+			rt.state = RtUnit.State.DEAD
+	for _i in 300:
+		sim.advance_fixed_step()
+	var alive_summons := 0
+	for u2 in sim.get_units():
+		var rt2 := u2 as RtUnit
+		if rt2 != null and rt2.is_alive() and rt2.unit != null and rt2.unit.is_combat_summon:
+			alive_summons += 1
+	if alive_summons > 0:
+		push_error("summon_total: respawned after cap (%d alive)" % alive_summons)
+		return false
+	if boss.boss_summons_spawned_total > 3:
+		push_error("summon_total: spawned %d (max 3)" % boss.boss_summons_spawned_total)
+		return false
 	return true
 
 
