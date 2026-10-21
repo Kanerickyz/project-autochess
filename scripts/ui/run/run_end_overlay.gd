@@ -17,7 +17,7 @@ func _ready() -> void:
 
 func show_victory() -> void:
 	_title.text = "远征完成！"
-	_subtitle.text = "你击败了 Boss，恭喜通关！"
+	_subtitle.text = "你击败了 Boss。可再来一局，或返回主菜单"
 	_primary_button.text = "再来一局"
 	visible = true
 	_primary_button.grab_focus()

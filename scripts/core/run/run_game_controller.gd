@@ -11,6 +11,7 @@ const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit
 @onready var _map_screen: MapScreen = %MapScreen
 @onready var _placeholder_screen: PlaceholderNodeScreen = %PlaceholderNodeScreen
 @onready var _run_end_overlay: RunEndOverlay = %RunEndOverlay
+@onready var _run_stats_overlay: RunStatsOverlay = %RunStatsOverlay
 
 var run_controller: RunController = RunController.new()
 var deck_state: DeckState = DeckState.new()
@@ -40,6 +41,7 @@ func _ready() -> void:
 		_battle.half_exit_seconds = recruit_config.half_exit_seconds
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
 	_battle.encounter_completed.connect(_on_encounter_completed)
+	_battle.combat_resolved.connect(_on_combat_resolved)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
 
@@ -50,6 +52,7 @@ func _ready() -> void:
 	_map_screen.node_selected.connect(_on_map_node_selected)
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
+	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
 	await _start_new_run()
 
@@ -85,6 +88,7 @@ func _hide_encounter_ui() -> void:
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
+		_run_stats_overlay.hide_overlay()
 
 
 func _on_map_node_selected(node_id: int) -> void:
@@ -128,6 +132,11 @@ func _on_map_node_selected(node_id: int) -> void:
 func _on_placeholder_continue() -> void:
 	_placeholder_screen.hide_placeholder()
 	run_controller.complete_encounter()
+
+
+func _on_combat_resolved(_won: bool) -> void:
+	if _battle != null:
+		run_controller.run_state.add_combat_time(_battle.get_last_encounter_elapsed_seconds())
 
 
 func _on_encounter_completed(won: bool) -> void:
@@ -241,7 +250,8 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_run_end_overlay.show_victory()
+			_run_end_overlay.hide_overlay()
+			_run_stats_overlay.show_stats(_build_run_victory_stats_lines())
 		RunController.RunPhase.RUN_DEFEAT:
 			_battle_root.visible = false
 			_map_screen.hide_map()
@@ -255,8 +265,36 @@ func _on_map_updated() -> void:
 		_map_screen.refresh_map(run_controller)
 
 
+func _on_run_stats_continue() -> void:
+	_run_stats_overlay.hide_overlay()
+	_run_end_overlay.show_victory()
+
+
+func _build_run_victory_stats_lines() -> PackedStringArray:
+	var rs := run_controller.run_state
+	var lines: PackedStringArray = []
+	lines.append("战斗胜利：%d 场" % rs.completed_encounter_count)
+	lines.append("造访商店：%d 次" % rs.shop_visit_count)
+	lines.append("战斗用时：%s" % _format_run_duration(rs.total_combat_seconds))
+	lines.append("剩余金币：%d" % run_economy.gold)
+	lines.append("队伍人数：%d" % deck_state.size())
+	var names: PackedStringArray = []
+	for entry in deck_state.get_entries():
+		if entry != null:
+			names.append(entry.get_display_name())
+	if not names.is_empty():
+		lines.append("队员：%s" % "、".join(names))
+	return lines
+
+
+static func _format_run_duration(seconds: float) -> String:
+	var total := int(seconds)
+	return "%d:%02d" % [total / 60, total % 60]
+
+
 func _on_run_end_action(action: StringName) -> void:
 	_run_end_overlay.hide_overlay()
+	_run_stats_overlay.hide_overlay()
 	if action == &"menu":
 		get_tree().change_scene_to_file("res://scenes/main/main_menu.tscn")
 		return
