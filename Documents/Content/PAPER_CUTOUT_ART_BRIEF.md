@@ -189,7 +189,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 
 ## 11. 兵种贴图映射（As-Is）
 
-**开发占位（终稿前）**：新角色在纸剪贴图未就绪时，`UnitData.icon` 默认指向 `res://assets/sprites/placeholders/character_dev.png`（DEV 全身贴纸）；流程见 [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) §4。
+**开发占位（终稿前）**：新角色在纸剪贴图未就绪时，`UnitData.icon` 默认指向 `res://assets/sprites/placeholders/character_dev.png`（DEV 全身贴纸，**透明底 PNG**）；流程见 [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) §4。
 
 主兵种（`resources/units/realtime/`）**一兵种一张贴图**，各有蓝（我）/ 红（敌）两版；贴图只管外观，不绑定技能。敌方资源 id 去掉 `enemy_` 前缀后共用同一张表；未登记的 id 落到 `spear`，场上不出现无图单位。
 

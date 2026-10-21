@@ -57,7 +57,7 @@
 
 | 用途 | 路径 | 说明 |
 |------|------|------|
-| **卡片 / 列表 icon** | `res://assets/sprites/placeholders/character_dev.png` | 用户提供的 **DEV** 全身贴纸（源图可为 jpg，仓库内以 png 入库）；新角色在终稿前 **`UnitData.icon` 指向此图** |
+| **卡片 / 列表 icon** | `res://assets/sprites/placeholders/character_dev.png` | 用户提供的 **DEV** 全身贴纸（源图可为 jpg，仓库内以 **RGBA png** 入库，**白底须抠透明**）；新角色在终稿前 **`UnitData.icon` 指向此图**；场上纸面占位见 `paper_unit_art.tres` 映射 |
 | **棋盘纸面头身** | 留空或仍用 `0_head` / `0_body` | `portrait_head` / `portrait_body` 为空时 UI 用全局纸面占位（见 `unit_card_display.gd`） |
 | **终稿** | `assets/sprites/paper_cutout/units/` 等 | 按纸剪规范出图后改 `icon` / 纸面分层，并登记 §11 映射 |
 

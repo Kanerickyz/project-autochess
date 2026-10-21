@@ -115,6 +115,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 终稿前统一：
 
 - `UnitData.icon` → `res://assets/sprites/placeholders/character_dev.png`
+- **透明底**：占位 PNG 须带 **alpha**；源图白底在入库前抠成透明（仅保留角色与纸边描边，勿留矩形白底）。棋盘 / 卡面经 `paper_unit_art.tres` 映射时也用同一张图，白底会直接露馅。
 - `portrait_head` / `portrait_body` 可留空；终稿按 [PAPER_CUTOUT_ART_BRIEF.md](../../Documents/Content/PAPER_CUTOUT_ART_BRIEF.md)
 
 ### 过程（顺序固定）

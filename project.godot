@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Project Autochess"
 <<<<<<< HEAD
-config/version="0.5.71"
+config/version="0.5.72"
 =======
 config/version="0.5.70"
 >>>>>>> origin/main
