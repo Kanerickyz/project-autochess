@@ -35,6 +35,8 @@ enum FormationTag {
 @export_range(0.1, 5.0, 0.05) var kappa_elite: float = 1.35
 ## κ(Boss) — Boss 不吃真队目标；保留字段兼容旧资源，主路径不用于定 E。
 @export_range(0.1, 5.0, 0.05) var kappa_boss: float = 1.8
+## 层威胁增长：E_raw *= (1 + growth × (F−1))；F 为地图层号（≥1）。使同队越深层越难。
+@export_range(0.0, 0.5, 0.01) var floor_threat_growth: float = 0.06
 
 @export_group("Bandwidth")
 ## 普通默认半宽（±20%）
@@ -53,7 +55,7 @@ enum FormationTag {
 @export_group("Skill Alpha")
 @export_range(0.1, 3.0, 0.05) var skill_alpha_no_ability: float = 0.85
 @export_range(0.1, 3.0, 0.05) var skill_alpha_default: float = 1.0
-## unit.id → α_skill；无映射则用有/无技能默认。
+## unit.id → α_skill 覆盖；无映射则走 SkillExpectation 深评分（敌 id 可回退去 enemy_ 前缀）。
 @export var skill_alpha_by_unit_id: Dictionary = {}
 
 @export_group("Sampling")
@@ -176,9 +178,8 @@ func get_floor_e_max(floor_index: int) -> float:
 	return maxf(get_floor_e_min(floor_i), get_p_mid(floor_i) * GUARD_MAX_RATIO)
 
 
-## 普通/精英：E＝κ×S，再经层护栏。有真队（S>0）时下限不得高于 κ×S，
-## 避免把目标抬到显著强于玩家；无真队时仍用层下限保底。Boss：返回 0。
-## team_power_s 为进点瞬间整局队伍强度；负值按 0 处理。
+## 普通/精英：E＝κ×S×层威胁乘数，再经层护栏（下限随层上升，保证越深层越难）。
+## Boss：返回 0。team_power_s 为进点瞬间整局队伍强度；负值按 0 处理。
 func get_target_pressure(
 	floor_index: int,
 	node_type: MapNodeType.Type,
@@ -187,11 +188,11 @@ func get_target_pressure(
 	if node_type == MapNodeType.Type.BOSS:
 		return 0.0
 	var s := maxf(0.0, team_power_s)
-	var e_raw := get_kappa(node_type) * s
+	var floor_f := maxi(1, floor_index)
+	var floor_mult := 1.0 + maxf(0.0, floor_threat_growth) * float(maxi(0, floor_f - 1))
+	var e_raw := get_kappa(node_type) * s * floor_mult
 	var e_min := get_floor_e_min(floor_index)
 	var e_max := get_floor_e_max(floor_index)
-	if s > 0.0:
-		e_min = minf(e_min, e_raw)
 	return clampf(e_raw, e_min, maxf(e_min, e_max))
 
 
