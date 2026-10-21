@@ -1547,6 +1547,31 @@ func clear_recruit_mode() -> void:
 
 ## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
 ## preview_level：1=一星，2=三合一预览（攻血×3、技能按星级缩放）。
+## 远征统计等：一行展示队伍成员（攻血与招募队伍区一致）。
+func set_catalog_deck_entries(entries: Array[DeckEntry], columns: int = 5) -> void:
+	_cancel_press()
+	clear_recruit_mode()
+	sim = null
+	prepare_slots = null
+	enemy_slots = null
+	enemy_previews.clear()
+	catalog_active = true
+	catalog_preview_level = 1
+	catalog_units.clear()
+	var cols := maxi(1, columns)
+	var rows := 1
+	board_size = Vector2i(cols, rows)
+	for i in entries.size():
+		var entry := entries[i]
+		if entry == null or entry.unit == null:
+			continue
+		catalog_units.append({
+			"deck_entry": entry,
+			"cell": Vector2i(i % cols, int(i / cols)),
+		})
+	queue_redraw()
+
+
 func set_catalog_units(units: Array[UnitData], columns: int = 5, preview_level: int = 1) -> void:
 	_cancel_press()
 	clear_recruit_mode()
@@ -1922,7 +1947,10 @@ func _draw_catalog_units(px: float) -> void:
 		if not (info is Dictionary):
 			continue
 		var cell: Vector2i = info.get("cell", NO_CELL)
+		var deck_entry: DeckEntry = info.get("deck_entry") as DeckEntry
 		var unit: UnitData = info.get("unit") as UnitData
+		if deck_entry != null:
+			unit = deck_entry.unit
 		if cell == NO_CELL or unit == null:
 			continue
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
@@ -1937,14 +1965,16 @@ func _draw_catalog_units(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
 			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, cell.x + cell.y * 8),
 		)
-		var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
-		_draw_stat_badges(
-			tile_to_local(center_tile),
-			(stats.attack if stats != null else 0) * preview_mult,
-			(stats.max_hp if stats != null else 0) * preview_mult,
-			0.95,
-			px,
-		)
+		var atk := 0
+		var hp := 0
+		if deck_entry != null and stats != null:
+			atk = maxi(1, stats.attack + deck_entry.bonus_attack)
+			hp = maxi(1, stats.max_hp + deck_entry.bonus_max_hp)
+		else:
+			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
+			atk = (stats.attack if stats != null else 0) * preview_mult
+			hp = (stats.max_hp if stats != null else 0) * preview_mult
+		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:

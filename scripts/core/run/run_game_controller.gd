@@ -11,6 +11,7 @@ const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit
 @onready var _map_screen: MapScreen = %MapScreen
 @onready var _placeholder_screen: PlaceholderNodeScreen = %PlaceholderNodeScreen
 @onready var _run_end_overlay: RunEndOverlay = %RunEndOverlay
+@onready var _run_stats_overlay: RunStatsOverlay = %RunStatsOverlay
 
 var run_controller: RunController = RunController.new()
 var deck_state: DeckState = DeckState.new()
@@ -24,6 +25,8 @@ var _enchant_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
+var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
+var _pending_end_victory: bool = false
 
 
 func _ready() -> void:
@@ -39,7 +42,9 @@ func _ready() -> void:
 	if recruit_config != null:
 		_battle.half_exit_seconds = recruit_config.half_exit_seconds
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
+	_battle.set_run_stat_ledger(_run_stat_ledger)
 	_battle.encounter_completed.connect(_on_encounter_completed)
+	_battle.combat_resolved.connect(_on_combat_resolved)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
 
@@ -50,11 +55,14 @@ func _ready() -> void:
 	_map_screen.node_selected.connect(_on_map_node_selected)
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
+	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
 	await _start_new_run()
 
 
 func _start_new_run() -> void:
+	_run_stat_ledger.reset()
+	_pending_end_victory = false
 	deck_state.reset_from_config()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
@@ -85,6 +93,7 @@ func _hide_encounter_ui() -> void:
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
+		_run_stats_overlay.hide_overlay()
 
 
 func _on_map_node_selected(node_id: int) -> void:
@@ -130,12 +139,19 @@ func _on_placeholder_continue() -> void:
 	run_controller.complete_encounter()
 
 
+func _on_combat_resolved(_won: bool) -> void:
+	if _battle != null:
+		run_controller.run_state.add_combat_time(_battle.get_last_encounter_elapsed_seconds())
+
+
 func _on_encounter_completed(won: bool) -> void:
 	if not won:
+		var snap := _build_stats_snapshot(false)
 		_battle_root.visible = false
 		if _battle != null:
 			_battle.exit_recruit()
 		run_controller.fail_run()
+		_present_run_end_stats(snap)
 		return
 
 	var node := run_controller.get_pending_node()
@@ -241,13 +257,12 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_run_end_overlay.show_victory()
+			_present_run_end_stats(_build_stats_snapshot(true))
 		RunController.RunPhase.RUN_DEFEAT:
 			_battle_root.visible = false
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_run_end_overlay.show_defeat()
 
 
 func _on_map_updated() -> void:
@@ -255,8 +270,38 @@ func _on_map_updated() -> void:
 		_map_screen.refresh_map(run_controller)
 
 
+func _on_run_stats_continue() -> void:
+	_run_stats_overlay.hide_overlay()
+	if _pending_end_victory:
+		_run_end_overlay.show_victory()
+	else:
+		_run_end_overlay.show_defeat()
+
+
+func _present_run_end_stats(snapshot: RunStatsSnapshot) -> void:
+	_pending_end_victory = snapshot != null and snapshot.victory
+	_run_end_overlay.hide_overlay()
+	_run_stats_overlay.show_snapshot(snapshot)
+
+
+func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
+	var snap := RunStatsSnapshot.new()
+	snap.victory = victory
+	var rs := run_controller.run_state
+	snap.encounters_won = rs.completed_encounter_count
+	snap.shop_visits = rs.shop_visit_count
+	snap.combat_seconds = rs.total_combat_seconds
+	snap.gold = run_economy.gold
+	snap.roster.assign(deck_state.get_entries())
+	snap.ledger = _run_stat_ledger
+	snap.highest_attack_entries = RunStatsSnapshot.pick_highest_attack(snap.roster)
+	snap.highest_max_hp_entries = RunStatsSnapshot.pick_highest_max_hp(snap.roster)
+	return snap
+
+
 func _on_run_end_action(action: StringName) -> void:
 	_run_end_overlay.hide_overlay()
+	_run_stats_overlay.hide_overlay()
 	if action == &"menu":
 		get_tree().change_scene_to_file("res://scenes/main/main_menu.tscn")
 		return

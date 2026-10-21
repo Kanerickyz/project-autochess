@@ -1,0 +1,127 @@
+[gd_scene load_steps=3 format=3 uid="uid://runstatsoverlay"]
+
+[ext_resource type="Script" path="res://scripts/ui/run/run_stats_overlay.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/realtime/realtime_arena_view.gd" id="2_arena"]
+
+[node name="RunStatsOverlay" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Panel" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="Scroll/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "远征统计"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="Scroll/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.78, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "结局"
+horizontal_alignment = 1
+
+[node name="RosterLabel" type="Label" parent="Scroll/Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "队伍"
+horizontal_alignment = 1
+
+[node name="RosterArena" type="Control" parent="Scroll/Panel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 108)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("2_arena")
+
+[node name="StatsLabel" type="Label" parent="Scroll/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "统计"
+autowrap_mode = 2
+
+[node name="PeakRow" type="HBoxContainer" parent="Scroll/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="PeakAttackVBox" type="VBoxContainer" parent="Scroll/Panel/PeakRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PeakAttackTitle" type="Label" parent="Scroll/Panel/PeakRow/PeakAttackVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "最高攻击"
+horizontal_alignment = 1
+
+[node name="PeakAttackArena" type="Control" parent="Scroll/Panel/PeakRow/PeakAttackVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 108)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("2_arena")
+
+[node name="PeakHpVBox" type="VBoxContainer" parent="Scroll/Panel/PeakRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PeakHpTitle" type="Label" parent="Scroll/Panel/PeakRow/PeakHpVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "最高生命"
+horizontal_alignment = 1
+
+[node name="PeakHpArena" type="Control" parent="Scroll/Panel/PeakRow/PeakHpVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 108)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("2_arena")
+
+[node name="ContinueButton" type="Button" parent="Scroll/Panel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "继续"

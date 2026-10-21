@@ -48,6 +48,7 @@ var _selected_entry_id: int = -1
 var _sim: RealtimeCombatSim
 var _bus: CombatEventBus
 var _won: bool = false
+var _last_encounter_elapsed_seconds: float = 0.0
 var _floor_gold: int = 0
 var _hint_text: String = ""
 var _hint_remaining: float = 0.0
@@ -61,6 +62,8 @@ var _resolving_presented_skill: bool = false
 var _last_resolved_payload: CombatEventPayload = null
 ## 胜后半场退出后保留 slide，供招募同屏滑入（不重置边框/草地）。
 var _preserve_half_slide_for_recruit: bool = false
+var _run_stat_ledger: RunStatLedger
+var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
@@ -158,6 +161,11 @@ func _process(delta: float) -> void:
 
 
 # --- 公开接口 ---
+
+
+func set_run_stat_ledger(ledger: RunStatLedger) -> void:
+	_run_stat_ledger = ledger
+	_stat_collector.configure(ledger)
 
 
 func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void:
@@ -277,6 +285,10 @@ func get_phase() -> Phase:
 
 func get_sim() -> RealtimeCombatSim:
 	return _sim
+
+
+func get_last_encounter_elapsed_seconds() -> float:
+	return _last_encounter_elapsed_seconds
 
 
 func get_arena() -> RealtimeArenaView:
@@ -782,6 +794,7 @@ func _begin_combat_from_prepare() -> void:
 	_bus.name = "RealtimeCombatEventBus"
 	add_child(_bus)
 	_bus.combat_event.connect(_on_combat_event)
+	_stat_collector.bind_bus(_bus)
 	_sim = RealtimeCombatSim.new(_bus)
 	_sim.configure(_board_size, last_seed)
 	_sim.splash_triggered.connect(_arena.add_splash_fx)
@@ -1023,6 +1036,7 @@ func _teardown_sim() -> void:
 		_arena.prepare_slots = null
 		_arena.enemy_slots = null
 		_arena.placement_active = false
+	_stat_collector.unbind_bus()
 	if _bus != null and is_instance_valid(_bus):
 		_bus.queue_free()
 	_bus = null
@@ -2020,6 +2034,7 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
 func _on_combat_finished(won: bool) -> void:
 	_timestop_queue.clear()
 	_won = won
+	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	if won and _economy != null:
 		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
 		_floor_gold = _economy.grant_floor_gold(_floor_index)
