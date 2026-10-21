@@ -70,6 +70,7 @@ func _test_enchant_fuse_flow() -> void:
 	_expect(session != null, "session exists")
 	session.set_slot(&"a", e1.entry_id)
 	session.set_slot(&"b", e2.entry_id)
+	session.set_test_unit_roll(0.0)
 	var fuse := session.try_fuse()
 	_expect(fuse.get("ok", false), "fuse ok")
 	_expect(deck.size() == 1, "one member")

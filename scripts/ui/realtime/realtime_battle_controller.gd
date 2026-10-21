@@ -644,7 +644,7 @@ func enter_enchant(enter_seconds: float = -1.0, expanded_team: bool = false) -> 
 		return
 	_enchant_sandbox_mode = expanded_team
 	_enchant_ui.set_expanded_team(expanded_team)
-	_enchant_session.configure(_deck_state)
+	_enchant_session.configure(_deck_state, _economy, _enchant_sandbox_mode)
 	_enchant_session.begin()
 	_enchant_ui.set_session(_enchant_session)
 	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
@@ -678,6 +678,10 @@ func exit_enchant() -> void:
 
 
 func on_enchant_fused() -> void:
+	on_enchant_forge_changed()
+
+
+func on_enchant_forge_changed() -> void:
 	_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
 	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
 
