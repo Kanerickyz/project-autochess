@@ -310,6 +310,10 @@ func _resolve_targets(
 			var lowest_near := _pick_lowest_current_hp_nearby_ally(owner, spec.exclude_owner)
 			if lowest_near != null:
 				result.append(lowest_near)
+		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ENEMY:
+			var weakest := _pick_lowest_current_hp_enemy(owner)
+			if weakest != null:
+				result.append(weakest)
 	return result
 
 
@@ -451,6 +455,33 @@ func _pick_lowest_current_hp_ally(owner: UnitInstance, exclude_owner: bool) -> U
 	for unit in _grid.get_units_by_team(owner.team, true):
 		if exclude_owner and unit.instance_id == owner.instance_id:
 			continue
+		var hp := unit.current_hp
+		var max_hp := unit.get_effective_max_hp()
+		if hp < best_hp:
+			best_hp = hp
+			best_max = max_hp
+			best = unit
+		elif hp == best_hp:
+			if max_hp < best_max:
+				best_max = max_hp
+				best = unit
+			elif max_hp == best_max and best != null and unit.instance_id < best.instance_id:
+				best = unit
+	return best
+
+
+func _pick_lowest_current_hp_enemy(owner: UnitInstance) -> UnitInstance:
+	if owner == null:
+		return null
+	var enemy_team := (
+		UnitInstance.Team.ENEMY
+		if owner.team == UnitInstance.Team.PLAYER
+		else UnitInstance.Team.PLAYER
+	)
+	var best: UnitInstance = null
+	var best_hp := 999999
+	var best_max := 999999
+	for unit in _grid.get_units_by_team(enemy_team, true):
 		var hp := unit.current_hp
 		var max_hp := unit.get_effective_max_hp()
 		if hp < best_hp:
@@ -836,6 +867,25 @@ func _execute_action(
 				% [owner.id, target.id, str(owner_cell), str(target_cell)]
 			)
 			executed = true
+		EffectAction.Type.TELEPORT_ADJACENT_TO_TARGET:
+			if owner == null or target == null or not owner.is_alive() or not target.is_alive():
+				return false
+			var from_cell := _grid.find_cell_of(owner)
+			var dest := _pick_teleport_cell_adjacent_to_target(owner, target)
+			if dest == Vector2i(-1, -1):
+				return false
+			if from_cell != dest:
+				if not _grid.move_unit_for(owner, dest):
+					return false
+				owner.grid_pos = dest
+				if payload != null:
+					payload.from_cell = from_cell
+					payload.to_cell = dest
+				print(
+					"[Effect] %s teleports adjacent to %s -> %s"
+					% [owner.id, target.id, str(dest)]
+				)
+			executed = true
 
 	if executed and emit_resolved:
 		_emit_effect_resolved(owner, action, target, payload, spec)
@@ -964,10 +1014,47 @@ func _execute_fuse_explode_batch(
 	return executed
 
 
+func _pick_teleport_cell_adjacent_to_target(
+	owner: UnitInstance,
+	target: UnitInstance,
+) -> Vector2i:
+	if owner == null or target == null or _grid == null:
+		return Vector2i(-1, -1)
+	var owner_cell := _grid.find_cell_of(owner)
+	var target_cell := _grid.find_cell_of(target)
+	if owner_cell == Vector2i(-1, -1) or target_cell == Vector2i(-1, -1):
+		return Vector2i(-1, -1)
+	var best := Vector2i(-1, -1)
+	var best_dist := 999999
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var cell := target_cell + Vector2i(dx, dy)
+			if not _grid.can_place_at(cell):
+				continue
+			var occupant := _grid.get_unit(cell)
+			if occupant != null and occupant != owner and occupant.is_alive():
+				continue
+			var dist := BoardGrid._chebyshev(owner_cell, cell)
+			if dist < best_dist:
+				best_dist = dist
+				best = cell
+			elif dist == best_dist and best != Vector2i(-1, -1):
+				if cell.x < best.x or (cell.x == best.x and cell.y < best.y):
+					best = cell
+	if best == Vector2i(-1, -1) and _grid.chebyshev_distance(owner_cell, target_cell) <= 1:
+		return owner_cell
+	return best
+
+
 func _scaled_action_value(owner: UnitInstance, value: int) -> int:
 	if owner == null:
 		return value
 	var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+	if ability != null and ability.id == "turn_start_strike_weakest":
+		## 影刺：1★ 2 点；三合一升星后（2★+）7 点（不走全局 ×6）。
+		return 2 if owner.level <= 1 else 7
 	return value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
 
 

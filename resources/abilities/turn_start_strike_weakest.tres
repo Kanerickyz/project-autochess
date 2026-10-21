@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+
+[sub_resource type="Resource" id="Resource_teleport"]
+script = ExtResource("3_act")
+action_type = 18
+
+[sub_resource type="Resource" id="Resource_dmg"]
+script = ExtResource("3_act")
+action_type = 3
+value = 2
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnRoundStart"
+target_selector = 31
+actions = Array[ExtResource("3_act")]([SubResource("Resource_teleport"), SubResource("Resource_dmg")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "turn_start_strike_weakest"
+display_name = "自己回合开始时 瞬移至当前生命最低敌人旁并造成2点伤害（三合一后7点）"
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

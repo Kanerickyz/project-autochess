@@ -49,6 +49,8 @@ static func run_all() -> bool:
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
+	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
+	_check("turn_start_strike_weakest_damage", _test_turn_start_strike_weakest_damage())
 
 	for sim in _created:
 		sim.dispose()
@@ -895,6 +897,76 @@ static func _test_ally_hurt_heal_target() -> bool:
 		push_error(
 			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
 			% [ally.unit.current_hp, hp_mid]
+		)
+		return false
+	return true
+
+
+static func _test_turn_start_strike_weakest_mount() -> bool:
+	var data := _load_unit("res://resources/units/realtime/shinobi.tres")
+	if data == null or data.ability == null:
+		push_error("shinobi: missing unit or ability")
+		return false
+	if data.ability.id != "turn_start_strike_weakest":
+		push_error("shinobi: wrong ability id %s" % data.ability.id)
+		return false
+	if data.tier != 2 or data.stats.max_hp != 4 or data.stats.attack != 4:
+		push_error("shinobi: body stats mismatch")
+		return false
+	return true
+
+
+static func _test_turn_start_strike_weakest_damage() -> bool:
+	var data := _load_unit("res://resources/units/realtime/shinobi.tres")
+	var sim := _new_sim()
+	sim.configure(ARENA, 501)
+	var shinobi := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(4.5, 26.5))
+	shinobi.unit.stats.steps_per_turn = 0
+	var weak := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(12.5, 10.5),
+	)
+	weak.unit.current_hp = 5
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(5.5, 25.5),
+	)
+	sim.begin_combat()
+	var hp_before := weak.unit.current_hp
+	var guard := 0
+	while weak.unit.current_hp == hp_before and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	if weak.unit.current_hp != hp_before - 2:
+		push_error(
+			"strike_weakest: weak hp %d -> %d, expected -2"
+			% [hp_before, weak.unit.current_hp]
+		)
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var assailant := UnitInstance.from_unit_data(data, Vector2i(4, 26), UnitInstance.Team.PLAYER)
+	assailant.level = 2
+	var victim := UnitInstance.from_unit_data(
+		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
+		Vector2i(12, 10),
+		UnitInstance.Team.ENEMY,
+	)
+	victim.current_hp = 20
+	grid.place(assailant, Vector2i(4, 26))
+	grid.place(victim, Vector2i(12, 10))
+	var payload := CombatEventPayload.new()
+	payload.source = assailant
+	payload.target = assailant
+	resolver.on_event(CombatEvents.ON_ROUND_START, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if victim.current_hp != 13:
+		push_error(
+			"strike_weakest L2: victim hp expected 13, got %d" % victim.current_hp
 		)
 		return false
 	return true
