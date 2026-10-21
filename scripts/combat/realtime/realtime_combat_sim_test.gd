@@ -587,12 +587,14 @@ static func _test_mid_combat_summon_waits_next_round() -> bool:
 		Vector2(9.5, 3.5),
 	)
 	sim.begin_combat()
-	var late := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {"id": "late_summon", "steps_per_turn": 0}),
-		Vector2(8.5, 28.5),
-	)
+	var late_unit := make_unit(UnitInstance.Team.PLAYER, {"id": "late_summon", "steps_per_turn": 0, "deploy_time": 1.5})
+	late_unit.is_combat_summon = true
+	var late := sim.add_unit(late_unit, Vector2(8.5, 28.5))
 	if late == null:
 		push_error("mid_summon: add_unit failed")
+		return false
+	if late.is_deploying():
+		push_error("mid_summon: combat summon must land same round (skip deploy wait)")
 		return false
 	if late.action_eligible_from_round <= sim.get_round_index():
 		push_error(
