@@ -23,6 +23,7 @@ static func run_all() -> bool:
 	passed = _test_auto_merge_three_same_level() and passed
 	passed = _test_auto_merge_skips_max_star() and passed
 	passed = _test_sell_refunds_and_reset_rolls_back() and passed
+	passed = _test_fused_enchant_survives_recruit_reset() and passed
 	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	passed = _test_unlocked_tier_merges_into_pool() and passed
 	passed = _test_full_roster_buy_completes_triple() and passed
@@ -738,5 +739,50 @@ static func _test_full_roster_buy_completes_triple() -> bool:
 		return false
 	if economy.gold >= gold_before:
 		push_error("RecruitSessionTest: merge buy should spend gold")
+		return false
+	return true
+
+
+static func _test_fused_enchant_survives_recruit_reset() -> bool:
+	const HURT := preload("res://resources/abilities/hurt_gain_atk_small.tres")
+	const CRIT := preload("res://resources/abilities/crit_extra_damage_mid.tres")
+	var deck := DeckState.new()
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 5
+	deck.configure(deck_cfg)
+	var u1 := UnitData.new()
+	u1.id = "mat_a"
+	u1.stats = UnitStats.new()
+	u1.ability = HURT
+	var u2 := UnitData.new()
+	u2.id = "mat_b"
+	u2.stats = UnitStats.new()
+	u2.ability = CRIT
+	var e1 := deck.add_entry(u1)
+	var e2 := deck.add_entry(u2)
+	var enchant := EnchantSession.new()
+	enchant.configure(deck)
+	enchant.begin()
+	enchant.set_slot(&"a", e1.entry_id)
+	enchant.set_slot(&"b", e2.entry_id)
+	enchant.try_fuse()
+	var fused := deck.get_entries()[0]
+	if fused == null or fused.get_main_ability() == null:
+		push_error("RecruitSessionTest: fused entry needs runtime ability")
+		return false
+	var ability_id := fused.get_main_ability().id
+	deck.assign_seat(fused.entry_id, 0)
+	var economy := _make_economy(10)
+	var session := _make_session(deck, economy, 99, 0.0)
+	session.begin()
+	economy.spend(2)
+	session.reset()
+	var after := deck.get_entries()[0]
+	if after == null or not after.is_fused_enchant():
+		push_error("RecruitSessionTest: reset should keep fused entry")
+		return false
+	var ab := after.get_main_ability()
+	if ab == null or ab.id != ability_id:
+		push_error("RecruitSessionTest: reset should keep fused runtime ability")
 		return false
 	return true

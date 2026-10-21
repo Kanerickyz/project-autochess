@@ -67,7 +67,7 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	unit.death_grant_gold = 0
 	unit.attached_abilities = entry.attached_abilities.duplicate()
 	if entry.runtime_main_ability != null:
-		unit.main_ability_override = entry.runtime_main_ability
+		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	else:
 		unit.main_ability_override = null
 	for buff in entry.attached_buffs:
@@ -83,7 +83,7 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 	var unit := from_unit_data(entry.unit, cell, team)
 	unit.deck_entry_id = entry.entry_id
 	if entry.runtime_main_ability != null:
-		unit.main_ability_override = entry.runtime_main_ability
+		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	sync_from_deck_entry(unit, entry)
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
