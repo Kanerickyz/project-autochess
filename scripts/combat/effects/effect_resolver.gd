@@ -559,8 +559,16 @@ func _spec_condition_met(
 				and payload.target != null
 				and not payload.target.is_combat_summon
 			)
+		EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP:
+			return _unit_below_max_hp(payload.target if payload != null else null)
 		_:
 			return true
+
+
+static func _unit_below_max_hp(unit: UnitInstance) -> bool:
+	if unit == null or not unit.is_alive():
+		return false
+	return unit.current_hp < unit.get_effective_max_hp()
 
 
 func _spec_under_trigger_cap(owner: UnitInstance, spec: EffectSpec) -> bool:
@@ -746,6 +754,12 @@ func _execute_action(
 			executed = true
 		EffectAction.Type.HEAL:
 			if not target.is_alive() or target.stats == null:
+				return false
+			if (
+				spec != null
+				and spec.condition == EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP
+				and not _unit_below_max_hp(target)
+			):
 				return false
 			var before := target.current_hp
 			var heal_value := _scaled_action_value(owner, action.value)
