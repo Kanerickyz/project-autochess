@@ -20,106 +20,216 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.72)
+mouse_filter = 2
+color = Color(0.04, 0.06, 0.09, 0.88)
 
-[node name="Scroll" type="ScrollContainer" parent="."]
+[node name="Root" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_scroll_mode = 0
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
 
-[node name="Panel" type="VBoxContainer" parent="Scroll"]
+[node name="Column" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="Scroll/Panel"]
+[node name="Header" type="VBoxContainer" parent="Root/Column"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="Root/Column/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "远征统计"
 horizontal_alignment = 1
 
-[node name="SubtitleLabel" type="Label" parent="Scroll/Panel"]
+[node name="SubtitleLabel" type="Label" parent="Root/Column/Header"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.78, 0.82, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.72, 0.76, 0.82, 1)
+theme_override_font_sizes/font_size = 15
 text = "结局"
 horizontal_alignment = 1
 
-[node name="RosterLabel" type="Label" parent="Scroll/Panel"]
+[node name="Scroll" type="ScrollContainer" parent="Root/Column"]
+custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "队伍"
-horizontal_alignment = 1
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
-[node name="RosterArena" type="Control" parent="Scroll/Panel"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 108)
+[node name="Metrics" type="VBoxContainer" parent="Root/Column/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 2
-script = ExtResource("2_arena")
+theme_override_constants/separation = 12
 
-[node name="StatsLabel" type="Label" parent="Scroll/Panel"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "统计"
-autowrap_mode = 2
-
-[node name="PeakRow" type="HBoxContainer" parent="Scroll/Panel"]
-layout_mode = 2
-theme_override_constants/separation = 16
-alignment = 1
-
-[node name="PeakAttackVBox" type="VBoxContainer" parent="Scroll/Panel/PeakRow"]
+[node name="JourneyPanel" type="PanelContainer" parent="Root/Column/Scroll/Metrics"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="JourneyMargin" type="MarginContainer" parent="Root/Column/Scroll/Metrics/JourneyPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="JourneyVBox" type="VBoxContainer" parent="Root/Column/Scroll/Metrics/JourneyPanel/JourneyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="JourneyTitle" type="Label" parent="Root/Column/Scroll/Metrics/JourneyPanel/JourneyMargin/JourneyVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.78, 0.52, 1)
+theme_override_font_sizes/font_size = 15
+text = "历程"
+
+[node name="JourneyGrid" type="GridContainer" parent="Root/Column/Scroll/Metrics/JourneyPanel/JourneyMargin/JourneyVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="CombatPanel" type="PanelContainer" parent="Root/Column/Scroll/Metrics"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CombatMargin" type="MarginContainer" parent="Root/Column/Scroll/Metrics/CombatPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="CombatVBox" type="VBoxContainer" parent="Root/Column/Scroll/Metrics/CombatPanel/CombatMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CombatTitle" type="Label" parent="Root/Column/Scroll/Metrics/CombatPanel/CombatMargin/CombatVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.78, 0.52, 1)
+theme_override_font_sizes/font_size = 15
+text = "战斗"
+
+[node name="CombatGrid" type="GridContainer" parent="Root/Column/Scroll/Metrics/CombatPanel/CombatMargin/CombatVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="RosterPanel" type="PanelContainer" parent="Root/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RosterMargin" type="MarginContainer" parent="Root/Column/RosterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="RosterVBox" type="VBoxContainer" parent="Root/Column/RosterPanel/RosterMargin"]
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="PeakAttackTitle" type="Label" parent="Scroll/Panel/PeakRow/PeakAttackVBox"]
+[node name="RosterHeader" type="HBoxContainer" parent="Root/Column/RosterPanel/RosterMargin/RosterVBox"]
 layout_mode = 2
+
+[node name="RosterTitle" type="Label" parent="Root/Column/RosterPanel/RosterMargin/RosterVBox/RosterHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.88, 0.78, 0.52, 1)
 theme_override_font_sizes/font_size = 15
+text = "队伍"
+
+[node name="RosterHint" type="Label" parent="Root/Column/RosterPanel/RosterMargin/RosterVBox/RosterHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.66, 0.72, 1)
+theme_override_font_sizes/font_size = 12
+text = "长按查看技能 · 按住可滑动切换"
+horizontal_alignment = 2
+
+[node name="RosterArena" type="Control" parent="Root/Column/RosterPanel/RosterMargin/RosterVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+script = ExtResource("2_arena")
+
+[node name="PeakPanel" type="PanelContainer" parent="Root/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PeakMargin" type="MarginContainer" parent="Root/Column/PeakPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="PeakVBox" type="VBoxContainer" parent="Root/Column/PeakPanel/PeakMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PeakTitle" type="Label" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.78, 0.52, 1)
+theme_override_font_sizes/font_size = 15
+text = "巅峰"
+
+[node name="PeakRow" type="HBoxContainer" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PeakAttackVBox" type="VBoxContainer" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PeakAttackTitle" type="Label" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakAttackVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
 text = "最高攻击"
 horizontal_alignment = 1
 
-[node name="PeakAttackArena" type="Control" parent="Scroll/Panel/PeakRow/PeakAttackVBox"]
+[node name="PeakAttackArena" type="Control" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakAttackVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 108)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 2
+mouse_filter = 0
 script = ExtResource("2_arena")
 
-[node name="PeakHpVBox" type="VBoxContainer" parent="Scroll/Panel/PeakRow"]
+[node name="PeakHpVBox" type="VBoxContainer" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
+theme_override_constants/separation = 2
 
-[node name="PeakHpTitle" type="Label" parent="Scroll/Panel/PeakRow/PeakHpVBox"]
+[node name="PeakHpTitle" type="Label" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakHpVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 13
 text = "最高生命"
 horizontal_alignment = 1
 
-[node name="PeakHpArena" type="Control" parent="Scroll/Panel/PeakRow/PeakHpVBox"]
+[node name="PeakHpArena" type="Control" parent="Root/Column/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakHpVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 108)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_horizontal = 3
-mouse_filter = 2
+mouse_filter = 0
 script = ExtResource("2_arena")
 
-[node name="ContinueButton" type="Button" parent="Scroll/Panel"]
+[node name="ContinueButton" type="Button" parent="Root/Column"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 48)
 layout_mode = 2

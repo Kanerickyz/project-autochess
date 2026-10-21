@@ -1105,11 +1105,18 @@ func _collect_inspectables() -> Array[Dictionary]:
 			var entry: Variant = catalog_units[i]
 			if not (entry is Dictionary):
 				continue
-			var unit: UnitData = (entry as Dictionary).get("unit") as UnitData
-			var cell: Vector2i = (entry as Dictionary).get("cell", NO_CELL)
-			if unit == null or cell == NO_CELL:
+			var info_dict := entry as Dictionary
+			var cell: Vector2i = info_dict.get("cell", NO_CELL)
+			if cell == NO_CELL:
 				continue
 			var tile := Vector2(cell) + Vector2(0.5, 0.5)
+			var deck_entry: DeckEntry = info_dict.get("deck_entry") as DeckEntry
+			if deck_entry != null and deck_entry.unit != null:
+				out.append(_info_from_entry(deck_entry, tile_to_local(tile), "catalog:%d" % i))
+				continue
+			var unit: UnitData = info_dict.get("unit") as UnitData
+			if unit == null:
+				continue
 			out.append(_info_from_unit_data(
 				unit, tile_to_local(tile), "catalog:%d" % i, catalog_preview_level
 			))
@@ -1961,9 +1968,13 @@ func _draw_catalog_units(px: float) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var label := (
+			deck_entry.get_display_name() if deck_entry != null else unit.display_name
+		)
+		var unit_id := deck_entry.get_unit_id() if deck_entry != null else unit.id
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, unit.display_name, px, true, Vector2.ZERO,
-			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, cell.x + cell.y * 8),
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, label, px, true, Vector2.ZERO,
+			true, unit_id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit_id, cell.x + cell.y * 8),
 		)
 		var atk := 0
 		var hp := 0
