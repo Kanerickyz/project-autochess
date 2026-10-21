@@ -200,10 +200,10 @@
 
 | 刺盾 | 铁壁反震 | `hurt_reflect_small` | 坚韧·反震 | 挨打回敬施害者 |
 | 石甲 | 一碰即硬 | `first_hurt_harden` | 坚韧·首伤 | 本场首次受伤后临时更耐打 |
-| 旗手 | 以身作则 | `combat_start_buff_nearby_allies_mid` | 开场·惠攻 | 开战时附近友方攻击 +4（三合一后 +12） |
-| 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后附近临时承伤感 |
-| 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时附近加攻 |
-| 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始附近小幅加攻 |
+| 旗手 | 以身作则 | `combat_start_buff_nearby_allies_mid` | 开场·惠攻 | 开战时周围一格友方攻击 +4（三合一后 +12） |
+| 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后周围一格临时承伤感 |
+| 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时周围一格加攻 |
+| 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始周围一格小幅加攻 |
 | 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始周围一格友方生命上限与当前各 +2（三合一后 +8） |
 | 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方随从被召唤时自加血 +2（三合一后 +6） |
 | 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2 |
@@ -214,7 +214,7 @@
 | 召魂 | 义士应召 | `ally_death_spawn_weak` | 生成·听亡 | 友方角色亡招固定弱模板（随从不触发） |
 | 残影 | 残影再起 | `death_spawn_weak_copy` | 生成·弱复制 | 死后弱剪影 |
 | 禁卫 | 临终分身 | `death_spawn_strong_copy` | 生成·厚复制 | 死后偏厚分身 |
-| 骑弓 | 斩获赐福 | `kill_nearby_allies_atk_mid` | 收割·惠队 | 击杀时附近友方加攻 |
+| 骑弓 | 斩获赐福 | `kill_nearby_allies_atk_mid` | 收割·惠队 | 击杀时周围一格友方加攻 |
 | 枯骨 | 枯骨回馈 | `death_heal_random_ally_2` | 退场·回血 | 死后随机友方恢复 2 生命 |
 | 影刺 | 影袭落刃 | `turn_start_strike_weakest` | 刺杀·斩后 | 自己回合开始瞬移至最低血敌人旁；1★ 刺 **2** / 三合一后 **7**（单向技能伤，不走普攻 ×6） |
 | 狂战士 | 血怒再袭 | `kill_grant_actor_turn_refresh` | 收割·连动 | 击杀重置本动（再步+再攻）；不触发回合开始技能；**每场最多 3 次** |
