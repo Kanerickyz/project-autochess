@@ -73,10 +73,25 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 	return state
 
 
-static func resolve_mystery(node: MapNodeRuntime, rng: RandomNumberGenerator) -> void:
+static func resolve_mystery(
+	node: MapNodeRuntime,
+	rng: RandomNumberGenerator,
+	config: RunMapConfig = null,
+) -> void:
 	if node == null or node.data == null or node.get_node_type() != MapNodeType.Type.MYSTERY:
 		return
-	var pick := _MYSTERY_RESOLVE_TYPES[rng.randi_range(0, _MYSTERY_RESOLVE_TYPES.size() - 1)]
+	var pool: Array[MapNodeType.Type] = []
+	for t in _MYSTERY_RESOLVE_TYPES:
+		if (
+			t == MapNodeType.Type.ENCHANT
+			and config != null
+			and node.data.floor < _resolve_enchant_min_floor(config)
+		):
+			continue
+		pool.append(t)
+	if pool.is_empty():
+		pool = [MapNodeType.Type.COMBAT]
+	var pick := pool[rng.randi_range(0, pool.size() - 1)]
 	node.resolved_type = pick
 
 
@@ -85,7 +100,7 @@ static func finalize_mystery_node(
 	config: RunMapConfig,
 	rng: RandomNumberGenerator,
 ) -> void:
-	resolve_mystery(node, rng)
+	resolve_mystery(node, rng, config)
 	if node == null or node.data == null or config == null:
 		return
 	var effective := node.get_effective_type()
@@ -119,6 +134,14 @@ static func _resolve_elite_min_floor(config: RunMapConfig) -> int:
 	if config.elite_min_floor > 0:
 		return config.elite_min_floor
 	return maxi(4, int(config.floor_count / 3))
+
+
+## 附魔节点：路径中后期；默认不早于商店后段，且不低于总层数约 55%（向上取整后 +1 层缓冲）。
+static func _resolve_enchant_min_floor(config: RunMapConfig) -> int:
+	if config.enchant_min_floor > 0:
+		return config.enchant_min_floor
+	var from_progress := int(config.floor_count * 0.55) + 1
+	return maxi(config.shop_min_floor + 2, from_progress)
 
 
 ## 在 column_count × floor_count 格上画多条不交叉上行路径；共享格合并为同一节点。
@@ -270,6 +293,7 @@ static func _assign_node_types(
 	rng: RandomNumberGenerator,
 ) -> void:
 	var elite_min := _resolve_elite_min_floor(config)
+	var enchant_min := _resolve_enchant_min_floor(config)
 	## Floor 1：全部 COMBAT。
 	for node in state.nodes:
 		if node.data == null:
@@ -304,7 +328,7 @@ static func _assign_node_types(
 		var placed := false
 		for i in bucket.size():
 			var candidate: MapNodeType.Type = bucket[i]
-			if _is_type_legal(state, data, candidate, config, elite_min):
+			if _is_type_legal(state, data, candidate, config, elite_min, enchant_min):
 				data.node_type = candidate
 				bucket.remove_at(i)
 				placed = true
@@ -355,10 +379,13 @@ static func _is_type_legal(
 	node_type: MapNodeType.Type,
 	config: RunMapConfig,
 	elite_min: int,
+	enchant_min: int,
 ) -> bool:
 	if node_type == MapNodeType.Type.ELITE and data.floor < elite_min:
 		return false
 	if node_type == MapNodeType.Type.SHOP and data.floor < config.shop_min_floor:
+		return false
+	if node_type == MapNodeType.Type.ENCHANT and data.floor < enchant_min:
 		return false
 	if node_type not in _UNIQUE_ADJ_TYPES:
 		return true

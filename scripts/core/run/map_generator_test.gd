@@ -29,6 +29,7 @@ static func _make_test_config() -> RunMapConfig:
 	config.path_count = 6
 	config.shop_min_floor = 4
 	config.elite_min_floor = 6
+	config.enchant_min_floor = 7
 	config.elite_interval = 3
 
 	var wave := WaveData.new()
@@ -246,6 +247,12 @@ static func _test_sts_constraints() -> bool:
 				push_error(
 					"MapGeneratorTest: seed %d shop on floor %d < shop_min %d"
 					% [seed, floor_index, config.shop_min_floor]
+				)
+				return false
+			if node_type == MapNodeType.Type.ENCHANT and floor_index < config.enchant_min_floor:
+				push_error(
+					"MapGeneratorTest: seed %d enchant on floor %d < enchant_min %d"
+					% [seed, floor_index, config.enchant_min_floor]
 				)
 				return false
 			if node_type not in unique_types:
