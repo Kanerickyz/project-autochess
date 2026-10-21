@@ -113,9 +113,16 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 	elif event is InputEventMouseMotion and _pressing:
 		var motion := event as InputEventMouseMotion
-		if _press_ms >= 0 and not _info_shown and motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-			## 移动超 slop：取消长按，允许原生拖拽入座。
-			_press_ms = -1
+		if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+			if _info_shown:
+				## 长按已看信息卡后，继续拖动可入座/换位。
+				_info_shown = false
+				_press_ms = -1
+				if entry != null:
+					card_long_press_ended.emit(entry.entry_id)
+			elif _press_ms >= 0:
+				## 移动超 slop：取消长按计时，允许原生拖拽入座。
+				_press_ms = -1
 
 
 func _notification(what: int) -> void:
@@ -139,7 +146,7 @@ func _reset_press_state() -> void:
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
-	if entry == null or not available or _info_shown:
+	if entry == null or not available:
 		return null
 	## 进入拖拽：取消长按计时，松手不再当作点选。
 	_press_ms = -1
