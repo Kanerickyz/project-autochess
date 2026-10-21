@@ -765,6 +765,7 @@ static func _test_fused_enchant_survives_recruit_reset() -> bool:
 	enchant.begin()
 	enchant.set_slot(&"a", e1.entry_id)
 	enchant.set_slot(&"b", e2.entry_id)
+	enchant.set_test_unit_roll(0.0)
 	enchant.try_fuse()
 	var fused := deck.get_entries()[0]
 	if fused == null or fused.get_main_ability() == null:

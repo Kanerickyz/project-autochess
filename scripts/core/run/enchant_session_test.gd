@@ -16,6 +16,9 @@ static func run_all() -> bool:
 	_test_fused_roster_capture_restore()
 	_test_fused_skips_triple_merge()
 	_test_session_once_per_visit()
+	_test_fusion_fail_sacrifices_materials()
+	_test_invest_and_guaranteed_success()
+	_test_reset_clears_slots_and_gold()
 	if _failures == 0:
 		print("EnchantSessionTest: all tests passed")
 	else:
@@ -63,6 +66,7 @@ static func _test_fuse_creates_fused_enchant() -> void:
 	session.begin()
 	session.set_slot(&"a", entries[0].entry_id)
 	session.set_slot(&"b", entries[1].entry_id)
+	session.set_test_unit_roll(0.0)
 	var result := session.try_fuse()
 	_assert(result.get("ok", false), "fuse ok")
 	_assert(deck.size() == 1, "one after fuse")
@@ -103,6 +107,7 @@ static func _test_fused_roster_capture_restore() -> void:
 	session.begin()
 	session.set_slot(&"a", entries[0].entry_id)
 	session.set_slot(&"b", entries[1].entry_id)
+	session.set_test_unit_roll(0.0)
 	session.try_fuse()
 	var fused := deck.get_entries()[0]
 	var ability_id := fused.get_main_ability().id if fused.get_main_ability() != null else ""
@@ -144,9 +149,66 @@ static func _test_session_once_per_visit() -> void:
 	session.begin()
 	session.set_slot(&"a", ids[0].entry_id)
 	session.set_slot(&"b", ids[1].entry_id)
+	session.set_test_unit_roll(0.0)
 	session.try_fuse()
 	_assert(not session.can_fuse(), "cannot fuse twice")
 	session.finish_after_fuse()
+
+
+static func _test_fusion_fail_sacrifices_materials() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var session := EnchantSession.new()
+	session.configure(deck)
+	session.begin()
+	session.set_slot(&"a", entries[0].entry_id)
+	session.set_slot(&"b", entries[1].entry_id)
+	session.set_test_unit_roll(0.99)
+	var result := session.try_fuse()
+	_assert(result.get("ok", false) and not result.get("success", true), "fail branch")
+	_assert(deck.size() == 0, "both materials removed on fail")
+	_assert(not session.fused_this_visit, "visit not succeeded")
+	_assert(session.can_fuse() == false, "slots cleared")
+
+
+static func _test_invest_and_guaranteed_success() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var economy := RunEconomy.new()
+	economy.grant(50)
+	var session := EnchantSession.new()
+	session.configure(deck, economy)
+	session.begin()
+	session.set_slot(&"a", entries[0].entry_id)
+	session.set_slot(&"b", entries[1].entry_id)
+	var p := session.get_expected_price()
+	_assert(p >= EnchantPricing.MIN_PRICE, "expected price positive")
+	for _i in p:
+		_assert(session.try_invest_gold(), "invest step")
+	_assert(session.is_guaranteed_success(), "guaranteed at G>=P")
+	session.set_test_unit_roll(0.99)
+	var result := session.try_fuse()
+	_assert(result.get("success", false), "guaranteed fuse succeeds")
+	_assert(deck.size() == 1, "fused product remains")
+	_assert(economy.gold == 50 - p, "gold spent on invest only")
+
+
+static func _test_reset_clears_slots_and_gold() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var economy := RunEconomy.new()
+	economy.grant(10)
+	var session := EnchantSession.new()
+	session.configure(deck, economy)
+	session.begin()
+	session.set_slot(&"a", entries[0].entry_id)
+	session.set_slot(&"b", entries[1].entry_id)
+	_assert(session.try_invest_gold(), "invest once")
+	var gold_after := economy.gold
+	session.reset_forge()
+	_assert(session.gold_invested_g == 0, "G cleared")
+	_assert(session.slot_a_entry_id < 0 and session.slot_b_entry_id < 0, "slots cleared")
+	_assert(economy.gold == gold_after, "reset does not refund run gold")
 
 
 static func _assert(cond: bool, label: String) -> void:

@@ -56,6 +56,33 @@ static func fuse(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionar
 	return result
 
 
+## 融合失败：永久移除两名原料，不产出熔印者。
+static func sacrifice_materials(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionary:
+	var result := {"ok": false, "error": ""}
+	if deck == null:
+		result["error"] = "deck_missing"
+		return result
+	if entry_id_a == entry_id_b:
+		result["error"] = "same_entry"
+		return result
+	var a := deck.get_entry(entry_id_a)
+	var b := deck.get_entry(entry_id_b)
+	if not AbilityComposer.can_use_as_enchant_material(a):
+		result["error"] = "invalid_a"
+		return result
+	if not AbilityComposer.can_use_as_enchant_material(b):
+		result["error"] = "invalid_b"
+		return result
+	if not deck.remove_entry(entry_id_a):
+		result["error"] = "remove_a_failed"
+		return result
+	if not deck.remove_entry(entry_id_b):
+		result["error"] = "remove_b_failed"
+		return result
+	result["ok"] = true
+	return result
+
+
 ## 熔印者面板：攻、血为两名原料当前展示值之和（与 unit.stats + bonus 一致）。
 static func compute_fused_panel(a: DeckEntry, b: DeckEntry) -> Dictionary:
 	var base_atk := 1

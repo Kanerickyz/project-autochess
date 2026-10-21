@@ -1,11 +1,14 @@
 class_name EnchantBattleExtension
 extends RefCounted
-## 附魔阶段：Arena 拖拽 + 底栏三钮（融合 / 跳过 / 继续）。
+## 附魔阶段：Arena 拖拽 + 底栏（投入金币 / 重置 / 融合 / 跳过 / 继续）。
 
 
 var _battle: RealtimeBattleController
 var _session: EnchantSession
 var _hud: Control
+var _stats_label: Label
+var _btn_invest: Button
+var _btn_reset: Button
 var _btn_fuse: Button
 var _btn_skip: Button
 var _btn_continue: Button
@@ -107,6 +110,12 @@ func _build_forge_previews() -> Array:
 	return out
 
 
+func _entry_on_forge(entry_id: int) -> bool:
+	if _session == null or entry_id < 0:
+		return false
+	return entry_id == _session.slot_a_entry_id or entry_id == _session.slot_b_entry_id
+
+
 func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 	var board_size := Vector2i(5, 8)
 	if _battle != null:
@@ -116,7 +125,7 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 		slots.configure_custom_cells(cells)
 		var i := 0
 		for entry in deck.get_entries():
-			if entry == null:
+			if entry == null or _entry_on_forge(entry.entry_id):
 				continue
 			if i < slots.slot_count:
 				slots.try_assign_with_seq(i, entry, entry.seat_assign_seq)
@@ -131,7 +140,7 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 			seat_cols = config.get_seat_cols()
 	slots.configure_grid(seat_rows, seat_cols, board_size, false, false)
 	for entry in deck.get_entries():
-		if entry == null:
+		if entry == null or _entry_on_forge(entry.entry_id):
 			continue
 		var seat_i := entry.seat_index
 		if seat_i < 0 or seat_i >= slots.slot_count:
@@ -148,34 +157,53 @@ func _ensure_hud() -> void:
 	var dock := _battle.get_dock()
 	if dock == null:
 		return
-	_hud = HBoxContainer.new()
+	_hud = VBoxContainer.new()
 	_hud.name = "EnchantHud"
 	_hud.visible = false
-	_hud.alignment = BoxContainer.ALIGNMENT_CENTER
 	dock.add_child(_hud)
+	_stats_label = Label.new()
+	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hud.add_child(_stats_label)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_hud.add_child(row)
+	_btn_invest = Button.new()
+	_btn_invest.text = "投入金币"
+	_btn_invest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_invest.pressed.connect(_on_invest)
+	row.add_child(_btn_invest)
+	_btn_reset = Button.new()
+	_btn_reset.text = "重置"
+	_btn_reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_reset.pressed.connect(_on_reset)
+	row.add_child(_btn_reset)
 	_btn_fuse = Button.new()
 	_btn_fuse.text = "融合"
 	_btn_fuse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_fuse.pressed.connect(_on_fuse)
-	_hud.add_child(_btn_fuse)
+	row.add_child(_btn_fuse)
 	_btn_skip = Button.new()
 	_btn_skip.text = "跳过"
 	_btn_skip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_skip.pressed.connect(_on_skip)
-	_hud.add_child(_btn_skip)
+	row.add_child(_btn_skip)
 	_btn_continue = Button.new()
 	_btn_continue.text = "继续"
 	_btn_continue.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_continue.pressed.connect(_on_continue)
-	_hud.add_child(_btn_continue)
+	row.add_child(_btn_continue)
 
 
 func _refresh() -> void:
 	if _session == null:
 		return
 	_btn_fuse.disabled = not _session.can_fuse()
+	_btn_invest.disabled = not _session.can_invest_gold()
+	_btn_reset.disabled = _session.fused_this_visit
 	_btn_skip.disabled = _session.fused_this_visit
 	_btn_continue.disabled = not _session.fused_this_visit
+	_stats_label.text = _format_stats_line()
 	if _battle != null and _battle.get_arena() != null:
 		var arena := _battle.get_arena()
 		arena.enchant_forge_previews = _build_forge_previews()
@@ -187,6 +215,39 @@ func _refresh() -> void:
 		arena.queue_redraw()
 
 
+func _format_stats_line() -> String:
+	if _session == null:
+		return ""
+	var gold_balance := 0
+	if _session.economy != null:
+		gold_balance = _session.economy.gold
+	var p := _session.get_expected_price()
+	var g := _session.gold_invested_g
+	if not _session.can_fuse():
+		return "金币 %d · 放入 A/B 后显示预期价与成功率" % gold_balance
+	var rate := _session.get_success_percent()
+	var rate_text := "必成" if _session.is_guaranteed_success() else "%.0f%%" % rate
+	return "金币 %d · 预期价 P=%d · 已投 G=%d · 成功率 %s" % [gold_balance, p, g, rate_text]
+
+
+func _on_invest() -> void:
+	if _session == null:
+		return
+	if not _session.try_invest_gold():
+		_battle.flash_hint("无法投币")
+		return
+	_refresh()
+
+
+func _on_reset() -> void:
+	if _session == null:
+		return
+	_session.reset_forge()
+	if _battle != null:
+		_battle.on_enchant_forge_changed()
+	_refresh()
+
+
 func _on_fuse() -> void:
 	if _session == null:
 		return
@@ -194,10 +255,13 @@ func _on_fuse() -> void:
 	if not result.get("ok", false):
 		_battle.flash_hint("无法融合")
 		return
-	_battle.flash_hint("熔合成功")
+	if result.get("success", false):
+		_battle.flash_hint("熔合成功")
+	else:
+		_battle.flash_hint("熔合失败")
 	_refresh()
 	if _battle != null:
-		_battle.on_enchant_fused()
+		_battle.on_enchant_forge_changed()
 
 
 func _on_skip() -> void:
@@ -212,3 +276,5 @@ func _on_continue() -> void:
 
 func _on_session_changed() -> void:
 	_refresh()
+	if _battle != null and _session != null and _session.is_active:
+		_battle.on_enchant_forge_changed()
