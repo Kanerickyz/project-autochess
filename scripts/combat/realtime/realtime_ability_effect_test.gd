@@ -33,6 +33,8 @@ static func run_all() -> bool:
 	_check("combat_start_charge_atk", _test_combat_start_charge_atk())
 	_check("combat_start_charge_atk_star2_x6", _test_combat_start_charge_atk_star2_x6())
 	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
+	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
+	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
 	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
@@ -209,6 +211,69 @@ static func _test_arcane_friend_summon_minion_self_hp() -> bool:
 		return false
 	if after_hp != base_hp + 2:
 		push_error("arcane: current_hp %d -> %d, expected +2" % [base_hp, after_hp])
+		return false
+	return true
+
+
+static func _test_arcane_friend_summon_minion_self_hp_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/arcane.tres")
+	var bus := CombatEventBus.new()
+	var sim := _new_sim(bus)
+	sim.configure(ARENA, 92)
+	var mage := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	mage.unit.level = 2
+	var base_max := mage.unit.get_effective_max_hp()
+	var minion := _dummy(UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1})
+	minion.is_combat_summon = true
+	sim.add_unit(minion, Vector2(9.5, 20.5))
+	if mage.unit.get_effective_max_hp() != base_max + 6:
+		push_error(
+			"arcane 2★: max_hp %d -> %d, expected +6"
+			% [base_max, mage.unit.get_effective_max_hp()]
+		)
+		return false
+	return true
+
+
+static func _test_gravewright_kill_spawn_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/gravewright.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_spawn_weak":
+		push_error("grave spawn: ability not mounted")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var digger := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
+	digger.level = 2
+	var victim := UnitInstance.from_unit_data(
+		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
+		Vector2i(6, 18),
+		UnitInstance.Team.ENEMY,
+	)
+	victim.current_hp = 1
+	grid.place(digger, Vector2i(4, 20))
+	grid.place(victim, Vector2i(6, 18))
+	var payload := CombatEventPayload.new()
+	payload.source = digger
+	payload.target = victim
+	resolver.on_event(CombatEvents.ON_KILL, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	var token: UnitInstance = null
+	for u in grid.get_all_units():
+		if u != null and u.id == "token_weak" and u.is_alive():
+			token = u
+			break
+	if token == null or token.stats == null:
+		push_error("grave spawn 2★: missing token_weak")
+		return false
+	if token.stats.attack != 6 or token.stats.max_hp != 6 or token.current_hp != 6:
+		push_error(
+			"grave spawn 2★: token %d/%d expected 6/6"
+			% [token.stats.attack, token.stats.max_hp]
+		)
 		return false
 	return true
 

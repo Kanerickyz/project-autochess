@@ -1159,9 +1159,25 @@ func _spawn_unit(
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
 		spawned.is_combat_summon = true
+		if owner != null:
+			spawned.level = owner.level
 		## 战中技能随从立即接敌（与 Boss 衍生一致）；勿沿用 token 资源上的部署等待。
 		if spawned.stats != null:
 			spawned.stats.deploy_time = 0.0
+		if (
+			owner != null
+			and spawned.stats != null
+			and action.spawn_unit != null
+			and action.spawn_unit.stats != null
+		):
+			var spawn_ability: AbilityData = owner.get_main_ability()
+			if spawn_ability != null and spawn_ability.id == "kill_spawn_weak":
+				var stat_mult := UnitInstance.ability_value_multiplier_for(
+					spawn_ability, owner.level
+				)
+				spawned.stats.attack = action.spawn_unit.stats.attack * stat_mult
+				spawned.stats.max_hp = action.spawn_unit.stats.max_hp * stat_mult
+				spawned.current_hp = spawned.stats.max_hp
 		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
 			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
 			var pct := action.spawn_owner_base_percent

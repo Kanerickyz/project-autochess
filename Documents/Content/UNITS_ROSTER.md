@@ -198,12 +198,12 @@
 | 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时附近加攻 |
 | 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始附近小幅加攻 |
 | 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始附近生命上限与当前各 +2（本场临时） |
-| 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方**随从**被召唤上场时，自身生命上限与当前各 +2 |
+| 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方随从被召唤时自加血 +2（三合一后 +6） |
 | 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2 |
 
 | 猎手 | 削峰一击 | `deal_vs_higher_hp_extra` | 斩峰 | 目标当前生命高于自己时额外伤 |
 | 巨锤 | 邻座崩裂 | `deal_damage_adj_splash_small` | 破阵 | 出手对目标邻格小幅捎带伤 |
-| 掘墓 | 绝境增援 | `kill_spawn_weak` | 生成·击杀 | 击杀生成 1 随从 |
+| 掘墓 | 绝境增援 | `kill_spawn_weak` | 生成·击杀 | 击杀生成 2/2 随从（三合一后 6/6） |
 | 召魂 | 义士应召 | `ally_death_spawn_weak` | 生成·听亡 | 友方角色亡招固定弱模板（随从不触发） |
 | 残影 | 残影再起 | `death_spawn_weak_copy` | 生成·弱复制 | 死后弱剪影 |
 | 禁卫 | 临终分身 | `death_spawn_strong_copy` | 生成·厚复制 | 死后偏厚分身 |
