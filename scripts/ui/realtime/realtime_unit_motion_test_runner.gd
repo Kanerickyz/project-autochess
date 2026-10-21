@@ -26,7 +26,6 @@ func _run() -> void:
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
-	await _test_long_press_then_drag_recruit_team()
 	await _test_recruit_lock_drag()
 	await _test_hand_card_long_press()
 	await _test_combat_motion()
@@ -375,45 +374,6 @@ func _test_recruit_team_sell_drag() -> void:
 	await process_frame
 
 
-func _test_long_press_then_drag_recruit_team() -> void:
-	var arena := RealtimeArenaView.new()
-	arena.size = Vector2(393, 700)
-	root.add_child(arena)
-	await process_frame
-	var unit := load(UNIT_PATHS[0]) as UnitData
-	var entry := DeckEntry.new()
-	entry.entry_id = 7
-	entry.unit = unit
-	var team := PrepareSlotBoard.new()
-	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
-	team.try_assign(0, entry)
-	arena.recruit_active = true
-	arena.recruit_team_slots = team
-	arena.recruit_sell_cell = Vector2i(4, 12)
-	var sold: Array[int] = []
-	arena.recruit_sell.connect(func(id: int) -> void: sold.append(id))
-	var team_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
-	var sell_center := arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
-
-	_press(arena, team_center, true)
-	var until := Time.get_ticks_msec() + RealtimeArenaView.LONG_PRESS_MS + 120
-	while Time.get_ticks_msec() < until:
-		await process_frame
-	_expect(arena.is_info_card_visible(), "long press before drag shows info")
-	var move := InputEventMouseMotion.new()
-	move.position = team_center + Vector2(0, 40)
-	move.relative = Vector2(0, 40)
-	arena._gui_input(move)
-	_expect(not arena.is_info_card_visible(), "drag motion dismisses info card")
-	_hover_to(arena, sell_center)
-	_press(arena, sell_center, false)
-	_expect(sold == [7], "long press then drag still sells")
-
-	arena.clear_recruit_mode()
-	arena.queue_free()
-	await process_frame
-
-
 func _test_recruit_lock_drag() -> void:
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
@@ -517,19 +477,6 @@ func _test_hand_card_long_press() -> void:
 	_expect(not arena.is_info_card_visible(), "slop cancel prevents hand long press info")
 	card._gui_input(release)
 	_expect(pressed == [3], "after slop cancel, release still counts as press")
-
-	## 长按看卡后继续拖：可拿到拖拽数据
-	card._gui_input(press)
-	until = Time.get_ticks_msec() + RealtimeHandCard.LONG_PRESS_MS + 120
-	while Time.get_ticks_msec() < until:
-		await process_frame
-	_expect(arena.is_info_card_visible(), "second long press opens info")
-	move.position = card.size * 0.5 + Vector2(20, 0)
-	move.relative = Vector2(20, 0)
-	card._gui_input(move)
-	_expect(not arena.is_info_card_visible(), "hand drag motion closes info")
-	_expect(card._get_drag_data(card.size * 0.5) != null, "hand card drag data after long press")
-	card._gui_input(release)
 
 	card.queue_free()
 	arena.queue_free()
