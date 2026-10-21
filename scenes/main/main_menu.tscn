@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="2"]
@@ -23,7 +23,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("3_bg")
 expand_mode = 1
-stretch_mode = 6
+stretch_mode = 5
 
 [node name="SafeMargin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -32,75 +32,104 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 56
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 40
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 0
 
-[node name="CenterContainer" type="CenterContainer" parent="SafeMargin"]
+[node name="MainVBox" type="VBoxContainer" parent="SafeMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/separation = 0
 
-[node name="MenuVBox" type="VBoxContainer" parent="SafeMargin/CenterContainer"]
+[node name="TopArtSpacer" type="Control" parent="SafeMargin/MainVBox"]
 layout_mode = 2
-theme_override_constants/separation = 14
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.65
 
-[node name="TitleLogo" type="TextureRect" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="TitleRow" type="CenterContainer" parent="SafeMargin/MainVBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(520, 0)
+
+[node name="TitleLogo" type="TextureRect" parent="SafeMargin/MainVBox/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(640, 0)
 texture = ExtResource("4_logo")
 expand_mode = 3
 stretch_mode = 5
 
-[node name="Spacer" type="Control" parent="SafeMargin/CenterContainer/MenuVBox"]
-custom_minimum_size = Vector2(0, 20)
+[node name="TitleToButtonsSpacer" type="Control" parent="SafeMargin/MainVBox"]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
 
-[node name="StartButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 54)
+[node name="ButtonBlock" type="CenterContainer" parent="SafeMargin/MainVBox"]
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.85
+
+[node name="MenuVBox" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="StartButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(336, 56)
+layout_mode = 2
+size_flags_horizontal = 4
 text = "开始游戏"
 
-[node name="CodexButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(336, 56)
 layout_mode = 2
+size_flags_horizontal = 4
 text = "角色库"
 
-[node name="EnchantSandboxButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(336, 56)
 layout_mode = 2
+size_flags_horizontal = 4
 text = "附魔试验场"
 
-[node name="SettingsButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="SettingsButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(336, 56)
 layout_mode = 2
+size_flags_horizontal = 4
 text = "设置"
 
-[node name="ExitButton" type="Button" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="ExitButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(336, 56)
 layout_mode = 2
+size_flags_horizontal = 4
 text = "退出"
 
-[node name="VersionSpacer" type="Control" parent="SafeMargin/CenterContainer/MenuVBox"]
-custom_minimum_size = Vector2(0, 10)
+[node name="VersionSpacer" type="Control" parent="SafeMargin/MainVBox"]
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 
-[node name="VersionLabel" type="Label" parent="SafeMargin/CenterContainer/MenuVBox"]
+[node name="VersionRow" type="CenterContainer" parent="SafeMargin/MainVBox"]
+layout_mode = 2
+
+[node name="VersionLabel" type="Label" parent="SafeMargin/MainVBox/VersionRow"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.84, 0.88, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.45)
+theme_override_colors/font_color = Color(0.58, 0.6, 0.64, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.35)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 15
 text = "v0.0.0"
 horizontal_alignment = 1
+
+[node name="BottomArtSpacer" type="Control" parent="SafeMargin/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.15
 
 [node name="SettingsPanel" parent="." instance=ExtResource("2")]
 unique_name_in_owner = true
