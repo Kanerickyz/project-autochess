@@ -1005,6 +1005,8 @@ func _split_self(
 	_grid.remove_unit(owner)
 
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
+	if not _has_spawn_cell_available(prefer_player_half):
+		return entries
 	for i in count:
 		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
@@ -1044,6 +1046,8 @@ func _spawn_unit(
 	if origin == Vector2i(-1, -1):
 		origin = payload.target.grid_pos
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
+	if not _has_spawn_cell_available(prefer_player_half):
+		return false
 	var summon_context := owner if owner != null else payload.target
 	## 每次数以 spawn_count 为准；召魂 2★+ 见 AllyDeathSpawnRules。
 	var spawn_total := AllyDeathSpawnRules.spawn_count_for_owner(action, owner)
@@ -1078,6 +1082,16 @@ func _spawn_unit(
 		_emit_friend_summoned(spawned, summon_context, depth)
 		_emit_summoned(spawned, depth)
 	return spawned_any
+
+
+func _has_spawn_cell_available(prefer_player_half: bool) -> bool:
+	if _grid == null:
+		return false
+	var height := _grid.get_size().y
+	var candidates := BoardHalf.filter_cells(_grid.get_empty_cells(), height, prefer_player_half)
+	if candidates.is_empty():
+		candidates = _grid.get_empty_cells()
+	return not candidates.is_empty()
 
 
 func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool, prefer_player_half: bool) -> Vector2i:

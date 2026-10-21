@@ -20,6 +20,7 @@ static func run_all() -> bool:
 	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
+	ok = _check("mid_combat_summon_waits_next_round", _test_mid_combat_summon_waits_next_round()) and ok
 	ok = _check("one_unit_per_cell_on_spawn", _test_one_unit_per_cell_on_spawn()) and ok
 	ok = _check("splash_hits_cluster", _test_splash_hits_cluster()) and ok
 	ok = _check("occupancy_no_shared_cells", _test_occupancy_no_shared_cells()) and ok
@@ -569,6 +570,45 @@ static func _test_deploy_after_begin_before_first_step() -> bool:
 	var late := sim.add_unit(make_unit(UnitInstance.Team.PLAYER, {"deploy_time": 1.0}), Vector2(9.5, 28.5))
 	if not late.is_deploying():
 		push_error("deploy: unit placed after begin_combat must wait deploy_time")
+		return false
+	return true
+
+
+## COMBAT §7.1 / UNIT_ABILITIES §6：战中生成的随从下回合才入行动轮。
+static func _test_mid_combat_summon_waits_next_round() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 3)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {"steps_per_turn": 0, "max_hp": 9999}),
+		Vector2(9.5, 28.5),
+	)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"steps_per_turn": 0, "max_hp": 9999}),
+		Vector2(9.5, 3.5),
+	)
+	sim.begin_combat()
+	var late := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {"id": "late_summon", "steps_per_turn": 0}),
+		Vector2(8.5, 28.5),
+	)
+	if late == null:
+		push_error("mid_summon: add_unit failed")
+		return false
+	if late.action_eligible_from_round <= sim.get_round_index():
+		push_error(
+			"mid_summon: expected eligible next round (eligible=%d round=%d)"
+			% [late.action_eligible_from_round, sim.get_round_index()]
+		)
+		return false
+	var guard := 0
+	while guard < 400 and sim.get_round_index() < late.action_eligible_from_round and not sim.is_finished():
+		if sim.get_current_actor() == late:
+			push_error("mid_summon: late acted before eligible round")
+			return false
+		sim.advance_fixed_step()
+		guard += 1
+	if sim.get_round_index() < late.action_eligible_from_round:
+		push_error("mid_summon: round did not advance in time")
 		return false
 	return true
 
