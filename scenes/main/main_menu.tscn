@@ -53,7 +53,7 @@ layout_mode = 2
 
 [node name="TitleLogo" type="TextureRect" parent="SafeMargin/MainVBox/TitleRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(640, 224)
+custom_minimum_size = Vector2(512, 179)
 texture = ExtResource("4_logo")
 expand_mode = 1
 stretch_mode = 5
@@ -75,35 +75,35 @@ theme_override_constants/separation = 16
 
 [node name="StartButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "开始游戏"
 
 [node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "角色库"
 
 [node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "附魔试验场"
 
 [node name="SettingsButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "设置"
 
 [node name="ExitButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "退出"
