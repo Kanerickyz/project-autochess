@@ -2,7 +2,7 @@ class_name MapGenerator
 extends RefCounted
 
 ## 未定型连通节点的类型权重（其余填 COMBAT）。
-const _WEIGHT_MYSTERY := 0.22
+const _WEIGHT_MYSTERY := 0.10
 const _WEIGHT_ELITE := 0.08
 const _WEIGHT_SHOP := 0.05
 const _WEIGHT_EVENT := 0.10
