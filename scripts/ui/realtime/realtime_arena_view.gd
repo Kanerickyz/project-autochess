@@ -486,20 +486,8 @@ func _gui_input_recruit(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		_track_press_motion(motion.position)
-		if _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
-			## 离开按下点超过容差即进入拖拽（触屏抖动不误触发）。
-			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-				_cancel_press()
-				_begin_recruit_drag(_recruit_press_index)
-		elif _recruit_item_press_index >= 0 and _recruit_item_drag_index < 0 and not _info_shown:
-			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-				_cancel_press()
-				_begin_recruit_item_drag(_recruit_item_press_index)
-		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
-			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-				_cancel_press()
-				_begin_recruit_team_drag(_recruit_team_press_id)
+		if not _try_begin_recruit_drags_on_motion(motion.position):
+			_track_press_motion(motion.position)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -585,16 +573,8 @@ func _gui_input_enchant(event: InputEvent) -> void:
 				queue_redraw()
 			accept_event()
 			return
-		_track_press_motion(motion.position)
-		if (
-			_enchant_team_press_id >= 0
-			and _enchant_team_drag_id < 0
-			and not _info_shown
-			and not _enchant_forge_press
-		):
-			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-				_cancel_press()
-				_begin_enchant_team_drag(_enchant_team_press_id)
+		if not _try_begin_enchant_team_drag_on_motion(motion.position):
+			_track_press_motion(motion.position)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -838,6 +818,58 @@ func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
 	_press_tap = tap
 	_press_ms = Time.get_ticks_msec() if not info.is_empty() else -1
 	_info_shown = false
+
+
+func _motion_exceeds_drag_slop(pos: Vector2) -> bool:
+	return pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX
+
+
+## 收起信息卡但保留招募/附魔按下上下文，便于「先看技能再拖」。
+func _dismiss_info_card_for_drag() -> void:
+	_info_shown = false
+	_shown_info = {}
+	_press_ms = -1
+	_press_active = false
+	_press_tap = Callable()
+	_press_info = {}
+	_clear_inspect_focus()
+	_info_card.hide_info()
+	queue_redraw()
+
+
+func _leave_inspect_for_drag() -> void:
+	if _info_shown:
+		_dismiss_info_card_for_drag()
+	else:
+		_cancel_press()
+
+
+func _try_begin_recruit_drags_on_motion(pos: Vector2) -> bool:
+	if not _motion_exceeds_drag_slop(pos):
+		return false
+	if _recruit_press_index >= 0 and _recruit_drag_index < 0:
+		_leave_inspect_for_drag()
+		_begin_recruit_drag(_recruit_press_index)
+		return true
+	if _recruit_item_press_index >= 0 and _recruit_item_drag_index < 0:
+		_leave_inspect_for_drag()
+		_begin_recruit_item_drag(_recruit_item_press_index)
+		return true
+	if _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0:
+		_leave_inspect_for_drag()
+		_begin_recruit_team_drag(_recruit_team_press_id)
+		return true
+	return false
+
+
+func _try_begin_enchant_team_drag_on_motion(pos: Vector2) -> bool:
+	if _enchant_forge_press or _enchant_team_press_id < 0 or _enchant_team_drag_id >= 0:
+		return false
+	if not _motion_exceeds_drag_slop(pos):
+		return false
+	_leave_inspect_for_drag()
+	_begin_enchant_team_drag(_enchant_team_press_id)
+	return true
 
 
 func _track_press_motion(pos: Vector2) -> void:
