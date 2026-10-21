@@ -18,6 +18,8 @@ enum Type {
 	FUSE_EXPLODE,
 	## 将技能持有者瞬移至目标邻格（切比雪夫=1）；无空位则跳过。
 	TELEPORT_ADJACENT_TO_TARGET,
+	## 击杀续动：重置持有者本动步数并允许再普攻（由战斗层处理；不触发 OnRoundStart）。
+	GRANT_ACTOR_TURN_REFRESH,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

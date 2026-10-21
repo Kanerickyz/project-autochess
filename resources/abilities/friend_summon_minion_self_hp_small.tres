@@ -19,4 +19,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 script = ExtResource("1_ab")
 id = "friend_summon_minion_self_hp_small"
 display_name = "友方随从被召唤时 自身生命上限与当前各+2"
+merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

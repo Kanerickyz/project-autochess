@@ -58,6 +58,8 @@ var _actor_has_attacked: bool = false
 var _actor_turn_active: bool = false
 ## 本场出现过 Boss 首领 → 启用斩首胜负（非清波）。
 var _had_boss_leader: bool = false
+## 本动内刚通过技能续动（见 ON_ACTOR_TURN_REFRESH）；在普攻后消费以免立刻结束回合。
+var _turn_refresh_armed_instance_id: int = -1
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -513,6 +515,8 @@ func _advance_current_actor() -> void:
 		and rt.target.is_alive()
 	):
 		_fire(rt)
+		if _consume_turn_refresh_armed(rt):
+			return
 		_actor_has_attacked = true
 		_end_current_actor_turn()
 		return
@@ -1152,6 +1156,10 @@ func _bus_emit(event_type: StringName, payload: CombatEventPayload) -> void:
 
 
 func _on_bus_event(event_type: StringName, payload: CombatEventPayload) -> void:
+	if event_type == CombatEvents.ON_ACTOR_TURN_REFRESH:
+		if payload != null and payload.source != null:
+			_apply_actor_turn_refresh(payload.source)
+		return
 	if event_type != CombatEvents.ON_DAMAGE_TAKEN or payload.target == null:
 		return
 	for rt in _units:
@@ -1159,6 +1167,35 @@ func _on_bus_event(event_type: StringName, payload: CombatEventPayload) -> void:
 			rt.last_hit_time = elapsed_seconds
 			unit_damaged.emit(rt, payload.amount)
 			return
+
+
+func _apply_actor_turn_refresh(unit: UnitInstance) -> void:
+	var rt := _find_rt_for_unit(unit)
+	if rt == null or not rt.is_alive():
+		return
+	_turn_refresh_armed_instance_id = unit.instance_id
+	if _actor_turn_active and _current_actor == rt:
+		_actor_has_attacked = false
+		_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
+		return
+	if _queue_cursor > 0:
+		_queue_cursor -= 1
+	_current_actor = rt
+	_actor_turn_active = true
+	_actor_has_attacked = false
+	_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
+	current_actor_changed.emit(rt)
+
+
+func _consume_turn_refresh_armed(rt: RtUnit) -> bool:
+	if rt == null or rt.unit == null:
+		return false
+	if _turn_refresh_armed_instance_id != rt.unit.instance_id:
+		return false
+	_turn_refresh_armed_instance_id = -1
+	_actor_has_attacked = false
+	_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
+	return true
 
 
 func _setup_effect_resolver() -> void:

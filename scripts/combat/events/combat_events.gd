@@ -19,4 +19,6 @@ const ON_EFFECT_RESOLVED := &"OnEffectResolved"
 const ON_EFFECT_FIZZLED := &"OnEffectFizzled"
 const ON_MOVE := &"OnMove"
 const ON_ROUND_START := &"OnRoundStart"
+## 击杀续动等：重置当前行动者步数与普攻，不广播 OnRoundStart。
+const ON_ACTOR_TURN_REFRESH := &"OnActorTurnRefresh"
 const ON_LEVEL_UP := &"OnLevelUp"
