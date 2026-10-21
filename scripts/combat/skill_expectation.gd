@@ -137,7 +137,7 @@ static func _target_scope_mult(spec: EffectSpec) -> float:
 	match spec.target_selector:
 		EffectSpec.TargetSelector.ALL_ALLIES, EffectSpec.TargetSelector.ALL_UNITS:
 			return 1.2
-		EffectSpec.TargetSelector.NEARBY_ALLIES, EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET:
+		EffectSpec.TargetSelector.NEARBY_ALLIES, EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET, EffectSpec.TargetSelector.NEARBY_ENEMIES:
 			return 1.1
 		EffectSpec.TargetSelector.RANDOM_CELLS, EffectSpec.TargetSelector.CELLS_AROUND_EVENT:
 			return 1.05

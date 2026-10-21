@@ -30,11 +30,15 @@ enum TargetSelector {
 	LOWEST_CURRENT_HP_NEARBY_ALLY,
 	## 当前生命最低的敌方；平局先比生命上限再比 instance_id。
 	LOWEST_CURRENT_HP_ENEMY,
+	## 持有者周围一格内的敌人（切比雪夫 == NEARBY_ENEMY_RADIUS）；须追加在枚举末尾。
+	NEARBY_ENEMIES,
 }
 
 
 ## 「附近友方」切比雪夫半径（格）。
 const NEARBY_ALLY_RADIUS := 2
+## 「附近敌人」切比雪夫半径（格）：持有者或事件目标周围一格（与邻格敌军一致）。
+const NEARBY_ENEMY_RADIUS := 1
 
 ## Optional gate evaluated when the trigger fires (before targets/actions).
 enum Condition {

@@ -347,7 +347,9 @@ static func _format_target(spec: EffectSpec) -> String:
 		EffectSpec.TargetSelector.UNIT_AHEAD_OF_MOVE:
 			return "对移动前方单位"
 		EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET:
-			return "对目标邻格敌人"
+			return "对目标周围一格敌人"
+		EffectSpec.TargetSelector.NEARBY_ENEMIES:
+			return "对周围一格敌人"
 		EffectSpec.TargetSelector.EVENT_SOURCE:
 			return "对施害者"
 		EffectSpec.TargetSelector.NEARBY_ALLIES:

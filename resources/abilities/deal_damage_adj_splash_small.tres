@@ -18,5 +18,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "deal_damage_adj_splash_small"
-display_name = "造成伤害时 对目标邻格敌人造成1伤害"
+display_name = "造成伤害时 对目标周围一格敌人造成1伤害"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

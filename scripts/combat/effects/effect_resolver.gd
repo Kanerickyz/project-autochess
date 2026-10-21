@@ -314,6 +314,8 @@ func _resolve_targets(
 			var weakest := _pick_lowest_current_hp_enemy(owner)
 			if weakest != null:
 				result.append(weakest)
+		EffectSpec.TargetSelector.NEARBY_ENEMIES:
+			result.append_array(_pick_nearby_enemies(owner))
 	return result
 
 
@@ -612,7 +614,31 @@ func _pick_enemies_adjacent_to_event_target(
 		var unit_cell := _grid.find_cell_of(unit)
 		if unit_cell != Vector2i(-1, -1):
 			cell = unit_cell
-		if _grid.combat_distance(center, cell) == 1:
+		if _grid.combat_distance(center, cell) == EffectSpec.NEARBY_ENEMY_RADIUS:
+			result.append(unit)
+	result.sort_custom(_sort_listeners)
+	return result
+
+
+## 持有者周围一格内的敌人（切比雪夫 == NEARBY_ENEMY_RADIUS）。
+func _pick_nearby_enemies(owner: UnitInstance) -> Array[UnitInstance]:
+	var result: Array[UnitInstance] = []
+	if owner == null or _grid == null:
+		return result
+	var center := owner.grid_pos
+	var found := _grid.find_cell_of(owner)
+	if found != Vector2i(-1, -1):
+		center = found
+	for unit in _grid.get_alive_units():
+		if unit == null or not unit.is_alive():
+			continue
+		if unit.team == owner.team:
+			continue
+		var cell := unit.grid_pos
+		var unit_cell := _grid.find_cell_of(unit)
+		if unit_cell != Vector2i(-1, -1):
+			cell = unit_cell
+		if _grid.combat_distance(center, cell) == EffectSpec.NEARBY_ENEMY_RADIUS:
 			result.append(unit)
 	result.sort_custom(_sort_listeners)
 	return result

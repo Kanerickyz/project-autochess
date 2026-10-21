@@ -17,6 +17,7 @@ const MOUNT_TABLE := {
 	"skeleton": "death_heal_random_ally_2",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
+	"apothecary": "turn_start_nearby_enemies_dmg_small",
 }
 
 const EMPTY_ABILITY_IDS := ["giant_knight"]
@@ -45,6 +46,7 @@ static func run_all() -> bool:
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
+	_check("turn_start_nearby_enemies_dmg", _test_turn_start_nearby_enemies_dmg())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
@@ -693,6 +695,54 @@ static func _test_deal_damage_adj_splash_small() -> bool:
 		push_error(
 			"adj_splash: neighbor hp unchanged (%d); primary hp=%d"
 			% [neighbor.unit.current_hp, primary.unit.current_hp]
+		)
+		return false
+	return true
+
+
+## 药师：自己回合开始 → 周围一格敌人各受 2 伤；两格外不受伤。
+static func _test_turn_start_nearby_enemies_dmg() -> bool:
+	var data := _load_unit("res://resources/units/realtime/apothecary.tres")
+	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_enemies_dmg_small":
+		push_error("apothecary_near_dmg: ability not mounted")
+		return false
+	var specs: Array = data.ability.effect_specs
+	if specs.is_empty() or specs[0] == null:
+		push_error("apothecary_near_dmg: missing effect spec")
+		return false
+	if specs[0].target_selector != EffectSpec.TargetSelector.NEARBY_ENEMIES:
+		push_error("apothecary_near_dmg: target_selector must be NEARBY_ENEMIES")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 510)
+	var healer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	healer.unit.stats.steps_per_turn = 0
+	var near := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 20.5),
+	)
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(12.5, 20.5),
+	)
+	sim.begin_combat()
+	var near_before := near.unit.current_hp
+	var far_before := far.unit.current_hp
+	var payload := CombatEventPayload.new()
+	payload.source = healer.unit
+	payload.target = healer.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects()
+	if near.unit.current_hp != near_before - 2:
+		push_error(
+			"apothecary_near_dmg: near hp=%d expected %d"
+			% [near.unit.current_hp, near_before - 2]
+		)
+		return false
+	if far.unit.current_hp != far_before:
+		push_error(
+			"apothecary_near_dmg: far hp=%d expected unchanged %d (2 cells away)"
+			% [far.unit.current_hp, far_before]
 		)
 		return false
 	return true
