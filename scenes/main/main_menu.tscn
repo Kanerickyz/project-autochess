@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="2"]
 [ext_resource type="Texture2D" path="res://assets/ui/main_menu/menu_background.jpg" id="3_bg"]
-[ext_resource type="Texture2D" path="res://assets/ui/main_menu/menu_logo.jpg" id="4_logo"]
+[ext_resource type="Texture2D" path="res://assets/ui/main_menu/menu_logo.png" id="4_logo"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -23,7 +23,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("3_bg")
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="SafeMargin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -53,9 +53,9 @@ layout_mode = 2
 
 [node name="TitleLogo" type="TextureRect" parent="SafeMargin/MainVBox/TitleRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(640, 0)
+custom_minimum_size = Vector2(512, 179)
 texture = ExtResource("4_logo")
-expand_mode = 3
+expand_mode = 1
 stretch_mode = 5
 
 [node name="TitleToButtonsSpacer" type="Control" parent="SafeMargin/MainVBox"]
@@ -75,35 +75,35 @@ theme_override_constants/separation = 16
 
 [node name="StartButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "开始游戏"
 
 [node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "角色库"
 
 [node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "附魔试验场"
 
 [node name="SettingsButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "设置"
 
 [node name="ExitButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(336, 56)
+custom_minimum_size = Vector2(328, 82)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "退出"
