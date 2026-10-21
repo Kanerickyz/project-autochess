@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	_test_forge_slot_spacing()
 	_test_fuse_creates_fused_enchant()
 	_test_preview_fused_entry_panel()
+	_test_fused_roster_capture_restore()
 	_test_fused_skips_triple_merge()
 	_test_session_once_per_visit()
 	if _failures == 0:
@@ -92,6 +93,31 @@ static func _test_fused_skips_triple_merge() -> void:
 	_assert(deck.size() == 3, "three fused do not auto-merge")
 	deck.try_auto_merge()
 	_assert(deck.size() == 3, "still three after try_auto_merge")
+
+
+static func _test_fused_roster_capture_restore() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var session := EnchantSession.new()
+	session.configure(deck)
+	session.begin()
+	session.set_slot(&"a", entries[0].entry_id)
+	session.set_slot(&"b", entries[1].entry_id)
+	session.try_fuse()
+	var fused := deck.get_entries()[0]
+	var ability_id := fused.get_main_ability().id if fused.get_main_ability() != null else ""
+	_assert(not ability_id.is_empty(), "fused ability id")
+	var snap := deck.capture_roster()
+	var deck2 := DeckState.new()
+	var cfg := DeckConfig.new()
+	cfg.max_size = 5
+	deck2.configure(cfg)
+	deck2.restore_roster(snap)
+	_assert(deck2.size() == 1, "restored one")
+	var restored := deck2.get_entries()[0]
+	_assert(restored.is_fused_enchant(), "restored fused")
+	var ab := restored.get_main_ability()
+	_assert(ab != null and ab.id == ability_id, "restored runtime ability")
 
 
 static func _test_preview_fused_entry_panel() -> void:

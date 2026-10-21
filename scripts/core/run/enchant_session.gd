@@ -106,7 +106,7 @@ func build_preview_fused_entry() -> DeckEntry:
 		return null
 	var entry := DeckEntry.new()
 	entry.unit = EnchantFusionService.FUSED_UNIT
-	entry.runtime_main_ability = ability
+	entry.runtime_main_ability = ability.duplicate(true) as AbilityData
 	EnchantFusionService.apply_fused_panel_to_entry(entry, a, b)
 	return entry
 

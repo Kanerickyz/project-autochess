@@ -201,7 +201,7 @@ func add_fused_enchant_entry(
 		return null
 	var entry := _create_entry(EnchantFusionService.FUSED_UNIT)
 	entry.level = 1
-	entry.runtime_main_ability = runtime_ability
+	entry.runtime_main_ability = runtime_ability.duplicate(true) as AbilityData
 	entry.bonus_attack = display_attack - base_attack
 	entry.bonus_max_hp = display_max_hp - base_max_hp
 	entry.bonus_crit_rate_percent = crit_rate_bonus
