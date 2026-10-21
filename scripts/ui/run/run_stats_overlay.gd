@@ -3,7 +3,12 @@ extends Control
 
 signal continue_pressed
 
-const ROSTER_HINT := "长按查看技能 · 按住可滑动切换"
+const ROSTER_HINT := "长按查看技能 · 上下滑动浏览本页"
+const ROSTER_COLUMNS := 5
+const PEAK_COLUMNS := 3
+## 统计条目标格边长；高度按行数匹配，避免「一行棋盘」把剪影撑满屏。
+const CATALOG_CELL_TARGET_PX := 56.0
+const CATALOG_STRIP_VISUAL_SCALE := 0.72
 
 @onready var _title: Label = %TitleLabel
 @onready var _subtitle: Label = %SubtitleLabel
@@ -14,6 +19,7 @@ const ROSTER_HINT := "长按查看技能 · 按住可滑动切换"
 @onready var _peak_attack_arena: RealtimeArenaView = %PeakAttackArena
 @onready var _peak_hp_arena: RealtimeArenaView = %PeakHpArena
 @onready var _continue_button: Button = %ContinueButton
+@onready var _scroll: ScrollContainer = $Root/Column/Scroll
 
 
 func _ready() -> void:
@@ -36,10 +42,10 @@ func _style_panels() -> void:
 	style.content_margin_top = 0
 	style.content_margin_bottom = 0
 	for path in [
-		"Root/Column/Scroll/Metrics/JourneyPanel",
-		"Root/Column/Scroll/Metrics/CombatPanel",
-		"Root/Column/RosterPanel",
-		"Root/Column/PeakPanel",
+		"Root/Column/Scroll/Page/JourneyPanel",
+		"Root/Column/Scroll/Page/CombatPanel",
+		"Root/Column/Scroll/Page/RosterPanel",
+		"Root/Column/Scroll/Page/PeakPanel",
 	]:
 		var panel := get_node_or_null(path) as PanelContainer
 		if panel != null:
@@ -55,11 +61,14 @@ func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 	_fill_metric_grid(_combat_grid, _combat_rows(snapshot))
 	if _roster_hint != null:
 		_roster_hint.text = ROSTER_HINT
-	_paint_roster(_roster_arena, snapshot.roster)
-	_paint_roster(_peak_attack_arena, snapshot.highest_attack_entries)
-	_paint_roster(_peak_hp_arena, snapshot.highest_max_hp_entries)
+	_paint_roster(_roster_arena, snapshot.roster, ROSTER_COLUMNS)
+	_paint_roster(_peak_attack_arena, snapshot.highest_attack_entries, PEAK_COLUMNS)
+	_paint_roster(_peak_hp_arena, snapshot.highest_max_hp_entries, PEAK_COLUMNS)
+	if _scroll != null:
+		_scroll.scroll_vertical = 0
 	visible = true
 	_continue_button.grab_focus()
+	_fit_all_arenas.call_deferred()
 
 
 func hide_overlay() -> void:
@@ -119,6 +128,7 @@ static func _configure_arena(arena: RealtimeArenaView) -> void:
 		return
 	arena.mouse_filter = Control.MOUSE_FILTER_STOP
 	arena.focus_mode = Control.FOCUS_NONE
+	arena.catalog_visual_scale_override = CATALOG_STRIP_VISUAL_SCALE
 
 
 static func _clear_arena(arena: RealtimeArenaView) -> void:
@@ -126,14 +136,50 @@ static func _clear_arena(arena: RealtimeArenaView) -> void:
 		arena.clear_catalog_mode()
 
 
-static func _paint_roster(arena: RealtimeArenaView, entries: Array[DeckEntry]) -> void:
+func _paint_roster(arena: RealtimeArenaView, entries: Array[DeckEntry], columns: int) -> void:
 	if arena == null:
 		return
+	arena.catalog_visual_scale_override = CATALOG_STRIP_VISUAL_SCALE
 	if entries.is_empty():
 		arena.clear_catalog_mode()
+		arena.custom_minimum_size.y = CATALOG_CELL_TARGET_PX
 		return
-	var cols := maxi(1, entries.size())
+	var cols := maxi(1, columns)
 	arena.set_catalog_deck_entries(entries, cols)
+	_fit_catalog_arena(arena, entries.size(), cols)
+
+
+func _fit_catalog_arena(arena: RealtimeArenaView, count: int, columns: int) -> void:
+	if arena == null:
+		return
+	var cols := maxi(1, columns)
+	var rows := maxi(1, int(ceili(float(maxi(1, count)) / float(cols))))
+	var width := arena.size.x
+	if width < 8.0:
+		width = arena.get_parent_area_size().x if arena.get_parent() != null else 0.0
+	var cell := CATALOG_CELL_TARGET_PX
+	if width >= 8.0:
+		cell = minf(CATALOG_CELL_TARGET_PX, width / float(cols))
+	arena.custom_minimum_size.y = rows * cell + 4.0
+	arena.queue_redraw()
+
+
+func _fit_all_arenas() -> void:
+	_fit_catalog_arena(
+		_roster_arena,
+		_roster_arena.catalog_units.size() if _roster_arena != null else 0,
+		ROSTER_COLUMNS,
+	)
+	_fit_catalog_arena(
+		_peak_attack_arena,
+		_peak_attack_arena.catalog_units.size() if _peak_attack_arena != null else 0,
+		PEAK_COLUMNS,
+	)
+	_fit_catalog_arena(
+		_peak_hp_arena,
+		_peak_hp_arena.catalog_units.size() if _peak_hp_arena != null else 0,
+		PEAK_COLUMNS,
+	)
 
 
 func _on_continue_pressed() -> void:

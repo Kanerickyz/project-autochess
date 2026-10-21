@@ -114,6 +114,8 @@ var enchant_team_scroll_enabled: bool = false
 var enchant_team_max_scroll_rows: float = 0.0
 ## 角色库模式：整盘铺单位剪影，长按弹技能卡（不走战斗 / 招募）。
 var catalog_active: bool = false
+## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
+var catalog_visual_scale_override: float = -1.0
 ## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
@@ -277,6 +279,8 @@ func get_cell_px() -> float:
 
 ## 列/行变少时放大角色表现（碰撞仍以逻辑格为准）；再收 20% 避免邻格剪影互盖。
 func get_unit_visual_scale() -> float:
+	if catalog_active and catalog_visual_scale_override > 0.0:
+		return catalog_visual_scale_override
 	var sx := REFERENCE_BOARD_WIDTH / float(maxi(1, board_size.x))
 	var sy := REFERENCE_BOARD_HEIGHT / float(maxi(1, board_size.y))
 	return clampf(minf(sx, sy), 1.0, 1.75) * 0.8
@@ -1566,16 +1570,17 @@ func set_catalog_deck_entries(entries: Array[DeckEntry], columns: int = 5) -> vo
 	catalog_preview_level = 1
 	catalog_units.clear()
 	var cols := maxi(1, columns)
-	var rows := 1
-	board_size = Vector2i(cols, rows)
-	for i in entries.size():
-		var entry := entries[i]
+	var placed := 0
+	for entry in entries:
 		if entry == null or entry.unit == null:
 			continue
 		catalog_units.append({
 			"deck_entry": entry,
-			"cell": Vector2i(i % cols, int(i / cols)),
+			"cell": Vector2i(placed % cols, int(placed / cols)),
 		})
+		placed += 1
+	var rows := maxi(1, int(ceili(float(maxi(1, placed)) / float(cols))))
+	board_size = Vector2i(cols, rows)
 	queue_redraw()
 
 
