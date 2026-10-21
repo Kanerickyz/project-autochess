@@ -348,22 +348,20 @@ static func _format_target(spec: EffectSpec) -> String:
 			return "对移动前方单位"
 		EffectSpec.TargetSelector.ENEMIES_ADJACENT_TO_EVENT_TARGET:
 			return "对目标周围一格敌人"
-		EffectSpec.TargetSelector.NEARBY_ENEMIES:
-			return "对周围一格敌人"
 		EffectSpec.TargetSelector.EVENT_SOURCE:
 			return "对施害者"
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
 			if spec.exclude_owner:
-				return "对附近其他友方"
-			return "对附近友方"
+				return "对周围一格其他友方"
+			return "对周围一格友方"
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
 			if spec.exclude_owner:
 				return "对当前生命最低的其他队友"
 			return "对当前生命最低的队友"
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_NEARBY_ALLY:
 			if spec.exclude_owner:
-				return "对附近当前生命最低的其他队友"
-			return "对附近当前生命最低的队友"
+				return "对周围一格当前生命最低的其他队友"
+			return "对周围一格当前生命最低的队友"
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ENEMY:
 			return "对当前生命最低的敌人"
 	return ""
