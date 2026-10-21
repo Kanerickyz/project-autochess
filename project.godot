@@ -11,11 +11,7 @@ config_version=5
 [application]
 
 config/name="Project Autochess"
-<<<<<<< HEAD
-config/version="0.5.60"
-=======
-config/version="0.5.58"
->>>>>>> parent of 3db9a69 (feat: allow drag after long-press inspect on units (#142))
+config/version="0.5.61"
 run/main_scene="res://scenes/main/main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://assets/branding/game_icon.png"
