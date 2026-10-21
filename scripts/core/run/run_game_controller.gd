@@ -25,6 +25,8 @@ var _enchant_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
+var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
+var _pending_end_victory: bool = false
 
 
 func _ready() -> void:
@@ -40,6 +42,7 @@ func _ready() -> void:
 	if recruit_config != null:
 		_battle.half_exit_seconds = recruit_config.half_exit_seconds
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
+	_battle.set_run_stat_ledger(_run_stat_ledger)
 	_battle.encounter_completed.connect(_on_encounter_completed)
 	_battle.combat_resolved.connect(_on_combat_resolved)
 	_battle.recruit_finished.connect(_on_recruit_finished)
@@ -58,6 +61,8 @@ func _ready() -> void:
 
 
 func _start_new_run() -> void:
+	_run_stat_ledger.reset()
+	_pending_end_victory = false
 	deck_state.reset_from_config()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
@@ -141,10 +146,12 @@ func _on_combat_resolved(_won: bool) -> void:
 
 func _on_encounter_completed(won: bool) -> void:
 	if not won:
+		var snap := _build_stats_snapshot(false)
 		_battle_root.visible = false
 		if _battle != null:
 			_battle.exit_recruit()
 		run_controller.fail_run()
+		_present_run_end_stats(snap)
 		return
 
 	var node := run_controller.get_pending_node()
@@ -250,14 +257,12 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_run_end_overlay.hide_overlay()
-			_run_stats_overlay.show_stats(_build_run_victory_stats_lines())
+			_present_run_end_stats(_build_stats_snapshot(true))
 		RunController.RunPhase.RUN_DEFEAT:
 			_battle_root.visible = false
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_run_end_overlay.show_defeat()
 
 
 func _on_map_updated() -> void:
@@ -267,29 +272,31 @@ func _on_map_updated() -> void:
 
 func _on_run_stats_continue() -> void:
 	_run_stats_overlay.hide_overlay()
-	_run_end_overlay.show_victory()
+	if _pending_end_victory:
+		_run_end_overlay.show_victory()
+	else:
+		_run_end_overlay.show_defeat()
 
 
-func _build_run_victory_stats_lines() -> PackedStringArray:
+func _present_run_end_stats(snapshot: RunStatsSnapshot) -> void:
+	_pending_end_victory = snapshot != null and snapshot.victory
+	_run_end_overlay.hide_overlay()
+	_run_stats_overlay.show_snapshot(snapshot)
+
+
+func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
+	var snap := RunStatsSnapshot.new()
+	snap.victory = victory
 	var rs := run_controller.run_state
-	var lines: PackedStringArray = []
-	lines.append("战斗胜利：%d 场" % rs.completed_encounter_count)
-	lines.append("造访商店：%d 次" % rs.shop_visit_count)
-	lines.append("战斗用时：%s" % _format_run_duration(rs.total_combat_seconds))
-	lines.append("剩余金币：%d" % run_economy.gold)
-	lines.append("队伍人数：%d" % deck_state.size())
-	var names: PackedStringArray = []
-	for entry in deck_state.get_entries():
-		if entry != null:
-			names.append(entry.get_display_name())
-	if not names.is_empty():
-		lines.append("队员：%s" % "、".join(names))
-	return lines
-
-
-static func _format_run_duration(seconds: float) -> String:
-	var total := int(seconds)
-	return "%d:%02d" % [total / 60, total % 60]
+	snap.encounters_won = rs.completed_encounter_count
+	snap.shop_visits = rs.shop_visit_count
+	snap.combat_seconds = rs.total_combat_seconds
+	snap.gold = run_economy.gold
+	snap.roster.assign(deck_state.get_entries())
+	snap.ledger = _run_stat_ledger
+	snap.highest_attack_entries = RunStatsSnapshot.pick_highest_attack(snap.roster)
+	snap.highest_max_hp_entries = RunStatsSnapshot.pick_highest_max_hp(snap.roster)
+	return snap
 
 
 func _on_run_end_action(action: StringName) -> void:

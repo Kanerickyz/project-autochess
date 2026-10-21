@@ -767,6 +767,14 @@ func _execute_action(
 				target.get_effective_max_hp(),
 				target.current_hp + heal_value,
 			)
+			var healed := target.current_hp - before
+			if healed > 0 and _bus != null:
+				var heal_payload := CombatEventPayload.new()
+				heal_payload.effect_owner = owner
+				heal_payload.source = owner
+				heal_payload.target = target
+				heal_payload.amount = healed
+				_bus.emit_event(CombatEvents.ON_HEAL_APPLIED, heal_payload)
 			print("[Effect] %s heal %d->%d" % [target.id, before, target.current_hp])
 			executed = true
 		EffectAction.Type.SPAWN_UNIT:

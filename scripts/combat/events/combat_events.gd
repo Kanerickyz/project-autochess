@@ -8,6 +8,8 @@ const ON_FRIEND_DEATH := &"OnFriendDeath"
 ## 其他友方受伤时（小队范围）；payload.target = 受伤者。
 const ON_FRIEND_DAMAGE_TAKEN := &"OnFriendDamageTaken"
 const ON_DAMAGE_TAKEN := &"OnDamageTaken"
+## 治疗/恢复生命（仅统计实际增加量）；payload.effect_owner = 施放者。
+const ON_HEAL_APPLIED := &"OnHealApplied"
 
 const ON_DEAL_DAMAGE := &"OnDealDamage"
 const ON_CRIT := &"OnCrit"
