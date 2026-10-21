@@ -28,6 +28,10 @@ static func run_all() -> bool:
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
 	ok = _check("first_floor_elite_count_cap", _test_first_floor_elite_count_cap()) and ok
 	ok = _check("first_floor_max_one_ranged", _test_first_floor_max_one_ranged()) and ok
+	ok = _check("skill_expectation_differentiates", _test_skill_expectation_differentiates()) and ok
+	ok = _check("enemy_id_alpha_lookup_fallback", _test_enemy_id_alpha_lookup_fallback()) and ok
+	ok = _check("fused_entry_uses_runtime_ability", _test_fused_entry_uses_runtime_ability()) and ok
+	ok = _check("recruit_enemy_pool_mirror_contract", _test_recruit_enemy_pool_mirror_contract()) and ok
 	if ok:
 		print("EnemyBudgetSpawnerTest: all passed")
 	else:
@@ -374,11 +378,21 @@ static func _test_team_target_with_floor_guards() -> bool:
 	var e_lo := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 0.0)
 	if not is_equal_approx(e_lo, 20.0):
 		return false
-	## 有真队但 κ×S 低于层下限：不得抬高到显著强于玩家（S=10 → 12.5）
-	var e_soft := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 10.0)
-	if not is_equal_approx(e_soft, 12.5):
+	## 层下限硬夹：κ×S=12.5 < min=20 → 抬到 20（越深层越难，不再软化到弱于护栏）
+	var e_floor := cfg.get_target_pressure(0, MapNodeType.Type.COMBAT, 10.0)
+	if not is_equal_approx(e_floor, 20.0):
+		return false
+	## 层威胁增长：同 S 在更深一层 E 更高（growth 默认 0.06）
+	cfg.floor_threat_growth = 0.10
+	var e_f1 := cfg.get_target_pressure(1, MapNodeType.Type.COMBAT, 40.0)
+	var e_f3 := cfg.get_target_pressure(3, MapNodeType.Type.COMBAT, 40.0)
+	## F=1：50；F=3：50×1.2=60，再夹到该层 max=120 → 60
+	if not is_equal_approx(e_f1, 50.0):
+		return false
+	if not is_equal_approx(e_f3, 60.0):
 		return false
 	## 显式护栏表优先；S=40 → κ×S=50 落在 [30,50] 上沿
+	cfg.floor_threat_growth = 0.0
 	var mins: Array[float] = [30.0]
 	var maxs: Array[float] = [50.0]
 	cfg.floor_e_min = mins
@@ -570,3 +584,82 @@ static func _test_overflow_melee_to_back() -> bool:
 			back_count += 1
 	## 5 前排满，2 溢后排
 	return back_count == 2
+
+
+static func _test_skill_expectation_differentiates() -> bool:
+	## 空技能 stub → α=1.0；有召唤+击杀的技能 raw 更高 → α>1.0。
+	var plain := _make_unit("plain", 10, 2, 1.0, 1, 0.0, 0.0, true)
+	var strong := _make_unit("strong", 10, 2, 1.0, 1, 0.0, 0.0, true)
+	var ab := AbilityData.new()
+	var spec := EffectSpec.new()
+	spec.trigger = CombatEvents.ON_KILL
+	var act := EffectAction.new()
+	act.action_type = EffectAction.Type.SPAWN_UNIT
+	act.spawn_count = 1
+	spec.actions.append(act)
+	ab.effect_specs.append(spec)
+	strong.ability = ab
+	var a_plain := UnitPowerScore.resolve_skill_alpha(plain)
+	var a_strong := UnitPowerScore.resolve_skill_alpha(strong)
+	if not is_equal_approx(a_plain, 1.0):
+		return false
+	return a_strong > a_plain + 0.05
+
+
+static func _test_enemy_id_alpha_lookup_fallback() -> bool:
+	var enemy := _make_unit("enemy_hs", 10, 2, 1.0, 1, 0.0, 0.0, true)
+	var mapped := UnitPowerScore.resolve_skill_alpha(enemy, {"hs": 1.25})
+	return is_equal_approx(mapped, 1.25)
+
+
+static func _test_fused_entry_uses_runtime_ability() -> bool:
+	var shell := _make_unit("fused_enchant", 4, 4, 1.0, 1, 0.0, 0.0, false)
+	var entry := _make_entry(shell, 10, 10, 1)
+	var ab := AbilityData.new()
+	var spec := EffectSpec.new()
+	spec.trigger = CombatEvents.ON_KILL
+	var act := EffectAction.new()
+	act.action_type = EffectAction.Type.GRANT_ACTOR_TURN_REFRESH
+	spec.actions.append(act)
+	ab.effect_specs.append(spec)
+	entry.runtime_main_ability = ab
+	var alpha := UnitPowerScore.resolve_skill_alpha(
+		shell, {}, UnitPowerScore.DEFAULT_ALPHA_NO_SKILL, UnitPowerScore.DEFAULT_ALPHA_HAS_SKILL, ab
+	)
+	## 无 runtime 时白板 0.85；有再动技能应显著高于 1.0。
+	var alpha_blank := UnitPowerScore.resolve_skill_alpha(shell)
+	return alpha > 1.05 and is_equal_approx(alpha_blank, 0.85)
+
+
+static func _test_recruit_enemy_pool_mirror_contract() -> bool:
+	## 内容契约 A：可招种类集合 ≡ 默认抽阵敌池（敌 id = enemy_ + 友 id）。
+	var recruit := load("res://resources/recruit/default_recruit_config.tres") as RecruitConfig
+	var spawn := load("res://resources/spawn/default_spawn_budget.tres") as SpawnBudgetConfig
+	if recruit == null or spawn == null:
+		return false
+	var ally_ids: Dictionary = {}
+	for u in recruit.get_unit_pool():
+		if u == null or u.id.is_empty():
+			continue
+		if FusedEnchantIds.is_fused_unit_id(u.id):
+			continue
+		ally_ids[u.id] = true
+	var enemy_bases: Dictionary = {}
+	for u in spawn.enemy_pool:
+		if u == null or u.id.is_empty():
+			continue
+		enemy_bases[UnitPowerScore.ally_id_from_enemy_id(u.id)] = true
+	if ally_ids.size() != enemy_bases.size():
+		push_error(
+			"pool mirror size ally=%d enemy=%d" % [ally_ids.size(), enemy_bases.size()]
+		)
+		return false
+	for id in ally_ids.keys():
+		if not enemy_bases.has(id):
+			push_error("missing enemy mirror for ally %s" % id)
+			return false
+	for id in enemy_bases.keys():
+		if not ally_ids.has(id):
+			push_error("enemy mirror without ally %s" % id)
+			return false
+	return true

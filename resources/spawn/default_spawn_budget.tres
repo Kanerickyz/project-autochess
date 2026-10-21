@@ -47,6 +47,7 @@ p_mid_floor_growth = 0.12
 kappa_combat = 1.0
 kappa_elite = 1.45
 kappa_boss = 1.9
+floor_threat_growth = 0.06
 band_combat = 0.22
 band_elite = 0.18
 band_boss = 0.12
