@@ -4,7 +4,8 @@ const GAME_SCENE_PATH := "res://scenes/main/run_game.tscn"
 const CODEX_SCENE_PATH := "res://scenes/ui/codex/unit_codex_screen.tscn"
 const ENCHANT_SANDBOX_PATH := "res://scenes/main/enchant_sandbox.tscn"
 
-const MENU_BUTTON_NORMAL := "res://assets/ui/main_menu/menu_button_0.jpg"
+# Sheet row 4 ≈ 参考图双金边横幅；1/2 作悬停与按下
+const MENU_BUTTON_NORMAL := "res://assets/ui/main_menu/menu_button_4.jpg"
 const MENU_BUTTON_HOVER := "res://assets/ui/main_menu/menu_button_1.jpg"
 const MENU_BUTTON_PRESSED := "res://assets/ui/main_menu/menu_button_2.jpg"
 
@@ -50,7 +51,7 @@ func _apply_menu_button_styles() -> void:
 		button.add_theme_color_override("font_color", Color(0.98, 0.96, 0.9, 1))
 		button.add_theme_color_override("font_hover_color", Color(1, 1, 0.95, 1))
 		button.add_theme_color_override("font_pressed_color", Color(0.9, 0.88, 0.82, 1))
-		button.add_theme_font_size_override("font_size", 20)
+		button.add_theme_font_size_override("font_size", 22)
 
 
 func _make_menu_button_stylebox(texture_path: String) -> StyleBoxTexture:
