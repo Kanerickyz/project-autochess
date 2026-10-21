@@ -15,6 +15,7 @@ func _run() -> void:
 	await _test_enchant_fuse_flow()
 	await _test_enchant_sandbox_skip_no_map_signal()
 	await _test_enchant_team_seat_swap()
+	await _test_enchant_scroll_vs_drag_gesture()
 	if _failures == 0:
 		print("EnchantFlowTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -160,3 +161,73 @@ func _test_enchant_team_seat_swap() -> void:
 
 	battle.queue_free()
 	await process_frame
+
+
+func _test_enchant_scroll_vs_drag_gesture() -> void:
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 8)
+	root.add_child(arena)
+	await process_frame
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 24
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	for i in 12:
+		var u := UnitData.new()
+		u.id = "mem_%d" % i
+		u.stats = UnitStats.new()
+		u.ability = HURT
+		deck.add_entry(u)
+	var slots := PrepareSlotBoard.new()
+	var cells := EnchantLayout.build_expanded_team_cells(arena.board_size, deck.size())
+	slots.configure_custom_cells(cells)
+	var idx := 0
+	for entry in deck.get_entries():
+		if entry != null and idx < slots.slot_count:
+			slots.try_assign(idx, entry)
+			idx += 1
+	arena.enchant_active = true
+	arena.enchant_team_scroll_enabled = true
+	arena.enchant_team_max_scroll_rows = EnchantLayout.expanded_team_max_scroll_rows(
+		arena.board_size,
+		deck.size(),
+	)
+	arena.prepare_slots = slots
+	arena.queue_redraw()
+	await process_frame
+
+	var seat0 := slots.get_cell(0)
+	var center := arena.tile_to_local(Vector2(seat0) + Vector2(0.5, 0.5))
+	_press_arena(arena, center, true)
+	_expect(not arena._enchant_team_pan_active, "press on member does not start pan")
+	_expect(arena._enchant_team_press_id >= 0, "member press tracked")
+
+	var move_h := InputEventMouseMotion.new()
+	move_h.position = center + Vector2(24, 2)
+	move_h.relative = Vector2(24, 2)
+	arena._gui_input(move_h)
+	_expect(arena._enchant_team_drag_id >= 0, "horizontal slop starts team drag")
+	_expect(not arena._enchant_team_pan_active, "horizontal move does not pan")
+	_press_arena(arena, move_h.position, false)
+
+	arena.enchant_team_scroll_rows = 0.0
+	arena._enchant_team_drag_id = -1
+	_press_arena(arena, center, true)
+	var move_v := InputEventMouseMotion.new()
+	move_v.position = center + Vector2(2, 28)
+	move_v.relative = Vector2(2, 28)
+	arena._gui_input(move_v)
+	_expect(arena._enchant_team_pan_active, "vertical slop on member starts scroll pan")
+	_expect(arena._enchant_team_drag_id < 0, "vertical move does not drag")
+
+	arena.queue_free()
+	await process_frame
+
+
+func _press_arena(arena: RealtimeArenaView, pos: Vector2, pressed: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = pressed
+	ev.position = pos
+	arena._gui_input(ev)
