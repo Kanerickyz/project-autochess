@@ -28,6 +28,8 @@ static func run_all() -> bool:
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
 	ok = _check("first_floor_elite_count_cap", _test_first_floor_elite_count_cap()) and ok
 	ok = _check("first_floor_max_one_ranged", _test_first_floor_max_one_ranged()) and ok
+	ok = _check("resolve_max_ranged_caps", _test_resolve_max_ranged_caps()) and ok
+	ok = _check("non_first_floor_not_all_ranged", _test_non_first_floor_not_all_ranged()) and ok
 	ok = _check("skill_expectation_differentiates", _test_skill_expectation_differentiates()) and ok
 	ok = _check("enemy_id_alpha_lookup_fallback", _test_enemy_id_alpha_lookup_fallback()) and ok
 	ok = _check("fused_entry_uses_runtime_ability", _test_fused_entry_uses_runtime_ability()) and ok

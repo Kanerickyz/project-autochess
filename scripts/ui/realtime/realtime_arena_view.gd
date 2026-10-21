@@ -114,6 +114,8 @@ var enchant_team_scroll_enabled: bool = false
 var enchant_team_max_scroll_rows: float = 0.0
 ## 角色库模式：整盘铺单位剪影，长按弹技能卡（不走战斗 / 招募）。
 var catalog_active: bool = false
+## true：不画竞技场背景/半场色调，只铺角色格（远征统计卡牌条）。
+var catalog_plain_backdrop: bool = false
 ## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
 var catalog_visual_scale_override: float = -1.0
 ## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
@@ -227,6 +229,7 @@ func _process(delta: float) -> void:
 	if _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
 		if not _press_active:
 			_info_card.hide_info()
+			_info_card.top_level = false
 			_info_shown = false
 			_shown_info = {}
 			_clear_inspect_focus()
@@ -271,6 +274,9 @@ func _notification(what: int) -> void:
 func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
+	## 纯角色目录：铺满控件，不留背景树带边距（与角色库体量一致）。
+	if catalog_active and catalog_plain_backdrop:
+		return maxf(1.0, minf(size.x / float(board_size.x), size.y / float(board_size.y)))
 	var bg := _get_background_rect()
 	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
 	var avail_x := maxf(1.0, size.x - gutter * 2.0)
@@ -885,7 +891,10 @@ func _track_press_motion(pos: Vector2) -> void:
 	if _info_shown:
 		_inspect_finger = pos
 		_update_info_card_under_finger(pos)
-		_info_card.follow_finger(pos)
+		if _info_card.top_level:
+			_info_card.follow_finger(get_global_transform() * pos)
+		else:
+			_info_card.follow_finger(pos)
 		return
 	if _press_ms >= 0 and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 		_press_ms = -1
@@ -934,6 +943,7 @@ func _cancel_press() -> void:
 	_enchant_forge_press = false
 	_clear_inspect_focus()
 	_info_card.hide_info()
+	_info_card.top_level = false
 
 
 func is_info_card_visible() -> bool:
@@ -971,7 +981,17 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
-	_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size), slide_dir)
+	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
+	if catalog_active:
+		_info_card.top_level = true
+		var xf := get_global_transform()
+		var head_g := xf * head
+		var foot_g := xf * foot
+		var vp := get_viewport().get_visible_rect()
+		_info_card.show_info(info, head_g, foot_g, vp, slide_dir)
+	else:
+		_info_card.top_level = false
+		_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size), slide_dir)
 	queue_redraw()
 
 
@@ -1559,7 +1579,11 @@ func clear_recruit_mode() -> void:
 ## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
 ## preview_level：1=一星，2=三合一预览（攻血×3、技能按星级缩放）。
 ## 远征统计等：一行展示队伍成员（攻血与招募队伍区一致）。
-func set_catalog_deck_entries(entries: Array[DeckEntry], columns: int = 5) -> void:
+func set_catalog_deck_entries(
+	entries: Array[DeckEntry],
+	columns: int = 5,
+	plain_backdrop: bool = false,
+) -> void:
 	_cancel_press()
 	clear_recruit_mode()
 	sim = null
@@ -1567,6 +1591,7 @@ func set_catalog_deck_entries(entries: Array[DeckEntry], columns: int = 5) -> vo
 	enemy_slots = null
 	enemy_previews.clear()
 	catalog_active = true
+	catalog_plain_backdrop = plain_backdrop
 	catalog_preview_level = 1
 	catalog_units.clear()
 	var cols := maxi(1, columns)
@@ -1611,6 +1636,7 @@ func set_catalog_units(units: Array[UnitData], columns: int = 5, preview_level: 
 func clear_catalog_mode() -> void:
 	_cancel_press()
 	catalog_active = false
+	catalog_plain_backdrop = false
 	catalog_preview_level = 1
 	catalog_units.clear()
 	board_size = Vector2i(5, 8)
@@ -1631,10 +1657,13 @@ func _draw() -> void:
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	_frame_shake = _motion.get_shake_offset()
 	draw_set_transform(_frame_shake)
-	## 背景不随半场 slide，保证胜→招募同屏背景不断。
-	draw_texture_rect(ARENA_BACKGROUND, _get_background_rect().grow(SHAKE_BLEED_PX), false)
-	## 半场色调与单位/座位随内容滑动；角色库/统计条用统一淡色，避免一行棋盘被中线劈开。
-	if catalog_active:
+	## 背景不随半场 slide，保证胜→招募同屏背景不断；纯目录模式不画场景底。
+	if not (catalog_active and catalog_plain_backdrop):
+		draw_texture_rect(ARENA_BACKGROUND, _get_background_rect().grow(SHAKE_BLEED_PX), false)
+	## 半场色调与单位/座位随内容滑动；角色库用统一淡色；纯目录只留透明底给卡牌格。
+	if catalog_active and catalog_plain_backdrop:
+		pass
+	elif catalog_active:
 		draw_rect(Rect2(rect.position, rect.size), PLAYER_TINT)
 	else:
 		draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
@@ -1969,8 +1998,13 @@ func _draw_catalog_units(px: float) -> void:
 		if cell == NO_CELL or unit == null:
 			continue
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
-		draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.35), false, 1.0)
+		## 纯目录：卡牌底板略厚，贴近角色库可读性。
+		if catalog_plain_backdrop:
+			draw_rect(cell_rect.grow(-2.0), Color(0.14, 0.17, 0.22, 0.95))
+			draw_rect(cell_rect.grow(-2.0), Color(0.55, 0.48, 0.32, 0.75), false, 2.0)
+		else:
+			draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
+			draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.35), false, 1.0)
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
