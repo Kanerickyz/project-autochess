@@ -29,6 +29,7 @@
 - 主代理负责需求、任务拆分、共享文件、集成和交付；小型串行修改由主代理完成。跨模块切片按 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md) 派专职角色；设计已定要落地用 `implement` skill，完整纵切片用 `vertical-slice` skill。
 - Cursor 角色在 `.cursor/agents/*.md`，用 Task 委派。Customize 里看不见就不算已加载；改为手读对应 `.md` 再传合同。不能声称文件已自动加载。
 - 每个纵切片自带目标等级 L0–L5。同时最多三个子代理。未触达的职业不强制到场。`project.godot`、共享场景与枚举由主代理统一修改。
+- **新建或修改角色**（名/id、攻血、主技能、入池）：用 `.cursor/skills/characterdesign/`；先更新 [Documents/Content/CHARACTER_DESIGN.md](Documents/Content/CHARACTER_DESIGN.md) 与花名册，再写 `resources/units/`；角色美术终稿前默认 `res://assets/sprites/placeholders/character_dev.png` 作 `UnitData.icon`。
 - **完全验收**下：集成后 QA 按目标等级给出结论，reviewer 只读审查；阻断退回实现。L5 只修缺陷。验证用 `verify-godot`，画面用 `gui-acceptance`。**轻量验收**不派 QA/GUI，加载烟测即可。
 - 切片等级不取代文档里的 M1–M3 / Run 里程碑；里程碑描述已实现范围，L0–L5 描述当前切片质量；验收方式见 DEVELOPMENT_WORKFLOW。
 

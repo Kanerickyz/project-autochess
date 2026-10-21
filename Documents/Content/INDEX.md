@@ -23,5 +23,6 @@
 | [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（二十三条；挂载见角色库 §6；掩护射击待管线） |
 | [PAPER_CUTOUT_ART_BRIEF.md](./PAPER_CUTOUT_ART_BRIEF.md) | **旧纸剪贴**美术规范（后续制作/验收标准；As-Is 映射与场景见 §11–§12） |
+| [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) | **角色落地流程**（合同字段、文档先于实现、占位 DEV 与资源清单） |
 
 敌方 Boss / 高威胁位见 [BOSS_ROSTER.md](./BOSS_ROSTER.md) 与 [Features/BOSS.md](../Features/BOSS.md)，不进本版友方总表。
