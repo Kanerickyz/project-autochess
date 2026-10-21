@@ -211,10 +211,12 @@ static func get_ability_description(
 		return ""
 	if ability.id == "turn_start_strike_weakest":
 		var dmg := _strike_weakest_skill_damage(unit_level)
-		return (
-			"自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害"
-			+ "（1★为 2；三合一升星后为 7，当前 %d）"
-		) % [dmg, dmg]
+		if unit_level <= 1:
+			return (
+				"自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害"
+				+ "（三合一升星后为 7 点）"
+			) % dmg
+		return "自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害" % dmg
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
 		var line := format_effect_spec(spec, value_scale, with_stat_icons, ability, unit_level)
