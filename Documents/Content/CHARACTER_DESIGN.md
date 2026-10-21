@@ -2,7 +2,17 @@
 
 > Content · 工作流说明（非玩法规则）  
 > 功能规则见 [Features/UNITS.md](../Features/UNITS.md)、[Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md)；友方名单见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)；技能池见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)。  
-> Cursor 执行本流程时用技能 **`.cursor/skills/characterdesign/SKILL.md`**。
+> Cursor 执行本流程时用技能 **`.cursor/skills/characterdesign/SKILL.md`**（**阶段 I 设计对齐** → **阶段 II 文档与实现**）。
+
+## 0. 阶段 I：先对齐再落地
+
+| 步骤 | 做什么 | 禁止 |
+|------|--------|------|
+| 1 | 主代理按 **`design-brainstorm`** 与用户聊清体验与合同草案 | 改花名册、改 `.tres` |
+| 2 | 拉起 **`game-designer`**（默认）；需要时 **`balance-designer`** / **`ui-designer`**（均只读） | 子代理写资源 |
+| 3 | 输出 **设计对齐纪要**（含【用户新共识】），请用户 **确认** 后再进入 §3 | 未确认就实现 |
+
+用户已声明「上文已拍板 / 跳过头脑风暴」且合同完整时，可直进 §3，但交付须引用该输入。
 
 ## 1. 适用场景
 
