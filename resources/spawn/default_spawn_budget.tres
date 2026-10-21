@@ -33,11 +33,12 @@
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_apothecary.tres" id="u_apoth"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_arcane.tres" id="u_arcane"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_shinobi.tres" id="u_shinobi"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_berserker.tres" id="u_berserker"]
 
 [resource]
 script = ExtResource("1_cfg")
 enabled = true
-enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi")])
+enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker")])
 floor_mid_power = Array[float]([0.0, 40.0, 54.0, 68.0, 76.0, 84.0, 90.0, 96.0, 102.0, 106.0, 110.0, 112.0, 114.0, 118.0])
 floor_e_min = Array[float]([19.8, 22.0, 29.7, 37.4, 41.8, 46.2, 49.5, 52.8, 56.1, 58.3, 60.5, 61.6, 62.7, 64.9])
 floor_e_max = Array[float]([57.6, 64.0, 86.4, 108.8, 121.6, 134.4, 144.0, 153.6, 163.2, 169.6, 176.0, 179.2, 182.4, 188.8])

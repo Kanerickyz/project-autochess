@@ -35,6 +35,7 @@ static func run_all() -> bool:
 	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
 	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
+	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
 	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
@@ -252,7 +253,7 @@ static func _test_gravewright_kill_spawn_star2() -> bool:
 		Vector2i(6, 18),
 		UnitInstance.Team.ENEMY,
 	)
-	victim.current_hp = 1
+	victim.current_hp = 0
 	grid.place(digger, Vector2i(4, 20))
 	grid.place(victim, Vector2i(6, 18))
 	var payload := CombatEventPayload.new()
@@ -273,6 +274,45 @@ static func _test_gravewright_kill_spawn_star2() -> bool:
 		push_error(
 			"grave spawn 2★: token %d/%d expected 6/6"
 			% [token.stats.attack, token.stats.max_hp]
+		)
+		return false
+	return true
+
+
+static func _test_berserker_kill_turn_refresh() -> bool:
+	var data := _load_unit("res://resources/units/realtime/berserker.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_grant_actor_turn_refresh":
+		push_error("berserker: ability not mounted")
+		return false
+	var specs: Array = data.ability.effect_specs
+	if specs.is_empty() or specs[0] == null:
+		push_error("berserker: missing spec")
+		return false
+	if int(specs[0].max_triggers_per_combat) != 3:
+		push_error("berserker: max_triggers_per_combat expected 3")
+		return false
+	const BOARD := Vector2i(5, 8)
+	var sim := _new_sim()
+	sim.configure(BOARD, 803)
+	var killer_rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	killer_rt.unit.stats.steps_per_turn = 1
+	var victim := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 1, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(3.5, 5.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while victim.unit.is_alive() and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	if victim.unit.is_alive():
+		push_error("berserker refresh: victim should die")
+		return false
+	var actor := sim.get_current_actor()
+	if actor == null or actor.unit.id != "berserker":
+		push_error(
+			"berserker refresh: expected killer still acting, got %s"
+			% (actor.unit.id if actor != null and actor.unit != null else "null")
 		)
 		return false
 	return true

@@ -881,6 +881,15 @@ func _execute_action(
 				% [owner.id, target.id, str(owner_cell), str(target_cell)]
 			)
 			executed = true
+		EffectAction.Type.GRANT_ACTOR_TURN_REFRESH:
+			if owner == null or not owner.is_alive() or _bus == null:
+				return false
+			var refresh := CombatEventPayload.new()
+			refresh.source = owner
+			refresh.target = owner
+			_bus.emit_event(CombatEvents.ON_ACTOR_TURN_REFRESH, refresh)
+			print("[Effect] %s granted actor turn refresh" % owner.id)
+			executed = true
 		EffectAction.Type.TELEPORT_ADJACENT_TO_TARGET:
 			if owner == null or target == null or not owner.is_alive() or not target.is_alive():
 				return false
