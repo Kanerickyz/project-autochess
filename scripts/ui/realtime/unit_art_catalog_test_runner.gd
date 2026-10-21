@@ -35,6 +35,9 @@ func _initialize() -> void:
 	_check_roster_unique(catalog)
 	_expect(catalog.get_archetype("enemy_knight") == catalog.get_archetype("knight"), "enemy_ prefix shares archetype")
 	_expect(catalog.get_texture("unknown_unit", true) != null, "unknown id falls back to default sprite")
+	_expect(catalog.get_archetype("fused_enchant") == &"fused_enchant", "fused_enchant archetype")
+	_expect(catalog.get_texture("fused_enchant", true) != null, "fused_enchant player sprite")
+	_expect(catalog.get_texture("fused_enchant", false) != null, "fused_enchant enemy sprite")
 	_expect(
 		catalog.get_texture("knight", true) != catalog.get_texture("knight", false),
 		"player and enemy sprites differ",
