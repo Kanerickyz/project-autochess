@@ -107,7 +107,8 @@ flowchart TD
     Resolve -->|胜利| Recruit[RECRUIT_招募] --> Map
     Resolve -->|失败| RunDefeat[RUN_DEFEAT]
     Map -->|Boss| BossPrep[PREPARE] --> BossCombat[COMBAT] --> BossResolve[RESOLVE]
-    BossResolve -->|胜利| RunStats[远征统计]
+    BossResolve -->|胜利| RunResult[结局宣告]
+    RunResult --> RunStats[远征统计]
     RunStats --> RunComplete[RUN_COMPLETE_再来一局或主菜单]
     BossResolve -->|失败| RunDefeat
     Map --> ShopNode[SHOP] --> Map

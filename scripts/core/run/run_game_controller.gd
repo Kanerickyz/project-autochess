@@ -27,6 +27,7 @@ var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
 var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
 var _pending_end_victory: bool = false
+var _pending_end_snapshot: RunStatsSnapshot
 
 
 func _ready() -> void:
@@ -63,6 +64,7 @@ func _ready() -> void:
 func _start_new_run() -> void:
 	_run_stat_ledger.reset()
 	_pending_end_victory = false
+	_pending_end_snapshot = null
 	deck_state.reset_from_config()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
@@ -151,7 +153,7 @@ func _on_encounter_completed(won: bool) -> void:
 		if _battle != null:
 			_battle.exit_recruit()
 		run_controller.fail_run()
-		_present_run_end_stats(snap)
+		_present_run_end_result(snap)
 		return
 
 	var node := run_controller.get_pending_node()
@@ -257,7 +259,7 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 			_map_screen.hide_map()
 			if _battle != null:
 				_battle.exit_recruit()
-			_present_run_end_stats(_build_stats_snapshot(true))
+			_present_run_end_result(_build_stats_snapshot(true))
 		RunController.RunPhase.RUN_DEFEAT:
 			_battle_root.visible = false
 			_map_screen.hide_map()
@@ -270,16 +272,20 @@ func _on_map_updated() -> void:
 		_map_screen.refresh_map(run_controller)
 
 
+## 结局宣告「继续」→ 远征统计；统计「继续」→ 再来一局/回主菜单。
 func _on_run_stats_continue() -> void:
 	_run_stats_overlay.hide_overlay()
-	if _pending_end_victory:
-		_run_end_overlay.show_victory()
-	else:
-		_run_end_overlay.show_defeat()
+	_run_end_overlay.show_choices(_pending_end_victory)
+
+
+func _present_run_end_result(snapshot: RunStatsSnapshot) -> void:
+	_pending_end_snapshot = snapshot
+	_pending_end_victory = snapshot != null and snapshot.victory
+	_run_stats_overlay.hide_overlay()
+	_run_end_overlay.show_result_intro(_pending_end_victory)
 
 
 func _present_run_end_stats(snapshot: RunStatsSnapshot) -> void:
-	_pending_end_victory = snapshot != null and snapshot.victory
 	_run_end_overlay.hide_overlay()
 	_run_stats_overlay.show_snapshot(snapshot)
 
@@ -300,8 +306,13 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 
 
 func _on_run_end_action(action: StringName) -> void:
+	if action == &"continue":
+		_run_end_overlay.hide_overlay()
+		_present_run_end_stats(_pending_end_snapshot)
+		return
 	_run_end_overlay.hide_overlay()
 	_run_stats_overlay.hide_overlay()
+	_pending_end_snapshot = null
 	if action == &"menu":
 		get_tree().change_scene_to_file("res://scenes/main/main_menu.tscn")
 		return
