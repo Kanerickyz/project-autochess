@@ -30,6 +30,8 @@ var step_from: Vector2 = Vector2.ZERO
 var step_to: Vector2 = Vector2.ZERO
 ## 首领召唤冷却：剩余几次自己的行动后才可再召（见 UnitData.summon_cooldown_actions）。
 var boss_summon_cooldown_left: int = 0
+## 本场战斗已成功召唤的衍生小兵次数（见 UnitData.summon_max_total）。
+var boss_summons_spawned_total: int = 0
 
 
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:
