@@ -12,6 +12,7 @@ description: Runs a design brainstorm with studio roles (usually game-designer).
 - 新 Feature 规格动笔前
 - 用户要「先聊设计 / 头脑风暴」
 - 玩法意图未定，或文档与愿景可能冲突、需先对齐
+- **`characterdesign` 阶段 I**：新建/改角色时**必须**走本技能流程（主代理主持）；拍板后再由 `characterdesign` 阶段 II 写 Content 与 `.tres`
 
 ## 硬约束
 
