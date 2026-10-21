@@ -132,7 +132,7 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	if UnitInstance.ability_value_multiplier(3) != 36:
 		push_error("ability mult: 3★ expected 36")
 		return false
-	## 血僧：merge_value_mult=2 → 1★×1 / 2★×2 / 3★×4；基础 4 → 三合一后 +8。
+	## 血僧：merge_value_mult=2 → 1★×1 / 2★×2 / 3★×4；基础治疗 4 → 三合一后恢复 8。
 	var blood := load("res://resources/abilities/hurt_gain_max_hp.tres") as AbilityData
 	if blood == null or blood.merge_value_mult != 2:
 		push_error("ability mult: hurt_gain_max_hp should use merge_value_mult=2")
