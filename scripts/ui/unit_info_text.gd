@@ -106,7 +106,7 @@ static func get_skills_block_from_unit_data(
 	var lines: PackedStringArray = []
 	if data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
-		lines.append(format_ability("技能", data.ability, scale, with_stat_icons))
+		lines.append(format_ability("技能", data.ability, scale, with_stat_icons, level))
 	for passive in data.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, level)
@@ -134,7 +134,7 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 		var scale := 1
 		if entry.get_star_display_level() > 0:
 			scale = UnitInstance.ability_value_multiplier_for(main_ab, entry.level)
-		lines.append(format_ability("技能", main_ab, scale, with_stat_icons))
+		lines.append(format_ability("技能", main_ab, scale, with_stat_icons, entry.level))
 	for passive in entry.unit.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)
@@ -158,7 +158,9 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 	var lines: PackedStringArray = []
 	if unit.unit_data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
-		lines.append(format_ability("技能", unit.unit_data.ability, scale, with_stat_icons))
+		lines.append(
+			format_ability("技能", unit.unit_data.ability, scale, with_stat_icons, unit.level)
+		)
 	for passive in unit.unit_data.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, unit.level)
@@ -200,13 +202,16 @@ static func _buff_effect_description(buff: BuffCardData, with_stat_icons: bool =
 
 
 static func get_ability_description(
-	ability: AbilityData, value_scale: int = 1, with_stat_icons: bool = false
+	ability: AbilityData,
+	value_scale: int = 1,
+	with_stat_icons: bool = false,
+	unit_level: int = 1,
 ) -> String:
 	if ability == null:
 		return ""
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
-		var line := format_effect_spec(spec, value_scale, with_stat_icons)
+		var line := format_effect_spec(spec, value_scale, with_stat_icons, ability, unit_level)
 		if not line.is_empty():
 			parts.append(line)
 	if not parts.is_empty():
@@ -217,16 +222,24 @@ static func get_ability_description(
 
 
 static func format_ability(
-	kind: String, ability: AbilityData, value_scale: int = 1, with_stat_icons: bool = false
+	kind: String,
+	ability: AbilityData,
+	value_scale: int = 1,
+	with_stat_icons: bool = false,
+	unit_level: int = 1,
 ) -> String:
-	var desc := get_ability_description(ability, value_scale, with_stat_icons)
+	var desc := get_ability_description(ability, value_scale, with_stat_icons, unit_level)
 	if desc.is_empty():
 		desc = "无效果描述"
 	return "【%s】%s" % [kind, desc]
 
 
 static func format_effect_spec(
-	spec: EffectSpec, value_scale: int = 1, with_stat_icons: bool = false
+	spec: EffectSpec,
+	value_scale: int = 1,
+	with_stat_icons: bool = false,
+	ability: AbilityData = null,
+	unit_level: int = 1,
 ) -> String:
 	if spec == null:
 		return ""
@@ -256,7 +269,7 @@ static func format_effect_spec(
 			has_spawn_or_split = true
 		else:
 			has_other_action = true
-		var text: String = format_action(action, value_scale, with_stat_icons)
+		var text: String = format_action(action, value_scale, with_stat_icons, ability, unit_level)
 		if not text.is_empty():
 			actions.append(text)
 	## 生成/分裂不写「对自身/对事件目标」——目标选择器只服务批处理，不表示作用对象。
@@ -330,7 +343,11 @@ static func _format_target(spec: EffectSpec) -> String:
 
 
 static func format_action(
-	action: EffectAction, value_scale: int = 1, with_stat_icons: bool = false
+	action: EffectAction,
+	value_scale: int = 1,
+	with_stat_icons: bool = false,
+	ability: AbilityData = null,
+	unit_level: int = 1,
 ) -> String:
 	var scale := maxi(1, value_scale)
 	var scaled_value := action.value * scale
@@ -365,7 +382,9 @@ static func format_action(
 				spawn_name = action.spawn_unit.display_name
 			elif action.spawn_unit != null:
 				spawn_name = action.spawn_unit.id
-			var count := maxi(1, action.spawn_count)
+			var count := AllyDeathSpawnRules.merged_spawn_count(
+				action.spawn_count, ability, unit_level
+			)
 			if action.spawn_owner_base_percent > 0:
 				if count > 1:
 					return "生成 %d×%s（死者基础身体 %d%%）" % [
