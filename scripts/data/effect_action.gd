@@ -16,6 +16,8 @@ enum Type {
 	SWAP_POSITIONS,
 	SPLIT_SELF,
 	FUSE_EXPLODE,
+	## 将技能持有者瞬移至目标邻格（切比雪夫=1）；无空位则跳过。
+	TELEPORT_ADJACENT_TO_TARGET,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

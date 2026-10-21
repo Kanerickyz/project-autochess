@@ -28,6 +28,8 @@ enum TargetSelector {
 	LOWEST_CURRENT_HP_ALLY,
 	## 附近友方中当前生命最低者（半径同 NEARBY_ALLY_RADIUS）。
 	LOWEST_CURRENT_HP_NEARBY_ALLY,
+	## 当前生命最低的敌方；平局先比生命上限再比 instance_id。
+	LOWEST_CURRENT_HP_ENEMY,
 }
 
 

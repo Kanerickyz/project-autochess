@@ -1235,9 +1235,30 @@ func _drain_effects(force: bool = false) -> void:
 	var guard := EFFECT_DRAIN_GUARD
 	while _effect_resolver.has_pending_steps() and guard > 0:
 		_effect_resolver.process_next_step()
+		_sync_rt_positions_from_effect_grid()
 		_sync_effect_spawns_from_grid()
 		_sync_deaths_from_hp()
 		guard -= 1
+
+
+func _sync_rt_positions_from_effect_grid() -> void:
+	if _effect_grid == null:
+		return
+	for rt in _units:
+		if rt == null or rt.unit == null or not rt.is_alive():
+			continue
+		var cell := _effect_grid.find_cell_of(rt.unit)
+		if cell == Vector2i(-1, -1):
+			continue
+		if cell == rt.cell and not rt.is_stepping():
+			continue
+		_clear_occupancy_of(rt)
+		rt.cell = cell
+		rt.step_dest = cell
+		rt.step_t = 1.0
+		rt.position = rt.footprint_center(cell)
+		_occupy_footprint(rt, cell)
+		rt.unit.grid_pos = cell
 
 
 func _sync_effect_spawns_from_grid() -> void:
