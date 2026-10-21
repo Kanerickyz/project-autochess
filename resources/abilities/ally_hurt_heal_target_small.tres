@@ -14,6 +14,7 @@ script = ExtResource("2_spec")
 trigger = &"OnFriendDamageTaken"
 target_selector = 1
 max_triggers_per_combat = 8
+condition = 4
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]

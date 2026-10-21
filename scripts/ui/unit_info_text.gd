@@ -263,6 +263,11 @@ static func format_effect_spec(
 		and spec.condition == EffectSpec.Condition.EVENT_TARGET_IS_COMBAT_SUMMON
 	):
 		trigger = "友方随从被召唤时"
+	elif (
+		spec.trigger == CombatEvents.ON_FRIEND_DAMAGE_TAKEN
+		and spec.condition == EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP
+	):
+		trigger = "友方受伤且该友方未满血时"
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
 	var has_spawn_or_split := false

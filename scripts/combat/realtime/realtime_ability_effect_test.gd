@@ -48,6 +48,7 @@ static func run_all() -> bool:
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
+	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
 	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
 	_check("turn_start_strike_weakest_damage", _test_turn_start_strike_weakest_damage())
@@ -880,6 +881,13 @@ static func _test_ally_hurt_heal_target() -> bool:
 	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
 		push_error("ally_hurt_heal: crossbow ability not mounted")
 		return false
+	var specs: Array = data.ability.effect_specs
+	if specs.is_empty() or specs[0] == null:
+		push_error("ally_hurt_heal: missing effect spec")
+		return false
+	if specs[0].condition != EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP:
+		push_error("ally_hurt_heal: must skip when event target is at max hp")
+		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 43)
 	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
@@ -897,6 +905,34 @@ static func _test_ally_hurt_heal_target() -> bool:
 		push_error(
 			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
 			% [ally.unit.current_hp, hp_mid]
+		)
+		return false
+	return true
+
+
+## 双弩手：第一只疗满后，第二只不再对已满血目标执行治疗。
+static func _test_ally_hurt_heal_skips_when_full() -> bool:
+	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
+	if data == null:
+		push_error("ally_hurt_heal_full: missing crossbow")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 44)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(10.5, 22.5))
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 4, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(9.5, 20.5),
+	)
+	ally.unit.current_hp = 4
+	sim.begin_combat()
+	sim._pipeline.apply_damage(null, ally, 2)
+	sim._drain_effects()
+	## 4→2，+2 疗回 4；第二弩手不应再抬血或刷多余治疗。
+	if ally.unit.current_hp != 4:
+		push_error(
+			"ally_hurt_heal_full: ally hp=%d expected 4 after single heal"
+			% ally.unit.current_hp
 		)
 		return false
 	return true
