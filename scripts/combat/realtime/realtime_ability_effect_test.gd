@@ -52,6 +52,10 @@ static func run_all() -> bool:
 	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
 	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
 	_check("turn_start_strike_weakest_damage", _test_turn_start_strike_weakest_damage())
+	_check(
+		"turn_start_strike_weakest_teleport_deferred",
+		_test_turn_start_strike_weakest_teleport_deferred(),
+	)
 
 	for sim in _created:
 		sim.dispose()
@@ -1003,6 +1007,48 @@ static func _test_turn_start_strike_weakest_damage() -> bool:
 	if victim.current_hp != 13:
 		push_error(
 			"strike_weakest L2: victim hp expected 13, got %d" % victim.current_hp
+		)
+		return false
+	return true
+
+
+## 2★ + defer 结算：走位后效果格须对齐，瞬移应落到最弱敌邻格。
+static func _test_turn_start_strike_weakest_teleport_deferred() -> bool:
+	var data := _load_unit("res://resources/units/realtime/shinobi.tres")
+	var sim := _new_sim()
+	sim.defer_effect_resolve = true
+	sim.configure(ARENA, 502)
+	var shinobi_rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 26.5))
+	shinobi_rt.unit.level = 2
+	shinobi_rt.unit.stats.steps_per_turn = 0
+	var weak_rt := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(14.5, 8.5),
+	)
+	weak_rt.unit.current_hp = 20
+	sim.begin_combat()
+	shinobi_rt.snap_to_cell(Vector2i(8, 22))
+	var payload := CombatEventPayload.new()
+	payload.source = shinobi_rt.unit
+	payload.target = shinobi_rt.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	if not sim.has_pending_effects():
+		push_error("teleport deferred: expected pending skill batch")
+		return false
+	if not sim.resolve_next_pending_effect():
+		push_error("teleport deferred: resolve_next_pending_effect failed")
+		return false
+	var dist := shinobi_rt.cell_distance_to(weak_rt)
+	if dist > 1:
+		push_error(
+			"teleport deferred: shinobi dist to weak=%d expected <=1 (cell %s)"
+			% [dist, str(shinobi_rt.get_cell())]
+		)
+		return false
+	if weak_rt.unit.current_hp != 13:
+		push_error(
+			"teleport deferred: weak hp=%d expected 13 (7 dmg at 2★)"
+			% weak_rt.unit.current_hp
 		)
 		return false
 	return true

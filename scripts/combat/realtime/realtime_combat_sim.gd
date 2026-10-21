@@ -334,7 +334,9 @@ func peek_pending_effect_batch() -> QueuedEffectBatch:
 func resolve_next_pending_effect() -> bool:
 	if _effect_resolver == null or not _effect_resolver.has_pending_steps():
 		return false
+	_sync_effect_grid_from_rt_positions()
 	_effect_resolver.process_next_step()
+	_sync_rt_positions_from_effect_grid()
 	_sync_effect_spawns_from_grid()
 	_sync_deaths_from_hp()
 	return true
@@ -449,6 +451,7 @@ func _begin_next_actor_turn() -> void:
 			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
 				candidate.boss_summon_cooldown_left -= 1
 			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
+			_sync_effect_grid_from_rt_positions()
 			var payload := CombatEventPayload.new()
 			payload.source = candidate.unit
 			payload.target = candidate.unit
@@ -1234,11 +1237,40 @@ func _drain_effects(force: bool = false) -> void:
 		return
 	var guard := EFFECT_DRAIN_GUARD
 	while _effect_resolver.has_pending_steps() and guard > 0:
+		_sync_effect_grid_from_rt_positions()
 		_effect_resolver.process_next_step()
 		_sync_rt_positions_from_effect_grid()
 		_sync_effect_spawns_from_grid()
 		_sync_deaths_from_hp()
 		guard -= 1
+
+
+## 实时战场走位后，效果格仍可能是开战落点；技能选目标/瞬移前须与 RtUnit 对齐。
+func _sync_effect_grid_from_rt_positions() -> void:
+	if _effect_grid == null:
+		return
+	var placements: Array[Dictionary] = []
+	for rt in _units:
+		if rt == null or rt.unit == null or not rt.is_alive():
+			continue
+		placements.append({"unit": rt.unit, "cell": rt.get_cell()})
+	for rt in _units:
+		if rt == null or rt.unit == null:
+			continue
+		_effect_grid.remove_unit(rt.unit)
+	for entry in placements:
+		var unit: UnitInstance = entry["unit"]
+		var cell: Vector2i = entry["cell"]
+		if unit == null or not unit.is_alive():
+			continue
+		var dest := cell
+		if not _effect_grid.can_place_at(dest):
+			dest = _find_free_effect_cell(dest)
+		if dest == Vector2i(-1, -1):
+			push_warning("RealtimeCombatSim: effect grid sync failed for %s" % unit.id)
+			continue
+		_effect_grid.place(unit, dest)
+		unit.grid_pos = dest
 
 
 func _sync_rt_positions_from_effect_grid() -> void:
