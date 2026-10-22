@@ -119,9 +119,10 @@ var _tape_stats_disabled: bool = false
 var _world_backdrop_mode: bool = false
 
 var _refresh_button: Button
-## 观战倍速：1 → 2 → 3 → 1 循环。
-var _speed_button: Button
+## 观战倍速档位；由录音机中键与暂停合成循环：1×→2×→3×→暂停→1×。
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
+## 准备阶段：复制/粘贴/开战横排（开战更宽）。
+var _prepare_action_row: HBoxContainer
 ## 准备阶段：复制本场布局（正式 + 沙盒）。
 var _copy_layout_button: Button
 ## 沙盒准备：粘贴布局。
@@ -131,13 +132,16 @@ var _paste_dialog: Control
 var _paste_edit: TextEdit
 var _paste_apply_button: Button
 var _paste_cancel_button: Button
-## 观战录音机三键。
+## 观战录音机三键（中键＝倍速/暂停合一）。
 var _tape_row: HBoxContainer
 var _tape_prev_button: Button
-var _tape_pause_button: Button
+var _tape_play_speed_button: Button
 var _tape_next_button: Button
 const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
+## 准备横排：开战相对复制/粘贴的宽度比。
+const _PREPARE_START_STRETCH := 2.0
+const _PREPARE_SECONDARY_STRETCH := 1.0
 
 
 func _ready() -> void:
@@ -156,7 +160,7 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
-	_ensure_speed_button()
+	_ensure_prepare_action_row()
 	_ensure_layout_clipboard_buttons()
 	_ensure_tape_controls()
 	_ensure_recruit_hud()
@@ -165,6 +169,8 @@ func _ready() -> void:
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = false
 	_refresh_hud()
 
 
@@ -1288,61 +1294,61 @@ func _ensure_refresh_button() -> void:
 	_refresh_button.visible = false
 
 
-func _ensure_speed_button() -> void:
-	if _speed_button != null and is_instance_valid(_speed_button):
-		_update_speed_button_text()
+func _ensure_prepare_action_row() -> void:
+	if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
 		return
-	_speed_button = Button.new()
-	_speed_button.name = "SpeedButton"
-	_speed_button.unique_name_in_owner = true
-	_speed_button.custom_minimum_size = Vector2(0, 36)
-	_speed_button.pressed.connect(_on_speed_pressed)
-	var dock_box := _start_button.get_parent() if _start_button != null else null
+	if _start_button == null:
+		return
+	var dock_box := _start_button.get_parent()
+	_prepare_action_row = HBoxContainer.new()
+	_prepare_action_row.name = "PrepareActionRow"
+	_prepare_action_row.unique_name_in_owner = true
+	_prepare_action_row.add_theme_constant_override("separation", 8)
+	_prepare_action_row.visible = false
 	if dock_box != null:
-		dock_box.add_child(_speed_button)
-		## 开战钮下方，观战可用。
-		dock_box.move_child(_speed_button, _start_button.get_index() + 1)
+		var start_i := _start_button.get_index()
+		dock_box.add_child(_prepare_action_row)
+		dock_box.move_child(_prepare_action_row, start_i)
+		_start_button.reparent(_prepare_action_row)
 	else:
-		add_child(_speed_button)
-	_update_speed_button_text()
-	_speed_button.visible = false
-
-
-func _update_speed_button_text() -> void:
-	if _speed_button == null:
-		return
-	var shown := 1
-	if time_scale >= 2.5:
-		shown = 3
-	elif time_scale >= 1.5:
-		shown = 2
-	_speed_button.text = "倍速 %d×" % shown
+		add_child(_prepare_action_row)
+		_start_button.reparent(_prepare_action_row)
+	_start_button.custom_minimum_size = Vector2(0, 40)
+	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_start_button.size_flags_stretch_ratio = _PREPARE_START_STRETCH
 
 
 func _ensure_layout_clipboard_buttons() -> void:
-	var dock_box := _start_button.get_parent() if _start_button != null else null
+	_ensure_prepare_action_row()
+	var row := _prepare_action_row
 	if _copy_layout_button == null or not is_instance_valid(_copy_layout_button):
 		_copy_layout_button = Button.new()
 		_copy_layout_button.name = "CopyLayoutButton"
 		_copy_layout_button.unique_name_in_owner = true
-		_copy_layout_button.custom_minimum_size = Vector2(0, 36)
-		_copy_layout_button.text = "复制本场布局"
+		_copy_layout_button.custom_minimum_size = Vector2(0, 40)
+		_copy_layout_button.text = "复制布局"
+		_copy_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_copy_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
 		_copy_layout_button.pressed.connect(_on_copy_layout_pressed)
-		if dock_box != null:
-			dock_box.add_child(_copy_layout_button)
-			dock_box.move_child(_copy_layout_button, _start_button.get_index())
+		if row != null:
+			row.add_child(_copy_layout_button)
+			## 复制在开战左侧。
+			row.move_child(_copy_layout_button, maxi(_start_button.get_index(), 0))
 		else:
 			add_child(_copy_layout_button)
 	if _paste_layout_button == null or not is_instance_valid(_paste_layout_button):
 		_paste_layout_button = Button.new()
 		_paste_layout_button.name = "PasteLayoutButton"
 		_paste_layout_button.unique_name_in_owner = true
-		_paste_layout_button.custom_minimum_size = Vector2(0, 36)
+		_paste_layout_button.custom_minimum_size = Vector2(0, 40)
 		_paste_layout_button.text = "粘贴布局"
+		_paste_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_paste_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
 		_paste_layout_button.pressed.connect(_on_paste_layout_pressed)
-		if dock_box != null:
-			dock_box.add_child(_paste_layout_button)
-			dock_box.move_child(_paste_layout_button, _copy_layout_button.get_index())
+		if row != null:
+			row.add_child(_paste_layout_button)
+			## 沙盒：粘贴 | 复制 | 开战。
+			row.move_child(_paste_layout_button, 0)
 		else:
 			add_child(_paste_layout_button)
 	_copy_layout_button.visible = false
@@ -1363,24 +1369,30 @@ func _ensure_tape_controls() -> void:
 	_tape_prev_button.custom_minimum_size = Vector2(0, 36)
 	_tape_prev_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_tape_prev_button.pressed.connect(_on_tape_prev_pressed)
-	_tape_pause_button = Button.new()
-	_tape_pause_button.text = "暂停"
-	_tape_pause_button.custom_minimum_size = Vector2(0, 36)
-	_tape_pause_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_tape_pause_button.pressed.connect(_on_tape_pause_pressed)
+	## 中键：倍速与暂停合一（1×→2×→3×→暂停→1×）。
+	_tape_play_speed_button = Button.new()
+	_tape_play_speed_button.name = "TapePlaySpeedButton"
+	_tape_play_speed_button.text = "倍速 1×"
+	_tape_play_speed_button.custom_minimum_size = Vector2(0, 36)
+	_tape_play_speed_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tape_play_speed_button.pressed.connect(_on_tape_play_speed_pressed)
 	_tape_next_button = Button.new()
 	_tape_next_button.text = "下一动"
 	_tape_next_button.custom_minimum_size = Vector2(0, 36)
 	_tape_next_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_tape_next_button.pressed.connect(_on_tape_next_pressed)
 	_tape_row.add_child(_tape_prev_button)
-	_tape_row.add_child(_tape_pause_button)
+	_tape_row.add_child(_tape_play_speed_button)
 	_tape_row.add_child(_tape_next_button)
-	var dock_box := _start_button.get_parent() if _start_button != null else null
+	var dock_box: Node = null
+	if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
+		dock_box = _prepare_action_row.get_parent()
+	elif _start_button != null:
+		dock_box = _start_button.get_parent()
 	if dock_box != null:
 		dock_box.add_child(_tape_row)
-		if _speed_button != null and is_instance_valid(_speed_button):
-			dock_box.move_child(_tape_row, _speed_button.get_index())
+		if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
+			dock_box.move_child(_tape_row, _prepare_action_row.get_index() + 1)
 	else:
 		add_child(_tape_row)
 	_tape_row.visible = false
@@ -1404,10 +1416,24 @@ func _update_tape_controls() -> void:
 		_tape_row.visible = in_combat
 	if not in_combat:
 		return
-	if _tape_pause_button != null:
-		_tape_pause_button.text = "继续" if _tape_paused and not _tape_step_once else "暂停"
+	if _tape_play_speed_button != null:
+		if _tape_paused and not _tape_step_once:
+			_tape_play_speed_button.text = "继续"
+		else:
+			_tape_play_speed_button.text = "倍速 %d×" % _current_speed_step_shown()
 	if _tape_prev_button != null:
 		_tape_prev_button.disabled = _tape_completed_turns <= 0 or _tape_rewinding
+
+
+func _current_speed_step_index() -> int:
+	for i in _SPEED_STEPS.size():
+		if is_equal_approx(time_scale, _SPEED_STEPS[i]):
+			return i
+	return 0
+
+
+func _current_speed_step_shown() -> int:
+	return int(_SPEED_STEPS[_current_speed_step_index()])
 
 
 func _on_copy_layout_pressed() -> void:
@@ -1542,27 +1568,38 @@ func _on_paste_dialog_confirmed() -> void:
 	## 失败时保持窗口，方便改正文。
 
 
-func _on_tape_pause_pressed() -> void:
+## 中键：播放中 1×→2×→3×，再点则暂停；暂停时点「继续」回到 1× 播放。
+func _on_tape_play_speed_pressed() -> void:
 	if _phase != Phase.COMBAT or _sim == null:
 		return
 	if _tape_paused and not _tape_step_once:
+		time_scale = _SPEED_STEPS[0]
 		_tape_paused = false
 		_tape_pause_requested = false
 		_tape_step_once = false
 		_tape_boundary_pending = false
-	else:
-		## 动与动之间冻结；若正在一动中则等本动+演出结束。
-		_tape_pause_requested = true
-		_tape_step_once = false
-		if (
-			_sim.get_current_actor() == null
-			and not _timestop_queue.is_blocking()
-			and not _sim.has_pending_effects()
-		):
-			_tape_paused = true
-			_tape_pause_requested = false
-			_tape_boundary_pending = false
+		_update_tape_controls()
+		_refresh_hud()
+		return
+	var idx := _current_speed_step_index()
+	if idx < _SPEED_STEPS.size() - 1:
+		time_scale = _SPEED_STEPS[idx + 1]
+		_update_tape_controls()
+		_refresh_hud()
+		return
+	## 已在最高倍速：请求暂停（动间冻结）。
+	_tape_pause_requested = true
+	_tape_step_once = false
+	if (
+		_sim.get_current_actor() == null
+		and not _timestop_queue.is_blocking()
+		and not _sim.has_pending_effects()
+	):
+		_tape_paused = true
+		_tape_pause_requested = false
+		_tape_boundary_pending = false
 	_update_tape_controls()
+	_refresh_hud()
 
 
 func _on_tape_next_pressed() -> void:
@@ -1716,18 +1753,6 @@ func _build_enemy_spawns_from_override(rows: Array) -> Array:
 	return spawns
 
 
-func _on_speed_pressed() -> void:
-	var idx := 0
-	for i in _SPEED_STEPS.size():
-		if is_equal_approx(time_scale, _SPEED_STEPS[i]):
-			idx = i
-			break
-	idx = (idx + 1) % _SPEED_STEPS.size()
-	time_scale = _SPEED_STEPS[idx]
-	_update_speed_button_text()
-	_refresh_hud()
-
-
 func _ensure_recruit_hud() -> void:
 	if _recruit_hud != null and is_instance_valid(_recruit_hud):
 		return
@@ -1824,12 +1849,12 @@ func _hide_combat_chrome_for_recruit() -> void:
 		_dock.custom_minimum_size.y = keep_h
 	if _hand_row != null:
 		_hand_row.visible = false
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = false
 	if _start_button != null:
 		_start_button.visible = false
 	if _refresh_button != null:
 		_refresh_button.visible = false
-	if _speed_button != null:
-		_speed_button.visible = false
 	if _result_overlay != null:
 		_result_overlay.visible = false
 
@@ -2756,8 +2781,11 @@ func _refresh_cards() -> void:
 		card.status_text = ""
 		if not in_prepare and card.selected:
 			_set_selected(-1)
+	var show_prepare_actions := in_prepare and not in_recruit
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = show_prepare_actions
 	if _start_button != null:
-		_start_button.visible = in_prepare and not in_recruit
+		_start_button.visible = show_prepare_actions
 		var can_start := _slots.occupied_count() >= 1
 		if _combat_sandbox_mode:
 			can_start = can_start and not _enemy_spawns.is_empty()
@@ -2768,14 +2796,9 @@ func _refresh_cards() -> void:
 		_refresh_button.disabled = true
 		_refresh_button.text = "刷新手牌（已禁用）"
 	if _copy_layout_button != null:
-		_copy_layout_button.visible = in_prepare and not in_recruit
+		_copy_layout_button.visible = show_prepare_actions
 	if _paste_layout_button != null:
-		_paste_layout_button.visible = in_prepare and not in_recruit and _combat_sandbox_mode
-	if _speed_button != null:
-		## 开战观战可调倍速；结算叠层时倍速仍可改，录音机整组隐藏。
-		_speed_button.visible = _phase == Phase.COMBAT
-		_speed_button.disabled = false
-		_update_speed_button_text()
+		_paste_layout_button.visible = show_prepare_actions and _combat_sandbox_mode
 	_update_tape_controls()
 
 
