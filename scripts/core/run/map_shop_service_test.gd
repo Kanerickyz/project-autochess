@@ -142,14 +142,13 @@ static func _test_equipment_conflict() -> bool:
 	var entry := deck.get_entries()[0]
 	var old_eq := MapShopConfig._make_equipment("armor_t1", "护甲 I", 1, 2)
 	var new_eq := MapShopConfig._make_equipment("armor_t3", "护甲 III", 4, 10)
-	entry.equipment = old_eq
-	var econ := _make_economy(20)
+	entry.attach_equipment(old_eq)
 	## seed 选出使 randf()<0.5 → kept_new=true 与 false 都能测：固定两次。
 	var kept_new_count := 0
 	var kept_old_count := 0
 	for seed in [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]:
 		var e2 := deck.get_entries()[0]
-		e2.equipment = old_eq
+		e2.attach_equipment(old_eq)
 		var econ2 := _make_economy(20)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed
@@ -166,11 +165,11 @@ static func _test_equipment_conflict() -> bool:
 			return false
 		if bool(result.get("kept_new", false)):
 			kept_new_count += 1
-			if e2.equipment != new_eq:
+			if e2.equipment == null or e2.equipment.id != new_eq.id:
 				return false
 		else:
 			kept_old_count += 1
-			if e2.equipment != old_eq:
+			if e2.equipment == null or e2.equipment.id != old_eq.id:
 				return false
 	## 10 次应至少出现两种结果（概率极低全同，但 seed 范围够）。
 	if kept_new_count == 0 or kept_old_count == 0:

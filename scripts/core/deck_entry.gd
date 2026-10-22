@@ -85,3 +85,21 @@ func get_equipment_display_name() -> String:
 	if equipment == null:
 		return ""
 	return equipment.get_display_name()
+
+
+## 挂装备：duplicate 实例，避免改写商店池 / .tres 共享资源。
+func attach_equipment(item: EquipmentData) -> void:
+	if item == null:
+		equipment = null
+		return
+	equipment = item.duplicate(true) as EquipmentData
+
+
+## 战斗护甲消耗回写：剩余 ≤0 时销毁装备。
+func apply_armor_remaining(remaining: int) -> void:
+	if equipment == null:
+		return
+	if remaining <= 0:
+		equipment = null
+		return
+	equipment.armor_block = remaining

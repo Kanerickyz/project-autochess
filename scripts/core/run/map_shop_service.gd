@@ -181,9 +181,9 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		## 旧/新各 50% 留一件；另一件消失，不退金。
 		kept_new = _rng.randf() < 0.5
 		if kept_new:
-			entry.equipment = item
+			entry.attach_equipment(item)
 	else:
-		entry.equipment = item
+		entry.attach_equipment(item)
 	_equipment_offers[slot_index] = null
 	_deck.deck_changed.emit()
 	shop_changed.emit()
