@@ -147,6 +147,18 @@ static func _map_action(
 				"show_tip": false,
 				"tip": "",
 			}
+		EffectAction.Type.ABSORB_STATS_AND_KILL:
+			return {
+				"kind": KIND_LABEL,
+				"text": _shorten(tip if not tip.is_empty() else "吞噬", 8),
+				"amount": 0,
+				"target": anchor,
+				"is_player": is_player,
+				"unit_id": unit_id,
+				"merge_key": "%d|label|devour" % unit_id,
+				"show_tip": false,
+				"tip": "",
+			}
 		_:
 			## 非数字且无专用短标：低频时用技能名；高频跳过以免刷屏。
 			if not rare_tip or tip.is_empty():

@@ -67,6 +67,7 @@ static func run_all() -> bool:
 	)
 	_check("devour_lr_absorb_and_kill", _test_devour_lr_absorb_and_kill())
 	_check("devour_star2_skips_boss", _test_devour_star2_skips_boss())
+	_check("devour_rt_defer_kills_left_right", _test_devour_rt_defer_kills_left_right())
 	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
 
 	for sim in _created:
@@ -1470,6 +1471,64 @@ static func _test_devour_lr_absorb_and_kill() -> bool:
 		push_error(
 			"devour: max_hp=%d expected %d"
 			% [devourer.get_effective_max_hp(), hp0 + 5]
+		)
+		return false
+	return true
+
+
+## 实时 + defer：介绍卡路径下左右友方仍被消灭；上下不受影响。
+static func _test_devour_rt_defer_kills_left_right() -> bool:
+	var data := _load_unit("res://resources/units/realtime/devour.tres")
+	var fodder := _load_unit("res://resources/units/realtime/skeleton.tres")
+	if data == null or fodder == null:
+		push_error("devour_rt: missing units")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 77)
+	sim.defer_effect_resolve = true
+	var devourer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	var left := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 5, {"id": "fodder_l", "attack": 2, "steps_per_turn": 0}),
+		Vector2(8.5, 24.5),
+	)
+	var right := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 6, {"id": "fodder_r", "attack": 3, "steps_per_turn": 0}),
+		Vector2(10.5, 24.5),
+	)
+	var up := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 8, {"id": "fodder_up", "steps_per_turn": 0}),
+		Vector2(9.5, 23.5),
+	)
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(9.5, 4.5),
+	)
+	devourer.unit.stats.steps_per_turn = 0
+	sim.begin_combat()
+	var guard := 0
+	while not sim.has_pending_effects() and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	if not sim.has_pending_effects():
+		push_error("devour_rt: expected pending OnRoundStart batch")
+		return false
+	## 模拟介绍卡结算：一次 process 整批。
+	while sim.has_pending_effects():
+		sim.resolve_next_pending_effect()
+	sim._remove_dead()
+	if left.is_alive() or right.is_alive():
+		push_error(
+			"devour_rt: L/R should die (L=%s R=%s)"
+			% [left.is_alive(), right.is_alive()]
+		)
+		return false
+	if not up.is_alive():
+		push_error("devour_rt: up neighbor must survive")
+		return false
+	if devourer.unit.get_effective_attack() != 4 + 2 + 3:
+		push_error(
+			"devour_rt: atk=%d expected 9"
+			% devourer.unit.get_effective_attack()
 		)
 		return false
 	return true

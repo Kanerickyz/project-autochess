@@ -653,7 +653,8 @@ func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[Unit
 	return result
 
 
-## 正交左右邻格友方（同一行、列 ±1）。2★+ 跳过首领。
+## 正交左右邻格友方（同一行、列 ±1；不含上下/斜）。2★+ 跳过首领。
+## 按友方足迹格判定邻接，避免只查中心格漏掉占位。
 func _pick_orthogonal_left_right_allies(
 	owner: UnitInstance,
 	exclude_owner: bool,
@@ -666,22 +667,46 @@ func _pick_orthogonal_left_right_allies(
 	if found != Vector2i(-1, -1):
 		center = found
 	var skip_boss := owner.level >= 2
-	for offset_x in [-1, 1]:
-		var cell := Vector2i(center.x + offset_x, center.y)
-		if not _grid.in_bounds(cell):
-			continue
-		var unit := _grid.get_unit(cell)
+	var left_cell := Vector2i(center.x - 1, center.y)
+	var right_cell := Vector2i(center.x + 1, center.y)
+	var seen: Dictionary = {}
+	for unit in _grid.get_units_by_team(owner.team, true):
 		if unit == null or not unit.is_alive():
-			continue
-		if unit.team != owner.team:
 			continue
 		if exclude_owner and unit.instance_id == owner.instance_id:
 			continue
 		if skip_boss and unit.is_boss_leader():
 			continue
+		if seen.has(unit.instance_id):
+			continue
+		var cells := _unit_footprint_cells(unit)
+		var touches := false
+		for cell in cells:
+			if cell == left_cell or cell == right_cell:
+				touches = true
+				break
+		if not touches:
+			continue
+		seen[unit.instance_id] = true
 		result.append(unit)
 	result.sort_custom(_sort_listeners)
 	return result
+
+
+func _unit_footprint_cells(unit: UnitInstance) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if unit == null or _grid == null:
+		return cells
+	var origin := _grid.find_cell_of(unit)
+	if origin == Vector2i(-1, -1):
+		origin = unit.grid_pos
+	var size := unit.get_footprint_size()
+	for dy in size.y:
+		for dx in size.x:
+			cells.append(Vector2i(origin.x + dx, origin.y + dy))
+	if cells.is_empty():
+		cells.append(origin)
+	return cells
 
 
 func process_attack_hit_immediate(payload: CombatEventPayload) -> Dictionary:
