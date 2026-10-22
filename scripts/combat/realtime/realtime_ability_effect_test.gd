@@ -33,6 +33,8 @@ static func run_all() -> bool:
 	_check("ability_merge_value_multiplier", _test_ability_merge_value_multiplier())
 	_check("enemy_death_self_atk_hp_small", _test_enemy_death_self_atk_hp_small())
 	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
+	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
+	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
 	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
 	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
@@ -338,6 +340,85 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 			"berserker refresh: expected killer still acting, got %s"
 			% (actor.unit.id if actor != null and actor.unit != null else "null")
 		)
+		return false
+	return true
+
+
+static func _test_enemy_death_random_ally_atk_hp_small() -> bool:
+	var data := _load_unit("res://resources/units/realtime/horsebow.tres")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_random_ally_atk_hp_small":
+		push_error("horsebow: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("horsebow: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 44)
+	var bow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	var ally := sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_buff_target", "steps_per_turn": 0}), Vector2(8.5, 24.5))
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_hb", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.begin_combat()
+	var bow_atk0 := bow.unit.get_effective_attack()
+	var bow_hp0 := bow.unit.get_effective_max_hp()
+	var ally_atk0 := ally.unit.get_effective_attack()
+	var ally_hp0 := ally.unit.get_effective_max_hp()
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("horsebow: failed to kill enemy")
+		return false
+	sim._drain_effects()
+	var d_bow_atk := bow.unit.get_effective_attack() - bow_atk0
+	var d_bow_hp := bow.unit.get_effective_max_hp() - bow_hp0
+	var d_ally_atk := ally.unit.get_effective_attack() - ally_atk0
+	var d_ally_hp := ally.unit.get_effective_max_hp() - ally_hp0
+	## 恰好一名友方得到 +1/+1。
+	var buffed_n := 0
+	if d_bow_atk == 1 and d_bow_hp == 1:
+		buffed_n += 1
+	elif d_bow_atk != 0 or d_bow_hp != 0:
+		push_error("horsebow: bow got uneven buff atk=%d hp=%d" % [d_bow_atk, d_bow_hp])
+		return false
+	if d_ally_atk == 1 and d_ally_hp == 1:
+		buffed_n += 1
+	elif d_ally_atk != 0 or d_ally_hp != 0:
+		push_error("horsebow: ally got uneven buff atk=%d hp=%d" % [d_ally_atk, d_ally_hp])
+		return false
+	if buffed_n != 1:
+		push_error("horsebow: expected exactly 1 ally buffed, got %d" % buffed_n)
+		return false
+	return true
+
+
+static func _test_enemy_death_random_ally_atk_hp_star2_x3() -> bool:
+	var data := _load_unit("res://resources/units/realtime/horsebow.tres")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_random_ally_atk_hp_small":
+		push_error("horsebow2: ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 45)
+	## 场上仅骑弓：随机友方必为自己；2★ → +3/+3。
+	var bow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	bow.unit.level = 2
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_hb2", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.begin_combat()
+	var base_atk := bow.unit.get_effective_attack()
+	var base_hp := bow.unit.get_effective_max_hp()
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("horsebow2: failed to kill enemy")
+		return false
+	sim._drain_effects()
+	if bow.unit.get_effective_attack() != base_atk + 3:
+		push_error("horsebow2: atk expected +3")
+		return false
+	if bow.unit.get_effective_max_hp() != base_hp + 3:
+		push_error("horsebow2: max_hp expected +3")
 		return false
 	return true
 
