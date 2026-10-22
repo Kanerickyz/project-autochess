@@ -195,6 +195,20 @@ static func parse(text: String) -> ParseResult:
 static func resolve_unit(unit_id: String) -> UnitData:
 	if unit_id.is_empty():
 		return null
+	if _unit_cache.has(unit_id):
+		return _unit_cache[unit_id] as UnitData
+	## 先按约定路径直载，避免扫目录时个别坏 .tres 拖垮解析。
+	for path in [
+		"res://resources/units/realtime/%s.tres" % unit_id,
+		"res://resources/units/enemies/%s.tres" % unit_id,
+		"res://resources/units/%s.tres" % unit_id,
+	]:
+		if not ResourceLoader.exists(path):
+			continue
+		var data := load(path) as UnitData
+		if data != null and not data.id.is_empty():
+			_unit_cache[data.id] = data
+			return data
 	_ensure_caches()
 	return _unit_cache.get(unit_id) as UnitData
 
@@ -202,6 +216,14 @@ static func resolve_unit(unit_id: String) -> UnitData:
 static func resolve_buff(buff_id: String) -> BuffCardData:
 	if buff_id.is_empty():
 		return null
+	if _buff_cache.has(buff_id):
+		return _buff_cache[buff_id] as BuffCardData
+	var path := BUFF_DIR.path_join("%s.tres" % buff_id)
+	if ResourceLoader.exists(path):
+		var data := load(path) as BuffCardData
+		if data != null and not data.id.is_empty():
+			_buff_cache[data.id] = data
+			return data
 	_ensure_caches()
 	return _buff_cache.get(buff_id) as BuffCardData
 

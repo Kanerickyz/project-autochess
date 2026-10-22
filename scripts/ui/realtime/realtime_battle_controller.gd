@@ -126,6 +126,9 @@ const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
 var _copy_layout_button: Button
 ## 沙盒准备：粘贴布局。
 var _paste_layout_button: Button
+## 剪贴板不可用/为空时的粘贴文本框。
+var _paste_dialog: AcceptDialog
+var _paste_edit: TextEdit
 ## 观战录音机三键。
 var _tape_row: HBoxContainer
 var _tape_prev_button: Button
@@ -582,16 +585,25 @@ func copy_layout_to_clipboard() -> String:
 
 
 ## 粘贴剪贴板布局到当前准备（沙盒主路径；正式战也可调用）。失败返回错误且不清空场上。
+## 剪贴板为空或不支持时弹出文本框，便于手动粘贴 PAC_BATTLE 文本。
 func paste_layout_from_clipboard() -> String:
-	var text := DisplayServer.clipboard_get()
+	var text := ""
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		text = DisplayServer.clipboard_get()
+	if text.strip_edges().is_empty():
+		_show_paste_layout_dialog("")
+		return "需要粘贴文本"
 	return apply_layout_clipboard_text(text)
 
 
-func apply_layout_clipboard_text(text: String) -> String:
+func apply_layout_clipboard_text(text: String, open_editor_on_fail: bool = true) -> String:
 	var parsed := BattleLayoutClipboard.parse(text)
 	if not parsed.ok or parsed.payload == null:
 		var err := parsed.error if not parsed.error.is_empty() else "粘贴失败"
 		_show_hint(err)
+		## 格式无效时打开文本框改完再确认（对话框内确认失败不再嵌套弹窗）。
+		if open_editor_on_fail:
+			_show_paste_layout_dialog(text)
 		return err
 	return _apply_layout_payload(parsed.payload)
 
@@ -1404,6 +1416,41 @@ func _on_paste_layout_pressed() -> void:
 	paste_layout_from_clipboard()
 
 
+func _ensure_paste_layout_dialog() -> void:
+	if _paste_dialog != null and is_instance_valid(_paste_dialog):
+		return
+	_paste_dialog = AcceptDialog.new()
+	_paste_dialog.title = "粘贴布局"
+	_paste_dialog.ok_button_text = "应用"
+	_paste_dialog.dialog_hide_on_ok = false
+	_paste_edit = TextEdit.new()
+	_paste_edit.placeholder_text = "粘贴 PAC_BATTLE 文本…"
+	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_paste_edit.custom_minimum_size = Vector2(320, 220)
+	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_paste_dialog.add_child(_paste_edit)
+	_paste_dialog.confirmed.connect(_on_paste_dialog_confirmed)
+	add_child(_paste_dialog)
+
+
+func _show_paste_layout_dialog(prefill: String) -> void:
+	_ensure_paste_layout_dialog()
+	if _paste_edit != null:
+		_paste_edit.text = prefill
+	_paste_dialog.popup_centered_ratio(0.72)
+	if _paste_edit != null:
+		_paste_edit.grab_focus()
+
+
+func _on_paste_dialog_confirmed() -> void:
+	if _paste_edit == null:
+		return
+	var err := apply_layout_clipboard_text(_paste_edit.text, false)
+	if err.is_empty() and _paste_dialog != null:
+		_paste_dialog.hide()
+
+
 func _on_tape_pause_pressed() -> void:
 	if _phase != Phase.COMBAT or _sim == null:
 		return
@@ -1492,11 +1539,13 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 
 
 func _apply_layout_payload(payload) -> String:
-	if payload == null or _deck_state == null:
-		return "无法应用布局"
+	if payload == null or _deck_state == null or _level == null:
+		var err0 := "无法应用布局（未 setup）"
+		_show_hint(err0)
+		return err0
 	var entries := BattleLayoutClipboard.build_deck_entries(payload)
 	if entries.is_empty():
-		var err := "没有有效友方"
+		var err := "没有有效友方（单位 id 无法解析）"
 		_show_hint(err)
 		return err
 	var next_id := 0
@@ -1529,7 +1578,16 @@ func _apply_layout_payload(payload) -> String:
 		return err2
 	var node_type := BattleLayoutClipboard.node_type_from_encounter(payload.encounter_type)
 	start_encounter(encounter, _tier_index, _floor_index, int(node_type))
-	_show_hint("已粘贴布局")
+	if _phase != Phase.PREPARE:
+		var err3 := "粘贴后未能进入准备"
+		_show_hint(err3)
+		return err3
+	_sync_slot_visuals()
+	_refresh_hud()
+	_refresh_cards()
+	var ally_n := _slots.occupied_count() if _slots != null else 0
+	var enemy_n := _enemy_spawns.size()
+	_show_hint("已粘贴布局（我 %d / 敌 %d）" % [ally_n, enemy_n])
 	return ""
 
 

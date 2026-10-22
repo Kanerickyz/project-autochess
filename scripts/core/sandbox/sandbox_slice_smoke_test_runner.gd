@@ -9,6 +9,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var failed := 0
 	failed += _test_clipboard()
+	failed += await _test_paste_apply()
 	failed += await _test_scenes()
 	print("sandbox_slice_smoke failed=%d" % failed)
 	quit(1 if failed else 0)
@@ -46,6 +47,44 @@ func _test_clipboard() -> int:
 			failed += 1
 	return failed
 
+
+
+func _test_paste_apply() -> int:
+	var failed := 0
+	var packed := load("res://scenes/combat/realtime/realtime_battle.tscn") as PackedScene
+	var battle := packed.instantiate() as RealtimeBattleController
+	root.add_child(battle)
+	await process_frame
+	var deck := DeckState.new()
+	deck.configure(load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig)
+	deck.reset_from_config()
+	battle.setup(deck, RunEconomy.new(), load("res://resources/levels/board_act1.tres") as LevelData)
+	battle.set_combat_sandbox_mode(true)
+	battle.enter_combat_sandbox(0)
+	await process_frame
+	var e1 := DeckEntry.new()
+	e1.unit = load("res://resources/units/realtime/wardrum.tres") as UnitData
+	e1.entry_id = 0
+	e1.level = 1
+	e1.seat_index = 0
+	e1.seat_assign_seq = 1
+	var entries: Array[DeckEntry] = [e1]
+	var text := BattleLayoutClipboard.encode_layout(
+		entries, 5, [{"unit_id": "enemy_archer", "seat": 0, "level": 1}], 7, "combat"
+	)
+	var err := battle.apply_layout_clipboard_text(text, false)
+	if not err.is_empty():
+		push_error("paste_apply: %s" % err)
+		failed += 1
+	elif battle.get_slot_board().occupied_count() < 1:
+		push_error("paste_apply: no ally seats after paste")
+		failed += 1
+	elif battle._enemy_spawns.is_empty():
+		push_error("paste_apply: no enemies after paste")
+		failed += 1
+	battle.queue_free()
+	await process_frame
+	return failed
 
 func _test_scenes() -> int:
 	var failed := 0
