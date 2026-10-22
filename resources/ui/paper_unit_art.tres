@@ -71,8 +71,11 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_red.png" id="r_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_blue.png" id="b_berserker"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_red.png" id="r_berserker"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="b_character_dev"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="r_character_dev"]
+
 
 [resource]
 script = ExtResource("1_cat")
@@ -130,7 +133,8 @@ player_textures = {
 &"archer": ExtResource("b_archer"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
-&"berserker": ExtResource("b_character_dev"),
+&"berserker": ExtResource("b_berserker"),
+
 &"blood_acolyte": ExtResource("b_blood_acolyte"),
 &"boss_minion_t4": ExtResource("b_captain"),
 &"boss_minion_t5": ExtResource("b_valkyrie"),
@@ -171,7 +175,8 @@ enemy_textures = {
 &"archer": ExtResource("r_archer"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
-&"berserker": ExtResource("r_character_dev"),
+&"berserker": ExtResource("r_berserker"),
+
 &"blood_acolyte": ExtResource("r_blood_acolyte"),
 &"boss_minion_t4": ExtResource("r_captain"),
 &"boss_minion_t5": ExtResource("r_valkyrie"),

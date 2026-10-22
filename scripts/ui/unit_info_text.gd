@@ -210,7 +210,7 @@ static func get_ability_description(
 	if ability == null:
 		return ""
 	if ability.id == "kill_grant_actor_turn_refresh":
-		return "击杀时，重置本动步数并允许再攻击一次（不触发自己回合开始技能；每场最多 3 次）"
+		return "击杀时，重置本动步数并允许再攻击一次（不触发自己回合开始技能；每场无限次）"
 	if ability.id == "turn_start_strike_weakest":
 		var dmg := _strike_weakest_skill_damage(unit_level)
 		if unit_level <= 1:
@@ -474,7 +474,7 @@ static func format_action(
 		EffectAction.Type.TELEPORT_ADJACENT_TO_TARGET:
 			return "瞬移至目标邻格"
 		EffectAction.Type.GRANT_ACTOR_TURN_REFRESH:
-			return "重置本动并允许再攻击（每场最多 3 次）"
+			return "重置本动并允许再攻击（每场无限次）"
 		EffectAction.Type.FUSE_EXPLODE:
 			var round := maxi(1, action.threshold)
 			return "第%d回合开始时，对剩余血量范围内敌人造成当前攻击伤害并自身死亡" % round

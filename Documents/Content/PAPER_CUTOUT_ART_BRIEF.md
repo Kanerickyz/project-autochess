@@ -198,6 +198,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `shield` | 尖盔 + 十字竖盾 + 短剑 | knight 盾卫 |
 | `archer` | 兜帽 + 反曲弓 + 箭囊 | archer 游侠 |
 | `axe` | 厚甲 + 双刃大斧 | barbarian 蛮斧 |
+| `berserker` | 蓝斗篷红发 + 双弯匕 + 皮革胸甲 | berserker 狂战士 |
 | `captain` | 大披风 + 举大剑 | mini_pekka 大剑 |
 | `musket` | 羽毛宽檐帽 + 长火铳 | musketeer 火铳 |
 | `banner` | 高旗 + 腰鼓 | banner 旗手 |
