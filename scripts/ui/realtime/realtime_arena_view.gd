@@ -78,13 +78,12 @@ const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
 ## 附魔试验场：|dy| 大于 |dx|×该系数视为纵向滚列表，否则拖队员/入炉。
 const ENCHANT_SCROLL_VERTICAL_DOMINANCE := 1.2
-## 拖角色：抬起 / 跟手 / 落座（纯表现 Tween，不改入座逻辑）。
-const DRAG_PICKUP_SEC := 0.14
-const DRAG_SETTLE_SEC := 0.16
-const DRAG_FOLLOW_RATE := 22.0
-const DRAG_SCALE := 1.16
-const DRAG_LIFT_TILES := 0.16
-const DRAG_ALPHA := 0.95
+## 拖角色：小丑牌式抬起 / 速度倾斜 / 落座（采样见 RealtimeUnitMotion.sample_drag_hold）。
+const DRAG_PICKUP_SEC := RealtimeUnitMotion.DRAG_PICKUP_SEC
+const DRAG_SETTLE_SEC := 0.2
+const DRAG_FOLLOW_RATE := 18.0
+const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
+const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
 
 var board_size: Vector2i = Vector2i(5, 8)
@@ -156,13 +155,16 @@ var _drag_visual_half_width: float = 0.0
 var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _drag_unit_id: String = ""
-## 拖影 Pose：scale / offset / alpha 由 Tween 驱动；位置跟手平滑。
+## 拖影 Pose：跟手时由 sample_drag_hold 驱动；落座用 Tween 弹性回正。
 var _drag_pose: RealtimeUnitMotion.Pose = RealtimeUnitMotion.Pose.new()
 var _drag_tween: Tween
 var _drag_pointer := Vector2.ZERO
 var _drag_draw_pos := Vector2.ZERO
 var _drag_visual_alive: bool = false
 var _drag_settling: bool = false
+var _drag_started_at: float = -1.0
+var _drag_last_pointer := Vector2.ZERO
+var _drag_velocity_tiles := Vector2.ZERO
 var _art: UnitArtCatalog = UnitArtCatalog.load_default()
 var _fx: Array = []
 var _fx_clock: float = 0.0
@@ -237,8 +239,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_fx_clock += delta
 	if _drag_visual_alive and not _drag_settling:
-		var follow_t := 1.0 - exp(-DRAG_FOLLOW_RATE * delta)
-		_drag_draw_pos = _drag_draw_pos.lerp(_drag_pointer, follow_t)
+		_update_drag_hold_pose(delta)
 	if sim != null and sim.has_started():
 		_motion.speed_scale = presentation_time_scale
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
@@ -822,25 +823,43 @@ func _start_drag_visual(from_local: Vector2) -> void:
 		origin = get_local_mouse_position()
 	_drag_pointer = origin
 	_drag_draw_pos = origin
+	_drag_last_pointer = origin
+	_drag_velocity_tiles = Vector2.ZERO
+	_drag_started_at = _fx_clock
 	_drag_pose.offset = Vector2(0.0, 0.02)
 	_drag_pose.scale = Vector2.ONE * 0.92
-	_drag_pose.alpha = 0.65
+	_drag_pose.alpha = 0.85
 	_drag_pose.rotation = 0.0
 	_drag_pose.flash = 0.0
-	_drag_tween = create_tween()
-	_drag_tween.set_parallel(true)
-	_drag_tween.tween_property(_drag_pose, "scale", Vector2.ONE * DRAG_SCALE, DRAG_PICKUP_SEC) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_drag_tween.tween_property(_drag_pose, "offset", Vector2(0.0, -DRAG_LIFT_TILES), DRAG_PICKUP_SEC) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_drag_tween.tween_property(_drag_pose, "alpha", DRAG_ALPHA, DRAG_PICKUP_SEC * 0.7) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_drag_pose.shadow_mul = 1.0
+	_apply_drag_sample(0.0, Vector2.ZERO)
 
 
 func _set_drag_pointer(local_pos: Vector2) -> void:
 	if not _drag_visual_alive or _drag_settling:
 		return
 	_drag_pointer = local_pos
+
+
+func _update_drag_hold_pose(delta: float) -> void:
+	var follow_t := 1.0 - exp(-DRAG_FOLLOW_RATE * delta)
+	_drag_draw_pos = _drag_draw_pos.lerp(_drag_pointer, follow_t)
+	var px := maxf(1.0, get_cell_px())
+	var instant := (_drag_pointer - _drag_last_pointer) / px / maxf(delta, 0.0001)
+	_drag_last_pointer = _drag_pointer
+	var vel_t := 1.0 - exp(-DRAG_VELOCITY_SMOOTH * delta)
+	_drag_velocity_tiles = _drag_velocity_tiles.lerp(instant, vel_t)
+	var elapsed := 0.0 if _drag_started_at < 0.0 else maxf(0.0, _fx_clock - _drag_started_at)
+	_apply_drag_sample(elapsed, _drag_velocity_tiles)
+
+
+func _apply_drag_sample(elapsed: float, velocity_tiles: Vector2) -> void:
+	var sample: Dictionary = RealtimeUnitMotion.sample_drag_hold(elapsed, velocity_tiles)
+	_drag_pose.offset = sample.get("offset", Vector2.ZERO) as Vector2
+	_drag_pose.rotation = float(sample.get("rotation", 0.0))
+	_drag_pose.scale = sample.get("scale", Vector2.ONE) as Vector2
+	_drag_pose.alpha = float(sample.get("alpha", 1.0))
+	_drag_pose.shadow_mul = float(sample.get("shadow_mul", 1.0))
 
 
 func _finish_drag_visual(hover: Vector2i = NO_CELL) -> void:
@@ -853,15 +872,20 @@ func _finish_drag_visual(hover: Vector2i = NO_CELL) -> void:
 	if hover != NO_CELL:
 		target = tile_to_local(Vector2(hover) + Vector2(0.5, 0.5))
 	_kill_drag_tween()
+	## 落座：BACK 弹性回正（同信息卡切换的小丑牌收势）。
 	_drag_tween = create_tween()
 	_drag_tween.set_parallel(true)
 	_drag_tween.tween_property(self, "_drag_draw_pos", target, DRAG_SETTLE_SEC) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_drag_tween.tween_property(_drag_pose, "scale", Vector2.ONE, DRAG_SETTLE_SEC) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_drag_tween.tween_property(_drag_pose, "offset", Vector2.ZERO, DRAG_SETTLE_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "rotation", 0.0, DRAG_SETTLE_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "shadow_mul", 1.0, DRAG_SETTLE_SEC) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_drag_tween.tween_property(_drag_pose, "alpha", 0.5, DRAG_SETTLE_SEC * 0.85) \
+	_drag_tween.tween_property(_drag_pose, "alpha", 0.55, DRAG_SETTLE_SEC * 0.85) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_drag_tween.chain().tween_callback(_clear_drag_visual)
 
@@ -870,11 +894,14 @@ func _clear_drag_visual() -> void:
 	_kill_drag_tween()
 	_drag_visual_alive = false
 	_drag_settling = false
+	_drag_started_at = -1.0
+	_drag_velocity_tiles = Vector2.ZERO
 	_drag_pose.offset = Vector2.ZERO
 	_drag_pose.scale = Vector2.ONE
 	_drag_pose.alpha = 1.0
 	_drag_pose.rotation = 0.0
 	_drag_pose.flash = 0.0
+	_drag_pose.shadow_mul = 1.0
 	queue_redraw()
 
 
@@ -2588,25 +2615,26 @@ func _draw_unit_sprite(
 	var scl := Vector2.ONE
 	var flash := 0.0
 	var a := alpha
+	var shadow_mul := 1.0
 	if pose != null:
 		offset += (pose.offset + pose.idle_offset) * px
 		rot += pose.rotation
 		scl = pose.scale * pose.idle_scale
 		flash = pose.flash
 		a *= pose.alpha
+		shadow_mul = maxf(shadow_mul, pose.shadow_mul)
 	elif idle_seed >= 0:
 		var idle: Dictionary = RealtimeUnitMotion.sample_idle(_fx_clock, idle_seed)
 		offset += (idle.get("offset", Vector2.ZERO) as Vector2) * px
 		scl = idle.get("scale", Vector2.ONE) as Vector2
 	## 长按信息卡焦点：小丑牌式抬起 / 倾斜；非焦点略压暗。
 	var inspect_v := _sample_inspect_visual(center)
-	var shadow_mul := 1.0
 	if not inspect_v.is_empty():
 		offset += (inspect_v.get("offset", Vector2.ZERO) as Vector2) * px
 		rot += float(inspect_v.get("rotation", 0.0))
 		scl *= inspect_v.get("scale", Vector2.ONE) as Vector2
 		a *= float(inspect_v.get("alpha", 1.0))
-		shadow_mul = float(inspect_v.get("shadow_mul", 1.0))
+		shadow_mul = maxf(shadow_mul, float(inspect_v.get("shadow_mul", 1.0)))
 	var shadow := Color(CONTACT_SHADOW, CONTACT_SHADOW.a * a * clampf(shadow_mul, 0.4, 2.2))
 	var shadow_pos := feet + Vector2(
 		offset.x + px * 0.06,

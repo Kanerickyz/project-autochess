@@ -21,6 +21,15 @@ const INSPECT_SETTLE_SEC := 0.2
 const INSPECT_KICK_DECAY := 9.0
 const INSPECT_DIM_ALPHA := 0.58
 const INSPECT_DIM_SCALE := 0.94
+## 拖角色：与检视同语汇的小丑牌式抬起 / 速度倾斜 / 影加深。
+const DRAG_LIFT_TILES := 0.24
+const DRAG_SCALE := 1.22
+const DRAG_PICKUP_SEC := 0.18
+const DRAG_TILT_MAX := 0.42
+const DRAG_TILT_PER_SPEED := 0.085
+const DRAG_SWAY_TILES := 0.1
+const DRAG_SHADOW_MUL := 1.95
+const DRAG_HOLD_ALPHA := 1.0
 ## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
 const WINDUP_PULL_TILES := 0.16
 const WINDUP_SQUASH := Vector2(1.1, 0.88)
@@ -46,6 +55,8 @@ class Pose:
 	var scale := Vector2.ONE
 	var flash := 0.0
 	var alpha := 1.0
+	## 接触阴影倍率（拖影 / 检视抬起时加深外扩）。
+	var shadow_mul := 1.0
 	var tween: Tween
 	## 闪白独立淡出，不会被后续蓄力 / 冲撞 tween 打断而卡白。
 	var flash_tween: Tween
@@ -160,6 +171,31 @@ static func sample_inspect_focus(
 		"scale": Vector2.ONE * (1.0 + (INSPECT_SCALE - 1.0) * lift + 0.08 * kick),
 		"alpha": 1.0,
 		"shadow_mul": 1.0 + 0.9 * lift + 0.4 * kick,
+	}
+
+
+## 拖角色跟手：小丑牌式抬起过冲 + 水平速度倾斜 + 阴影加深。
+## elapsed：拖起后秒；velocity_tiles：平滑后的指针速度（格/秒）。
+## 返回 { offset, rotation, scale, alpha, shadow_mul }。
+static func sample_drag_hold(elapsed: float, velocity_tiles: Vector2) -> Dictionary:
+	var t := clampf(elapsed / DRAG_PICKUP_SEC, 0.0, 1.0)
+	## 与检视相同的 BACK 过冲曲线，拎起瞬间略弹。
+	var overshoot := 1.0 + 1.7 * pow(1.0 - t, 3.0) * sin(t * PI)
+	var lift := clampf(t * overshoot, 0.0, 1.35)
+	var speed_x := velocity_tiles.x
+	var tilt := clampf(speed_x * DRAG_TILT_PER_SPEED, -DRAG_TILT_MAX, DRAG_TILT_MAX)
+	## 停下后倾斜慢慢回正（仍保留一点抬起）。
+	var settle := 1.0 - exp(-maxf(0.0, elapsed - DRAG_PICKUP_SEC) * 4.5)
+	if elapsed < DRAG_PICKUP_SEC:
+		settle = 0.0
+	tilt *= 1.0 - 0.35 * settle
+	var sway := clampf(speed_x * 0.012, -DRAG_SWAY_TILES, DRAG_SWAY_TILES)
+	return {
+		"offset": Vector2(sway + tilt * 0.12, -DRAG_LIFT_TILES * lift),
+		"rotation": tilt,
+		"scale": Vector2.ONE * (1.0 + (DRAG_SCALE - 1.0) * lift),
+		"alpha": DRAG_HOLD_ALPHA,
+		"shadow_mul": 1.0 + (DRAG_SHADOW_MUL - 1.0) * lift,
 	}
 
 

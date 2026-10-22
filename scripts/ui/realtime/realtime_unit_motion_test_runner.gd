@@ -58,6 +58,21 @@ func _test_sample_inspect_focus() -> void:
 	var settled: Dictionary = RealtimeUnitMotion.sample_inspect_focus(0.35, 1.0, Vector2.ZERO, true)
 	_expect((settled.get("offset", Vector2.ZERO) as Vector2).y < -0.05, "focus settles lifted")
 	_expect(absf(float(settled.get("rotation", 1.0))) < absf(float(kick.get("rotation", 0.0))), "kick tilt decays")
+	_test_sample_drag_hold()
+
+
+func _test_sample_drag_hold() -> void:
+	var early: Dictionary = RealtimeUnitMotion.sample_drag_hold(0.0, Vector2.ZERO)
+	_expect((early.get("scale", Vector2.ONE) as Vector2).x <= 1.05, "drag pickup starts near rest scale")
+	var held: Dictionary = RealtimeUnitMotion.sample_drag_hold(0.35, Vector2.ZERO)
+	_expect((held.get("offset", Vector2.ZERO) as Vector2).y < -0.08, "drag hold stays lifted")
+	_expect(float(held.get("shadow_mul", 1.0)) > 1.2, "drag hold deepens contact shadow")
+	var moving: Dictionary = RealtimeUnitMotion.sample_drag_hold(0.35, Vector2(8.0, 0.0))
+	_expect(float(moving.get("rotation", 0.0)) > 0.08, "horizontal drag velocity tilts like Balatro")
+	_expect(
+		absf(float(moving.get("rotation", 0.0))) > absf(float(held.get("rotation", 0.0))),
+		"faster sideways motion tilts more",
+	)
 
 
 func _expect(ok: bool, label: String) -> void:
