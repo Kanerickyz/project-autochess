@@ -25,7 +25,9 @@ func _initialize() -> void:
 			config.max_size = 5
 			var deck := DeckState.new()
 			deck.configure(config)
-			deck.add_entry(unit)
+			var added := deck.add_entry(unit)
+			if added != null:
+				deck.assign_seat(added.entry_id, 0)
 			var econ := RunEconomy.new()
 			econ.reset()
 			econ.grant(20)
@@ -37,6 +39,18 @@ func _initialize() -> void:
 			await screen.open_shop(svc, deck)
 			if screen.get_node_or_null("%ConsumableRow") == null:
 				push_error("map shop UI nodes missing")
+				ok = false
+			var seat_grid := screen.get_node_or_null("%SeatGrid") as GridContainer
+			var found_card := false
+			if seat_grid != null:
+				for cell in seat_grid.get_children():
+					if cell is PanelContainer and (cell as PanelContainer).has_meta("unit_card"):
+						var card: Variant = (cell as PanelContainer).get_meta("unit_card")
+						if card is UnitCardDisplay:
+							found_card = true
+							break
+			if not found_card:
+				push_error("map shop seat should show UnitCardDisplay for occupied seats")
 				ok = false
 			var entry := deck.get_entries()[0]
 			## 确保有可买消耗品。
