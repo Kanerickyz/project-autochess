@@ -47,10 +47,16 @@ enum FormationTag {
 @export_range(0.05, 1.0, 0.01) var band_boss: float = 0.15
 ## 拒采样失败后放宽一档的增量
 @export_range(0.0, 1.0, 0.01) var band_widen_step: float = 0.10
+## 带宽内偏向上沿：接受解优先 ΣU≥E；同误差时偏好更高 ΣU。
+@export var prefer_upper_band: bool = true
 
 @export_group("Formation")
-## soft 阵型标签池；空则用默认 frontline/skirmish/backline。
+## soft 阵型标签池；空则用默认 frontline/skirmish/backline。仅池内标签参与加权抽取。
 @export var formation_tags: Array[String] = ["frontline", "skirmish", "backline"]
+## 阵型标签权重（按权重抽，非等权数组重复）。balance 可抬前排/游走。
+@export_range(0.0, 100.0, 0.1) var formation_weight_frontline: float = 1.0
+@export_range(0.0, 100.0, 0.1) var formation_weight_skirmish: float = 1.0
+@export_range(0.0, 100.0, 0.1) var formation_weight_backline: float = 1.0
 
 @export_group("Skill Alpha")
 @export_range(0.1, 3.0, 0.05) var skill_alpha_no_ability: float = 0.85
@@ -62,6 +68,8 @@ enum FormationTag {
 @export_range(1, 200, 1) var rejection_attempts: int = 64
 @export_range(0, 100, 1) var hill_climb_swaps: int = 32
 @export_range(1, 10, 1) var n_min: int = 1
+## 同场已选种类 id 软降权（0～1）：越小越不愿重复；0≈硬禁但仍在权重全灭时回退等权。
+@export_range(0.0, 1.0, 0.01) var same_id_soft_dedup_weight: float = 0.25
 
 @export_group("Roster Count")
 ## 【弃用】普通战斗已改层绑定人数；保留字段兼容旧 .tres。
@@ -206,7 +214,7 @@ func pick_formation_tag(rng: RandomNumberGenerator) -> FormationTag:
 		tags = ["frontline", "skirmish", "backline"]
 	var pick: String = "skirmish"
 	if rng != null and not tags.is_empty():
-		pick = String(tags[rng.randi_range(0, tags.size() - 1)]).to_lower()
+		pick = _pick_weighted_formation_name(tags, rng)
 	match pick:
 		"frontline":
 			return FormationTag.FRONTLINE
@@ -214,6 +222,42 @@ func pick_formation_tag(rng: RandomNumberGenerator) -> FormationTag:
 			return FormationTag.BACKLINE
 		_:
 			return FormationTag.SKIRMISH
+
+
+## 按配置权重从标签池抽一个名字；权重全灭则等权回退。
+func _pick_weighted_formation_name(tags: Array[String], rng: RandomNumberGenerator) -> String:
+	var names: Array[String] = []
+	var weights: Array[float] = []
+	var total := 0.0
+	for raw in tags:
+		var name := String(raw).to_lower()
+		var w := formation_weight_for_name(name)
+		names.append(name)
+		weights.append(w)
+		total += w
+	if names.is_empty():
+		return "skirmish"
+	if total <= 0.0000001:
+		return names[rng.randi_range(0, names.size() - 1)]
+	var roll := rng.randf() * total
+	var acc := 0.0
+	for i in names.size():
+		acc += weights[i]
+		if roll <= acc:
+			return names[i]
+	return names[names.size() - 1]
+
+
+func formation_weight_for_name(tag_name: String) -> float:
+	match String(tag_name).to_lower():
+		"frontline":
+			return maxf(0.0, formation_weight_frontline)
+		"backline":
+			return maxf(0.0, formation_weight_backline)
+		"skirmish":
+			return maxf(0.0, formation_weight_skirmish)
+		_:
+			return 1.0
 
 
 func _read_floor_table(table: Array[float], floor_i: int) -> float:
