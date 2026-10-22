@@ -54,6 +54,7 @@ class DragGhost:
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(true)
 		scale = Vector2.ONE * 0.9
 		modulate.a = 0.7
 		lift_px = 4.0
@@ -65,10 +66,10 @@ class DragGhost:
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		_tween.tween_property(self, "lift_px", -14.0, DRAG_PICKUP_SEC) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_tween.tween_callback(queue_redraw)
+		_tween.chain().tween_callback(func() -> void: set_process(false))
 
 	func _process(_delta: float) -> void:
-		## Tween 改 lift_px 时刷新绘制。
+		## 抬起 Tween 期间刷新 lift_px 绘制。
 		queue_redraw()
 
 	func _exit_tree() -> void:
