@@ -22,6 +22,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_sample_idle()
+	await _test_windup_cancel_soft_home()
+	await _test_strike_action_tween_lifecycle()
 	await _test_long_press_info()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
@@ -515,6 +517,116 @@ func _test_hand_card_long_press() -> void:
 
 	card.queue_free()
 	arena.queue_free()
+	await process_frame
+
+
+func _make_rt_pair(attacker_path: String, target_path: String) -> Array:
+	var atk_unit := UnitInstance.from_unit_data(
+		load(attacker_path) as UnitData, Vector2i(2, 5), UnitInstance.Team.PLAYER
+	)
+	var tgt_unit := UnitInstance.from_unit_data(
+		load(target_path) as UnitData, Vector2i(2, 4), UnitInstance.Team.ENEMY
+	)
+	var atk := RtUnit.new(atk_unit, Vector2(2, 5))
+	var tgt := RtUnit.new(tgt_unit, Vector2(2, 4))
+	atk.skip_deploy()
+	tgt.skip_deploy()
+	atk.target = tgt
+	return [atk, tgt]
+
+
+func _await_seconds(sec: float) -> void:
+	var until := Time.get_ticks_msec() + int(sec * 1000.0) + 50
+	while Time.get_ticks_msec() < until:
+		await process_frame
+
+
+## 蓄力取消（无出手）：soft_home 把自身与迎击 partner 弹回零姿。
+func _test_windup_cancel_soft_home() -> void:
+	var motion := RealtimeUnitMotion.new()
+	root.add_child(motion)
+	await process_frame
+	var pair := _make_rt_pair(UNIT_PATHS[0], UNIT_PATHS[1])
+	var atk: RtUnit = pair[0]
+	var tgt: RtUnit = pair[1]
+	atk.state = RtUnit.State.ATTACKING
+	## 拉长前摇，确保采样时仍在 tween running（非卡在终点无 tween）。
+	atk.attack_timer = 0.8
+	if atk.get_stats() != null:
+		atk.get_stats().attack_windup = 0.8
+	motion.sync_units([atk, tgt])
+	await process_frame
+	var atk_pose := motion.get_pose(atk)
+	var tgt_pose := motion.get_pose(tgt)
+	_expect(atk_pose != null and tgt_pose != null, "windup cancel: poses tracked")
+	_expect(motion.has_active_action_tween(), "windup cancel: action tween busy while winding")
+	## 等蓄力 tween 拉到非零姿（仍短于 windup，tween 未结束）。
+	await _await_seconds(0.15)
+	_expect(
+		atk_pose != null and atk_pose.offset.length() > 0.04,
+		"windup cancel: attacker pulled back during windup",
+	)
+	_expect(
+		tgt_pose != null and tgt_pose.offset.length() > 0.02,
+		"windup cancel: melee target braces during windup",
+	)
+	_expect(motion.has_active_action_tween(), "windup cancel: action tween still busy mid-windup")
+	## 取消蓄力：timer≤0 且未改 last_attack → soft_home。
+	atk.attack_timer = 0.0
+	atk.state = RtUnit.State.MOVING
+	motion.sync_units([atk, tgt])
+	await process_frame
+	_expect(motion.has_active_action_tween(), "windup cancel: soft_home starts action tween")
+	await _await_seconds(RealtimeUnitMotion.RECOVER_SECONDS + 0.12)
+	_expect(not motion.has_active_action_tween(), "windup cancel: soft_home finishes")
+	_expect(
+		atk_pose.offset.length() <= 0.03 and absf(atk_pose.rotation) <= 0.05,
+		"windup cancel: attacker offset/rotation home",
+	)
+	_expect(
+		tgt_pose.offset.length() <= 0.03 and absf(tgt_pose.rotation) <= 0.05,
+		"windup cancel: partner offset/rotation home",
+	)
+	## idle/flash 不应计入 action tween。
+	atk_pose.flash = 1.0
+	_expect(not motion.has_active_action_tween(), "idle/flash alone does not count as action tween")
+	motion.queue_free()
+	await process_frame
+
+
+## 出手后 has_active_action_tween 为 true，LUNGE+RECOVER 播完为 false。
+func _test_strike_action_tween_lifecycle() -> void:
+	var motion := RealtimeUnitMotion.new()
+	root.add_child(motion)
+	await process_frame
+	var pair := _make_rt_pair(UNIT_PATHS[0], UNIT_PATHS[1])
+	var atk: RtUnit = pair[0]
+	var tgt: RtUnit = pair[1]
+	atk.state = RtUnit.State.MOVING
+	atk.attack_timer = 0.0
+	## 先登记 tracked（last_attack=NEVER），再改时间戳触发 strike。
+	motion.sync_units([atk, tgt])
+	await process_frame
+	_expect(not motion.has_active_action_tween(), "strike: idle before fire has no action tween")
+	atk.state = RtUnit.State.ATTACKING
+	atk.last_attack_time = 1.0
+	motion.sync_units([atk, tgt])
+	await process_frame
+	_expect(motion.has_active_action_tween(), "strike: action tween active after fire")
+	var atk_pose := motion.get_pose(atk)
+	_expect(
+		atk_pose != null and (atk_pose.offset.length() > 0.01 or motion.has_active_action_tween()),
+		"strike: attacker lunge/recover in progress",
+	)
+	await _await_seconds(
+		RealtimeUnitMotion.LUNGE_SECONDS + RealtimeUnitMotion.RECOVER_SECONDS + 0.2
+	)
+	_expect(not motion.has_active_action_tween(), "strike: action tween clears after recover")
+	_expect(
+		atk_pose.offset.length() <= 0.03 and absf(atk_pose.rotation) <= 0.05,
+		"strike: attacker settles home after recover",
+	)
+	motion.queue_free()
 	await process_frame
 
 

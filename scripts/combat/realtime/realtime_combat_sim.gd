@@ -288,6 +288,11 @@ func get_current_actor() -> RtUnit:
 	return _current_actor
 
 
+## 是否仍有行动者在执行一动（蓄力中为 true；出手交权后为 false）。
+func is_actor_turn_active() -> bool:
+	return _actor_turn_active
+
+
 ## 当前回合序号（从 1 起；开战排队列后尚未行动前亦为 1）。
 func get_round_index() -> int:
 	return _round_index

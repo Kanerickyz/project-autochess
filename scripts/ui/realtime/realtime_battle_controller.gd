@@ -1116,6 +1116,9 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 	_sim.combat_finished.connect(_on_combat_finished)
 	if not _sim.actor_turn_ended.is_connected(_on_actor_turn_ended):
 		_sim.actor_turn_ended.connect(_on_actor_turn_ended)
+	## 出手瞬间 hold：阻止同一步循环内立刻 _begin_next_actor_turn；tween 播完再 release。
+	if not _sim.unit_attacked.is_connected(_on_unit_attacked_presentation):
+		_sim.unit_attacked.connect(_on_unit_attacked_presentation)
 	_sim.suppress_player_wipe_loss = false
 
 	_arena.sim = _sim
@@ -2623,6 +2626,16 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 		_present_effect_result(payload, true)
 
 
+## 出手瞬间：卡住固定步，等冲撞/回位 tween 播完（倒带 silent 路径不 hold，避免重演卡住）。
+func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
+	if _sim == null or _tape_rewinding:
+		return
+	_sim.hold_for_presentation()
+	## 同帧立刻 sync，避免等 arena._process 才开 tween 时被提前 release。
+	if _arena != null:
+		_arena.sync_combat_motion_now()
+
+
 ## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
@@ -2638,6 +2651,11 @@ func _tick_combat_presentation(delta: float) -> void:
 	if _sim.has_pending_effects():
 		_sim.hold_for_presentation()
 		_start_next_skill_card()
+		return
+	## 一动已交权且出击/回位仍在播：保持 hold，勿在 windup（turn 仍 active）时因 tween 卡住。
+	var action_busy := _arena != null and _arena.has_active_combat_action_tween()
+	if action_busy and not _sim.is_actor_turn_active():
+		_sim.hold_for_presentation()
 		return
 	## 一动逻辑已结束且演出排空：兑现暂停 / 下一动停住。
 	if _tape_boundary_pending:
@@ -2662,8 +2680,19 @@ func _tick_combat_presentation(delta: float) -> void:
 				return
 			if _tape_boundary_pending:
 				break
+			## 上一动出手后的回位尚未结束：先等演出，再继续步进/兑现边界。
+			if (
+				_arena != null
+				and _arena.has_active_combat_action_tween()
+				and not _sim.is_actor_turn_active()
+			):
+				_sim.hold_for_presentation()
+				return
 			_sim.advance_fixed_step()
 			guard += 1
+			## unit_attacked 已 hold：同循环内勿再开下一动。
+			if _sim.presentation_hold:
+				return
 		## 本动尾巴技能仍须演完再停。
 		if _sim.has_pending_effects():
 			_sim.hold_for_presentation()
