@@ -348,6 +348,7 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 	)
 	snap.highest_attack_entries = RunStatsSnapshot.pick_highest_attack(snap.roster)
 	snap.highest_max_hp_entries = RunStatsSnapshot.pick_highest_max_hp(snap.roster)
+	snap.highest_combat_atk_hp_entries.assign(snap.ledger.peak_combat_entries)
 	return snap
 
 

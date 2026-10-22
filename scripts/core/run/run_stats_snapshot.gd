@@ -12,6 +12,8 @@ var ledger: RunStatLedger = RunStatLedger.new()
 ## 并列时可能多名。
 var highest_attack_entries: Array[DeckEntry] = []
 var highest_max_hp_entries: Array[DeckEntry] = []
+## 战中攻+血历史最高（来自 ledger 峰值冻条目；并列可多名）。
+var highest_combat_atk_hp_entries: Array[DeckEntry] = []
 
 
 static func entry_panel_attack(entry: DeckEntry) -> int:

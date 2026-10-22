@@ -17,6 +17,7 @@ const CATALOG_CELL_TARGET_PX := 96.0
 @onready var _roster_arena: RealtimeArenaView = %RosterArena
 @onready var _peak_attack_arena: RealtimeArenaView = %PeakAttackArena
 @onready var _peak_hp_arena: RealtimeArenaView = %PeakHpArena
+@onready var _peak_combat_arena: RealtimeArenaView = %PeakCombatArena
 @onready var _continue_button: Button = %ContinueButton
 @onready var _copy_roster_button: Button = %CopyRosterButton
 @onready var _scroll: ScrollContainer = $Root/Column/Scroll
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_configure_arena(_roster_arena)
 	_configure_arena(_peak_attack_arena)
 	_configure_arena(_peak_hp_arena)
+	_configure_arena(_peak_combat_arena)
 	## 避免 Scroll 裁切信息卡；卡本身已 top_level，仍关掉裁切作双保险。
 	if _scroll != null:
 		_scroll.clip_contents = false
@@ -73,6 +75,7 @@ func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 	_paint_roster(_roster_arena, snapshot.roster, ROSTER_COLUMNS)
 	_paint_roster(_peak_attack_arena, snapshot.highest_attack_entries, PEAK_COLUMNS)
 	_paint_roster(_peak_hp_arena, snapshot.highest_max_hp_entries, PEAK_COLUMNS)
+	_paint_roster(_peak_combat_arena, snapshot.highest_combat_atk_hp_entries, PEAK_COLUMNS)
 	if _scroll != null:
 		_scroll.scroll_vertical = 0
 	visible = true
@@ -88,6 +91,7 @@ func hide_overlay() -> void:
 	_clear_arena(_roster_arena)
 	_clear_arena(_peak_attack_arena)
 	_clear_arena(_peak_hp_arena)
+	_clear_arena(_peak_combat_arena)
 
 
 static func _journey_rows(snapshot: RunStatsSnapshot) -> Array:
@@ -194,6 +198,11 @@ func _fit_all_arenas() -> void:
 	_fit_catalog_arena(
 		_peak_hp_arena,
 		_peak_hp_arena.catalog_units.size() if _peak_hp_arena != null else 0,
+		PEAK_COLUMNS,
+	)
+	_fit_catalog_arena(
+		_peak_combat_arena,
+		_peak_combat_arena.catalog_units.size() if _peak_combat_arena != null else 0,
 		PEAK_COLUMNS,
 	)
 
