@@ -79,6 +79,7 @@ func apply_damage(
 			_grid.remove_unit(target)
 		_bus.emit_event(CombatEvents.ON_DEATH, payload)
 		_bus.emit_event(CombatEvents.ON_FRIEND_DEATH, payload)
+		_bus.emit_event(CombatEvents.ON_ENEMY_DEATH, payload)
 		if source != null:
 			_bus.emit_event(CombatEvents.ON_KILL, payload)
 

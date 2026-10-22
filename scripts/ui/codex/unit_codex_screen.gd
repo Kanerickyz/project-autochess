@@ -11,6 +11,7 @@ const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_SUMMONED,
 	CombatEvents.ON_FRIEND_SUMMONED,
 	CombatEvents.ON_FRIEND_DEATH,
+	CombatEvents.ON_ENEMY_DEATH,
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN,
 	CombatEvents.ON_DAMAGE_TAKEN,
 	CombatEvents.ON_ATTACK_HIT,

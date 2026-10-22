@@ -104,6 +104,7 @@ func resolve_hit(
 		tgt2.target = null
 		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
 		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
+		_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
 		if src2 != null:
 			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
 		killed.append(tgt2)
@@ -174,6 +175,7 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	target.target = null
 	_emit(CombatEvents.ON_DEATH, source, target.unit, rolled, is_crit, hp_before)
 	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, rolled, is_crit, hp_before)
+	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, rolled, is_crit, hp_before)
 	if source != null:
 		_emit(CombatEvents.ON_KILL, source, target.unit, rolled, is_crit, hp_before)
 	return true
