@@ -4,10 +4,13 @@ extends Control
 
 signal finished
 
+const CARD_SCENE := preload("res://scenes/ui/unit_card_display.tscn")
 const SEAT_ROWS := 4
 const SEAT_COLS := 5
 const SLOT_MIN := Vector2(128, 72)
-const SEAT_MIN := Vector2(96, 88)
+## 与 UnitCardDisplay.SIZE_DEFAULT 对齐，并留装备行高度。
+const SEAT_MIN := Vector2(118, 168)
+const SEAT_CARD_SIZE := Vector2(110.0, 138.0)
 
 var _service: MapShopService
 var _deck: DeckState
@@ -240,41 +243,60 @@ func _make_seat_cell(seat_index: int) -> PanelContainer:
 
 	var entry := _deck.get_entry_at_seat(seat_index) if _deck != null else null
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", 2)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(col)
-	if entry == null:
+	if entry == null or entry.unit == null:
 		var empty := Label.new()
 		empty.text = "空座"
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty.add_theme_color_override("font_color", Color(0.55, 0.55, 0.58))
 		col.add_child(empty)
 	else:
-		var name_l := Label.new()
-		name_l.text = entry.get_display_name()
-		name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(name_l)
-		var stats := Label.new()
-		stats.add_theme_font_size_override("font_size", 11)
-		stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_max_hp(entry)
-		var armor := entry.get_armor_block()
-		if armor > 0:
-			stats.text = "攻%d 血%d 甲%d" % [atk, hp, armor]
-		else:
-			stats.text = "攻%d 血%d" % [atk, hp]
-		col.add_child(stats)
+		var card_host := Control.new()
+		card_host.custom_minimum_size = SEAT_CARD_SIZE
+		card_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		card_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(card_host)
+		var card := CARD_SCENE.instantiate() as UnitCardDisplay
+		card_host.add_child(card)
+		card.configure(SEAT_CARD_SIZE)
+		card.bind_unit_data(
+			entry.unit,
+			DeckUpgradeService.get_display_attack(entry),
+			DeckUpgradeService.get_display_max_hp(entry),
+			DeckUpgradeService.get_display_max_hp(entry),
+			DeckUpgradeService.get_display_crit_rate(entry),
+		)
+		card.set_level(entry.get_star_display_level())
+		card.set_state(false, false)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.set_meta("entry_id", entry.entry_id)
+		panel.set_meta("unit_card", card)
 		if entry.equipment != null:
+			var eq_row := HBoxContainer.new()
+			eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			eq_row.add_theme_constant_override("separation", 4)
+			eq_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			col.add_child(eq_row)
+			var armor_tex := UiStatIcons.armor_texture()
+			if armor_tex != null:
+				var icon := TextureRect.new()
+				icon.texture = armor_tex
+				icon.custom_minimum_size = Vector2(14, 14)
+				icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				eq_row.add_child(icon)
 			var eq := Label.new()
-			eq.add_theme_font_size_override("font_size", 10)
+			eq.add_theme_font_size_override("font_size", 11)
 			eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			eq.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
-			eq.text = entry.get_equipment_display_name()
-			col.add_child(eq)
-		panel.set_meta("entry_id", entry.entry_id)
+			eq.text = "%s %d" % [entry.get_equipment_display_name(), entry.get_armor_block()]
+			eq.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			eq_row.add_child(eq)
 
-	var drag_cb := _get_seat_drag_data.bind(panel) if entry != null else Callable()
+	var drag_cb := _get_seat_drag_data.bind(panel) if entry != null and entry.unit != null else Callable()
 	panel.set_drag_forwarding(drag_cb, _can_drop_on_seat.bind(panel), _drop_on_seat.bind(panel))
 	panel.gui_input.connect(_on_seat_gui_input.bind(panel))
 	return panel
@@ -283,8 +305,34 @@ func _make_seat_cell(seat_index: int) -> PanelContainer:
 func _get_seat_drag_data(_at_position: Vector2, panel: PanelContainer) -> Variant:
 	if not panel.has_meta("entry_id"):
 		return null
-	var preview := Label.new()
-	preview.text = "换座"
+	var preview := PanelContainer.new()
+	preview.custom_minimum_size = Vector2(72, 72)
+	var preview_style := StyleBoxFlat.new()
+	preview_style.bg_color = Color(0.18, 0.2, 0.26, 0.92)
+	preview_style.set_border_width_all(2)
+	preview_style.border_color = Color(0.85, 0.75, 0.4, 0.95)
+	preview.add_theme_stylebox_override("panel", preview_style)
+	var src_card: UnitCardDisplay = panel.get_meta("unit_card", null) as UnitCardDisplay
+	if src_card != null and _deck != null:
+		var entry := _deck.get_entry(int(panel.get_meta("entry_id")))
+		if entry != null and entry.unit != null:
+			var mini := CARD_SCENE.instantiate() as UnitCardDisplay
+			preview.add_child(mini)
+			mini.configure(Vector2(68, 90))
+			mini.bind_unit_data(
+				entry.unit,
+				DeckUpgradeService.get_display_attack(entry),
+				DeckUpgradeService.get_display_max_hp(entry),
+				DeckUpgradeService.get_display_max_hp(entry),
+			)
+			mini.set_level(entry.get_star_display_level())
+			mini.set_state(false, false)
+			mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	else:
+		var fallback := Label.new()
+		fallback.text = "换座"
+		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		preview.add_child(fallback)
 	panel.set_drag_preview(preview)
 	return {
 		"kind": "map_shop_seat",
