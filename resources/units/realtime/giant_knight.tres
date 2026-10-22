@@ -7,8 +7,8 @@
 
 [sub_resource type="Resource" id="UnitStats_giant_knight"]
 script = ExtResource("2_stats")
-max_hp = 75
-attack = 25
+max_hp = 100
+attack = 50
 steps_per_turn = 1
 crit_rate_percent = 0
 attack_interval = 1.8
