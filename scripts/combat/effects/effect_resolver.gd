@@ -763,18 +763,35 @@ func _execute_action(
 				return false
 			var before := target.current_hp
 			var heal_value := _scaled_action_value(owner, action.value)
+			## 受击触发且疗本事件受伤单位：疗量不超过本次伤害（切断伤<疗净回血）。
+			if (
+				payload != null
+				and payload.target == target
+				and payload.amount > 0
+			):
+				heal_value = mini(heal_value, payload.amount)
+			var remaining := (
+				UnitInstance.COMBAT_SKILL_HEAL_BUDGET - target.combat_skill_heal_received
+			)
+			if remaining <= 0:
+				return false
+			heal_value = mini(heal_value, remaining)
+			if heal_value <= 0:
+				return false
 			target.current_hp = mini(
 				target.get_effective_max_hp(),
 				target.current_hp + heal_value,
 			)
 			var healed := target.current_hp - before
-			if healed > 0 and _bus != null:
-				var heal_payload := CombatEventPayload.new()
-				heal_payload.effect_owner = owner
-				heal_payload.source = owner
-				heal_payload.target = target
-				heal_payload.amount = healed
-				_bus.emit_event(CombatEvents.ON_HEAL_APPLIED, heal_payload)
+			if healed > 0:
+				target.combat_skill_heal_received += healed
+				if _bus != null:
+					var heal_payload := CombatEventPayload.new()
+					heal_payload.effect_owner = owner
+					heal_payload.source = owner
+					heal_payload.target = target
+					heal_payload.amount = healed
+					_bus.emit_event(CombatEvents.ON_HEAL_APPLIED, heal_payload)
 			print("[Effect] %s heal %d->%d" % [target.id, before, target.current_hp])
 			executed = true
 		EffectAction.Type.SPAWN_UNIT:

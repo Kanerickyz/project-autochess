@@ -22,6 +22,10 @@ var stat_modifiers: StatModifierStack = StatModifierStack.new()
 var is_combat_summon: bool = false
 ## 本场已成功生成的随从只数（统计用；不设每角色上限）。
 var combat_summons_spawned: int = 0
+## 本场经 EffectResolver HEAL 累计受疗量（计在受疗单位上；含友方疗己）。
+var combat_skill_heal_received: int = 0
+## 本场技能治疗预算上限；超出部分截断/跳过。
+const COMBAT_SKILL_HEAL_BUDGET: int = 100
 ## 队伍条目 runtime 主技能（熔印者等）；优先于 unit_data.ability。
 var main_ability_override: AbilityData = null
 
