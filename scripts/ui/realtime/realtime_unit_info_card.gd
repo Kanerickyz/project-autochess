@@ -53,6 +53,7 @@ var _name_label: Label
 var _side_label: Label
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
+var _armor_badge: StatBadge
 var _skills_label: RichTextLabel
 var _style: StyleBoxFlat
 var _motion: Tween
@@ -120,6 +121,9 @@ func _init() -> void:
 	badges.add_child(_attack_badge)
 	_hp_badge = _make_badge(RealtimeArenaView.STAT_HP_TEX)
 	badges.add_child(_hp_badge)
+	_armor_badge = _make_badge(UiStatIcons.armor_texture())
+	_armor_badge.visible = false
+	badges.add_child(_armor_badge)
 
 	var rule := ColorRect.new()
 	rule.color = Color(INK, 0.35)
@@ -212,6 +216,13 @@ func _apply_content(info: Dictionary) -> void:
 	_hp_badge.value = int(info.get("hp", 0))
 	_attack_badge.queue_redraw()
 	_hp_badge.queue_redraw()
+	var armor := int(info.get("armor", 0))
+	var armor_tex := UiStatIcons.armor_texture()
+	if _armor_badge != null:
+		_armor_badge.texture = armor_tex
+		_armor_badge.value = armor
+		_armor_badge.visible = armor > 0 and armor_tex != null
+		_armor_badge.queue_redraw()
 	_skills_label.clear()
 	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", ""))))
 
@@ -343,7 +354,9 @@ func _format_skills_bbcode(raw: String) -> String:
 func _make_badge(texture: Texture2D) -> StatBadge:
 	var badge := StatBadge.new()
 	badge.texture = texture
-	var tex_size := texture.get_size()
+	var tex_size := Vector2(BADGE_HEIGHT, BADGE_HEIGHT)
+	if texture != null:
+		tex_size = texture.get_size()
 	badge.custom_minimum_size = Vector2(BADGE_HEIGHT * tex_size.x / maxf(1.0, tex_size.y), BADGE_HEIGHT)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return badge

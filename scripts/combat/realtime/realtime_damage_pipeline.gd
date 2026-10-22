@@ -70,19 +70,23 @@ func resolve_hit(
 			if crit_rate > 0.0 and _rng.randf() < crit_rate:
 				is_crit = true
 				rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
+		## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
+		var final_amount := tgt.unit.mitigate_incoming_damage(rolled)
+		if final_amount <= 0:
+			continue
 		var hp_before := tgt.unit.current_hp
-		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - rolled)
-		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit, hp_before)
-		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, rolled, is_crit, hp_before)
-		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, rolled, is_crit, hp_before)
+		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - final_amount)
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, is_crit, hp_before)
+		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, is_crit, hp_before)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, is_crit, hp_before)
 		if is_crit and src != null:
-			_emit(CombatEvents.ON_CRIT, src, tgt.unit, rolled, true, hp_before)
+			_emit(CombatEvents.ON_CRIT, src, tgt.unit, final_amount, true, hp_before)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
 			death_pending.append({
 				"source": src,
 				"target": tgt,
-				"rolled": rolled,
+				"rolled": final_amount,
 				"is_crit": is_crit,
 				"hp_before": hp_before,
 			})
@@ -161,23 +165,27 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 		if crit_rate > 0.0 and _rng.randf() < crit_rate:
 			is_crit = true
 			rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
+	## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
+	var final_amount := target.unit.mitigate_incoming_damage(rolled)
+	if final_amount <= 0:
+		return false
 	var hp_before := target.unit.current_hp
-	target.unit.current_hp = maxi(0, target.unit.current_hp - rolled)
-	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, rolled, is_crit, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, rolled, is_crit, hp_before)
-	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, rolled, is_crit, hp_before)
+	target.unit.current_hp = maxi(0, target.unit.current_hp - final_amount)
+	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, is_crit, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, is_crit, hp_before)
+	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, final_amount, is_crit, hp_before)
 	if is_crit and source != null:
-		_emit(CombatEvents.ON_CRIT, source, target.unit, rolled, true, hp_before)
+		_emit(CombatEvents.ON_CRIT, source, target.unit, final_amount, true, hp_before)
 	if target.unit.is_alive():
 		return false
 
 	target.state = RtUnit.State.DEAD
 	target.target = null
-	_emit(CombatEvents.ON_DEATH, source, target.unit, rolled, is_crit, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, rolled, is_crit, hp_before)
-	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, rolled, is_crit, hp_before)
+	_emit(CombatEvents.ON_DEATH, source, target.unit, final_amount, is_crit, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, final_amount, is_crit, hp_before)
+	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, final_amount, is_crit, hp_before)
 	if source != null:
-		_emit(CombatEvents.ON_KILL, source, target.unit, rolled, is_crit, hp_before)
+		_emit(CombatEvents.ON_KILL, source, target.unit, final_amount, is_crit, hp_before)
 	return true
 
 

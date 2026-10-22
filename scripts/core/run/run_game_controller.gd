@@ -10,6 +10,7 @@ const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit
 @onready var _battle_root: Control = %BattleRoot
 @onready var _map_screen: MapScreen = %MapScreen
 @onready var _placeholder_screen: PlaceholderNodeScreen = %PlaceholderNodeScreen
+@onready var _map_shop_screen: MapShopScreen = %MapShopScreen
 @onready var _run_end_overlay: RunEndOverlay = %RunEndOverlay
 @onready var _run_stats_overlay: RunStatsOverlay = %RunStatsOverlay
 
@@ -17,11 +18,14 @@ var run_controller: RunController = RunController.new()
 var deck_state: DeckState = DeckState.new()
 var run_economy: RunEconomy = RunEconomy.new()
 var recruit_config: RecruitConfig = DEFAULT_RECRUIT_CONFIG
+var map_shop_config: MapShopConfig = MapShopConfig.load_or_default()
 var _battle: RealtimeBattleController
 var _recruit_session: RecruitSession = RecruitSession.new()
+var _map_shop_service: MapShopService = MapShopService.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
 var _enchant_busy: bool = false
+var _map_shop_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
@@ -55,6 +59,8 @@ func _ready() -> void:
 
 	_map_screen.node_selected.connect(_on_map_node_selected)
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
+	if _map_shop_screen != null:
+		_map_shop_screen.finished.connect(_on_map_shop_finished)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
 	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
@@ -92,6 +98,8 @@ func _show_map() -> void:
 func _hide_encounter_ui() -> void:
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
+	if _map_shop_screen != null:
+		_map_shop_screen.hide_shop()
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
@@ -126,6 +134,8 @@ func _on_map_node_selected(node_id: int) -> void:
 		return
 	if node_type == MapNodeType.Type.SHOP:
 		run_controller.register_shop_visit()
+		await _open_map_shop()
+		return
 	if node_type == MapNodeType.Type.ENCHANT:
 		await _open_enchant()
 		return
@@ -209,6 +219,37 @@ func _open_enchant() -> void:
 
 func _on_enchant_finished(_did_fuse: bool) -> void:
 	_enchant_busy = false
+	run_controller.complete_encounter()
+
+
+## 地图商店：上货架下半场；结束回地图。
+func _open_map_shop() -> void:
+	if _map_shop_busy:
+		return
+	_map_shop_busy = true
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	var shop_rng := RandomNumberGenerator.new()
+	shop_rng.seed = _rng.randi()
+	var config := map_shop_config if map_shop_config != null else MapShopConfig.load_or_default()
+	_map_shop_service.configure(config, run_economy, deck_state, shop_rng)
+	_map_shop_service.open_shop()
+	if _map_shop_screen != null:
+		await _map_shop_screen.open_shop(_map_shop_service, deck_state)
+	else:
+		_map_shop_busy = false
+		_map_shop_service.close_shop()
+		run_controller.complete_encounter()
+
+
+func _on_map_shop_finished() -> void:
+	if _map_shop_screen != null:
+		_map_shop_screen.hide_shop()
+	_map_shop_service.close_shop()
+	_map_shop_busy = false
 	run_controller.complete_encounter()
 
 

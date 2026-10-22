@@ -14,6 +14,8 @@ var _next_entry_id: int = 0
 var _next_seat_seq: int = 0
 ## 运行时席位上限；-1 表示沿用 DeckConfig.max_size（旗帜写入此字段，避免污染共享 .tres）。
 var _seat_cap_override: int = -1
+## 三合一装备冲突等随机；可注入以便测试。
+var _rng: RandomNumberGenerator
 
 
 func configure(config: DeckConfig) -> void:
@@ -23,6 +25,17 @@ func configure(config: DeckConfig) -> void:
 		_level_config = config.level_config
 	else:
 		_level_config = null
+
+
+func set_rng(rng: RandomNumberGenerator) -> void:
+	_rng = rng
+
+
+func _ensure_rng() -> RandomNumberGenerator:
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
+		_rng.randomize()
+	return _rng
 
 
 func get_level_config() -> LevelConfig:
@@ -539,11 +552,27 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	if earliest != null and earliest.seat_index >= 0:
 		product.seat_index = earliest.seat_index
 		product.seat_assign_seq = earliest.seat_assign_seq
+	## MAP_SHOP §5.2：参与合成成员的装备中随机留一件，其余消失不退金。
+	product.equipment = _pick_merge_equipment([a, b, c])
 	_merge_attached_buffs(product, [a, b, c])
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
 	_entries.append(product)
 	return product
+
+
+func _pick_merge_equipment(sources: Array) -> EquipmentData:
+	var candidates: Array[EquipmentData] = []
+	for item in sources:
+		var entry := item as DeckEntry
+		if entry != null and entry.equipment != null:
+			candidates.append(entry.equipment)
+	if candidates.is_empty():
+		return null
+	if candidates.size() == 1:
+		return candidates[0]
+	var rng := _ensure_rng()
+	return candidates[rng.randi_range(0, candidates.size() - 1)]
 
 
 ## 落座时间最早（seq 最小且 >0）；皆未入座则 null。
@@ -647,6 +676,7 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.bonus_attack = source.bonus_attack
 	entry.bonus_max_hp = source.bonus_max_hp
 	entry.bonus_crit_rate_percent = source.bonus_crit_rate_percent
+	entry.equipment = source.equipment
 	entry.seat_index = source.seat_index
 	entry.seat_assign_seq = source.seat_assign_seq
 	if source.runtime_main_ability != null:

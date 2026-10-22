@@ -56,13 +56,18 @@ func apply_damage(
 	if target == null or not target.is_alive():
 		return
 
+	## MAP_SHOP §5.1：护甲抵消后最终扣血为 0 → 不扣血、不发受伤类触发。
+	var final_amount := target.mitigate_incoming_damage(amount)
+	if final_amount <= 0:
+		return
+
 	var hp_before := target.current_hp
-	target.current_hp = maxi(0, target.current_hp - amount)
+	target.current_hp = maxi(0, target.current_hp - final_amount)
 
 	var payload := CombatEventPayload.new()
 	payload.source = source
 	payload.target = target
-	payload.amount = amount
+	payload.amount = final_amount
 	payload.is_crit = is_crit
 	payload.target_hp_before = hp_before
 

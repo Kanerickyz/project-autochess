@@ -1791,9 +1791,14 @@ func _ensure_recruit_hud() -> void:
 	_recruit_title.text = "招募"
 	_recruit_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_recruit_title)
+	var gold_row := HBoxContainer.new()
+	gold_row.name = "RecruitGoldRow"
+	gold_row.add_theme_constant_override("separation", 4)
+	top.add_child(gold_row)
+	UiStatIcons.ensure_gold_icon(gold_row)
 	_recruit_gold = Label.new()
-	_recruit_gold.text = "金币 0"
-	top.add_child(_recruit_gold)
+	_recruit_gold.text = UiStatIcons.format_gold_label(0)
+	gold_row.add_child(_recruit_gold)
 	_recruit_seat = Label.new()
 	_recruit_seat.text = "席位 0/0"
 	top.add_child(_recruit_seat)
@@ -2109,7 +2114,10 @@ func _refresh_recruit_hud() -> void:
 	var seats := _recruit_session.deck.size() if _recruit_session.deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
 	if _recruit_gold != null:
-		_recruit_gold.text = "金币 %d" % gold
+		_recruit_gold.text = UiStatIcons.format_gold_label(gold)
+		var gold_row := _recruit_gold.get_parent() as Control
+		if gold_row != null:
+			UiStatIcons.ensure_gold_icon(gold_row)
 	if _recruit_seat != null:
 		_recruit_seat.text = "席位 %d/%d" % [seats, cap]
 	if _recruit_hint != null:
@@ -2133,7 +2141,7 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_finish_btn != null:
 		_recruit_finish_btn.disabled = _recruit_animating or not _recruit_session.can_finish()
 	if _gold_label != null:
-		_gold_label.text = "金币 %d" % gold
+		_gold_label.text = UiStatIcons.format_gold_label(gold)
 	if _phase_label != null:
 		_phase_label.text = "招募"
 	if _pop_label != null:
@@ -2826,7 +2834,7 @@ func _refresh_hud() -> void:
 		_refresh_recruit_hud()
 		return
 	_encounter_label.text = _encounter.display_name if _encounter != null else "实时战斗"
-	_gold_label.text = "金币 %d" % (_economy.gold if _economy != null else 0)
+	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
