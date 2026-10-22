@@ -35,6 +35,10 @@ var _tier_index: int = 0
 ## 层预算抽阵上下文（Run 传入；测试可省略并按 encounter 旗标推断）。
 var _floor_index: int = 0
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
+
+
+func get_floor_index() -> int:
+	return _floor_index
 var _spawn_budget_config: SpawnBudgetConfig = null
 var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE

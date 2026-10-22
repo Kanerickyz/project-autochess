@@ -355,6 +355,10 @@ static func _format_target(spec: EffectSpec) -> String:
 			if spec.exclude_owner:
 				return "对周围一格其他友方"
 			return "对周围一格友方"
+		EffectSpec.TargetSelector.ORTHOGONAL_LEFT_RIGHT_ALLIES:
+			if spec.exclude_owner:
+				return "对左右邻格其他友方"
+			return "对左右邻格友方"
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
 			if spec.exclude_owner:
 				return "对当前生命最低的其他队友"
@@ -476,6 +480,8 @@ static func format_action(
 			return "瞬移至目标邻格"
 		EffectAction.Type.GRANT_ACTOR_TURN_REFRESH:
 			return "重置本动并允许再攻击（每场无限次）"
+		EffectAction.Type.ABSORB_STATS_AND_KILL:
+			return "消灭目标并获得其全部攻击与生命上限"
 		EffectAction.Type.FUSE_EXPLODE:
 			var round := maxi(1, action.threshold)
 			return "第%d回合开始时，对剩余血量范围内敌人造成当前攻击伤害并自身死亡" % round

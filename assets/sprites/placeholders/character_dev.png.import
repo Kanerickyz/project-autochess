@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cplaceholderdev01"
-path="res://.godot/imported/character_dev.png-7a1b2c3d4e5f60718293a4b5c6d7e8f9.ctex"
+uid="uid://bg3btpfjsxd01"
+path="res://.godot/imported/character_dev.png-c620dd78c80146703546b60fd828884a.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/sprites/placeholders/character_dev.png"
-dest_files=["res://.godot/imported/character_dev.png-7a1b2c3d4e5f60718293a4b5c6d7e8f9.ctex"]
+dest_files=["res://.godot/imported/character_dev.png-c620dd78c80146703546b60fd828884a.ctex"]
 
 [params]
 

@@ -1,18 +1,22 @@
 class_name TierUnlock
 extends RefCounted
 
+## 品阶硬解锁：以地图层号（1-based）为主尺。
+## 【用户新共识】T2 自第 4 层起可刷到（敌我 / 商店波次代理同表）。
+## 入参亦可为商店访问序 / 遭遇序代理（与层号同刻度使用本表）。
 
-static func get_max_unlocked_tier(shop_wave: int) -> int:
-	var wave := maxi(1, shop_wave)
-	if wave <= 2:
+
+static func get_max_unlocked_tier(map_floor: int) -> int:
+	var floor := maxi(1, map_floor)
+	if floor < 4:
 		return 1
-	if wave <= 4:
+	if floor < 8:
 		return 2
-	if wave <= 6:
+	if floor < 12:
 		return 3
-	if wave <= 8:
+	if floor < 16:
 		return 4
-	if wave <= 10:
+	if floor < 20:
 		return 5
 	return 6
 

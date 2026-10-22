@@ -673,9 +673,11 @@ static func _test_unlocked_tier_merges_into_pool() -> bool:
 	var deck := _make_deck([], 5)
 	var economy := _make_economy(5)
 	var session := _make_session(deck, economy, 11, 0.5)
+	## map_floor=4 → TierUnlock 解锁 T2（全局规则：第 4 层起）。
+	session.map_floor = 4
 	if session.get_preferred_tier() != 2:
 		push_error(
-			"RecruitSessionTest: progress 0.5 should prefer tier 2, got %d"
+			"RecruitSessionTest: floor 4 should prefer tier 2, got %d"
 			% session.get_preferred_tier()
 		)
 		return false

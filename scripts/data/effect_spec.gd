@@ -30,6 +30,9 @@ enum TargetSelector {
 	LOWEST_CURRENT_HP_NEARBY_ALLY,
 	## 当前生命最低的敌方；平局先比生命上限再比 instance_id。
 	LOWEST_CURRENT_HP_ENEMY,
+	## 持有者正交左右邻格友方（同一行、列 ±1；不含上下/斜向；可 exclude_owner）。
+	## 持有者星级 ≥2 时跳过首领（is_boss_leader）。
+	ORTHOGONAL_LEFT_RIGHT_ALLIES,
 }
 
 
