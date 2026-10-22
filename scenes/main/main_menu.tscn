@@ -87,6 +87,13 @@ layout_mode = 2
 size_flags_horizontal = 4
 text = "角色库"
 
+[node name="CombatSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(328, 82)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "沙盒"
+
 [node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(328, 82)

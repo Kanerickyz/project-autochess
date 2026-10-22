@@ -228,7 +228,18 @@ size_flags_horizontal = 3
 mouse_filter = 0
 script = ExtResource("2_arena")
 
-[node name="ContinueButton" type="Button" parent="Root/Column"]
+[node name="FooterButtons" type="VBoxContainer" parent="Root/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CopyRosterButton" type="Button" parent="Root/Column/FooterButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "复制阵容"
+
+[node name="ContinueButton" type="Button" parent="Root/Column/FooterButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 48)
 layout_mode = 2

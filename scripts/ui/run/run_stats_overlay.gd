@@ -18,11 +18,16 @@ const CATALOG_CELL_TARGET_PX := 96.0
 @onready var _peak_attack_arena: RealtimeArenaView = %PeakAttackArena
 @onready var _peak_hp_arena: RealtimeArenaView = %PeakHpArena
 @onready var _continue_button: Button = %ContinueButton
+@onready var _copy_roster_button: Button = %CopyRosterButton
 @onready var _scroll: ScrollContainer = $Root/Column/Scroll
+
+var _last_snapshot: RunStatsSnapshot = null
 
 
 func _ready() -> void:
 	_continue_button.pressed.connect(_on_continue_pressed)
+	if _copy_roster_button != null:
+		_copy_roster_button.pressed.connect(_on_copy_roster_pressed)
 	visible = false
 	_style_panels()
 	_configure_arena(_roster_arena)
@@ -58,6 +63,7 @@ func _style_panels() -> void:
 func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 	if snapshot == null:
 		return
+	_last_snapshot = snapshot
 	_title.text = "远征统计"
 	_subtitle.text = "远征完成" if snapshot.victory else "远征失败"
 	_fill_metric_grid(_journey_grid, _journey_rows(snapshot))
@@ -70,12 +76,15 @@ func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 	if _scroll != null:
 		_scroll.scroll_vertical = 0
 	visible = true
+	if _copy_roster_button != null:
+		_copy_roster_button.disabled = snapshot.roster.is_empty()
 	_continue_button.grab_focus()
 	_fit_all_arenas.call_deferred()
 
 
 func hide_overlay() -> void:
 	visible = false
+	_last_snapshot = null
 	_clear_arena(_roster_arena)
 	_clear_arena(_peak_attack_arena)
 	_clear_arena(_peak_hp_arena)
@@ -191,3 +200,19 @@ func _fit_all_arenas() -> void:
 
 func _on_continue_pressed() -> void:
 	continue_pressed.emit()
+
+
+func _on_copy_roster_pressed() -> void:
+	if _last_snapshot == null or _last_snapshot.roster.is_empty():
+		return
+	var seat_cap := maxi(5, _last_snapshot.roster.size())
+	var text := BattleLayoutClipboard.encode_roster(_last_snapshot.roster, seat_cap)
+	DisplayServer.clipboard_set(text)
+	if _copy_roster_button != null:
+		_copy_roster_button.text = "已复制"
+		get_tree().create_timer(1.2).timeout.connect(_restore_copy_roster_label)
+
+
+func _restore_copy_roster_label() -> void:
+	if _copy_roster_button != null and is_instance_valid(_copy_roster_button):
+		_copy_roster_button.text = "复制阵容"

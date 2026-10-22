@@ -86,6 +86,18 @@ var _enchant_session: EnchantSession = EnchantSession.new()
 var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
 var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
+## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
+var _combat_sandbox_mode: bool = false
+## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
+var _sandbox_enemy_override: Array = []
+## 观战录音机：动与动之间冻结；下一动只放一动；上一动真倒带。
+var _tape_paused: bool = false
+var _tape_step_once: bool = false
+var _tape_pause_requested: bool = false
+var _tape_boundary_pending: bool = false
+var _tape_completed_turns: int = 0
+var _tape_rewinding: bool = false
+var _tape_stats_disabled: bool = false
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -110,6 +122,17 @@ var _refresh_button: Button
 ## 观战倍速：1 → 2 → 3 → 1 循环。
 var _speed_button: Button
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
+## 准备阶段：复制本场布局（正式 + 沙盒）。
+var _copy_layout_button: Button
+## 沙盒准备：粘贴布局。
+var _paste_layout_button: Button
+## 观战录音机三键。
+var _tape_row: HBoxContainer
+var _tape_prev_button: Button
+var _tape_pause_button: Button
+var _tape_next_button: Button
+const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
+const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
 
 
 func _ready() -> void:
@@ -129,6 +152,8 @@ func _ready() -> void:
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
 	_ensure_speed_button()
+	_ensure_layout_clipboard_buttons()
+	_ensure_tape_controls()
 	_ensure_recruit_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
@@ -166,6 +191,17 @@ func _process(delta: float) -> void:
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
 	_run_stat_ledger = ledger
 	_stat_collector.configure(ledger)
+
+
+func set_combat_sandbox_mode(enabled: bool) -> void:
+	_combat_sandbox_mode = enabled
+	if enabled:
+		_run_stat_ledger = null
+		_stat_collector.configure(null)
+
+
+func is_combat_sandbox_mode() -> bool:
+	return _combat_sandbox_mode
 
 
 func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void:
@@ -260,8 +296,12 @@ func start_encounter(
 		_deploy_cap = config.get_deploy_cap() if config != null else DeckConfig.DEFAULT_DEPLOY_CAP
 	_slots.configure_grid(seat_rows, seat_cols, _board_size, false)
 	_enemy_slots.configure_grid(seat_rows, seat_cols, _board_size, true)
-	_enemy_spawns = _roll_enemy_spawns(_encounter_rng)
+	if _sandbox_enemy_override.is_empty():
+		_enemy_spawns = _roll_enemy_spawns(_encounter_rng)
+	else:
+		_enemy_spawns = _build_enemy_spawns_from_override(_sandbox_enemy_override)
 	_load_persistent_seats_into_prepare()
+	_reset_tape_state()
 
 	_arena.board_size = _board_size
 	_arena.sim = null
@@ -491,8 +531,105 @@ func try_start_combat() -> bool:
 	if _slots.occupied_count() < 1:
 		_show_hint("至少安排 1 名角色才能开战")
 		return false
+	if _combat_sandbox_mode and _enemy_spawns.is_empty():
+		_show_hint("双方至少各 1 人方可开战")
+		return false
 	_begin_combat_from_prepare()
 	return true
+
+
+## 复制整局阵容（仅友方）；供远征统计 / 外部调用。
+func copy_roster_to_clipboard() -> String:
+	if _deck_state == null:
+		return "无队伍可复制"
+	var text := BattleLayoutClipboard.encode_roster(
+		_deck_state.get_entries(),
+		_deck_state.get_max_size(),
+	)
+	DisplayServer.clipboard_set(text)
+	_show_hint("已复制阵容")
+	return ""
+
+
+## 复制本场布局（友+敌+遭遇+种子）；准备阶段可用。
+func copy_layout_to_clipboard() -> String:
+	if _deck_state == null:
+		return "无布局可复制"
+	var enemy_rows: Array = []
+	for spawn in _enemy_spawns:
+		var unit: UnitInstance = spawn.get("unit")
+		var uid := ""
+		if unit != null and unit.unit_data != null:
+			uid = unit.unit_data.id
+		if uid.is_empty():
+			continue
+		enemy_rows.append({
+			"unit_id": uid,
+			"seat": int(spawn.get("seat_index", -1)),
+			"level": unit.level if unit != null else 1,
+		})
+	var enc := BattleLayoutClipboard.encounter_type_from_node(_node_type)
+	var text := BattleLayoutClipboard.encode_layout(
+		_deck_state.get_entries(),
+		_deck_state.get_max_size(),
+		enemy_rows,
+		last_seed,
+		enc,
+	)
+	DisplayServer.clipboard_set(text)
+	_show_hint("已复制本场布局")
+	return ""
+
+
+## 粘贴剪贴板布局到当前准备（沙盒主路径；正式战也可调用）。失败返回错误且不清空场上。
+func paste_layout_from_clipboard() -> String:
+	var text := DisplayServer.clipboard_get()
+	return apply_layout_clipboard_text(text)
+
+
+func apply_layout_clipboard_text(text: String) -> String:
+	var parsed := BattleLayoutClipboard.parse(text)
+	if not parsed.ok or parsed.payload == null:
+		var err := parsed.error if not parsed.error.is_empty() else "粘贴失败"
+		_show_hint(err)
+		return err
+	return _apply_layout_payload(parsed.payload)
+
+
+## 沙盒：进入默认弱遭遇准备（可先空队再粘贴）。
+func enter_combat_sandbox(tier_index: int = 0) -> void:
+	_combat_sandbox_mode = true
+	_run_stat_ledger = null
+	_stat_collector.configure(null)
+	_sandbox_enemy_override.clear()
+	var encounter := load(DEFAULT_SANDBOX_ENCOUNTER) as EncounterData
+	if encounter == null:
+		push_error("RealtimeBattleController.enter_combat_sandbox: missing default encounter")
+		return
+	start_encounter(encounter, tier_index, 0, MapNodeType.Type.COMBAT)
+	## 默认弱敌：若队伍已有人则保留抽阵；空队时仍放一只弱敌便于粘贴后开战。
+	if _enemy_spawns.is_empty():
+		_sandbox_enemy_override = [{"unit_id": DEFAULT_SANDBOX_ENEMY_ID, "seat": 0, "level": 1}]
+		_enemy_spawns = _build_enemy_spawns_from_override(_sandbox_enemy_override)
+		if _arena != null:
+			_arena.enemy_previews = _build_enemy_previews(_enemy_spawns)
+	_refresh_hud()
+
+
+## 沙盒结算后重开本场准备（保留当前队伍与敌方覆盖）。
+func restart_sandbox_prepare() -> void:
+	if not _combat_sandbox_mode:
+		return
+	_teardown_sim()
+	_result_overlay.visible = false
+	_won = false
+	_reset_tape_state()
+	var encounter := _encounter
+	if encounter == null:
+		encounter = load(DEFAULT_SANDBOX_ENCOUNTER) as EncounterData
+	var tier := _tier_index
+	## 保留 _sandbox_enemy_override 与 deck；重进准备。
+	start_encounter(encounter, tier, _floor_index, int(_node_type))
 
 
 ## 结算后“继续”：胜则先播半场退出，再释放本场并发出 encounter_completed。
@@ -511,6 +648,13 @@ func continue_after_result() -> void:
 
 
 func _complete_continue(won: bool) -> void:
+	if _combat_sandbox_mode:
+		_teardown_sim()
+		_result_overlay.visible = false
+		_reset_tape_state()
+		restart_sandbox_prepare()
+		encounter_completed.emit(won)
+		return
 	_teardown_sim()
 	_card_flow.clear()
 	_slots.clear()
@@ -793,50 +937,9 @@ func _begin_combat_from_prepare() -> void:
 	## COMBAT.md §6.5：友方入座时间序 → 敌方配置书写序 → 清手牌 → 锁操作 → 游戏开始。
 	_lock_phase_active = true
 	_timestop_queue.clear()
+	_reset_tape_state()
 
-	_bus = CombatEventBus.new()
-	_bus.name = "RealtimeCombatEventBus"
-	add_child(_bus)
-	_bus.combat_event.connect(_on_combat_event)
-	_stat_collector.bind_bus(_bus)
-	_sim = RealtimeCombatSim.new(_bus)
-	_sim.configure(_board_size, last_seed)
-	_sim.splash_triggered.connect(_arena.add_splash_fx)
-	_sim.unit_died.connect(_on_unit_died)
-	_sim.combat_finished.connect(_on_combat_finished)
-	## 开战纯观战：场上全灭即败（不再因牌区剩余而抑制）。
-	_sim.suppress_player_wipe_loss = false
-
-	_arena.sim = _sim
-	_arena.enemy_previews = []
-	_arena.prepare_slots = _slots
-	_arena.enemy_slots = _enemy_slots
-	_arena.placement_active = false
-	_arena.clear_fx()
-
-	## 1) 友方按入座时间序依次生成；每体当下结算部署时技能。
-	for slot_i in _slots.get_occupied_indices_by_seat_order():
-		var entry := _slots.get_entry(slot_i)
-		if entry == null:
-			continue
-		var cell := _slots.get_cell(slot_i)
-		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
-		if unit == null:
-			continue
-		if unit.stats != null:
-			unit.stats.deploy_time = 0.0
-		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
-
-	## 2) 敌方按遭遇配置书写顺序依次生成（_enemy_spawns 已保序）。
-	## 逻辑落点用座位格心；spawn.position 可能是多格足迹几何中心（仅供预览）。
-	for spawn in _enemy_spawns:
-		var place: Vector2 = spawn["position"]
-		var seat_i: int = int(spawn.get("seat_index", -1))
-		if seat_i >= 0 and _enemy_slots != null:
-			var seat_cell := _enemy_slots.get_cell(seat_i)
-			if seat_cell != Vector2i(-1, -1):
-				place = Vector2(seat_cell) + Vector2(0.5, 0.5)
-		_sim.add_unit(spawn["unit"], place)
+	_spawn_combat_sim_from_lock(false)
 
 	## 3) 双方生成之后：未入座手牌回抽、清空手牌、准备结束。
 	_card_flow.return_hand_to_draw(_encounter_rng)
@@ -849,6 +952,56 @@ func _begin_combat_from_prepare() -> void:
 	_sim.defer_effect_resolve = true
 	_lock_phase_active = false
 	_set_phase(Phase.COMBAT)
+	_update_tape_controls()
+
+
+## 从当前准备座位 + _enemy_spawns 重建 sim；silent=true 时用于倒带重演（立刻排空技能、不绑统计）。
+func _spawn_combat_sim_from_lock(silent: bool) -> void:
+	var keep_lock := _lock_phase_active
+	_teardown_sim()
+	_lock_phase_active = keep_lock
+	_bus = CombatEventBus.new()
+	_bus.name = "RealtimeCombatEventBus"
+	add_child(_bus)
+	_bus.combat_event.connect(_on_combat_event)
+	if not silent and not _combat_sandbox_mode and not _tape_stats_disabled:
+		_stat_collector.bind_bus(_bus)
+	_sim = RealtimeCombatSim.new(_bus)
+	_sim.configure(_board_size, last_seed)
+	_sim.splash_triggered.connect(_arena.add_splash_fx)
+	_sim.unit_died.connect(_on_unit_died)
+	_sim.combat_finished.connect(_on_combat_finished)
+	if not _sim.actor_turn_ended.is_connected(_on_actor_turn_ended):
+		_sim.actor_turn_ended.connect(_on_actor_turn_ended)
+	_sim.suppress_player_wipe_loss = false
+
+	_arena.sim = _sim
+	_arena.enemy_previews = []
+	_arena.prepare_slots = _slots
+	_arena.enemy_slots = _enemy_slots
+	_arena.placement_active = false
+	_arena.clear_fx()
+
+	for slot_i in _slots.get_occupied_indices_by_seat_order():
+		var entry := _slots.get_entry(slot_i)
+		if entry == null:
+			continue
+		var cell := _slots.get_cell(slot_i)
+		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
+		if unit == null:
+			continue
+		if unit.stats != null:
+			unit.stats.deploy_time = 0.0
+		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
+
+	for spawn in _enemy_spawns:
+		var place: Vector2 = spawn["position"]
+		var seat_i: int = int(spawn.get("seat_index", -1))
+		if seat_i >= 0 and _enemy_slots != null:
+			var seat_cell := _enemy_slots.get_cell(seat_i)
+			if seat_cell != Vector2i(-1, -1):
+				place = Vector2(seat_cell) + Vector2(0.5, 0.5)
+		_sim.add_unit(spawn["unit"], place)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -1150,6 +1303,268 @@ func _update_speed_button_text() -> void:
 	elif time_scale >= 1.5:
 		shown = 2
 	_speed_button.text = "倍速 %d×" % shown
+
+
+func _ensure_layout_clipboard_buttons() -> void:
+	var dock_box := _start_button.get_parent() if _start_button != null else null
+	if _copy_layout_button == null or not is_instance_valid(_copy_layout_button):
+		_copy_layout_button = Button.new()
+		_copy_layout_button.name = "CopyLayoutButton"
+		_copy_layout_button.unique_name_in_owner = true
+		_copy_layout_button.custom_minimum_size = Vector2(0, 36)
+		_copy_layout_button.text = "复制本场布局"
+		_copy_layout_button.pressed.connect(_on_copy_layout_pressed)
+		if dock_box != null:
+			dock_box.add_child(_copy_layout_button)
+			dock_box.move_child(_copy_layout_button, _start_button.get_index())
+		else:
+			add_child(_copy_layout_button)
+	if _paste_layout_button == null or not is_instance_valid(_paste_layout_button):
+		_paste_layout_button = Button.new()
+		_paste_layout_button.name = "PasteLayoutButton"
+		_paste_layout_button.unique_name_in_owner = true
+		_paste_layout_button.custom_minimum_size = Vector2(0, 36)
+		_paste_layout_button.text = "粘贴布局"
+		_paste_layout_button.pressed.connect(_on_paste_layout_pressed)
+		if dock_box != null:
+			dock_box.add_child(_paste_layout_button)
+			dock_box.move_child(_paste_layout_button, _copy_layout_button.get_index())
+		else:
+			add_child(_paste_layout_button)
+	_copy_layout_button.visible = false
+	_paste_layout_button.visible = false
+
+
+func _ensure_tape_controls() -> void:
+	if _tape_row != null and is_instance_valid(_tape_row):
+		_update_tape_controls()
+		return
+	_tape_row = HBoxContainer.new()
+	_tape_row.name = "TapeRow"
+	_tape_row.unique_name_in_owner = true
+	_tape_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_tape_row.add_theme_constant_override("separation", 8)
+	_tape_prev_button = Button.new()
+	_tape_prev_button.text = "上一动"
+	_tape_prev_button.custom_minimum_size = Vector2(0, 36)
+	_tape_prev_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tape_prev_button.pressed.connect(_on_tape_prev_pressed)
+	_tape_pause_button = Button.new()
+	_tape_pause_button.text = "暂停"
+	_tape_pause_button.custom_minimum_size = Vector2(0, 36)
+	_tape_pause_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tape_pause_button.pressed.connect(_on_tape_pause_pressed)
+	_tape_next_button = Button.new()
+	_tape_next_button.text = "下一动"
+	_tape_next_button.custom_minimum_size = Vector2(0, 36)
+	_tape_next_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tape_next_button.pressed.connect(_on_tape_next_pressed)
+	_tape_row.add_child(_tape_prev_button)
+	_tape_row.add_child(_tape_pause_button)
+	_tape_row.add_child(_tape_next_button)
+	var dock_box := _start_button.get_parent() if _start_button != null else null
+	if dock_box != null:
+		dock_box.add_child(_tape_row)
+		if _speed_button != null and is_instance_valid(_speed_button):
+			dock_box.move_child(_tape_row, _speed_button.get_index())
+	else:
+		add_child(_tape_row)
+	_tape_row.visible = false
+
+
+func _reset_tape_state() -> void:
+	_tape_paused = false
+	_tape_step_once = false
+	_tape_pause_requested = false
+	_tape_boundary_pending = false
+	_tape_completed_turns = 0
+	_tape_rewinding = false
+	_tape_stats_disabled = false
+	_update_tape_controls()
+
+
+func _update_tape_controls() -> void:
+	var in_combat := _phase == Phase.COMBAT
+	if _tape_row != null:
+		## 结算叠层：录音机整组隐藏。
+		_tape_row.visible = in_combat
+	if not in_combat:
+		return
+	if _tape_pause_button != null:
+		_tape_pause_button.text = "继续" if _tape_paused and not _tape_step_once else "暂停"
+	if _tape_prev_button != null:
+		_tape_prev_button.disabled = _tape_completed_turns <= 0 or _tape_rewinding
+
+
+func _on_copy_layout_pressed() -> void:
+	copy_layout_to_clipboard()
+
+
+func _on_paste_layout_pressed() -> void:
+	paste_layout_from_clipboard()
+
+
+func _on_tape_pause_pressed() -> void:
+	if _phase != Phase.COMBAT or _sim == null:
+		return
+	if _tape_paused and not _tape_step_once:
+		_tape_paused = false
+		_tape_pause_requested = false
+		_tape_step_once = false
+		_tape_boundary_pending = false
+	else:
+		## 动与动之间冻结；若正在一动中则等本动+演出结束。
+		_tape_pause_requested = true
+		_tape_step_once = false
+		if (
+			_sim.get_current_actor() == null
+			and not _timestop_queue.is_blocking()
+			and not _sim.has_pending_effects()
+		):
+			_tape_paused = true
+			_tape_pause_requested = false
+			_tape_boundary_pending = false
+	_update_tape_controls()
+
+
+func _on_tape_next_pressed() -> void:
+	if _phase != Phase.COMBAT or _sim == null or _sim.is_finished():
+		return
+	_tape_paused = false
+	_tape_pause_requested = false
+	_tape_boundary_pending = false
+	_tape_step_once = true
+	_update_tape_controls()
+
+
+func _on_tape_prev_pressed() -> void:
+	if _phase != Phase.COMBAT or _sim == null:
+		return
+	if _tape_completed_turns <= 0:
+		_show_hint("已到开局")
+		_update_tape_controls()
+		return
+	_rewind_tape_to_turn(_tape_completed_turns - 1)
+
+
+func _on_actor_turn_ended(completed_turns: int) -> void:
+	if _tape_rewinding:
+		_tape_completed_turns = completed_turns
+		return
+	_tape_completed_turns = completed_turns
+	if _tape_step_once or _tape_pause_requested:
+		_tape_boundary_pending = true
+	_update_tape_controls()
+
+
+## 真倒带：同种子从锁阵重演到 target_turns（已完成一动数）。
+func _rewind_tape_to_turn(target_turns: int) -> void:
+	var target := maxi(0, target_turns)
+	_tape_rewinding = true
+	_timestop_queue.clear()
+	_tape_stats_disabled = true
+	_stat_collector.unbind_bus()
+	_spawn_combat_sim_from_lock(true)
+	if _sim == null:
+		_tape_rewinding = false
+		return
+	_sim.begin_combat()
+	## 倒带重演：立即结算技能，不走路演时停。
+	_sim.defer_effect_resolve = false
+	_tape_completed_turns = 0
+	var guard := 0
+	var max_steps := 30 * 60 * 10
+	while _tape_completed_turns < target and not _sim.is_finished() and guard < max_steps:
+		_sim.advance_fixed_step()
+		guard += 1
+	_tape_completed_turns = _sim.get_completed_actor_turns()
+	_sim.defer_effect_resolve = true
+	_tape_rewinding = false
+	_tape_paused = true
+	_tape_step_once = false
+	_tape_pause_requested = false
+	_tape_boundary_pending = false
+	if target <= 0 and _tape_completed_turns <= 0:
+		_show_hint("已到开局")
+	_update_tape_controls()
+	if _arena != null:
+		_arena.queue_redraw()
+
+
+func _apply_layout_payload(payload) -> String:
+	if payload == null or _deck_state == null:
+		return "无法应用布局"
+	var entries := BattleLayoutClipboard.build_deck_entries(payload)
+	if entries.is_empty():
+		var err := "没有有效友方"
+		_show_hint(err)
+		return err
+	var next_id := 0
+	var next_seq := 0
+	for entry in entries:
+		next_id = maxi(next_id, entry.entry_id + 1)
+		next_seq = maxi(next_seq, entry.seat_assign_seq)
+	_deck_state.restore_roster({
+		"entries": entries,
+		"next_entry_id": next_id,
+		"next_seat_seq": next_seq,
+		"seat_cap_override": maxi(1, payload.seat_cap),
+	})
+	if payload.is_layout() and payload.has_enemies():
+		_sandbox_enemy_override = payload.enemies.duplicate(true)
+		if payload.seed != 0:
+			rng_seed = payload.seed
+	elif _combat_sandbox_mode:
+		_sandbox_enemy_override = [
+			{"unit_id": DEFAULT_SANDBOX_ENEMY_ID, "seat": 0, "level": 1},
+		]
+	else:
+		_sandbox_enemy_override.clear()
+	var encounter := _encounter
+	if encounter == null:
+		encounter = load(DEFAULT_SANDBOX_ENCOUNTER) as EncounterData
+	if encounter == null:
+		var err2 := "缺少默认遭遇"
+		_show_hint(err2)
+		return err2
+	var node_type := BattleLayoutClipboard.node_type_from_encounter(payload.encounter_type)
+	start_encounter(encounter, _tier_index, _floor_index, int(node_type))
+	_show_hint("已粘贴布局")
+	return ""
+
+
+func _build_enemy_spawns_from_override(rows: Array) -> Array:
+	var spawns: Array = []
+	if _enemy_slots == null:
+		return spawns
+	var seat_count := _enemy_slots.slot_count
+	var used: Dictionary = {}
+	for row in rows:
+		var uid := String(row.get("unit_id", ""))
+		var data := BattleLayoutClipboard.resolve_unit(uid)
+		if data == null:
+			continue
+		var seat_i := int(row.get("seat", -1))
+		if seat_i < 0 or seat_i >= seat_count or used.has(seat_i):
+			seat_i = -1
+			for i in seat_count:
+				if not used.has(i):
+					seat_i = i
+					break
+		if seat_i < 0:
+			continue
+		used[seat_i] = true
+		var cell := _enemy_slots.get_cell(seat_i)
+		var unit := UnitInstance.from_unit_data(data, cell, UnitInstance.Team.ENEMY)
+		if unit == null:
+			continue
+		unit.level = clampi(int(row.get("level", 1)), 1, 3)
+		spawns.append({
+			"unit": unit,
+			"position": _enemy_spawn_visual_position(unit, cell),
+			"seat_index": seat_i,
+		})
+	return spawns
 
 
 func _on_speed_pressed() -> void:
@@ -1905,6 +2320,8 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 
 ## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
 func _tick_combat_presentation(delta: float) -> void:
+	if _sim == null:
+		return
 	if _timestop_queue.is_blocking():
 		_sim.hold_for_presentation()
 		var done := _timestop_queue.tick(delta, time_scale)
@@ -1917,7 +2334,43 @@ func _tick_combat_presentation(delta: float) -> void:
 		_sim.hold_for_presentation()
 		_start_next_skill_card()
 		return
+	## 一动逻辑已结束且演出排空：兑现暂停 / 下一动停住。
+	if _tape_boundary_pending:
+		_tape_boundary_pending = false
+		_tape_step_once = false
+		_tape_pause_requested = false
+		_tape_paused = true
+		_update_tape_controls()
+		_sim.release_presentation()
+		return
+	if _tape_paused and not _tape_step_once:
+		_sim.release_presentation()
+		return
 	_sim.release_presentation()
+	## 下一动 / 请求暂停：按固定步推进，避免倍速一帧连跳多动。
+	if _tape_step_once or _tape_pause_requested:
+		var guard := 0
+		while guard < 360 and not _sim.is_finished():
+			if _sim.has_pending_effects():
+				_sim.hold_for_presentation()
+				_start_next_skill_card()
+				return
+			if _tape_boundary_pending:
+				break
+			_sim.advance_fixed_step()
+			guard += 1
+		## 本动尾巴技能仍须演完再停。
+		if _sim.has_pending_effects():
+			_sim.hold_for_presentation()
+			_start_next_skill_card()
+			return
+		if _tape_boundary_pending:
+			_tape_boundary_pending = false
+			_tape_step_once = false
+			_tape_pause_requested = false
+			_tape_paused = true
+			_update_tape_controls()
+		return
 	_sim.step(delta * time_scale)
 
 
@@ -2039,17 +2492,29 @@ func _on_combat_finished(won: bool) -> void:
 	_timestop_queue.clear()
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
-	if won and _economy != null:
+	_floor_gold = 0
+	if won and _economy != null and not _combat_sandbox_mode:
 		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
 		_floor_gold = _economy.grant_floor_gold(_floor_index)
 	_result_label.text = "胜利" if won else "失败"
-	_result_detail.text = (
-		"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
-		if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
-	)
+	if _combat_sandbox_mode:
+		_result_detail.text = (
+			"沙盒·用时 %s" % _format_time(_sim.elapsed_seconds)
+			if won else "沙盒·用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
+		)
+		if _continue_button != null:
+			_continue_button.text = "再来一局"
+	else:
+		_result_detail.text = (
+			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
+			if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
+		)
+		if _continue_button != null:
+			_continue_button.text = "继续"
 	_result_overlay.visible = true
 	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
 	_set_phase(Phase.RESULT)
+	_update_tape_controls()
 	combat_resolved.emit(won)
 
 
@@ -2144,17 +2609,25 @@ func _refresh_cards() -> void:
 			_set_selected(-1)
 	if _start_button != null:
 		_start_button.visible = in_prepare and not in_recruit
-		_start_button.disabled = _slots.occupied_count() < 1
+		var can_start := _slots.occupied_count() >= 1
+		if _combat_sandbox_mode:
+			can_start = can_start and not _enemy_spawns.is_empty()
+		_start_button.disabled = not can_start
 	if _refresh_button != null:
 		## 本版取消准备刷新手牌：始终隐藏。
 		_refresh_button.visible = false
 		_refresh_button.disabled = true
 		_refresh_button.text = "刷新手牌（已禁用）"
+	if _copy_layout_button != null:
+		_copy_layout_button.visible = in_prepare and not in_recruit
+	if _paste_layout_button != null:
+		_paste_layout_button.visible = in_prepare and not in_recruit and _combat_sandbox_mode
 	if _speed_button != null:
-		## 开战观战与结算可调倍速；准备/招募隐藏。
-		_speed_button.visible = _phase == Phase.COMBAT or _phase == Phase.RESULT
+		## 开战观战可调倍速；结算叠层时倍速仍可改，录音机整组隐藏。
+		_speed_button.visible = _phase == Phase.COMBAT
 		_speed_button.disabled = false
 		_update_speed_button_text()
+	_update_tape_controls()
 
 
 func _combat_phase_status_text() -> String:

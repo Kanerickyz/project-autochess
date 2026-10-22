@@ -2,6 +2,7 @@ extends Control
 
 const GAME_SCENE_PATH := "res://scenes/main/run_game.tscn"
 const CODEX_SCENE_PATH := "res://scenes/ui/codex/unit_codex_screen.tscn"
+const COMBAT_SANDBOX_PATH := "res://scenes/main/combat_sandbox.tscn"
 const ENCHANT_SANDBOX_PATH := "res://scenes/main/enchant_sandbox.tscn"
 
 # 单按钮竖条精灵图：自上而下为常态 / 悬停 / 按下 / …（见 menu_button_sheet.jpg）
@@ -22,6 +23,7 @@ const BUTTON_TARGET_WIDTH := 328.0
 @onready var _title_logo: TextureRect = $SafeMargin/MainVBox/TitleRow/TitleLogo
 @onready var _start_button: Button = %StartButton
 @onready var _codex_button: Button = %CodexButton
+@onready var _combat_sandbox_button: Button = %CombatSandboxButton
 @onready var _enchant_sandbox_button: Button = %EnchantSandboxButton
 @onready var _settings_button: Button = %SettingsButton
 @onready var _exit_button: Button = %ExitButton
@@ -36,6 +38,7 @@ func _ready() -> void:
 	_apply_menu_button_styles()
 	_start_button.pressed.connect(_on_start_pressed)
 	_codex_button.pressed.connect(_on_codex_pressed)
+	_combat_sandbox_button.pressed.connect(_on_combat_sandbox_pressed)
 	_enchant_sandbox_button.pressed.connect(_on_enchant_sandbox_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_exit_button.pressed.connect(_on_exit_pressed)
@@ -75,6 +78,7 @@ func _apply_menu_button_styles() -> void:
 	var buttons: Array[Button] = [
 		_start_button,
 		_codex_button,
+		_combat_sandbox_button,
 		_enchant_sandbox_button,
 		_settings_button,
 		_exit_button,
@@ -126,6 +130,10 @@ func _on_start_pressed() -> void:
 
 func _on_codex_pressed() -> void:
 	get_tree().change_scene_to_file(CODEX_SCENE_PATH)
+
+
+func _on_combat_sandbox_pressed() -> void:
+	get_tree().change_scene_to_file(COMBAT_SANDBOX_PATH)
 
 
 func _on_enchant_sandbox_pressed() -> void:

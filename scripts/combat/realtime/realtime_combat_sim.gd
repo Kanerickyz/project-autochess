@@ -13,6 +13,8 @@ signal splash_triggered(center: Vector2, radius: float)
 signal combat_finished(won: bool)
 ## 当前行动者变更（含回合推进跳过阵亡后落到下一位）；UI 高亮用。
 signal current_actor_changed(actor: RtUnit)
+## 行动队列上一动完整结束（含该动技能尾巴已在固定步内排空后的交权瞬间）；观战录音机用。
+signal actor_turn_ended(completed_turns: int)
 
 const FIXED_STEPS_PER_SECOND := 30
 const FIXED_DT := 1.0 / FIXED_STEPS_PER_SECOND
@@ -60,6 +62,8 @@ var _actor_turn_active: bool = false
 var _had_boss_leader: bool = false
 ## 本动内刚通过技能续动（见 ON_ACTOR_TURN_REFRESH）；在普攻后消费以免立刻结束回合。
 var _turn_refresh_armed_instance_id: int = -1
+## 自开战起已完整结束的「一动」次数（录音机倒带游标）。
+var _completed_actor_turns: int = 0
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -255,6 +259,7 @@ func begin_combat() -> void:
 	if _started or _finished:
 		return
 	_started = true
+	_completed_actor_turns = 0
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
 	_drain_effects(true)
 	_build_action_queue_from_lock_order()
@@ -295,6 +300,11 @@ func get_action_queue() -> Array:
 
 func get_queue_cursor() -> int:
 	return _queue_cursor
+
+
+## 已完整结束的一动次数（开战锁阵后为 0）。
+func get_completed_actor_turns() -> int:
+	return _completed_actor_turns
 
 
 ## 按调用方 dt 推进；内部以 FIXED_DT 拆步，累计总输入时间决定步数，避免浮点累加误差导致步数漂移。
@@ -475,7 +485,9 @@ func _end_current_actor_turn() -> void:
 	_actor_has_attacked = false
 	_actor_steps_left = 0
 	_queue_cursor += 1
+	_completed_actor_turns += 1
 	current_actor_changed.emit(null)
+	actor_turn_ended.emit(_completed_actor_turns)
 	_check_finished()
 
 
