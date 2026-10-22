@@ -2242,7 +2242,25 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 			)
 		var cost := int(dict.get("cost", 0))
 		var affordable := bool(dict.get("affordable", true))
-		_draw_recruit_cost_tag(tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off, cost, affordable, px)
+		## 价格标画在格内底部，避免下半场货架上方「X金」被半场/UI 裁切。
+		_draw_map_shop_cost_tag(cell_rect, cost, affordable, px, alpha)
+
+
+func _draw_map_shop_cost_tag(
+	cell_rect: Rect2, cost: int, affordable: bool, px: float, alpha: float
+) -> void:
+	var font := get_theme_default_font()
+	var text := "%d金" % cost
+	var font_size := clampi(int(px * 0.32), 9, 13)
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := cell_rect.position + Vector2(
+		(cell_rect.size.x - text_size.x) * 0.5,
+		cell_rect.size.y * 0.82,
+	)
+	var color := (
+		Color(1.0, 0.9, 0.35, 0.95 * alpha) if affordable else Color(1.0, 0.35, 0.3, 0.95 * alpha)
+	)
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
 func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
