@@ -80,8 +80,6 @@ const SHAKE_BLEED_PX := 8.0
 ## 长按查看单位信息（SAP 式）：按住超过阈值弹卡，松手收起且不触发点按。
 const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
-## 附魔试验场：|dy| 大于 |dx|×该系数视为纵向滚列表，否则拖队员/入炉。
-const ENCHANT_SCROLL_VERTICAL_DOMINANCE := 1.2
 ## 拖角色：小丑牌式抬起 / 速度倾斜 / 落座（采样见 RealtimeUnitMotion.sample_drag_hold）。
 const DRAG_PICKUP_SEC := RealtimeUnitMotion.DRAG_PICKUP_SEC
 const DRAG_SETTLE_SEC := 0.2
@@ -711,9 +709,7 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			return
 		if _enchant_team_drag_id >= 0:
 			_set_drag_pointer(motion.position)
-		if _try_begin_enchant_team_scroll_on_motion(motion.position):
-			accept_event()
-			return
+		## 点在队员上：越出 slop 一律开拖（含竖直上炉）；滚列表只走空白区跟手 / 滚轮。
 		if not _try_begin_enchant_team_drag_on_motion(motion.position):
 			_track_press_motion(motion.position)
 		accept_event()
@@ -1065,36 +1061,12 @@ func _begin_press(pos: Vector2, info: Dictionary, tap: Callable) -> void:
 	_info_shown = false
 
 
-func _enchant_motion_prefers_scroll(pos: Vector2) -> bool:
-	if not enchant_team_scroll_enabled:
-		return false
-	var dx := pos.x - _press_pos.x
-	var dy := pos.y - _press_pos.y
-	return absf(dy) > absf(dx) * ENCHANT_SCROLL_VERTICAL_DOMINANCE
-
-
-func _try_begin_enchant_team_scroll_on_motion(pos: Vector2) -> bool:
-	if not enchant_team_scroll_enabled or _enchant_team_press_id < 0:
-		return false
-	if _enchant_team_drag_id >= 0 or _enchant_forge_press or _info_shown:
-		return false
-	if pos.distance_to(_press_pos) <= LONG_PRESS_SLOP_PX:
-		return false
-	if not _enchant_motion_prefers_scroll(pos):
-		return false
-	_cancel_press()
-	_enchant_team_press_id = -1
-	_enchant_team_pan_active = true
-	_enchant_team_pan_last_y = pos.y
-	return true
-
-
 func _try_begin_enchant_team_drag_on_motion(pos: Vector2) -> bool:
 	if _enchant_forge_press or _enchant_team_press_id < 0 or _enchant_team_drag_id >= 0 or _info_shown:
 		return false
-	if pos.distance_to(_press_pos) <= LONG_PRESS_SLOP_PX:
+	if _enchant_team_pan_active:
 		return false
-	if _enchant_motion_prefers_scroll(pos):
+	if pos.distance_to(_press_pos) <= LONG_PRESS_SLOP_PX:
 		return false
 	_cancel_press()
 	_begin_enchant_team_drag(_enchant_team_press_id, pos)
