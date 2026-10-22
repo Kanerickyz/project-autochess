@@ -212,15 +212,42 @@ func _test_enchant_scroll_vs_drag_gesture() -> void:
 	_expect(not arena._enchant_team_pan_active, "horizontal move does not pan")
 	_press_arena(arena, move_h.position, false)
 
+	## 竖直上移（入炉方向）也必须开拖，不能被滚列表抢走。
 	arena.enchant_team_scroll_rows = 0.0
 	arena._enchant_team_drag_id = -1
+	arena._enchant_team_press_id = -1
 	_press_arena(arena, center, true)
 	var move_v := InputEventMouseMotion.new()
-	move_v.position = center + Vector2(2, 28)
-	move_v.relative = Vector2(2, 28)
+	move_v.position = center + Vector2(2, -28)
+	move_v.relative = Vector2(2, -28)
 	arena._gui_input(move_v)
-	_expect(arena._enchant_team_pan_active, "vertical slop on member starts scroll pan")
-	_expect(arena._enchant_team_drag_id < 0, "vertical move does not drag")
+	_expect(arena._enchant_team_drag_id >= 0, "vertical up on member starts drag toward forge")
+	_expect(not arena._enchant_team_pan_active, "vertical up on member does not pan")
+	_press_arena(arena, move_v.position, false)
+
+	## 队伍半场空白格按下才跟手滚（非队员）。
+	arena._enchant_team_drag_id = -1
+	arena._enchant_team_press_id = -1
+	arena._enchant_team_pan_active = false
+	var empty_center := Vector2.ZERO
+	var found_empty := false
+	var mid := BoardHalf.midline_row(arena.board_size.y)
+	for y in range(mid, arena.board_size.y):
+		for x in range(arena.board_size.x):
+			var cell := Vector2i(x, y)
+			if arena._find_enchant_team_entry_at(cell) >= 0:
+				continue
+			empty_center = arena.tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
+			found_empty = true
+			break
+		if found_empty:
+			break
+	_expect(found_empty, "team half has empty cell for pan")
+	if found_empty:
+		_press_arena(arena, empty_center, true)
+		_expect(arena._enchant_team_pan_active, "press empty team cell starts scroll pan")
+		_expect(arena._enchant_team_press_id < 0, "empty cell press is not member press")
+		_press_arena(arena, empty_center, false)
 
 	arena.queue_free()
 	await process_frame
