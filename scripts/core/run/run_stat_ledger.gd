@@ -110,7 +110,10 @@ static func _clone_peak_entry(source: DeckEntry) -> DeckEntry:
 	entry.attached_buffs = source.attached_buffs.duplicate()
 	entry.attached_abilities = source.attached_abilities.duplicate()
 	entry.rule_flags = source.rule_flags.duplicate(true)
-	entry.equipment = source.equipment
+	if source.equipment != null:
+		entry.equipment = source.equipment.duplicate(true) as EquipmentData
+	else:
+		entry.equipment = null
 	if source.runtime_main_ability != null:
 		entry.runtime_main_ability = source.runtime_main_ability.duplicate(true) as AbilityData
 	return entry

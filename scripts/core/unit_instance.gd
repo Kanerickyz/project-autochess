@@ -28,8 +28,10 @@ var combat_skill_heal_received: int = 0
 const COMBAT_SKILL_HEAL_BUDGET: int = 100
 ## 队伍条目 runtime 主技能（熔印者等）；优先于 unit_data.ability。
 var main_ability_override: AbilityData = null
-## 来自 DeckEntry 装备的护甲抵挡；受伤结算前抵消伤害。
+## 来自 DeckEntry 装备的护甲抵挡；受伤结算前抵消伤害，受击消耗。
 var armor_block: int = 0
+## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
+var _deck_entry_ref: WeakRef = null
 
 
 func is_boss_leader() -> bool:
@@ -72,6 +74,7 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	unit.cannot_move = entry.rule_flags.get("cannot_move", false)
 	unit.death_grant_gold = 0
 	unit.armor_block = entry.get_armor_block()
+	unit._deck_entry_ref = weakref(entry)
 	unit.attached_abilities = entry.attached_abilities.duplicate()
 	if entry.runtime_main_ability != null:
 		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
@@ -89,6 +92,7 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 		return null
 	var unit := from_unit_data(entry.unit, cell, team)
 	unit.deck_entry_id = entry.entry_id
+	unit._deck_entry_ref = weakref(entry)
 	if entry.runtime_main_ability != null:
 		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	sync_from_deck_entry(unit, entry)
@@ -251,10 +255,26 @@ func get_armor_block() -> int:
 
 
 ## 护甲抵消后的最终扣血；≤0 表示全额挡住（不算受伤）。
+## 抵消量会消耗护甲；耗尽后回写队伍并销毁装备。
 func mitigate_incoming_damage(amount: int) -> int:
 	if amount <= 0:
 		return 0
-	return maxi(0, amount - get_armor_block())
+	var block := get_armor_block()
+	if block <= 0:
+		return amount
+	var absorbed := mini(amount, block)
+	armor_block = maxi(0, block - absorbed)
+	_sync_armor_to_deck_entry()
+	return maxi(0, amount - absorbed)
+
+
+func _sync_armor_to_deck_entry() -> void:
+	if _deck_entry_ref == null:
+		return
+	var entry := _deck_entry_ref.get_ref() as DeckEntry
+	if entry == null:
+		return
+	entry.apply_armor_remaining(armor_block)
 
 
 func get_all_effect_specs() -> Array[EffectSpec]:

@@ -569,10 +569,14 @@ func _pick_merge_equipment(sources: Array) -> EquipmentData:
 			candidates.append(entry.equipment)
 	if candidates.is_empty():
 		return null
+	var picked: EquipmentData
 	if candidates.size() == 1:
-		return candidates[0]
-	var rng := _ensure_rng()
-	return candidates[rng.randi_range(0, candidates.size() - 1)]
+		picked = candidates[0]
+	else:
+		var rng := _ensure_rng()
+		picked = candidates[rng.randi_range(0, candidates.size() - 1)]
+	## 合成结果持有独立副本，避免与源条目或池资源串改。
+	return picked.duplicate(true) as EquipmentData if picked != null else null
 
 
 ## 落座时间最早（seq 最小且 >0）；皆未入座则 null。
@@ -676,7 +680,10 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.bonus_attack = source.bonus_attack
 	entry.bonus_max_hp = source.bonus_max_hp
 	entry.bonus_crit_rate_percent = source.bonus_crit_rate_percent
-	entry.equipment = source.equipment
+	if source.equipment != null:
+		entry.equipment = source.equipment.duplicate(true) as EquipmentData
+	else:
+		entry.equipment = null
 	entry.seat_index = source.seat_index
 	entry.seat_assign_seq = source.seat_assign_seq
 	if source.runtime_main_ability != null:
