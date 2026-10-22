@@ -10,6 +10,8 @@ signal card_long_press_ended(entry_id: int)
 const ARENA_DRAG_KEY := RealtimeArenaView.DRAG_KEY
 const LONG_PRESS_MS := RealtimeArenaView.LONG_PRESS_MS
 const LONG_PRESS_SLOP_PX := RealtimeArenaView.LONG_PRESS_SLOP_PX
+const DRAG_PICKUP_SEC := RealtimeArenaView.DRAG_PICKUP_SEC
+const DRAG_SCALE := RealtimeArenaView.DRAG_SCALE
 
 var entry: DeckEntry
 var available: bool = true:
@@ -34,22 +36,62 @@ var _press_ms: int = -1
 var _press_pos := Vector2.ZERO
 var _info_shown := false
 var _drag_started := false
+var _art: UnitArtCatalog = UnitArtCatalog.load_default()
 
 
 class DragGhost:
 	extends Control
+	## 跟手剪影：贴图优先，抬起用 Tween（与棋盘拖影同参数）。
 
 	var radius_px: float = 14.0
 	var color: Color = RealtimeArenaView.PLAYER_COLOR
 	var glyph: String = ""
+	var unit_id: String = ""
+	var texture: Texture2D
+	## 系统拖影会每帧改 position，抬起量只能画在 _draw 里。
+	var lift_px: float = 4.0
+	var _tween: Tween
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(true)
+		scale = Vector2.ONE * 0.9
+		modulate.a = 0.7
+		lift_px = 4.0
+		_tween = create_tween()
+		_tween.set_parallel(true)
+		_tween.tween_property(self, "scale", Vector2.ONE * DRAG_SCALE, DRAG_PICKUP_SEC) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_tween.tween_property(self, "modulate:a", 0.95, DRAG_PICKUP_SEC * 0.7) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_tween.tween_property(self, "lift_px", -14.0, DRAG_PICKUP_SEC) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_tween.chain().tween_callback(func() -> void: set_process(false))
+
+	func _process(_delta: float) -> void:
+		## 抬起 Tween 期间刷新 lift_px 绘制。
+		queue_redraw()
+
+	func _exit_tree() -> void:
+		if _tween != null and _tween.is_valid():
+			_tween.kill()
+		_tween = null
 
 	func _draw() -> void:
-		draw_circle(Vector2.ZERO, radius_px, Color(color, 0.7))
+		var lift := Vector2(0.0, lift_px)
+		if texture != null:
+			var tex_size := texture.get_size()
+			var h := maxf(radius_px * 2.4, 28.0)
+			var w := h * tex_size.x / maxf(1.0, tex_size.y)
+			var rect := Rect2(Vector2(-w * 0.5, -h * 0.85) + lift, Vector2(w, h))
+			draw_texture_rect(texture, rect, false, Color(1, 1, 1, 1))
+			return
+		draw_circle(lift, radius_px, Color(color, 0.7))
 		var font := get_theme_default_font()
 		var font_size := clampi(int(radius_px * 1.1), 10, 22)
 		var text_size := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 		draw_string(
-			font, Vector2(-text_size.x * 0.5, font.get_ascent(font_size) * 0.4), glyph,
+			font, lift + Vector2(-text_size.x * 0.5, font.get_ascent(font_size) * 0.4), glyph,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE,
 		)
 
@@ -152,6 +194,12 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	ghost.radius_px = maxf(10.0, maxf(vwx, vhy) * 22.0)
 	var full_name := entry.get_display_name()
 	ghost.glyph = full_name.substr(0, mini(2, full_name.length()))
+	ghost.unit_id = entry.get_unit_id()
+	ghost.color = color_for_unit(ghost.unit_id)
+	if _art != null:
+		ghost.texture = _art.get_texture(ghost.unit_id, true)
+	## 预览锚在脚底附近，抬起 Tween 更像「拎起角色」。
+	ghost.pivot_offset = Vector2.ZERO
 	set_drag_preview(ghost)
 	return {
 		ARENA_DRAG_KEY: entry.entry_id,
