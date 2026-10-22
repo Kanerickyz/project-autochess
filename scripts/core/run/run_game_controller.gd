@@ -10,7 +10,6 @@ const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit
 @onready var _battle_root: Control = %BattleRoot
 @onready var _map_screen: MapScreen = %MapScreen
 @onready var _placeholder_screen: PlaceholderNodeScreen = %PlaceholderNodeScreen
-@onready var _map_shop_screen: MapShopScreen = %MapShopScreen
 @onready var _run_end_overlay: RunEndOverlay = %RunEndOverlay
 @onready var _run_stats_overlay: RunStatsOverlay = %RunStatsOverlay
 
@@ -52,6 +51,7 @@ func _ready() -> void:
 	_battle.combat_resolved.connect(_on_combat_resolved)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
+	_battle.map_shop_finished.connect(_on_map_shop_finished)
 
 	run_controller.configure(DEFAULT_RUN_MAP, _rng.randi())
 	run_controller.phase_changed.connect(_on_run_phase_changed)
@@ -59,8 +59,6 @@ func _ready() -> void:
 
 	_map_screen.node_selected.connect(_on_map_node_selected)
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
-	if _map_shop_screen != null:
-		_map_shop_screen.finished.connect(_on_map_shop_finished)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
 	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
@@ -91,6 +89,8 @@ func _show_map() -> void:
 	_battle_root.visible = true
 	if _battle != null:
 		_battle.exit_recruit()
+		_battle.exit_map_shop()
+		_battle.exit_enchant()
 		_battle.set_world_backdrop_mode(true)
 	_map_screen.show_map(run_controller)
 
@@ -98,8 +98,6 @@ func _show_map() -> void:
 func _hide_encounter_ui() -> void:
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
-	if _map_shop_screen != null:
-		_map_shop_screen.hide_shop()
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
@@ -222,14 +220,14 @@ func _on_enchant_finished(_did_fuse: bool) -> void:
 	run_controller.complete_encounter()
 
 
-## 地图商店：上货架下半场；结束回地图。
+## 地图商店：Arena 主路径（上队伍 / 下货架），与招募同屏半场；结束回地图。
 func _open_map_shop() -> void:
 	if _map_shop_busy:
 		return
 	_map_shop_busy = true
 	_battle_root.visible = true
 	if _battle != null:
-		_battle.set_world_backdrop_mode(true)
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
 	var shop_rng := RandomNumberGenerator.new()
@@ -237,17 +235,11 @@ func _open_map_shop() -> void:
 	var config := map_shop_config if map_shop_config != null else MapShopConfig.load_or_default()
 	_map_shop_service.configure(config, run_economy, deck_state, shop_rng)
 	_map_shop_service.open_shop()
-	if _map_shop_screen != null:
-		await _map_shop_screen.open_shop(_map_shop_service, deck_state)
-	else:
-		_map_shop_busy = false
-		_map_shop_service.close_shop()
-		run_controller.complete_encounter()
+	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
+	await _battle.enter_map_shop(_map_shop_service, enter_s)
 
 
 func _on_map_shop_finished() -> void:
-	if _map_shop_screen != null:
-		_map_shop_screen.hide_shop()
 	_map_shop_service.close_shop()
 	_map_shop_busy = false
 	run_controller.complete_encounter()

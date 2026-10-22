@@ -1,6 +1,7 @@
 class_name MapShopScreen
 extends Control
-## 地图商店：上货架（消耗品+装备）、下队伍半场换座；拖货到角色购买。
+## 【遗留卡片面板】主路径已改为 RealtimeBattleController.enter_map_shop（Arena 草地+纸片单位）。
+## 保留场景供对照；Run 不再挂载。旧布局为上货架下队伍（与现行上队伍下货架相反）。
 
 signal finished
 

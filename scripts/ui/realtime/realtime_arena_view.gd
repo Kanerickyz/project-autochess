@@ -24,6 +24,10 @@ signal recruit_item_drop(item_slot: int, entry_id: int)
 signal enchant_forge_drop(entry_id: int, slot: StringName)
 ## 附魔：下半场队伍换座（与招募上区同规则）。
 signal enchant_team_seat_drop(entry_id: int, target_seat: int)
+## 地图商店：货架拖到上半场角色；kind = consumable | equipment。
+signal map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int)
+## 地图商店：上区队伍换座。
+signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -112,6 +116,10 @@ var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
+## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
+var map_shop_active: bool = false
+## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
+var map_shop_offers: Array = []
 ## 附魔：上炉下队；上半场熔炉三格，下半场队伍座位。
 var enchant_active: bool = false
 var enchant_forge_previews: Array = []
@@ -181,6 +189,11 @@ var _enchant_team_pan_active: bool = false
 var _enchant_team_pan_last_y: float = 0.0
 var _enchant_forge_press: bool = false
 var _recruit_team_press_id: int = -1
+## 地图商店货架拖拽：map_shop_offers 数组下标。
+var _map_shop_offer_drag_index: int = -1
+var _map_shop_offer_press_index: int = -1
+var _map_shop_team_drag_id: int = -1
+var _map_shop_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
@@ -282,6 +295,10 @@ func _notification(what: int) -> void:
 		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
 		_recruit_team_press_id = -1
+		_map_shop_offer_drag_index = -1
+		_map_shop_offer_press_index = -1
+		_map_shop_team_drag_id = -1
+		_map_shop_team_press_id = -1
 		_finish_drag_visual(_hover_cell)
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
@@ -490,6 +507,9 @@ func _gui_input(event: InputEvent) -> void:
 	if enchant_active:
 		_gui_input_enchant(event)
 		return
+	if map_shop_active:
+		_gui_input_map_shop(event)
+		return
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
@@ -600,6 +620,63 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			recruit_item_pressed.emit(item_pressed)
 			accept_event()
 		_recruit_team_press_id = -1
+
+
+func _gui_input_map_shop(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_track_press_motion(motion.position)
+		if _map_shop_offer_drag_index >= 0 or _map_shop_team_drag_id >= 0:
+			_set_drag_pointer(motion.position)
+		elif _map_shop_offer_press_index >= 0 and _map_shop_offer_drag_index < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_map_shop_offer_drag(_map_shop_offer_press_index, motion.position)
+		elif _map_shop_team_press_id >= 0 and _map_shop_team_drag_id < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_map_shop_team_drag(_map_shop_team_press_id, motion.position)
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var cell := tile_to_cell(local_to_tile(mb.position))
+		if mb.pressed:
+			var offer_i := _find_map_shop_offer_at(cell)
+			if offer_i >= 0:
+				_map_shop_offer_press_index = offer_i
+				_map_shop_team_press_id = -1
+				_begin_press(mb.position, {}, Callable())
+				accept_event()
+				return
+			var entry_id := _find_recruit_team_entry_at(cell)
+			if entry_id >= 0:
+				_map_shop_team_press_id = entry_id
+				_map_shop_offer_press_index = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+			return
+		if _info_shown:
+			_map_shop_offer_press_index = -1
+			_map_shop_team_press_id = -1
+			_end_press()
+			accept_event()
+			return
+		if _end_press():
+			accept_event()
+		if _map_shop_team_drag_id >= 0:
+			_finish_map_shop_team_drag(cell)
+			accept_event()
+			return
+		if _map_shop_offer_drag_index >= 0:
+			_finish_map_shop_offer_drag(cell)
+			accept_event()
+			return
+		_map_shop_offer_press_index = -1
+		_map_shop_team_press_id = -1
 
 
 func _gui_input_enchant(event: InputEvent) -> void:
@@ -1617,6 +1694,112 @@ func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 	return recruit_team_slots.find_slot_at_cell(cell)
 
 
+func _find_map_shop_offer_at(cell: Vector2i) -> int:
+	if cell == NO_CELL:
+		return -1
+	for i in map_shop_offers.size():
+		var info: Variant = map_shop_offers[i]
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = (info as Dictionary).get("cell", NO_CELL)
+		if c == cell and (info as Dictionary).get("item") != null:
+			return i
+	return -1
+
+
+func _begin_map_shop_offer_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void:
+	if index < 0 or index >= map_shop_offers.size():
+		return
+	var info: Dictionary = map_shop_offers[index]
+	if info.get("item") == null:
+		return
+	_map_shop_offer_drag_index = index
+	_map_shop_offer_press_index = -1
+	_map_shop_team_drag_id = -1
+	_map_shop_team_press_id = -1
+	_drag_active = true
+	_drag_radius = 0.55
+	_drag_visual_half_width = 0.0
+	_drag_visual_half_height = 0.0
+	_drag_label = String(info.get("label", ""))
+	_drag_unit_id = ""
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
+	queue_redraw()
+
+
+func _finish_map_shop_offer_drag(cell: Vector2i) -> void:
+	var index := _map_shop_offer_drag_index
+	_map_shop_offer_drag_index = -1
+	_map_shop_offer_press_index = -1
+	_drag_active = false
+	_finish_drag_visual(cell)
+	if index < 0 or index >= map_shop_offers.size():
+		queue_redraw()
+		return
+	var mid := BoardHalf.midline_row(board_size.y)
+	if cell == NO_CELL or cell.y >= mid:
+		queue_redraw()
+		return
+	var entry_id := _find_recruit_team_entry_at(cell)
+	if entry_id < 0:
+		queue_redraw()
+		return
+	var info: Dictionary = map_shop_offers[index]
+	var kind: StringName = info.get("kind", &"consumable")
+	var slot_index := int(info.get("index", -1))
+	map_shop_offer_drop.emit(kind, slot_index, entry_id)
+	queue_redraw()
+
+
+func _begin_map_shop_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
+	if entry_id < 0 or recruit_team_slots == null:
+		return
+	var entry: DeckEntry = null
+	for i in recruit_team_slots.slot_count:
+		var e := recruit_team_slots.get_entry(i)
+		if e != null and e.entry_id == entry_id:
+			entry = e
+			break
+	if entry == null:
+		return
+	_map_shop_team_drag_id = entry_id
+	_map_shop_team_press_id = -1
+	_map_shop_offer_drag_index = -1
+	_map_shop_offer_press_index = -1
+	_drag_active = true
+	var stats := entry.unit.stats if entry.unit != null else null
+	_drag_radius = stats.body_radius if stats != null else 0.7
+	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
+	_drag_label = entry.get_display_name()
+	_drag_unit_id = entry.get_unit_id()
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
+	queue_redraw()
+
+
+func _finish_map_shop_team_drag(cell: Vector2i) -> void:
+	var entry_id := _map_shop_team_drag_id
+	_map_shop_team_drag_id = -1
+	_map_shop_team_press_id = -1
+	_drag_active = false
+	_finish_drag_visual(cell)
+	if entry_id < 0:
+		queue_redraw()
+		return
+	var seat_i := _find_recruit_team_seat_at(cell)
+	if seat_i < 0 and recruit_team_slots != null:
+		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+		if seat_i >= 0:
+			var sc := recruit_team_slots.get_cell(seat_i)
+			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
+				seat_i = -1
+	if seat_i >= 0:
+		map_shop_team_seat_drop.emit(entry_id, seat_i)
+	queue_redraw()
+
+
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary):
 		return false
@@ -1703,10 +1886,25 @@ func clear_enchant_mode() -> void:
 	queue_redraw()
 
 
+func clear_map_shop_mode() -> void:
+	_cancel_press()
+	map_shop_active = false
+	map_shop_offers.clear()
+	recruit_team_slots = null
+	_map_shop_offer_drag_index = -1
+	_map_shop_offer_press_index = -1
+	_map_shop_team_drag_id = -1
+	_map_shop_team_press_id = -1
+	_clear_drag_visual()
+	queue_redraw()
+
+
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
-	recruit_team_slots = null
+	## 地图商店复用 recruit_team_slots 画上半场；清招募时勿误清商店。
+	if not map_shop_active:
+		recruit_team_slots = null
 	recruit_candidates.clear()
 	recruit_items.clear()
 	recruit_selected_candidate = -1
@@ -1822,7 +2020,12 @@ func _draw() -> void:
 			PLAYER_TINT,
 		)
 
-	var showing_placement := (placement_active or _drag_active) and not recruit_active and not catalog_active
+	var showing_placement := (
+		(placement_active or _drag_active)
+		and not recruit_active
+		and not map_shop_active
+		and not catalog_active
+	)
 	if showing_placement:
 		draw_rect(
 			Rect2(rect.position + Vector2(0, mid * px) + ally_off, Vector2(rect.size.x, (board_size.y - mid) * px)),
@@ -1844,6 +2047,14 @@ func _draw() -> void:
 				_draw_enchant_forge_drop_hint(px, enemy_off)
 			else:
 				_draw_enchant_team_seat_hint(px)
+	elif map_shop_active:
+		_draw_map_shop_zone_labels(px, mid, enemy_off, ally_off)
+		_draw_recruit_team(px, enemy_off)
+		_draw_map_shop_offers(px, ally_off)
+		if _map_shop_offer_drag_index >= 0 and _hover_cell != NO_CELL:
+			_draw_map_shop_offer_drop_hint(px, mid)
+		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
+			_draw_map_shop_team_seat_hint(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -1980,6 +2191,106 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
+func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.55), 11, 18)
+	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "商店货架", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+
+
+func _draw_map_shop_offers(px: float, off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	for i in map_shop_offers.size():
+		var info: Variant = map_shop_offers[i]
+		if not (info is Dictionary):
+			continue
+		var dict := info as Dictionary
+		var cell: Vector2i = dict.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var item: Variant = dict.get("item")
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
+		draw_rect(cell_rect, RECRUIT_ITEM_FILL if item != null else RECRUIT_ITEM_EMPTY)
+		var border := RECRUIT_ITEM_BORDER
+		if i == _map_shop_offer_drag_index:
+			draw_rect(cell_rect, RECRUIT_SELECT)
+			border = Color(1.0, 0.95, 0.4, 1.0)
+		draw_rect(cell_rect, border, false, 2.0)
+		if item == null:
+			continue
+		var label := String(dict.get("label", ""))
+		var summary := String(dict.get("summary", ""))
+		var font_size := clampi(int(px * 0.26), 8, 12)
+		var alpha := 0.4 if i == _map_shop_offer_drag_index else 1.0
+		var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var label_pos := cell_rect.position + Vector2(
+			(cell_rect.size.x - label_size.x) * 0.5,
+			cell_rect.size.y * 0.32,
+		)
+		draw_string(
+			font,
+			label_pos,
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			Color(0.95, 1.0, 0.95, alpha),
+		)
+		if not summary.is_empty():
+			var sum_size := font.get_string_size(summary, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			var sum_pos := cell_rect.position + Vector2(
+				(cell_rect.size.x - sum_size.x) * 0.5,
+				cell_rect.size.y * 0.58,
+			)
+			draw_string(
+				font,
+				sum_pos,
+				summary,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				font_size,
+				Color(0.85, 0.95, 1.0, alpha * 0.95),
+			)
+		var cost := int(dict.get("cost", 0))
+		var affordable := bool(dict.get("affordable", true))
+		_draw_recruit_cost_tag(tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off, cost, affordable, px)
+
+
+func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	if cell.y >= mid:
+		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
+		return
+	var ok := _find_recruit_team_entry_at(cell) >= 0
+	draw_rect(cell_rect, Color(0.35, 0.95, 0.65, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.3))
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.32), 9, 14)
+	var label := _drag_label if not _drag_label.is_empty() else "购买"
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := cell_rect.position + Vector2(
+		(cell_rect.size.x - text_size.x) * 0.5,
+		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+	)
+	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.9))
+
+
+func _draw_map_shop_team_seat_hint(px: float) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var seat_i := _find_recruit_team_seat_at(cell)
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	var ok := seat_i >= 0
+	draw_rect(cell_rect, Color(0.35, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.3))
+
+
 func _draw_recruit_sell_slot(px: float, off: Vector2) -> void:
 	if recruit_sell_cell == NO_CELL:
 		return
@@ -2110,7 +2421,10 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		var alpha := DRAG_SOURCE_ALPHA if entry.entry_id == _recruit_team_drag_id else 0.9
+		var dragging := (
+			entry.entry_id == _recruit_team_drag_id or entry.entry_id == _map_shop_team_drag_id
+		)
+		var alpha := DRAG_SOURCE_ALPHA if dragging else 0.9
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),

@@ -10,8 +10,10 @@ signal combat_resolved(won: bool)
 ## 招募阶段结束（完成/跳过）；由 Run 接线回地图。
 signal recruit_finished(kept_changes: bool)
 signal enchant_finished(did_fuse: bool)
+## 地图商店离开回地图。
+signal map_shop_finished
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -90,6 +92,8 @@ var _enchant_session: EnchantSession = EnchantSession.new()
 var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
 var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
+var _map_shop_service: MapShopService
+var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
 var _combat_sandbox_mode: bool = false
 ## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
@@ -161,6 +165,8 @@ func _ready() -> void:
 	_arena.recruit_item_drop.connect(_on_recruit_item_drop)
 	_arena.enchant_forge_drop.connect(_on_enchant_forge_drop)
 	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
+	_arena.map_shop_offer_drop.connect(_on_map_shop_offer_drop)
+	_arena.map_shop_team_seat_drop.connect(_on_map_shop_team_seat_drop)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
@@ -170,6 +176,7 @@ func _ready() -> void:
 	_ensure_recruit_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
+	_map_shop_ui.setup(self)
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
@@ -322,6 +329,8 @@ func start_encounter(
 	_arena.sim = null
 	_arena.clear_fx()
 	_arena.clear_recruit_mode()
+	_arena.clear_map_shop_mode()
+	_arena.clear_enchant_mode()
 	_arena.reset_half_slide()
 	_arena.prepare_slots = _slots
 	_arena.enemy_slots = _enemy_slots
@@ -329,6 +338,8 @@ func start_encounter(
 	_arena.placement_active = false
 	_preserve_half_slide_for_recruit = false
 	_hide_recruit_hud()
+	_map_shop_ui.hide_hud()
+	_enchant_ui.hide_hud()
 	_restore_combat_chrome_after_recruit()
 	_rebuild_cards()
 	_set_phase(Phase.PREPARE)
@@ -915,6 +926,114 @@ func _on_enchant_session_finished(did_fuse: bool) -> void:
 
 func is_enchant_sandbox_mode() -> bool:
 	return _enchant_sandbox_mode
+
+
+## 地图商店：上队伍、下货架；规则走 MapShopService。
+func enter_map_shop(service: MapShopService, enter_seconds: float = -1.0) -> void:
+	if not is_node_ready():
+		await ready
+	if service == null:
+		push_error("RealtimeBattleController.enter_map_shop: service is null")
+		return
+	if _deck_state == null:
+		push_error("RealtimeBattleController.enter_map_shop: deck missing")
+		return
+	_map_shop_service = service
+	_map_shop_ui.set_service(service)
+	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
+	_set_phase(Phase.MAP_SHOP)
+	_hide_combat_chrome_for_recruit()
+	_map_shop_ui.show_hud()
+	await get_tree().process_frame
+	if _arena != null:
+		var travel := _half_slide_travel()
+		_arena.set_half_slide_offscreen(travel)
+	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	if _arena != null:
+		_arena.queue_redraw()
+	_map_shop_ui.set_animating(true)
+	await _play_half_field_enter_animation(seconds)
+	_map_shop_ui.set_animating(false)
+	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	_refresh_hud()
+
+
+func exit_map_shop() -> void:
+	_map_shop_ui.hide_hud()
+	_map_shop_ui.clear_arena(_arena)
+	_map_shop_ui.clear_service()
+	_map_shop_ui.get_team_slots().clear()
+	_map_shop_service = null
+	_map_shop_ui.set_animating(false)
+	if _arena != null:
+		_arena.reset_half_slide()
+	_restore_combat_chrome_after_recruit()
+	if _phase == Phase.MAP_SHOP:
+		_set_phase(Phase.IDLE)
+
+
+func request_exit_map_shop() -> void:
+	exit_map_shop()
+	map_shop_finished.emit()
+
+
+func on_map_shop_changed() -> void:
+	if _phase != Phase.MAP_SHOP:
+		return
+	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	_refresh_hud()
+
+
+func refresh_map_shop_chrome() -> void:
+	if _phase != Phase.MAP_SHOP:
+		return
+	_refresh_hud()
+
+
+func get_map_shop_service() -> MapShopService:
+	return _map_shop_service
+
+
+func _on_map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int) -> void:
+	if _phase != Phase.MAP_SHOP or _map_shop_service == null or _map_shop_ui.is_animating():
+		return
+	var result: Dictionary
+	if kind == &"equipment":
+		result = _map_shop_service.try_buy_equipment_on_entry(slot_index, entry_id)
+	else:
+		result = _map_shop_service.try_buy_consumable_on_entry(slot_index, entry_id)
+	if int(result.get("result", MapShopService.BuyResult.FAILED)) != MapShopService.BuyResult.OK:
+		var reason := String(result.get("reason", ""))
+		match reason:
+			"cant_afford":
+				_map_shop_ui.set_hint("金币不足")
+			"no_target":
+				_map_shop_ui.set_hint("无效目标")
+			"empty_slot":
+				_map_shop_ui.set_hint("货架已空")
+			_:
+				_map_shop_ui.set_hint("无法购买")
+		on_map_shop_changed()
+		return
+	if kind == &"equipment":
+		if bool(result.get("kept_new", true)):
+			_map_shop_ui.set_hint("已装备")
+		else:
+			_map_shop_ui.set_hint("装备冲突：保留了旧装备")
+	else:
+		_map_shop_ui.set_hint("消耗品已生效")
+	on_map_shop_changed()
+
+
+func _on_map_shop_team_seat_drop(entry_id: int, target_seat: int) -> void:
+	if _phase != Phase.MAP_SHOP or _map_shop_service == null or _map_shop_ui.is_animating():
+		return
+	if _map_shop_service.try_swap_seat(entry_id, target_seat):
+		_map_shop_ui.set_hint("已换座")
+		on_map_shop_changed()
+		return
+	_map_shop_ui.set_hint("无法换座")
+	on_map_shop_changed()
 
 
 func exit_recruit() -> void:
@@ -2833,6 +2952,9 @@ func _refresh_hud() -> void:
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return
+	if _phase == Phase.MAP_SHOP:
+		_refresh_map_shop_hud()
+		return
 	_encounter_label.text = _encounter.display_name if _encounter != null else "实时战斗"
 	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
 	var hand_n := _card_flow.get_hand().size()
@@ -2862,8 +2984,27 @@ func _refresh_hud() -> void:
 			_phase_label.text = "招募"
 		Phase.ENCHANT:
 			_phase_label.text = "附魔"
+		Phase.MAP_SHOP:
+			_phase_label.text = "商店"
 		_:
 			_phase_label.text = "等待"
+
+
+func _refresh_map_shop_hud() -> void:
+	var gold := _map_shop_service.get_gold() if _map_shop_service != null else (
+		_economy.gold if _economy != null else 0
+	)
+	if _gold_label != null:
+		_gold_label.text = UiStatIcons.format_gold_label(gold)
+	if _phase_label != null:
+		_phase_label.text = "商店"
+		_phase_label.modulate = Color.WHITE
+	if _encounter_label != null:
+		_encounter_label.text = "地图商店"
+	if _pop_label != null and _deck_state != null:
+		_pop_label.text = "席位 %d/%d" % [_deck_state.size(), _deck_state.get_max_size()]
+	if _timer_label != null:
+		_timer_label.text = ""
 
 
 static func _format_time(seconds: float) -> String:
