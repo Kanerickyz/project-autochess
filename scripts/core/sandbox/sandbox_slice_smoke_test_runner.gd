@@ -55,13 +55,16 @@ func _test_paste_apply() -> int:
 	var battle := packed.instantiate() as RealtimeBattleController
 	root.add_child(battle)
 	await process_frame
+	## 与沙盒入口一致：空队进准备，再粘贴布局。
 	var deck := DeckState.new()
 	deck.configure(load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig)
-	deck.reset_from_config()
 	battle.setup(deck, RunEconomy.new(), load("res://resources/levels/board_act1.tres") as LevelData)
 	battle.set_combat_sandbox_mode(true)
 	battle.enter_combat_sandbox(0)
 	await process_frame
+	if battle.get_phase() != RealtimeBattleController.Phase.PREPARE:
+		push_error("paste_apply: not PREPARE after empty enter")
+		failed += 1
 	var e1 := DeckEntry.new()
 	e1.unit = load("res://resources/units/realtime/wardrum.tres") as UnitData
 	e1.entry_id = 0
@@ -81,6 +84,13 @@ func _test_paste_apply() -> int:
 		failed += 1
 	elif battle._enemy_spawns.is_empty():
 		push_error("paste_apply: no enemies after paste")
+		failed += 1
+	## 点「粘贴布局」必须出对话框（不依赖系统剪贴板）。
+	battle.paste_layout_from_clipboard()
+	await process_frame
+	var dlg := battle.get_node_or_null("AcceptDialog") as AcceptDialog
+	if dlg == null or not dlg.visible:
+		push_error("paste_apply: dialog not shown")
 		failed += 1
 	battle.queue_free()
 	await process_frame

@@ -584,16 +584,13 @@ func copy_layout_to_clipboard() -> String:
 	return ""
 
 
-## 粘贴剪贴板布局到当前准备（沙盒主路径；正式战也可调用）。失败返回错误且不清空场上。
-## 剪贴板为空或不支持时弹出文本框，便于手动粘贴 PAC_BATTLE 文本。
+## 粘贴布局：始终弹出文本框（预填系统剪贴板若有），避免 iOS/无剪贴板时点按无反馈。
 func paste_layout_from_clipboard() -> String:
 	var text := ""
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
-		text = DisplayServer.clipboard_get()
-	if text.strip_edges().is_empty():
-		_show_paste_layout_dialog("")
-		return "需要粘贴文本"
-	return apply_layout_clipboard_text(text)
+		text = str(DisplayServer.clipboard_get())
+	_show_paste_layout_dialog(text)
+	return ""
 
 
 func apply_layout_clipboard_text(text: String, open_editor_on_fail: bool = true) -> String:
@@ -626,6 +623,8 @@ func enter_combat_sandbox(tier_index: int = 0) -> void:
 		if _arena != null:
 			_arena.enemy_previews = _build_enemy_previews(_enemy_spawns)
 	_refresh_hud()
+	_refresh_cards()
+	_sync_slot_visuals()
 
 
 ## 沙盒结算后重开本场准备（保留当前队伍与敌方覆盖）。
@@ -1423,13 +1422,21 @@ func _ensure_paste_layout_dialog() -> void:
 	_paste_dialog.title = "粘贴布局"
 	_paste_dialog.ok_button_text = "应用"
 	_paste_dialog.dialog_hide_on_ok = false
+	_paste_dialog.exclusive = true
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	var tip := Label.new()
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.text = "把复制的阵容/布局文本贴到下方，再点「应用」。"
+	body.add_child(tip)
 	_paste_edit = TextEdit.new()
-	_paste_edit.placeholder_text = "粘贴 PAC_BATTLE 文本…"
+	_paste_edit.placeholder_text = "PAC_BATTLE v1 …"
 	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	_paste_edit.custom_minimum_size = Vector2(320, 220)
+	_paste_edit.custom_minimum_size = Vector2(280, 200)
 	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_paste_dialog.add_child(_paste_edit)
+	body.add_child(_paste_edit)
+	_paste_dialog.add_child(body)
 	_paste_dialog.confirmed.connect(_on_paste_dialog_confirmed)
 	add_child(_paste_dialog)
 
@@ -1438,17 +1445,26 @@ func _show_paste_layout_dialog(prefill: String) -> void:
 	_ensure_paste_layout_dialog()
 	if _paste_edit != null:
 		_paste_edit.text = prefill
-	_paste_dialog.popup_centered_ratio(0.72)
-	if _paste_edit != null:
+		_paste_edit.select_all()
+	_paste_dialog.popup_centered_ratio(0.8)
+	## 下一帧再抢焦点，避免被 Dock 按钮吃掉。
+	call_deferred("_focus_paste_edit")
+
+
+func _focus_paste_edit() -> void:
+	if _paste_edit != null and is_instance_valid(_paste_edit):
 		_paste_edit.grab_focus()
 
 
 func _on_paste_dialog_confirmed() -> void:
 	if _paste_edit == null:
 		return
-	var err := apply_layout_clipboard_text(_paste_edit.text, false)
-	if err.is_empty() and _paste_dialog != null:
-		_paste_dialog.hide()
+	var err: String = apply_layout_clipboard_text(_paste_edit.text, false)
+	if err.is_empty():
+		if _paste_dialog != null:
+			_paste_dialog.hide()
+		return
+	## 失败时保持窗口，方便改正文。
 
 
 func _on_tape_pause_pressed() -> void:
