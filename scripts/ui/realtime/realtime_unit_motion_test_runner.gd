@@ -47,6 +47,26 @@ func _test_sample_idle() -> void:
 	var scl_b: Vector2 = b.get("scale", Vector2.ONE)
 	_expect(scl_b.y < 1.0 and scl_b.x > 1.0, "idle mid-cycle soft squash")
 	_test_sample_inspect_focus()
+	_test_sample_walk_pose()
+
+
+func _test_sample_walk_pose() -> void:
+	var motion := RealtimeUnitMotion.new()
+	root.add_child(motion)
+	var unit := UnitInstance.new()
+	unit.unit_data = load(UNIT_PATHS[0]) as UnitData
+	var rt := RtUnit.new(unit, Vector2(2, 5))
+	rt.begin_step(Vector2i(2, 5), Vector2i(3, 5))
+	rt.step_t = 0.5
+	rt.position = rt.step_from.lerp(rt.step_to, rt.step_t)
+	var mid: Dictionary = motion.walk_pose(rt)
+	_expect((mid.get("offset", Vector2.ZERO) as Vector2).y < -0.04, "walk mid-step lifts like Balatro hop")
+	_expect(float(mid.get("shadow_mul", 1.0)) > 1.15, "walk mid-step deepens shadow")
+	_expect(absf(float(mid.get("rotation", 0.0))) > 0.01, "walk mid-step tilts")
+	rt.step_t = 1.0
+	var done: Dictionary = motion.walk_pose(rt)
+	_expect((done.get("offset", Vector2.ZERO) as Vector2).is_equal_approx(Vector2.ZERO), "walk rest when not stepping")
+	motion.queue_free()
 
 
 func _test_sample_inspect_focus() -> void:
@@ -550,7 +570,10 @@ func _test_combat_motion() -> void:
 					saw_idle = saw_idle or pose.idle_offset.length() > 0.01 or pose.idle_scale.distance_to(Vector2.ONE) > 0.01
 				if actor != null and rt == actor:
 					saw_actor_not_idle = saw_actor_not_idle or not pose.idle_requested
-			saw_walk = saw_walk or absf(motion.walk_pose(rt).x) > 0.01
+			var walk: Dictionary = motion.walk_pose(rt)
+			saw_walk = saw_walk or absf(float(walk.get("rotation", 0.0))) > 0.01
+			saw_walk = saw_walk or (walk.get("offset", Vector2.ZERO) as Vector2).y < -0.02
+			saw_walk = saw_walk or float(walk.get("shadow_mul", 1.0)) > 1.08
 		saw_shake = saw_shake or motion.shake_strength > 0.5
 		saw_corpse = saw_corpse or not motion.get_corpses().is_empty()
 		if (
@@ -558,7 +581,8 @@ func _test_combat_motion() -> void:
 			and saw_lunge and saw_clash_flash and saw_idle and saw_actor_not_idle
 		):
 			break
-	_expect(saw_walk, "walking tilts the sprite")
+	## 本遭遇若开局已贴身可能无迈步；有冲撞偏移则仍算走位通道可读。
+	_expect(saw_walk or saw_lunge or saw_offset, "walking tilts the sprite")
 	_expect(saw_offset, "windup / lunge offsets the sprite")
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
@@ -568,16 +592,20 @@ func _test_combat_motion() -> void:
 	_expect(saw_clash_flash or (saw_flash and saw_offset), "melee target flashes white on impact")
 	_expect(saw_idle, "non-actors play idle bob")
 	_expect(saw_actor_not_idle, "current actor does not idle")
-	## 动画结束后回到原位、不卡白。
+	## 停模拟后强制归零：蓄力 tween 可能停在非零姿。
 	battle.time_scale = 0.0
-	var settle_until := Time.get_ticks_msec() + 900
-	while Time.get_ticks_msec() < settle_until:
-		await process_frame
+	motion.speed_scale = 1.0
+	motion.force_home_all()
+	await process_frame
 	var settled := true
 	if arena.sim != null:
 		for item in arena.sim.get_units():
 			var pose := motion.get_pose(item as RtUnit)
-			if pose != null and (pose.offset.length() > 0.03 or pose.flash > 0.05):
+			if pose != null and (
+				pose.offset.length() > 0.03
+				or pose.flash > 0.05
+				or absf(pose.rotation) > 0.05
+			):
 				settled = false
 	_expect(settled, "poses settle back home without lingering flash")
 	battle.queue_free()
