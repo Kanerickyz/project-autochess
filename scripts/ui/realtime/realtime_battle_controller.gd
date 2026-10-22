@@ -121,6 +121,8 @@ var _world_backdrop_mode: bool = false
 var _refresh_button: Button
 ## 观战倍速档位；由录音机中键与暂停合成循环：1×→2×→3×→暂停→1×。
 const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
+## 准备阶段：复制/粘贴/开战横排（开战更宽）。
+var _prepare_action_row: HBoxContainer
 ## 准备阶段：复制本场布局（正式 + 沙盒）。
 var _copy_layout_button: Button
 ## 沙盒准备：粘贴布局。
@@ -137,6 +139,9 @@ var _tape_play_speed_button: Button
 var _tape_next_button: Button
 const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
+## 准备横排：开战相对复制/粘贴的宽度比。
+const _PREPARE_START_STRETCH := 2.0
+const _PREPARE_SECONDARY_STRETCH := 1.0
 
 
 func _ready() -> void:
@@ -155,6 +160,7 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
+	_ensure_prepare_action_row()
 	_ensure_layout_clipboard_buttons()
 	_ensure_tape_controls()
 	_ensure_recruit_hud()
@@ -163,6 +169,8 @@ func _ready() -> void:
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = false
 	_refresh_hud()
 
 
@@ -1286,30 +1294,61 @@ func _ensure_refresh_button() -> void:
 	_refresh_button.visible = false
 
 
+func _ensure_prepare_action_row() -> void:
+	if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
+		return
+	if _start_button == null:
+		return
+	var dock_box := _start_button.get_parent()
+	_prepare_action_row = HBoxContainer.new()
+	_prepare_action_row.name = "PrepareActionRow"
+	_prepare_action_row.unique_name_in_owner = true
+	_prepare_action_row.add_theme_constant_override("separation", 8)
+	_prepare_action_row.visible = false
+	if dock_box != null:
+		var start_i := _start_button.get_index()
+		dock_box.add_child(_prepare_action_row)
+		dock_box.move_child(_prepare_action_row, start_i)
+		_start_button.reparent(_prepare_action_row)
+	else:
+		add_child(_prepare_action_row)
+		_start_button.reparent(_prepare_action_row)
+	_start_button.custom_minimum_size = Vector2(0, 40)
+	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_start_button.size_flags_stretch_ratio = _PREPARE_START_STRETCH
+
+
 func _ensure_layout_clipboard_buttons() -> void:
-	var dock_box := _start_button.get_parent() if _start_button != null else null
+	_ensure_prepare_action_row()
+	var row := _prepare_action_row
 	if _copy_layout_button == null or not is_instance_valid(_copy_layout_button):
 		_copy_layout_button = Button.new()
 		_copy_layout_button.name = "CopyLayoutButton"
 		_copy_layout_button.unique_name_in_owner = true
-		_copy_layout_button.custom_minimum_size = Vector2(0, 36)
-		_copy_layout_button.text = "复制本场布局"
+		_copy_layout_button.custom_minimum_size = Vector2(0, 40)
+		_copy_layout_button.text = "复制布局"
+		_copy_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_copy_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
 		_copy_layout_button.pressed.connect(_on_copy_layout_pressed)
-		if dock_box != null:
-			dock_box.add_child(_copy_layout_button)
-			dock_box.move_child(_copy_layout_button, _start_button.get_index())
+		if row != null:
+			row.add_child(_copy_layout_button)
+			## 复制在开战左侧。
+			row.move_child(_copy_layout_button, maxi(_start_button.get_index(), 0))
 		else:
 			add_child(_copy_layout_button)
 	if _paste_layout_button == null or not is_instance_valid(_paste_layout_button):
 		_paste_layout_button = Button.new()
 		_paste_layout_button.name = "PasteLayoutButton"
 		_paste_layout_button.unique_name_in_owner = true
-		_paste_layout_button.custom_minimum_size = Vector2(0, 36)
+		_paste_layout_button.custom_minimum_size = Vector2(0, 40)
 		_paste_layout_button.text = "粘贴布局"
+		_paste_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_paste_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
 		_paste_layout_button.pressed.connect(_on_paste_layout_pressed)
-		if dock_box != null:
-			dock_box.add_child(_paste_layout_button)
-			dock_box.move_child(_paste_layout_button, _copy_layout_button.get_index())
+		if row != null:
+			row.add_child(_paste_layout_button)
+			## 沙盒：粘贴 | 复制 | 开战。
+			row.move_child(_paste_layout_button, 0)
 		else:
 			add_child(_paste_layout_button)
 	_copy_layout_button.visible = false
@@ -1345,11 +1384,15 @@ func _ensure_tape_controls() -> void:
 	_tape_row.add_child(_tape_prev_button)
 	_tape_row.add_child(_tape_play_speed_button)
 	_tape_row.add_child(_tape_next_button)
-	var dock_box := _start_button.get_parent() if _start_button != null else null
+	var dock_box: Node = null
+	if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
+		dock_box = _prepare_action_row.get_parent()
+	elif _start_button != null:
+		dock_box = _start_button.get_parent()
 	if dock_box != null:
 		dock_box.add_child(_tape_row)
-		if _start_button != null and is_instance_valid(_start_button):
-			dock_box.move_child(_tape_row, _start_button.get_index() + 1)
+		if _prepare_action_row != null and is_instance_valid(_prepare_action_row):
+			dock_box.move_child(_tape_row, _prepare_action_row.get_index() + 1)
 	else:
 		add_child(_tape_row)
 	_tape_row.visible = false
@@ -1806,6 +1849,8 @@ func _hide_combat_chrome_for_recruit() -> void:
 		_dock.custom_minimum_size.y = keep_h
 	if _hand_row != null:
 		_hand_row.visible = false
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = false
 	if _start_button != null:
 		_start_button.visible = false
 	if _refresh_button != null:
@@ -2736,8 +2781,11 @@ func _refresh_cards() -> void:
 		card.status_text = ""
 		if not in_prepare and card.selected:
 			_set_selected(-1)
+	var show_prepare_actions := in_prepare and not in_recruit
+	if _prepare_action_row != null:
+		_prepare_action_row.visible = show_prepare_actions
 	if _start_button != null:
-		_start_button.visible = in_prepare and not in_recruit
+		_start_button.visible = show_prepare_actions
 		var can_start := _slots.occupied_count() >= 1
 		if _combat_sandbox_mode:
 			can_start = can_start and not _enemy_spawns.is_empty()
@@ -2748,9 +2796,9 @@ func _refresh_cards() -> void:
 		_refresh_button.disabled = true
 		_refresh_button.text = "刷新手牌（已禁用）"
 	if _copy_layout_button != null:
-		_copy_layout_button.visible = in_prepare and not in_recruit
+		_copy_layout_button.visible = show_prepare_actions
 	if _paste_layout_button != null:
-		_paste_layout_button.visible = in_prepare and not in_recruit and _combat_sandbox_mode
+		_paste_layout_button.visible = show_prepare_actions and _combat_sandbox_mode
 	_update_tape_controls()
 
 
