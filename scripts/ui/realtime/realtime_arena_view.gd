@@ -78,6 +78,14 @@ const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
 ## 附魔试验场：|dy| 大于 |dx|×该系数视为纵向滚列表，否则拖队员/入炉。
 const ENCHANT_SCROLL_VERTICAL_DOMINANCE := 1.2
+## 拖角色：抬起 / 跟手 / 落座（纯表现 Tween，不改入座逻辑）。
+const DRAG_PICKUP_SEC := 0.14
+const DRAG_SETTLE_SEC := 0.16
+const DRAG_FOLLOW_RATE := 22.0
+const DRAG_SCALE := 1.16
+const DRAG_LIFT_TILES := 0.16
+const DRAG_ALPHA := 0.95
+const DRAG_SOURCE_ALPHA := 0.32
 
 var board_size: Vector2i = Vector2i(5, 8)
 ## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
@@ -148,6 +156,13 @@ var _drag_visual_half_width: float = 0.0
 var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _drag_unit_id: String = ""
+## 拖影 Pose：scale / offset / alpha 由 Tween 驱动；位置跟手平滑。
+var _drag_pose: RealtimeUnitMotion.Pose = RealtimeUnitMotion.Pose.new()
+var _drag_tween: Tween
+var _drag_pointer := Vector2.ZERO
+var _drag_draw_pos := Vector2.ZERO
+var _drag_visual_alive: bool = false
+var _drag_settling: bool = false
 var _art: UnitArtCatalog = UnitArtCatalog.load_default()
 var _fx: Array = []
 var _fx_clock: float = 0.0
@@ -221,6 +236,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_fx_clock += delta
+	if _drag_visual_alive and not _drag_settling:
+		var follow_t := 1.0 - exp(-DRAG_FOLLOW_RATE * delta)
+		_drag_draw_pos = _drag_draw_pos.lerp(_drag_pointer, follow_t)
 	if sim != null and sim.has_started():
 		_motion.speed_scale = presentation_time_scale
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
@@ -263,6 +281,7 @@ func _notification(what: int) -> void:
 		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
 		_recruit_team_press_id = -1
+		_finish_drag_visual(_hover_cell)
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
 		_hover_cell = NO_CELL
@@ -499,19 +518,21 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		var motion := event as InputEventMouseMotion
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
 		_track_press_motion(motion.position)
-		if _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
+		if _recruit_drag_index >= 0 or _recruit_item_drag_index >= 0 or _recruit_team_drag_id >= 0:
+			_set_drag_pointer(motion.position)
+		elif _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
 			## 离开按下点超过容差即进入拖拽（触屏抖动不误触发）。
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
-				_begin_recruit_drag(_recruit_press_index)
+				_begin_recruit_drag(_recruit_press_index, motion.position)
 		elif _recruit_item_press_index >= 0 and _recruit_item_drag_index < 0 and not _info_shown:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
-				_begin_recruit_item_drag(_recruit_item_press_index)
+				_begin_recruit_item_drag(_recruit_item_press_index, motion.position)
 		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
-				_begin_recruit_team_drag(_recruit_team_press_id)
+				_begin_recruit_team_drag(_recruit_team_press_id, motion.position)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -597,6 +618,8 @@ func _gui_input_enchant(event: InputEvent) -> void:
 				queue_redraw()
 			accept_event()
 			return
+		if _enchant_team_drag_id >= 0:
+			_set_drag_pointer(motion.position)
 		if _try_begin_enchant_team_scroll_on_motion(motion.position):
 			accept_event()
 			return
@@ -728,7 +751,7 @@ func _find_enchant_team_seat_at(hover: Vector2i) -> int:
 	return prepare_slots.find_slot_at_cell(_enchant_hit_cell(hover))
 
 
-func _begin_enchant_team_drag(entry_id: int) -> void:
+func _begin_enchant_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
 	if entry_id < 0 or prepare_slots == null:
 		return
 	var entry: DeckEntry = null
@@ -748,6 +771,8 @@ func _begin_enchant_team_drag(entry_id: int) -> void:
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = entry.get_display_name()
 	_drag_unit_id = entry.get_unit_id()
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
 	queue_redraw()
 
 
@@ -758,6 +783,7 @@ func _finish_enchant_team_drag(hover: Vector2i) -> void:
 	_enchant_team_pan_active = false
 	_enchant_team_pan_last_y = 0.0
 	_drag_active = false
+	_finish_drag_visual(hover)
 	if entry_id < 0:
 		queue_redraw()
 		return
@@ -778,6 +804,77 @@ func _finish_enchant_team_drag(hover: Vector2i) -> void:
 				seat_i = -1
 	if seat_i >= 0:
 		enchant_team_seat_drop.emit(entry_id, seat_i)
+	queue_redraw()
+
+
+func _kill_drag_tween() -> void:
+	if _drag_tween != null and _drag_tween.is_valid():
+		_drag_tween.kill()
+	_drag_tween = null
+
+
+func _start_drag_visual(from_local: Vector2) -> void:
+	_kill_drag_tween()
+	_drag_visual_alive = true
+	_drag_settling = false
+	var origin := from_local
+	if origin == Vector2.ZERO:
+		origin = get_local_mouse_position()
+	_drag_pointer = origin
+	_drag_draw_pos = origin
+	_drag_pose.offset = Vector2(0.0, 0.02)
+	_drag_pose.scale = Vector2.ONE * 0.92
+	_drag_pose.alpha = 0.65
+	_drag_pose.rotation = 0.0
+	_drag_pose.flash = 0.0
+	_drag_tween = create_tween()
+	_drag_tween.set_parallel(true)
+	_drag_tween.tween_property(_drag_pose, "scale", Vector2.ONE * DRAG_SCALE, DRAG_PICKUP_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "offset", Vector2(0.0, -DRAG_LIFT_TILES), DRAG_PICKUP_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "alpha", DRAG_ALPHA, DRAG_PICKUP_SEC * 0.7) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _set_drag_pointer(local_pos: Vector2) -> void:
+	if not _drag_visual_alive or _drag_settling:
+		return
+	_drag_pointer = local_pos
+
+
+func _finish_drag_visual(hover: Vector2i = NO_CELL) -> void:
+	if not _drag_visual_alive:
+		return
+	if _drag_settling:
+		return
+	_drag_settling = true
+	var target := _drag_draw_pos
+	if hover != NO_CELL:
+		target = tile_to_local(Vector2(hover) + Vector2(0.5, 0.5))
+	_kill_drag_tween()
+	_drag_tween = create_tween()
+	_drag_tween.set_parallel(true)
+	_drag_tween.tween_property(self, "_drag_draw_pos", target, DRAG_SETTLE_SEC) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "scale", Vector2.ONE, DRAG_SETTLE_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "offset", Vector2.ZERO, DRAG_SETTLE_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_drag_tween.tween_property(_drag_pose, "alpha", 0.5, DRAG_SETTLE_SEC * 0.85) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_drag_tween.chain().tween_callback(_clear_drag_visual)
+
+
+func _clear_drag_visual() -> void:
+	_kill_drag_tween()
+	_drag_visual_alive = false
+	_drag_settling = false
+	_drag_pose.offset = Vector2.ZERO
+	_drag_pose.scale = Vector2.ONE
+	_drag_pose.alpha = 1.0
+	_drag_pose.rotation = 0.0
+	_drag_pose.flash = 0.0
 	queue_redraw()
 
 
@@ -804,6 +901,9 @@ func _draw_enchant_team_seat_hint(px: float) -> void:
 	var off := Vector2(0.0, ally_half_slide_y - scroll_y)
 	var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
 	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	## 跟手拖影由 _draw_drag_follower 绘制，落点只高亮格。
+	if _drag_visual_alive:
+		return
 	_draw_body(
 		Vector2(cell) + Vector2(0.5, 0.5),
 		_drag_radius,
@@ -880,7 +980,7 @@ func _try_begin_enchant_team_drag_on_motion(pos: Vector2) -> bool:
 	if _enchant_motion_prefers_scroll(pos):
 		return false
 	_cancel_press()
-	_begin_enchant_team_drag(_enchant_team_press_id)
+	_begin_enchant_team_drag(_enchant_team_press_id, pos)
 	return true
 
 
@@ -1269,7 +1369,7 @@ func _candidate_needs_replace(index: int) -> bool:
 	return recruit_needs_replace
 
 
-func _begin_recruit_drag(index: int) -> void:
+func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void:
 	if index < 0 or index >= recruit_candidates.size():
 		return
 	var info: Dictionary = recruit_candidates[index]
@@ -1291,10 +1391,12 @@ func _begin_recruit_drag(index: int) -> void:
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = unit.display_name if unit != null else String(info.get("label", ""))
 	_drag_unit_id = unit.id if unit != null else ""
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
 	queue_redraw()
 
 
-func _begin_recruit_item_drag(index: int) -> void:
+func _begin_recruit_item_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void:
 	if index < 0 or index >= recruit_items.size():
 		return
 	var info: Dictionary = recruit_items[index]
@@ -1315,6 +1417,8 @@ func _begin_recruit_item_drag(index: int) -> void:
 	_drag_visual_half_height = 0.0
 	_drag_label = String(info.get("label", item.get_display_name()))
 	_drag_unit_id = ""
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
 	queue_redraw()
 
 
@@ -1323,6 +1427,7 @@ func _finish_recruit_item_drag(cell: Vector2i) -> void:
 	_recruit_item_drag_index = -1
 	_recruit_item_press_index = -1
 	_drag_active = false
+	_finish_drag_visual(cell)
 	if index < 0:
 		queue_redraw()
 		return
@@ -1343,6 +1448,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
 	_drag_active = false
+	_finish_drag_visual(cell)
 	if index < 0:
 		return
 	## 候选人拖到出售落点无效（与队伍拖卖分离）。
@@ -1376,7 +1482,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	queue_redraw()
 
 
-func _begin_recruit_team_drag(entry_id: int) -> void:
+func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
 	if entry_id < 0 or recruit_team_slots == null:
 		return
 	var entry: DeckEntry = null
@@ -1399,6 +1505,8 @@ func _begin_recruit_team_drag(entry_id: int) -> void:
 	_drag_label = entry.get_display_name()
 	_drag_unit_id = entry.get_unit_id()
 	recruit_sell_preview_gold = DeckUpgradeService.get_sell_price(entry)
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
 	queue_redraw()
 
 
@@ -1408,6 +1516,7 @@ func _finish_recruit_team_drag(cell: Vector2i) -> void:
 	_recruit_team_press_id = -1
 	_drag_active = false
 	recruit_sell_preview_gold = 0
+	_finish_drag_visual(cell)
 	if entry_id < 0:
 		queue_redraw()
 		return
@@ -1491,6 +1600,7 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		_drag_label = String(dict.get("label", ""))
 		_drag_unit_id = String(dict.get("unit_id", ""))
 		_hover_cell = tile_to_cell(local_to_tile(at_position))
+		_ensure_external_drag_visual(at_position)
 		return true
 	if not dict.has(DRAG_KEY):
 		return false
@@ -1501,16 +1611,24 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	_drag_label = String(dict.get("label", ""))
 	_drag_unit_id = String(dict.get("unit_id", ""))
 	_hover_cell = tile_to_cell(local_to_tile(at_position))
+	_ensure_external_drag_visual(at_position)
 	return true
+
+
+func _ensure_external_drag_visual(at_position: Vector2) -> void:
+	## 手牌原生拖入：预览由 RealtimeHandCard.DragGhost（Tween）负责；
+	## 棋盘只更新落点高亮，避免与系统拖影叠画。
+	_drag_pointer = at_position
 
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
 	_drag_active = false
+	var cell := tile_to_cell(local_to_tile(at_position))
+	_finish_drag_visual(cell)
 	var dict := data as Dictionary
 	if dict.has(RECRUIT_CANDIDATE_KEY) and recruit_active:
 		var index := int(dict[RECRUIT_CANDIDATE_KEY])
 		_recruit_drag_index = -1
-		var cell := tile_to_cell(local_to_tile(at_position))
 		var mid := BoardHalf.midline_row(board_size.y)
 		if cell == NO_CELL or cell.y >= mid:
 			return
@@ -1551,6 +1669,7 @@ func clear_enchant_mode() -> void:
 	_enchant_team_pan_active = false
 	_enchant_team_pan_last_y = 0.0
 	_enchant_forge_press = false
+	_clear_drag_visual()
 	queue_redraw()
 
 
@@ -1573,6 +1692,7 @@ func clear_recruit_mode() -> void:
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_clear_drag_visual()
 	queue_redraw()
 
 
@@ -1752,6 +1872,8 @@ func _draw() -> void:
 	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
 		_draw_ghost(px, mid)
+	if _drag_visual_alive:
+		_draw_drag_follower(px)
 
 
 func _draw_enchant_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -1878,6 +2000,8 @@ func _draw_recruit_team_sell_hint(px: float) -> void:
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
 	var ok := _is_recruit_sell_cell(cell)
 	draw_rect(cell_rect, Color(0.85, 0.45, 0.9, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	if _drag_visual_alive:
+		return
 	_draw_body(
 		Vector2(cell) + Vector2(0.5, 0.5),
 		_drag_radius,
@@ -1902,6 +2026,8 @@ func _draw_recruit_team_seat_hint(px: float) -> void:
 	var ok := seat_i >= 0
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
 	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	if _drag_visual_alive:
+		return
 	_draw_body(
 		Vector2(cell) + Vector2(0.5, 0.5),
 		_drag_radius,
@@ -1953,8 +2079,9 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var alpha := DRAG_SOURCE_ALPHA if entry.entry_id == _recruit_team_drag_id else 0.9
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var atk := 0
@@ -1962,7 +2089,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
+		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
 
 
 func _draw_catalog_units(px: float) -> void:
@@ -2072,8 +2199,8 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		draw_rect(cell_rect, border, false, 2.0 if not locked else 3.0)
 		if unit == null:
 			continue
-		## 拖拽中的候选人在原位半透明，并在悬停格画幽灵。
-		var alpha := 0.35 if index == _recruit_drag_index else 0.95
+		## 拖拽中的候选人在原位半透明；跟手剪影由 _draw_drag_follower 画。
+		var alpha := DRAG_SOURCE_ALPHA if index == _recruit_drag_index else 0.95
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
@@ -2183,6 +2310,8 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	## 锁区在下半场：拖候选人落锁为合法高亮。
 	if _is_recruit_lock_cell(cell):
 		draw_rect(cell_rect, Color(0.95, 0.85, 0.35, 0.4))
+		if _drag_visual_alive:
+			return
 		_draw_body(
 			Vector2(cell) + Vector2(0.5, 0.5),
 			_drag_radius,
@@ -2205,6 +2334,8 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	if recruit_needs_replace:
 		ok = _find_recruit_team_entry_at(cell) >= 0
 	draw_rect(cell_rect, Color(0.35, 0.95, 0.45, 0.35) if ok else Color(1.0, 0.25, 0.2, 0.3))
+	if _drag_visual_alive:
+		return
 	var info: Dictionary = {}
 	if _recruit_drag_index >= 0 and _recruit_drag_index < recruit_candidates.size():
 		info = recruit_candidates[_recruit_drag_index]
@@ -2288,8 +2419,9 @@ func _draw_prepare_slots(px: float) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var alpha := DRAG_SOURCE_ALPHA if entry.entry_id == _enchant_team_drag_id else 0.9
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.9, entry.get_display_name(), px, true, off,
+			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var atk := 0
@@ -2297,7 +2429,7 @@ func _draw_prepare_slots(px: float) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, 0.95, px)
+		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
 
 
 func _draw_units(px: float) -> void:
@@ -2668,6 +2800,29 @@ func _draw_feedback_string(
 	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
+func _draw_drag_follower(px: float) -> void:
+	if not _drag_visual_alive:
+		return
+	var tile := local_to_tile(_drag_draw_pos)
+	var snapped := tile_to_local(tile)
+	var pixel_off := _drag_draw_pos - snapped
+	_draw_body(
+		tile,
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		1.0,
+		_drag_label,
+		px,
+		true,
+		pixel_off,
+		true,
+		_drag_unit_id,
+		_drag_pose,
+	)
+
+
 func _draw_ghost(px: float, mid: int) -> void:
 	var cell := _hover_cell
 	var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
@@ -2684,5 +2839,8 @@ func _draw_ghost(px: float, mid: int) -> void:
 		draw_line(center + Vector2(-d, d), center + Vector2(d, -d), Color(1, 1, 1, 0.9), 2.0)
 		return
 	draw_rect(cell_rect, Color(1, 1, 1, 0.25))
+	## 跟手拖影 / 手牌 DragGhost 负责剪影；此处只留格心虚影给「点选未拖」投放。
+	if _drag_visual_alive or _drag_active:
+		return
 	var uid := _drag_unit_id if _drag_active else ghost_unit_id
 	_draw_body(center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.45, label, px, true, Vector2.ZERO, true, uid)
