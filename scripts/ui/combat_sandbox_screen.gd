@@ -11,12 +11,32 @@ const DECK_PATH := "res://resources/deck/realtime_starter_deck.tres"
 
 var _battle: RealtimeBattleController
 var _leaving: bool = false
+var _status: Label
 
 
 func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
+	_ensure_status_label()
 	_spawn_battle()
 	call_deferred("_start_sandbox")
+
+
+func _ensure_status_label() -> void:
+	if _status != null and is_instance_valid(_status):
+		return
+	_status = Label.new()
+	_status.name = "SandboxStatus"
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status.add_theme_font_size_override("font_size", 16)
+	_status.add_theme_color_override("font_color", Color(1.0, 0.85, 0.55))
+	_status.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_status.offset_top = 56.0
+	_status.offset_left = 12.0
+	_status.offset_right = -12.0
+	_status.offset_bottom = 104.0
+	## 挂在 TopLayer，避免与 Margin 内返回按钮抢同一布局槽。
+	$TopLayer.add_child(_status)
 
 
 func _spawn_battle() -> void:
@@ -31,14 +51,26 @@ func _spawn_battle() -> void:
 func _start_sandbox() -> void:
 	if _battle == null:
 		return
-	var deck := DeckState.new()
-	deck.configure(load(DECK_PATH) as DeckConfig)
-	deck.reset_from_config()
-	var economy := RunEconomy.new()
+	var deck_cfg := load(DECK_PATH) as DeckConfig
 	var level := load(LEVEL_PATH) as LevelData
+	if deck_cfg == null or level == null:
+		if _status != null:
+			_status.text = "沙盒资源加载失败，请返回主菜单"
+		push_error("CombatSandbox: missing deck or level")
+		return
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	## 空队进沙盒：避免开局队掩盖「粘贴无效果」；靠粘贴/默认弱敌开战。
+	var economy := RunEconomy.new()
 	_battle.setup(deck, economy, level)
 	_battle.set_combat_sandbox_mode(true)
 	_battle.enter_combat_sandbox(0)
+	if _battle.get_phase() != RealtimeBattleController.Phase.PREPARE:
+		if _status != null:
+			_status.text = "沙盒未能进入准备阶段"
+		return
+	if _status != null:
+		_status.text = "点「粘贴布局」贴入阵容，再开战"
 
 
 func _on_encounter_completed(_won: bool) -> void:

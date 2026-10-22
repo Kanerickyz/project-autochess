@@ -9,6 +9,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var failed := 0
 	failed += _test_clipboard()
+	failed += await _test_paste_apply()
 	failed += await _test_scenes()
 	print("sandbox_slice_smoke failed=%d" % failed)
 	quit(1 if failed else 0)
@@ -46,6 +47,58 @@ func _test_clipboard() -> int:
 			failed += 1
 	return failed
 
+
+
+func _test_paste_apply() -> int:
+	var failed := 0
+	var packed := load("res://scenes/combat/realtime/realtime_battle.tscn") as PackedScene
+	var battle := packed.instantiate() as RealtimeBattleController
+	root.add_child(battle)
+	await process_frame
+	## 与沙盒入口一致：空队进准备，再粘贴布局。
+	var deck := DeckState.new()
+	deck.configure(load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig)
+	battle.setup(deck, RunEconomy.new(), load("res://resources/levels/board_act1.tres") as LevelData)
+	battle.set_combat_sandbox_mode(true)
+	battle.enter_combat_sandbox(0)
+	await process_frame
+	if battle.get_phase() != RealtimeBattleController.Phase.PREPARE:
+		push_error("paste_apply: not PREPARE after empty enter")
+		failed += 1
+	var e1 := DeckEntry.new()
+	e1.unit = load("res://resources/units/realtime/wardrum.tres") as UnitData
+	e1.entry_id = 0
+	e1.level = 1
+	e1.seat_index = 0
+	e1.seat_assign_seq = 1
+	var entries: Array[DeckEntry] = [e1]
+	var text := BattleLayoutClipboard.encode_layout(
+		entries, 5, [{"unit_id": "enemy_archer", "seat": 0, "level": 1}], 7, "combat"
+	)
+	var err := battle.apply_layout_clipboard_text(text, false)
+	if not err.is_empty():
+		push_error("paste_apply: %s" % err)
+		failed += 1
+	elif battle.get_slot_board().occupied_count() < 1:
+		push_error("paste_apply: no ally seats after paste")
+		failed += 1
+	elif battle._enemy_spawns.is_empty():
+		push_error("paste_apply: no enemies after paste")
+		failed += 1
+	## 点「粘贴布局」必须创建对话框（不依赖系统剪贴板；headless 下 visible 可能仍为 false）。
+	battle.paste_layout_from_clipboard()
+	await process_frame
+	var dlg: AcceptDialog = null
+	for child in battle.get_children():
+		if child is AcceptDialog:
+			dlg = child as AcceptDialog
+			break
+	if dlg == null:
+		push_error("paste_apply: dialog node missing")
+		failed += 1
+	battle.queue_free()
+	await process_frame
+	return failed
 
 func _test_scenes() -> int:
 	var failed := 0

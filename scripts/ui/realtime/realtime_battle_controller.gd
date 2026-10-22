@@ -126,6 +126,9 @@ const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
 var _copy_layout_button: Button
 ## 沙盒准备：粘贴布局。
 var _paste_layout_button: Button
+## 剪贴板不可用/为空时的粘贴文本框。
+var _paste_dialog: AcceptDialog
+var _paste_edit: TextEdit
 ## 观战录音机三键。
 var _tape_row: HBoxContainer
 var _tape_prev_button: Button
@@ -581,17 +584,24 @@ func copy_layout_to_clipboard() -> String:
 	return ""
 
 
-## 粘贴剪贴板布局到当前准备（沙盒主路径；正式战也可调用）。失败返回错误且不清空场上。
+## 粘贴布局：始终弹出文本框（预填系统剪贴板若有），避免 iOS/无剪贴板时点按无反馈。
 func paste_layout_from_clipboard() -> String:
-	var text := DisplayServer.clipboard_get()
-	return apply_layout_clipboard_text(text)
+	var text := ""
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		text = str(DisplayServer.clipboard_get())
+	_show_hint("请粘贴布局文本后点「应用」")
+	_show_paste_layout_dialog(text)
+	return ""
 
 
-func apply_layout_clipboard_text(text: String) -> String:
+func apply_layout_clipboard_text(text: String, open_editor_on_fail: bool = true) -> String:
 	var parsed := BattleLayoutClipboard.parse(text)
 	if not parsed.ok or parsed.payload == null:
 		var err := parsed.error if not parsed.error.is_empty() else "粘贴失败"
 		_show_hint(err)
+		## 格式无效时打开文本框改完再确认（对话框内确认失败不再嵌套弹窗）。
+		if open_editor_on_fail:
+			_show_paste_layout_dialog(text)
 		return err
 	return _apply_layout_payload(parsed.payload)
 
@@ -614,6 +624,8 @@ func enter_combat_sandbox(tier_index: int = 0) -> void:
 		if _arena != null:
 			_arena.enemy_previews = _build_enemy_previews(_enemy_spawns)
 	_refresh_hud()
+	_refresh_cards()
+	_sync_slot_visuals()
 
 
 ## 沙盒结算后重开本场准备（保留当前队伍与敌方覆盖）。
@@ -1404,6 +1416,59 @@ func _on_paste_layout_pressed() -> void:
 	paste_layout_from_clipboard()
 
 
+func _ensure_paste_layout_dialog() -> void:
+	if _paste_dialog != null and is_instance_valid(_paste_dialog):
+		return
+	_paste_dialog = AcceptDialog.new()
+	_paste_dialog.name = "PasteLayoutDialog"
+	_paste_dialog.title = "粘贴布局"
+	_paste_dialog.ok_button_text = "应用"
+	_paste_dialog.dialog_hide_on_ok = false
+	_paste_dialog.exclusive = true
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	var tip := Label.new()
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.text = "把复制的阵容/布局文本贴到下方，再点「应用」。"
+	body.add_child(tip)
+	_paste_edit = TextEdit.new()
+	_paste_edit.placeholder_text = "PAC_BATTLE v1 …"
+	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_paste_edit.custom_minimum_size = Vector2(280, 200)
+	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(_paste_edit)
+	_paste_dialog.add_child(body)
+	_paste_dialog.confirmed.connect(_on_paste_dialog_confirmed)
+	add_child(_paste_dialog)
+
+
+func _show_paste_layout_dialog(prefill: String) -> void:
+	_ensure_paste_layout_dialog()
+	if _paste_edit != null:
+		_paste_edit.text = prefill
+		_paste_edit.select_all()
+	_paste_dialog.popup_centered_ratio(0.8)
+	## 下一帧再抢焦点，避免被 Dock 按钮吃掉。
+	call_deferred("_focus_paste_edit")
+
+
+func _focus_paste_edit() -> void:
+	if _paste_edit != null and is_instance_valid(_paste_edit):
+		_paste_edit.grab_focus()
+
+
+func _on_paste_dialog_confirmed() -> void:
+	if _paste_edit == null:
+		return
+	var err: String = apply_layout_clipboard_text(_paste_edit.text, false)
+	if err.is_empty():
+		if _paste_dialog != null:
+			_paste_dialog.hide()
+		return
+	## 失败时保持窗口，方便改正文。
+
+
 func _on_tape_pause_pressed() -> void:
 	if _phase != Phase.COMBAT or _sim == null:
 		return
@@ -1492,11 +1557,13 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 
 
 func _apply_layout_payload(payload) -> String:
-	if payload == null or _deck_state == null:
-		return "无法应用布局"
+	if payload == null or _deck_state == null or _level == null:
+		var err0 := "无法应用布局（未 setup）"
+		_show_hint(err0)
+		return err0
 	var entries := BattleLayoutClipboard.build_deck_entries(payload)
 	if entries.is_empty():
-		var err := "没有有效友方"
+		var err := "没有有效友方（单位 id 无法解析）"
 		_show_hint(err)
 		return err
 	var next_id := 0
@@ -1529,7 +1596,16 @@ func _apply_layout_payload(payload) -> String:
 		return err2
 	var node_type := BattleLayoutClipboard.node_type_from_encounter(payload.encounter_type)
 	start_encounter(encounter, _tier_index, _floor_index, int(node_type))
-	_show_hint("已粘贴布局")
+	if _phase != Phase.PREPARE:
+		var err3 := "粘贴后未能进入准备"
+		_show_hint(err3)
+		return err3
+	_sync_slot_visuals()
+	_refresh_hud()
+	_refresh_cards()
+	var ally_n := _slots.occupied_count() if _slots != null else 0
+	var enemy_n := _enemy_spawns.size()
+	_show_hint("已粘贴布局（我 %d / 敌 %d）" % [ally_n, enemy_n])
 	return ""
 
 
