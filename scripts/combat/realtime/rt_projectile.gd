@@ -1,6 +1,7 @@
 class_name RtProjectile
 extends RefCounted
-## 追踪投射物：每个固定步朝目标当前位置飞行，到达时结算；目标已死则消失。
+## 观战用投射物包装：朝目标飞、到点或目标已死则结束。
+## 伤害/对砍已在出手瞬间由 RealtimeCombatSim 结算；本类不参与攻击判定。
 
 static var _next_id: int = 0
 
@@ -9,6 +10,7 @@ var source: RtUnit
 var target: RtUnit
 var position: Vector2
 var speed: float
+## 仅供演出/调试只读；逻辑层不在落地时再扣血。
 var damage: int
 var splash_radius: float
 var finished: bool = false
@@ -36,18 +38,19 @@ func is_player_owned() -> bool:
 	return source != null and source.is_player()
 
 
-## 推进一步；返回 true 表示本步命中（调用方负责结算）。
+## 推进一步；返回 true 表示本步视觉到达目标（非伤害结算信号）。
 func advance(dt: float) -> bool:
 	if finished:
 		return false
-	if target == null or not target.is_alive():
+	if target == null or not is_instance_valid(target) or not target.is_alive():
 		finished = true
 		return false
-	var to_target := target.position - position
+	var aim: Vector2 = target.position
+	var to_target := aim - position
 	var dist := to_target.length()
 	var travel := speed * dt
 	if dist <= travel or dist <= target.get_radius():
-		position = target.position
+		position = aim
 		finished = true
 		return true
 	position += to_target / dist * travel

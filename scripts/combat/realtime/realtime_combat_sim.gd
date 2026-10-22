@@ -362,13 +362,13 @@ func advance_fixed_step() -> void:
 	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
 	_tick_all_deploying()
 
-	## 飞行物未落地前不开启下一动（否则 OnRoundStart 技能会抢在箭矢结算前演出）。
-	if not _actor_turn_active and not _has_in_flight_projectiles():
+	if not _actor_turn_active:
 		_begin_next_actor_turn()
 
 	if _actor_turn_active and _current_actor != null:
 		_advance_current_actor()
 
+	## 投射物仅观战演出；伤害已在出手时结算。
 	_advance_projectiles()
 	_sync_unit_grid_pos()
 	_drain_effects()
@@ -503,13 +503,6 @@ func _advance_current_actor() -> void:
 		rt.advance_step_visual(FIXED_DT)
 		return
 
-	## 本动已出手：等投射物命中/消失后再交权（近战无飞行物则立刻交权）。
-	if _actor_has_attacked:
-		if _has_in_flight_projectiles():
-			return
-		_end_current_actor_turn()
-		return
-
 	var free_fn := func(cell: Vector2i) -> bool:
 		return _is_cell_free_for(rt, cell)
 	var can_summon_fn := func(actor: RtUnit) -> bool:
@@ -538,8 +531,6 @@ func _advance_current_actor() -> void:
 		if _consume_turn_refresh_armed(rt):
 			return
 		_actor_has_attacked = true
-		if _has_in_flight_projectiles():
-			return
 		_end_current_actor_turn()
 		return
 
@@ -582,17 +573,21 @@ func _advance_current_actor() -> void:
 func _fire(rt: RtUnit) -> void:
 	var stats := rt.get_stats()
 	var damage := rt.unit.get_effective_attack()
+	var target := rt.target
 	rt.last_attack_time = elapsed_seconds
-	unit_attacked.emit(rt, rt.target)
-	if stats.projectile_speed <= 0.0:
-		_resolve_hit(rt, rt.target, damage, stats.splash_radius)
+	unit_attacked.emit(rt, target)
+	## 回合制：出手瞬间结算伤害/对砍；投射物只是观战包装，不参与命中判定。
+	_resolve_hit(rt, target, damage, stats.splash_radius)
+	if stats.projectile_speed <= 0.0 or target == null:
 		return
-	var dir := rt.position.direction_to(rt.target.position)
+	## 结算可能已斩杀/清引用；演出仍朝出手时的目标位置飞。
+	var aim := target.position
+	var dir := rt.position.direction_to(aim)
 	if dir == Vector2.ZERO:
 		dir = Vector2.DOWN
 	var projectile := RtProjectile.new(
 		rt,
-		rt.target,
+		target,
 		rt.position + dir * rt.get_radius(),
 		stats.projectile_speed,
 		damage,
@@ -605,18 +600,11 @@ func _fire(rt: RtUnit) -> void:
 func _advance_projectiles() -> void:
 	var remaining: Array[RtProjectile] = []
 	for projectile in _projectiles:
-		if projectile.advance(FIXED_DT):
-			_resolve_hit(projectile.source, projectile.target, projectile.damage, projectile.splash_radius)
+		## 只推进演出位置；到达或目标已死则结束，不再二次结算伤害。
+		projectile.advance(FIXED_DT)
 		if not projectile.finished:
 			remaining.append(projectile)
 	_projectiles = remaining
-
-
-func _has_in_flight_projectiles() -> bool:
-	for projectile in _projectiles:
-		if projectile != null and not projectile.finished:
-			return true
-	return false
 
 
 func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: float) -> void:
