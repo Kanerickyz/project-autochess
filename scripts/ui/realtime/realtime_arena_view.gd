@@ -431,6 +431,19 @@ func clear_fx() -> void:
 	_cancel_press()
 
 
+## 出击 / 回位 action tween 是否仍在播（供控制器门控下一动；不含 idle/flash/残影）。
+func has_active_combat_action_tween() -> bool:
+	return _motion != null and _motion.has_active_action_tween()
+
+
+## 控制器在出手瞬间调用：立刻识别 last_attack 并开 strike tween（不等到本帧 _process）。
+func sync_combat_motion_now() -> void:
+	if _motion == null or sim == null or not sim.has_started():
+		return
+	_motion.speed_scale = presentation_time_scale
+	_motion.sync_units(sim.get_units(), sim.get_current_actor())
+
+
 ## 死亡残影：闪白后侧倒、缩小淡出（纯表现，单位已从模拟移除）。
 func play_unit_death(rt: RtUnit) -> void:
 	if rt == null:

@@ -90,6 +90,8 @@ class Tracked:
 	var winding := false
 	var last_attack := RtUnit.NEVER
 	var last_hit := RtUnit.NEVER
+	## 近战蓄力时给目标迎击的 partner（instance_id）；取消蓄力时一并 soft_home。
+	var windup_partner_id: int = 0
 
 
 class Corpse:
@@ -150,6 +152,14 @@ func _reset_pose_visual(pose: Pose) -> void:
 func get_pose(rt: RtUnit) -> Pose:
 	var tracked: Tracked = _tracked.get(rt.get_instance_id())
 	return tracked.pose if tracked != null else null
+
+
+## 存活单位是否仍有出击 / 回位 action tween（不含 idle / flash / 残影）。
+func has_active_action_tween() -> bool:
+	for tracked: Tracked in _tracked.values():
+		if tracked != null and _is_busy(tracked.pose):
+			return true
+	return false
 
 
 func get_corpses() -> Array[Corpse]:
@@ -263,14 +273,23 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 			continue
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
 		## 出手后 state 仍停在 ATTACKING（计时器 ≤ 0），只把计时中的前摇视为蓄力。
+		var was_winding := tracked.winding
 		var winding := rt.state == RtUnit.State.ATTACKING and rt.target != null and rt.attack_timer > 0.0
-		if winding and not tracked.winding:
+		if winding and not was_winding:
 			_play_windup(rt, tracked)
-		tracked.winding = winding
-		if rt.last_attack_time != tracked.last_attack:
+		var did_strike := rt.last_attack_time != tracked.last_attack
+		if did_strike:
 			tracked.last_attack = rt.last_attack_time
 			tracked.winding = false
+			tracked.windup_partner_id = 0
 			_play_strike(rt, tracked)
+		elif was_winding and not winding:
+			## 蓄力取消（无出手）：自身与迎击 partner 弹回，避免卡姿。
+			_soft_home(tracked.pose)
+			_soft_home_partner(tracked)
+			tracked.winding = false
+		else:
+			tracked.winding = winding
 	for item in units:
 		var rt := item as RtUnit
 		if rt == null:
@@ -370,10 +389,13 @@ func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
 	tween.parallel().tween_property(pose, "rotation", tilt, windup * 0.8) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(pose, "shadow_mul", WINDUP_SHADOW_MUL, windup * 0.8)
+	tracked.windup_partner_id = 0
 	## 近战目标同步蓄力迎击，形成「双方对冲」。
 	if _is_melee(rt) and rt.target != null and rt.target.is_alive():
-		var target_tracked: Tracked = _tracked.get(rt.target.get_instance_id())
+		var partner_id := rt.target.get_instance_id()
+		var target_tracked: Tracked = _tracked.get(partner_id)
 		if target_tracked != null and not target_tracked.winding and not _is_busy(target_tracked.pose):
+			tracked.windup_partner_id = partner_id
 			var tpose := target_tracked.pose
 			var ttween := _new_tween(tpose)
 			var t_pull := dir * WINDUP_PULL_TILES * 0.65 + Vector2(0.0, -WINDUP_LIFT_TILES * 0.6)
@@ -425,7 +447,25 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	charge.tween_property(tpose, "offset", -dir * LUNGE_TARGET_TILES, LUNGE_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	charge.parallel().tween_property(tpose, "rotation", _tilt_for_dir(-dir) * LUNGE_TILT * 0.7, LUNGE_SECONDS)
+	## 撞上后走 _play_hit → 始终 _tween_home（攻击者 mid-lunge 早退除外）。
 	charge.tween_callback(_play_hit.bind(tpose, dir, SHAKE_MELEE_PX))
+
+
+## 打断当前 action tween（若有），再 BACK 弹回原位。
+func _soft_home(pose: Pose) -> void:
+	if pose == null:
+		return
+	var tween := _new_tween(pose)
+	_tween_home(tween, pose)
+
+
+func _soft_home_partner(tracked: Tracked) -> void:
+	if tracked == null or tracked.windup_partner_id == 0:
+		return
+	var partner: Tracked = _tracked.get(tracked.windup_partner_id)
+	tracked.windup_partner_id = 0
+	if partner != null:
+		_soft_home(partner.pose)
 
 
 ## 受击：闪白 + 小丑牌式踢退倾斜压扁 + 影加深 + BACK 弹回 + 镜头震动。
