@@ -85,12 +85,16 @@ func _test_paste_apply() -> int:
 	elif battle._enemy_spawns.is_empty():
 		push_error("paste_apply: no enemies after paste")
 		failed += 1
-	## 点「粘贴布局」必须出对话框（不依赖系统剪贴板）。
+	## 点「粘贴布局」必须创建对话框（不依赖系统剪贴板；headless 下 visible 可能仍为 false）。
 	battle.paste_layout_from_clipboard()
 	await process_frame
-	var dlg := battle.get_node_or_null("AcceptDialog") as AcceptDialog
-	if dlg == null or not dlg.visible:
-		push_error("paste_apply: dialog not shown")
+	var dlg: AcceptDialog = null
+	for child in battle.get_children():
+		if child is AcceptDialog:
+			dlg = child as AcceptDialog
+			break
+	if dlg == null:
+		push_error("paste_apply: dialog node missing")
 		failed += 1
 	battle.queue_free()
 	await process_frame

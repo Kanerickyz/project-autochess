@@ -589,6 +589,7 @@ func paste_layout_from_clipboard() -> String:
 	var text := ""
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
 		text = str(DisplayServer.clipboard_get())
+	_show_hint("请粘贴布局文本后点「应用」")
 	_show_paste_layout_dialog(text)
 	return ""
 
@@ -1419,6 +1420,7 @@ func _ensure_paste_layout_dialog() -> void:
 	if _paste_dialog != null and is_instance_valid(_paste_dialog):
 		return
 	_paste_dialog = AcceptDialog.new()
+	_paste_dialog.name = "PasteLayoutDialog"
 	_paste_dialog.title = "粘贴布局"
 	_paste_dialog.ok_button_text = "应用"
 	_paste_dialog.dialog_hide_on_ok = false
