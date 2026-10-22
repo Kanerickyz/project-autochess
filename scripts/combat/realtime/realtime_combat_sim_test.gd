@@ -18,6 +18,10 @@ static func run_all() -> bool:
 	ok = _check("chebyshev_attack_reach", _test_chebyshev_attack_reach()) and ok
 	ok = _check("ally_blocker_melee_reach", _test_ally_blocker_melee_reach()) and ok
 	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
+	ok = _check(
+		"ranged_hit_before_next_round_start",
+		_test_ranged_hit_before_next_round_start(),
+	) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
 	ok = _check("mid_combat_summon_waits_next_round", _test_mid_combat_summon_waits_next_round()) and ok
@@ -515,6 +519,102 @@ static func _test_ranged_projectile_delay() -> bool:
 	return spawned[0] < 0.2
 
 
+## 远程出手后交权须等箭矢落地；下一动 OnRoundStart 不得抢在命中前入队。
+static func _test_ranged_hit_before_next_round_start() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 211)
+	sim.defer_effect_resolve = true
+	## 射手先入队（敌0 在友0 后：友0、敌0、友1）——把射手加成友方队首，箭在飞时错误交权会轮到 next。
+	var shooter := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"id": "enemy_archer",
+			"max_hp": 50,
+			"attack": 3,
+			## 远程硬顶 reach≤2；目标放在攻距内且需飞一段距离。
+			"attack_reach": 2.0,
+			"attack_windup": 0.0,
+			"projectile_speed": 2.0,
+			"steps_per_turn": 0,
+			"sight_range": 20.0,
+		}),
+		Vector2(9.5, 24.5),
+	)
+	var victim := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"id": "fodder",
+			"max_hp": 20,
+			"attack": 1,
+			"attack_reach": 0.0,
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+		}),
+		Vector2(9.5, 22.5),
+	)
+	var next_ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"id": "apothecary",
+			"max_hp": 20,
+			"attack": 1,
+			"attack_reach": 0.0,
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+		}),
+		Vector2(10.5, 24.5),
+	)
+	var round_starts: Array = []
+	sim.get_event_bus().combat_event.connect(func(ev: StringName, payload: CombatEventPayload) -> void:
+		if ev != CombatEvents.ON_ROUND_START or payload == null or payload.source == null:
+			return
+		round_starts.append({
+			"id": payload.source.id,
+			"hp": victim.unit.current_hp,
+			"projs": sim.get_projectiles().size(),
+			"step": sim.fixed_step_count,
+			"actor": sim.get_current_actor().unit.id if sim.get_current_actor() != null else "",
+		})
+	)
+	sim.begin_combat()
+	var first_proj_step := -1
+	var hit_step := -1
+	var guard := 0
+	while hit_step < 0 and guard < 400:
+		sim.advance_fixed_step()
+		if first_proj_step < 0 and not sim.get_projectiles().is_empty():
+			first_proj_step = sim.fixed_step_count
+			## 箭在飞时行动权应仍在射手，不得已交到下一名。
+			var actor := sim.get_current_actor()
+			if actor == null or actor.unit.id != shooter.unit.id:
+				push_error(
+					"ranged_settle: actor during flight=%s expected=%s"
+					% [actor.unit.id if actor != null else "null", shooter.unit.id]
+				)
+				return false
+		if hit_step < 0 and victim.unit.current_hp < 20:
+			hit_step = sim.fixed_step_count
+		guard += 1
+	if first_proj_step < 0:
+		push_error("ranged_settle: no projectile spawned")
+		return false
+	if hit_step < 0:
+		push_error("ranged_settle: victim never hit")
+		return false
+	## 箭已射出、尚未命中的窗口内，不得出现下一名的 OnRoundStart。
+	for row in round_starts:
+		var step: int = int(row["step"])
+		if step < first_proj_step or step > hit_step:
+			continue
+		var id: String = str(row["id"])
+		if id == shooter.unit.id:
+			continue
+		if id == next_ally.unit.id or id == victim.unit.id:
+			push_error(
+				"ranged_settle: next OnRoundStart during flight (id=%s hp=%s projs=%s step=%s)"
+				% [id, row["hp"], row["projs"], row["step"]]
+			)
+			return false
+	return true
+
+
 static func _test_deploy_time_freezes() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 3)
@@ -802,24 +902,27 @@ static func _test_determinism_frame_rate_independent() -> bool:
 static func _test_projectile_vanishes_when_target_dead() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 10)
+	## 慢箭出手后本动不交权；在飞行中把目标置死，箭应自行消失。
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"attack_reach": 10.0, "attack_windup": 0.0, "projectile_speed": 1.0, "steps_per_turn": 0, "attack": 50,
 		}),
 		Vector2(9.5, 28.5),
 	)
-	sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 1.0, "attack_windup": 0.0, "steps_per_turn": 0, "attack": 1000,
-		}),
-		Vector2(9.5, 21.5),
-	)
 	var target := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100), Vector2(9.5, 20.5))
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(1.5, 1.5))
-	_run_until(sim, 2.0)
-	if target.is_alive():
-		push_error("vanish: melee should have killed target")
+	var guard := 0
+	while sim.get_projectiles().is_empty() and guard < 120:
+		sim.advance_fixed_step()
+		guard += 1
+	if sim.get_projectiles().is_empty():
+		push_error("vanish: projectile not spawned")
 		return false
+	target.unit.current_hp = 0
+	guard = 0
+	while not sim.get_projectiles().is_empty() and guard < 60:
+		sim.advance_fixed_step()
+		guard += 1
 	if not sim.get_projectiles().is_empty():
 		push_error("vanish: projectile to dead target should disappear")
 		return false

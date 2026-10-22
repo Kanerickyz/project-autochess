@@ -362,7 +362,8 @@ func advance_fixed_step() -> void:
 	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
 	_tick_all_deploying()
 
-	if not _actor_turn_active:
+	## 飞行物未落地前不开启下一动（否则 OnRoundStart 技能会抢在箭矢结算前演出）。
+	if not _actor_turn_active and not _has_in_flight_projectiles():
 		_begin_next_actor_turn()
 
 	if _actor_turn_active and _current_actor != null:
@@ -502,6 +503,13 @@ func _advance_current_actor() -> void:
 		rt.advance_step_visual(FIXED_DT)
 		return
 
+	## 本动已出手：等投射物命中/消失后再交权（近战无飞行物则立刻交权）。
+	if _actor_has_attacked:
+		if _has_in_flight_projectiles():
+			return
+		_end_current_actor_turn()
+		return
+
 	var free_fn := func(cell: Vector2i) -> bool:
 		return _is_cell_free_for(rt, cell)
 	var can_summon_fn := func(actor: RtUnit) -> bool:
@@ -530,6 +538,8 @@ func _advance_current_actor() -> void:
 		if _consume_turn_refresh_armed(rt):
 			return
 		_actor_has_attacked = true
+		if _has_in_flight_projectiles():
+			return
 		_end_current_actor_turn()
 		return
 
@@ -600,6 +610,13 @@ func _advance_projectiles() -> void:
 		if not projectile.finished:
 			remaining.append(projectile)
 	_projectiles = remaining
+
+
+func _has_in_flight_projectiles() -> bool:
+	for projectile in _projectiles:
+		if projectile != null and not projectile.finished:
+			return true
+	return false
 
 
 func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: float) -> void:
