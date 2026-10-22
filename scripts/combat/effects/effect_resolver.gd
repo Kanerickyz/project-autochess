@@ -206,6 +206,12 @@ func _owner_qualifies_for_event(
 				and payload.target != owner
 				and payload.target.team == owner.team
 			)
+		CombatEvents.ON_ENEMY_DEATH:
+			return (
+				payload.target != null
+				and payload.target != owner
+				and payload.target.team != owner.team
+			)
 
 		CombatEvents.ON_SUMMONED:
 			return payload.target == owner

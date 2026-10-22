@@ -16,6 +16,7 @@ const TRIGGER_WEIGHTS := {
 	CombatEvents.ON_SUMMONED: 0.7,
 	CombatEvents.ON_FRIEND_SUMMONED: 0.95,
 	CombatEvents.ON_FRIEND_DEATH: 0.9,
+	CombatEvents.ON_ENEMY_DEATH: 0.95,
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN: 1.05,
 	CombatEvents.ON_DAMAGE_TAKEN: 1.1,
 	CombatEvents.ON_ATTACK_HIT: 1.0,

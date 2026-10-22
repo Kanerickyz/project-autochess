@@ -6,7 +6,7 @@ const ARENA := Vector2i(18, 32)
 
 const MOUNT_TABLE := {
 	"knight": "hurt_gain_atk_small",
-	"rider": "combat_start_charge",
+	"rider": "enemy_death_self_atk_hp_small",
 	"mini_pekka": "kill_gain_atk_mid",
 	"musketeer": "crit_extra_damage_mid",
 	"valkyrie": "deal_damage_gain_atk_small",
@@ -31,8 +31,8 @@ static func run_all() -> bool:
 	_failures = 0
 	_check("mount_bindings", _test_mount_bindings())
 	_check("ability_merge_value_multiplier", _test_ability_merge_value_multiplier())
-	_check("combat_start_charge_atk", _test_combat_start_charge_atk())
-	_check("combat_start_charge_atk_star2_x6", _test_combat_start_charge_atk_star2_x6())
+	_check("enemy_death_self_atk_hp_small", _test_enemy_death_self_atk_hp_small())
+	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
 	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
 	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
@@ -164,26 +164,46 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	return true
 
 
-static func _test_combat_start_charge_atk() -> bool:
+static func _test_enemy_death_self_atk_hp_small() -> bool:
 	var data := _load_unit("res://resources/units/realtime/rider.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_charge":
-		push_error("charge: rider ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_self_atk_hp_small":
+		push_error("rider: enemy_death ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("rider: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
 	var rider := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 8.5))
-	var base_atk := rider.unit.get_effective_attack()
-	var base_steps := rider.unit.get_steps_per_turn()
+	## 友方死亡不应触发。
+	var ally := sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_fodder", "steps_per_turn": 0}), Vector2(8.5, 24.5))
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
 	sim.begin_combat()
-	var after := rider.unit.get_effective_attack()
-	var after_steps := rider.unit.get_steps_per_turn()
-	## combat_start_charge：开战自身攻击 +2、每回合步数 +2（与 ability 资源一致）
-	if after != base_atk + 2:
-		push_error("charge: atk %d -> %d, expected +2" % [base_atk, after])
+	var base_atk := rider.unit.get_effective_attack()
+	var base_hp := rider.unit.get_effective_max_hp()
+	if not sim._pipeline.apply_damage(null, ally, 999):
+		push_error("rider: failed to kill ally fodder")
 		return false
-	if after_steps != base_steps + 2:
-		push_error("charge: steps %d -> %d, expected +2" % [base_steps, after_steps])
+	sim._drain_effects()
+	if rider.unit.get_effective_attack() != base_atk or rider.unit.get_effective_max_hp() != base_hp:
+		push_error("rider: ally death should not buff")
+		return false
+	## 敌方死亡：+1/+1
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("rider: failed to kill enemy fodder")
+		return false
+	sim._drain_effects()
+	var after_atk := rider.unit.get_effective_attack()
+	var after_hp := rider.unit.get_effective_max_hp()
+	if after_atk != base_atk + 1:
+		push_error("rider: atk %d -> %d, expected +1" % [base_atk, after_atk])
+		return false
+	if after_hp != base_hp + 1:
+		push_error("rider: max_hp %d -> %d, expected +1" % [base_hp, after_hp])
 		return false
 	return true
 
@@ -322,27 +342,35 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 	return true
 
 
-## 2★（一次三合一）技能数值 ×6：开战冲锋 +2 → +12。
-static func _test_combat_start_charge_atk_star2_x6() -> bool:
+## 2★（一次三合一）merge_value_mult=3：敌亡 +1/+1 → +3/+3。
+static func _test_enemy_death_self_atk_hp_star2_x3() -> bool:
 	var data := _load_unit("res://resources/units/realtime/rider.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_charge":
-		push_error("charge2: rider ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_self_atk_hp_small":
+		push_error("rider2: ability not mounted")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 43)
 	var rider := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
 	rider.unit.level = 2
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 8.5))
-	var base_atk := rider.unit.get_effective_attack()
-	var base_steps := rider.unit.get_steps_per_turn()
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder2", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
 	sim.begin_combat()
-	var after := rider.unit.get_effective_attack()
-	var after_steps := rider.unit.get_steps_per_turn()
-	if after != base_atk + 12:
-		push_error("charge2: atk %d -> %d, expected +12" % [base_atk, after])
+	var base_atk := rider.unit.get_effective_attack()
+	var base_hp := rider.unit.get_effective_max_hp()
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("rider2: failed to kill enemy")
 		return false
-	if after_steps != base_steps + 12:
-		push_error("charge2: steps %d -> %d, expected +12" % [base_steps, after_steps])
+	sim._drain_effects()
+	var after_atk := rider.unit.get_effective_attack()
+	var after_hp := rider.unit.get_effective_max_hp()
+	if after_atk != base_atk + 3:
+		push_error("rider2: atk %d -> %d, expected +3" % [base_atk, after_atk])
+		return false
+	if after_hp != base_hp + 3:
+		push_error("rider2: max_hp %d -> %d, expected +3" % [base_hp, after_hp])
 		return false
 	return true
 

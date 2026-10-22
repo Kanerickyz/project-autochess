@@ -356,7 +356,7 @@ func _collect_line_attack_followups(
 					}
 				deaths.append(payload)
 				last_index = j
-			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH:
+			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
 				last_index = j
 			_:
 				return {
@@ -475,7 +475,7 @@ func _collect_strike_followups(
 					"last_index": last_index,
 					"next_hit_index": -1,
 				}
-			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH:
+			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
 				last_index = j
 			_:
 				return {
