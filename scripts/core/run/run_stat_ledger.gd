@@ -2,6 +2,9 @@ class_name RunStatLedger
 extends RefCounted
 
 ## 按队伍 entry_id 累计本场 Run 的战斗统计（售出成员仍保留其 entry 记录）。
+## entry_id < 0（战中召唤体等）归入孤儿桶，仍计入总和。
+
+const ORPHAN_ENTRY_ID := -1
 
 
 class EntryTotals extends RefCounted:
@@ -19,11 +22,25 @@ func reset() -> void:
 
 
 func _bucket(entry_id: int) -> EntryTotals:
-	if entry_id < 0:
-		return null
-	if not _entries.has(entry_id):
-		_entries[entry_id] = EntryTotals.new()
-	return _entries[entry_id] as EntryTotals
+	var key := entry_id if entry_id >= 0 else ORPHAN_ENTRY_ID
+	if not _entries.has(key):
+		_entries[key] = EntryTotals.new()
+	return _entries[key] as EntryTotals
+
+
+## 深拷贝：快照与活账本隔离，避免 reset / 再开局冲掉已展示统计。
+func duplicate_ledger() -> RunStatLedger:
+	var out := RunStatLedger.new()
+	for key in _entries.keys():
+		var src := _entries[key] as EntryTotals
+		if src == null:
+			continue
+		var dst := out._bucket(int(key))
+		dst.damage_dealt = src.damage_dealt
+		dst.healing_done = src.healing_done
+		dst.kills = src.kills
+		dst.summons = src.summons
+	return out
 
 
 func record_damage(entry_id: int, amount: int) -> void:

@@ -39,11 +39,12 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 				_ledger.record_kill(_player_entry_id(killer))
 		CombatEvents.ON_FRIEND_SUMMONED:
 			var summoner := payload.source
+			## 技能生成会带 source=召唤者；锁阵入座 emit 无 source，不计入「召唤单位」。
 			if summoner != null and summoner.team == UnitInstance.Team.PLAYER:
 				_ledger.record_summon(_player_entry_id(summoner))
 		CombatEvents.ON_HEAL_APPLIED:
 			var healer := payload.effect_owner if payload.effect_owner != null else payload.source
-			if healer != null and healer.team == UnitInstance.Team.PLAYER:
+			if healer != null and healer.team == UnitInstance.Team.PLAYER and payload.amount > 0:
 				_ledger.record_healing(_player_entry_id(healer), payload.amount)
 
 
