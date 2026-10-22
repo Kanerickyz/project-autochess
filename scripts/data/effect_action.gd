@@ -20,6 +20,9 @@ enum Type {
 	TELEPORT_ADJACENT_TO_TARGET,
 	## 击杀续动：重置持有者本动步数并允许再普攻（由战斗层处理；不触发 OnRoundStart）。
 	GRANT_ACTOR_TURN_REFRESH,
+	## 吞噬：将目标当前有效攻击与生命上限加到持有者本场临时层，并经伤害管线消灭目标（触发死亡/友亡）。
+	## 转移量不走 merge_value_mult / 全局 ×6。
+	ABSORB_STATS_AND_KILL,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

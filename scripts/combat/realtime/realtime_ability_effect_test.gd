@@ -65,6 +65,9 @@ static func run_all() -> bool:
 		"turn_start_strike_weakest_teleport_deferred",
 		_test_turn_start_strike_weakest_teleport_deferred(),
 	)
+	_check("devour_lr_absorb_and_kill", _test_devour_lr_absorb_and_kill())
+	_check("devour_star2_skips_boss", _test_devour_star2_skips_boss())
+	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
 
 	for sim in _created:
 		sim.dispose()
@@ -1399,6 +1402,113 @@ static func _test_turn_start_strike_weakest_teleport_deferred() -> bool:
 			"teleport deferred: weak hp=%d expected 13 (7 dmg at 2★)"
 			% weak_rt.unit.current_hp
 		)
+		return false
+	return true
+
+
+static func _test_tier_unlock_t2_from_floor_4() -> bool:
+	if TierUnlock.get_max_unlocked_tier(3) != 1:
+		push_error("tier_unlock: floor 3 should be T1")
+		return false
+	if TierUnlock.get_max_unlocked_tier(4) != 2:
+		push_error("tier_unlock: floor 4 should unlock T2")
+		return false
+	return true
+
+
+## 吞噬：左右邻格友方被消灭并吞满攻血；上下邻格不受影响。
+static func _test_devour_lr_absorb_and_kill() -> bool:
+	var data := _load_unit("res://resources/units/realtime/devour.tres")
+	if data == null or data.ability == null or data.ability.id != "turn_start_devour_lr_allies":
+		push_error("devour: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 1:
+		push_error("devour: merge_value_mult expected 1")
+		return false
+	var fodder_data := _load_unit("res://resources/units/realtime/skeleton.tres")
+	if fodder_data == null:
+		push_error("devour: missing skeleton fodder")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var devourer := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	var left := UnitInstance.from_unit_data(fodder_data, Vector2i(8, 20), UnitInstance.Team.PLAYER)
+	left.stats.attack = 3
+	left.stats.max_hp = 5
+	left.current_hp = 5
+	var up := UnitInstance.from_unit_data(fodder_data, Vector2i(9, 19), UnitInstance.Team.PLAYER)
+	up.stats.attack = 7
+	up.stats.max_hp = 7
+	up.current_hp = 7
+	grid.place(devourer, Vector2i(9, 20))
+	grid.place(left, Vector2i(8, 20))
+	grid.place(up, Vector2i(9, 19))
+	var atk0 := devourer.get_effective_attack()
+	var hp0 := devourer.get_effective_max_hp()
+	var payload := CombatEventPayload.new()
+	payload.source = devourer
+	payload.target = devourer
+	resolver.on_event(CombatEvents.ON_ROUND_START, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if left.is_alive():
+		push_error("devour: left ally should be dead")
+		return false
+	if not up.is_alive():
+		push_error("devour: up ally must not be eaten (not left/right)")
+		return false
+	if devourer.get_effective_attack() != atk0 + 3:
+		push_error(
+			"devour: atk=%d expected %d"
+			% [devourer.get_effective_attack(), atk0 + 3]
+		)
+		return false
+	if devourer.get_effective_max_hp() != hp0 + 5:
+		push_error(
+			"devour: max_hp=%d expected %d"
+			% [devourer.get_effective_max_hp(), hp0 + 5]
+		)
+		return false
+	return true
+
+
+## 2★ 吞噬：左右邻格首领不被吃。
+static func _test_devour_star2_skips_boss() -> bool:
+	var data := _load_unit("res://resources/units/realtime/devour.tres")
+	var fodder_data := _load_unit("res://resources/units/realtime/skeleton.tres")
+	if data == null or fodder_data == null:
+		push_error("devour2: missing units")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var devourer := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	devourer.level = 2
+	var boss_data := fodder_data.duplicate(true) as UnitData
+	boss_data.is_boss_leader = true
+	var boss := UnitInstance.from_unit_data(boss_data, Vector2i(8, 20), UnitInstance.Team.PLAYER)
+	boss.stats.attack = 9
+	boss.stats.max_hp = 9
+	boss.current_hp = 9
+	grid.place(devourer, Vector2i(9, 20))
+	grid.place(boss, Vector2i(8, 20))
+	var atk0 := devourer.get_effective_attack()
+	var payload := CombatEventPayload.new()
+	payload.source = devourer
+	payload.target = devourer
+	resolver.on_event(CombatEvents.ON_ROUND_START, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if not boss.is_alive():
+		push_error("devour2: boss ally must survive at 2★")
+		return false
+	if devourer.get_effective_attack() != atk0:
+		push_error("devour2: should not absorb boss stats")
 		return false
 	return true
 

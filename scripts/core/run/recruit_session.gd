@@ -19,6 +19,8 @@ var candidates: Array[UnitData] = []
 var candidate_locked: Array[bool] = []
 var is_active: bool = false
 var progress_ratio: float = 0.0
+## 地图层号（1-based）；>0 时品阶解锁走 TierUnlock（T2 自第 4 层）。
+var map_floor: int = 0
 ## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
 
@@ -48,11 +50,12 @@ func configure(
 		_rng.randomize()
 
 
-func begin(p_progress_ratio: float = 0.0) -> void:
+func begin(p_progress_ratio: float = 0.0, p_map_floor: int = 0) -> void:
 	if deck == null or economy == null:
 		push_error("RecruitSession.begin: deck/economy missing")
 		return
 	progress_ratio = clampf(p_progress_ratio, 0.0, 1.0)
+	map_floor = maxi(0, p_map_floor)
 	## 开局招募不继承上一场锁定。
 	if require_nonempty_roster:
 		clear_persisted_locks()
@@ -143,6 +146,9 @@ func is_roster_full() -> bool:
 
 
 func get_preferred_tier() -> int:
+	## 主路径：按地图层解锁（T2 自第 4 层）。无层号时回退旧进度三段。
+	if map_floor > 0:
+		return TierUnlock.get_max_unlocked_tier(map_floor)
 	if progress_ratio < 1.0 / 3.0:
 		return 1
 	if progress_ratio < 2.0 / 3.0:

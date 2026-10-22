@@ -187,7 +187,8 @@ func _open_opening_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = true
-	_recruit_session.begin(0.0)
+	## 开局：第 1 层尺 → 仅 T1。
+	_recruit_session.begin(0.0, 1)
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
@@ -226,7 +227,7 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = false
-	_recruit_session.begin(_recruit_progress_ratio())
+	_recruit_session.begin(_recruit_progress_ratio(), _recruit_map_floor())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
@@ -237,6 +238,13 @@ func _recruit_progress_ratio() -> float:
 		floors = maxi(1, run_controller.map_config.floor_count)
 	var depth := run_controller.run_state.completed_encounter_count
 	return clampf(float(depth) / float(floors), 0.0, 1.0)
+
+
+## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层）。
+func _recruit_map_floor() -> int:
+	if _battle != null:
+		return maxi(1, _battle.get_floor_index())
+	return 1
 
 
 func _on_recruit_finished(_kept: bool) -> void:

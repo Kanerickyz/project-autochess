@@ -323,6 +323,8 @@ func _resolve_targets(
 			var weakest := _pick_lowest_current_hp_enemy(owner)
 			if weakest != null:
 				result.append(weakest)
+		EffectSpec.TargetSelector.ORTHOGONAL_LEFT_RIGHT_ALLIES:
+			result.append_array(_pick_orthogonal_left_right_allies(owner, spec.exclude_owner))
 	return result
 
 
@@ -651,6 +653,37 @@ func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[Unit
 	return result
 
 
+## 正交左右邻格友方（同一行、列 ±1）。2★+ 跳过首领。
+func _pick_orthogonal_left_right_allies(
+	owner: UnitInstance,
+	exclude_owner: bool,
+) -> Array[UnitInstance]:
+	var result: Array[UnitInstance] = []
+	if owner == null or _grid == null:
+		return result
+	var center := owner.grid_pos
+	var found := _grid.find_cell_of(owner)
+	if found != Vector2i(-1, -1):
+		center = found
+	var skip_boss := owner.level >= 2
+	for offset_x in [-1, 1]:
+		var cell := Vector2i(center.x + offset_x, center.y)
+		if not _grid.in_bounds(cell):
+			continue
+		var unit := _grid.get_unit(cell)
+		if unit == null or not unit.is_alive():
+			continue
+		if unit.team != owner.team:
+			continue
+		if exclude_owner and unit.instance_id == owner.instance_id:
+			continue
+		if skip_boss and unit.is_boss_leader():
+			continue
+		result.append(unit)
+	result.sort_custom(_sort_listeners)
+	return result
+
+
 func process_attack_hit_immediate(payload: CombatEventPayload) -> Dictionary:
 	var result := {
 		"swapped": false,
@@ -943,6 +976,8 @@ func _execute_action(
 					% [owner.id, target.id, str(dest)]
 				)
 			executed = true
+		EffectAction.Type.ABSORB_STATS_AND_KILL:
+			executed = _absorb_stats_and_kill(owner, target)
 
 	if executed and emit_resolved:
 		_emit_effect_resolved(owner, action, target, payload, spec)
@@ -1103,6 +1138,47 @@ func _pick_teleport_cell_adjacent_to_target(
 	if best == Vector2i(-1, -1) and _grid.chebyshev_distance(owner_cell, target_cell) <= 1:
 		return owner_cell
 	return best
+
+
+## 吞噬：读目标有效攻/生命上限 → 加到持有者本场临时层 → 经管线消灭目标（触发死亡/友亡）。
+## 转移量不套技能星级倍率。
+func _absorb_stats_and_kill(owner: UnitInstance, target: UnitInstance) -> bool:
+	if owner == null or not owner.is_alive() or target == null or not target.is_alive():
+		return false
+	if target.instance_id == owner.instance_id:
+		return false
+	var atk_gain := target.get_effective_attack()
+	var hp_gain := target.get_effective_max_hp()
+	if atk_gain != 0:
+		owner.stat_modifiers.add_flat(&"attack", atk_gain)
+	if hp_gain > 0:
+		owner.stat_modifiers.add_flat(&"max_hp", hp_gain)
+		owner.current_hp = mini(
+			owner.get_effective_max_hp(),
+			owner.current_hp + hp_gain,
+		)
+	else:
+		owner.current_hp = clampi(owner.current_hp, 0, owner.get_effective_max_hp())
+	var lethal := maxi(1, target.current_hp)
+	if _pipeline != null:
+		_suppress_deal_damage_triggers += 1
+		_pipeline.apply_damage(owner, target, lethal, false)
+		_suppress_deal_damage_triggers = maxi(0, _suppress_deal_damage_triggers - 1)
+	else:
+		target.current_hp = 0
+	print(
+		"[Effect] %s absorbs +%d atk +%d max_hp from %s then kills (owner atk=%d hp=%d/%d)"
+		% [
+			owner.id,
+			atk_gain,
+			hp_gain,
+			target.id,
+			owner.get_effective_attack(),
+			owner.current_hp,
+			owner.get_effective_max_hp(),
+		]
+	)
+	return true
 
 
 func _scaled_action_value(owner: UnitInstance, value: int) -> int:
