@@ -1,69 +1,96 @@
 extends SceneTree
-## 地图商店场景可实例化、服务可走通购买；轻量烟测。
+## 地图商店 Arena 主路径烟测：enter_map_shop 走纸片半场，不依赖 UnitCardDisplay 座位。
 
 
 func _initialize() -> void:
 	var ok := true
-	var packed := load("res://scenes/ui/map_shop/map_shop_screen.tscn")
-	if packed == null:
-		push_error("map shop scene missing")
+	var battle_packed := load("res://scenes/combat/realtime/realtime_battle.tscn") as PackedScene
+	if battle_packed == null:
+		push_error("realtime_battle scene missing")
 		ok = false
-	else:
-		var screen: MapShopScreen = (packed as PackedScene).instantiate() as MapShopScreen
-		if screen == null:
-			push_error("map shop scene not MapShopScreen")
+		quit(1)
+		return
+	var battle := battle_packed.instantiate() as RealtimeBattleController
+	if battle == null:
+		push_error("battle scene not RealtimeBattleController")
+		ok = false
+		quit(1)
+		return
+	root.add_child(battle)
+	await process_frame
+
+	var unit := UnitData.new()
+	unit.id = "smoke_u"
+	unit.display_name = "烟测"
+	unit.stats = UnitStats.new()
+	unit.stats.attack = 2
+	unit.stats.max_hp = 8
+	var config := DeckConfig.new()
+	config.max_size = 5
+	var deck := DeckState.new()
+	deck.configure(config)
+	var added := deck.add_entry(unit)
+	if added != null:
+		deck.assign_seat(added.entry_id, 0)
+	var econ := RunEconomy.new()
+	econ.reset()
+	econ.grant(20)
+	var level := LevelData.new()
+	battle.setup(deck, econ, level)
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var svc := MapShopService.new()
+	svc.configure(MapShopConfig.make_code_defaults(), econ, deck, rng)
+	svc.open_shop()
+
+	await battle.enter_map_shop(svc, 0.0)
+	if battle.get_phase() != RealtimeBattleController.Phase.MAP_SHOP:
+		push_error("phase should be MAP_SHOP")
+		ok = false
+	var arena := battle.get_arena()
+	if arena == null or not arena.map_shop_active:
+		push_error("arena map_shop_active expected")
+		ok = false
+	if arena != null and arena.recruit_team_slots == null:
+		push_error("map shop should sync recruit_team_slots for paper bodies")
+		ok = false
+	if arena != null and arena.map_shop_offers.is_empty():
+		push_error("map shop offers should populate shelf")
+		ok = false
+	## 禁止再把 UnitCardDisplay 当作商店队伍半场主表现。
+	if arena != null:
+		for child in arena.find_children("*", "UnitCardDisplay", true, false):
+			push_error("UnitCardDisplay must not be map shop team presentation")
 			ok = false
-		else:
-			root.add_child(screen)
-			var unit := UnitData.new()
-			unit.id = "smoke_u"
-			unit.display_name = "烟测"
-			unit.stats = UnitStats.new()
-			unit.stats.attack = 2
-			unit.stats.max_hp = 8
-			var config := DeckConfig.new()
-			config.max_size = 5
-			var deck := DeckState.new()
-			deck.configure(config)
-			var added := deck.add_entry(unit)
-			if added != null:
-				deck.assign_seat(added.entry_id, 0)
-			var econ := RunEconomy.new()
-			econ.reset()
-			econ.grant(20)
-			var rng := RandomNumberGenerator.new()
-			rng.seed = 7
-			var svc := MapShopService.new()
-			svc.configure(MapShopConfig.make_code_defaults(), econ, deck, rng)
-			svc.open_shop()
-			await screen.open_shop(svc, deck)
-			if screen.get_node_or_null("%ConsumableRow") == null:
-				push_error("map shop UI nodes missing")
-				ok = false
-			var seat_grid := screen.get_node_or_null("%SeatGrid") as GridContainer
-			var found_card := false
-			if seat_grid != null:
-				for cell in seat_grid.get_children():
-					if cell is PanelContainer and (cell as PanelContainer).has_meta("unit_card"):
-						var card: Variant = (cell as PanelContainer).get_meta("unit_card")
-						if card is UnitCardDisplay:
-							found_card = true
-							break
-			if not found_card:
-				push_error("map shop seat should show UnitCardDisplay for occupied seats")
-				ok = false
-			var entry := deck.get_entries()[0]
-			## 确保有可买消耗品。
-			svc._consumable_offers[0] = MapShopConfig._make_consumable("big_hp_potion", "大生命", 2, -1, 5)
-			var buy := svc.try_buy_consumable_on_entry(0, entry.entry_id)
-			if int(buy.get("result", -1)) != MapShopService.BuyResult.OK:
-				push_error("map shop smoke buy failed")
-				ok = false
-			screen.hide_shop()
-			svc.close_shop()
-			screen.queue_free()
+			break
+
+	var entry := deck.get_entries()[0]
+	svc._consumable_offers[0] = MapShopConfig._make_consumable("big_hp_potion", "大生命", 2, -1, 5)
+	battle.on_map_shop_changed()
+	var buy := svc.try_buy_consumable_on_entry(0, entry.entry_id)
+	if int(buy.get("result", -1)) != MapShopService.BuyResult.OK:
+		push_error("map shop smoke buy failed")
+		ok = false
+	battle.on_map_shop_changed()
+	if arena != null and arena.map_shop_offers.size() > 0:
+		var first: Dictionary = arena.map_shop_offers[0]
+		if first.get("item") != null:
+			push_error("bought consumable slot should clear in arena offers")
+			ok = false
+
+	battle.exit_map_shop()
+	if battle.get_phase() != RealtimeBattleController.Phase.IDLE:
+		push_error("IDLE after exit_map_shop")
+		ok = false
+	if arena != null and arena.map_shop_active:
+		push_error("map_shop_active cleared after exit")
+		ok = false
+	svc.close_shop()
+	battle.queue_free()
+
 	if ok:
-		print("MapShopScreenSmoke: OK")
+		print("MapShopArenaSmoke: OK")
 	else:
-		push_error("MapShopScreenSmoke: FAILED")
+		push_error("MapShopArenaSmoke: FAILED")
 	quit(0 if ok else 1)
