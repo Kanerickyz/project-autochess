@@ -289,9 +289,9 @@ flowchart TD
 | 爬塔场景编排 | 功能已存在 | `scenes/main/run_game.tscn`，`scripts/core/run/run_game_controller.gd` |
 | 宏观阶段：地图 / 遭遇 / 通关 / 失败 | 功能已存在 | `scripts/core/run/run_controller.gd` |
 | 地图生成与选路 | 功能已存在 | `scripts/core/run/map_generator.gd`，`map_state.gd`，`resources/runs/act1_map.tres` |
-| 节点类型（第一版七类） | 功能已存在 | 生成器只产出七类；商店/事件/附魔本版为占位界面 |
+| 节点类型（第一版七类） | 功能已存在 | 生成器只产出七类；事件/附魔本版为占位界面 |
 | 战斗节点：准备→战斗→结算→回地图 | 功能已存在 | `scenes/combat/realtime/realtime_battle.tscn`（实时战斗） |
-| 商店 / 事件 / 附魔节点 | 本版占位 | `scenes/ui/placeholder/`；旧商店与事件界面不接入 Run 主路径 |
+| 商店节点 | 按地图商店篇可玩（消耗品+装备+换座；不含买人） | 见 [地图商店](./MAP_SHOP.md)；事件/附魔仍占位 |
 | 清波胜负 + 失败整局重置 | 功能已存在（对齐愿景） | 愿景定稿；失败时重初始化队伍与经济 |
 | 单幕通关 = Boss 胜 | 功能已存在 | Boss 胜后结局宣告 → `RunStatsOverlay` → 选择叠层（`run_game_controller.gd`） |
 | 多幕 / 局外永久解锁 | 仅愿景 | 愿景「远期」 |
