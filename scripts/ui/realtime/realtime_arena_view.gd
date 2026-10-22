@@ -2540,7 +2540,7 @@ func _draw_body(
 	is_player: bool = true,
 	unit_id: String = "",
 	pose: RealtimeUnitMotion.Pose = null,
-	walk: Vector2 = Vector2.ZERO,
+	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
 ) -> void:
@@ -2576,6 +2576,7 @@ func _draw_body(
 
 ## 贴图脚底：单格落在格心略下方；多格足迹则把整张贴图垂向居中于足迹中心。
 ## pose / walk 为纯表现动画：以脚底为轴旋转缩放，偏移以格为单位。
+## walk：Dictionary{offset,rotation,scale,shadow_mul}（小丑牌步进）；兼容旧 Vector2(tilt, hop)。
 ## idle_seed>=0 且无 pose 时：准备/招募时钟呼吸待机。
 func _draw_unit_sprite(
 	center: Vector2,
@@ -2586,7 +2587,7 @@ func _draw_unit_sprite(
 	alpha: float,
 	is_player: bool,
 	pose: RealtimeUnitMotion.Pose = null,
-	walk: Vector2 = Vector2.ZERO,
+	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
 ) -> void:
@@ -2610,23 +2611,33 @@ func _draw_unit_sprite(
 		if footprint_span >= 1.5
 		else center + Vector2(0.0, px * 0.38)
 	)
-	var offset := Vector2(0.0, walk.y * px)
-	var rot := walk.x
+	var offset := Vector2.ZERO
+	var rot := 0.0
 	var scl := Vector2.ONE
 	var flash := 0.0
 	var a := alpha
 	var shadow_mul := 1.0
+	if walk is Dictionary:
+		var wd: Dictionary = walk
+		offset += (wd.get("offset", Vector2.ZERO) as Vector2) * px
+		rot += float(wd.get("rotation", 0.0))
+		scl *= wd.get("scale", Vector2.ONE) as Vector2
+		shadow_mul = maxf(shadow_mul, float(wd.get("shadow_mul", 1.0)))
+	elif walk is Vector2:
+		var wv: Vector2 = walk
+		offset += Vector2(0.0, wv.y * px)
+		rot += wv.x
 	if pose != null:
 		offset += (pose.offset + pose.idle_offset) * px
 		rot += pose.rotation
-		scl = pose.scale * pose.idle_scale
+		scl = pose.scale * pose.idle_scale * scl
 		flash = pose.flash
 		a *= pose.alpha
 		shadow_mul = maxf(shadow_mul, pose.shadow_mul)
 	elif idle_seed >= 0:
 		var idle: Dictionary = RealtimeUnitMotion.sample_idle(_fx_clock, idle_seed)
 		offset += (idle.get("offset", Vector2.ZERO) as Vector2) * px
-		scl = idle.get("scale", Vector2.ONE) as Vector2
+		scl *= idle.get("scale", Vector2.ONE) as Vector2
 	## 长按信息卡焦点：小丑牌式抬起 / 倾斜；非焦点略压暗。
 	var inspect_v := _sample_inspect_visual(center)
 	if not inspect_v.is_empty():

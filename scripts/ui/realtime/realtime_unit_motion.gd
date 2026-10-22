@@ -4,9 +4,12 @@ extends Node
 ## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别蓄力、出手、受击，
 ## 死亡由控制器转发 unit_died 后生成残影单独播放。
 
-## 一格步进内左右各摆一次；脚底为旋转轴。
-const WALK_TILT := 0.13
-const WALK_HOP_TILES := 0.07
+## 一格步进：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
+const WALK_TILT := 0.16
+const WALK_HOP_TILES := 0.1
+const WALK_LEAN := 0.12
+const WALK_SQUASH := Vector2(1.08, 0.92)
+const WALK_SHADOW_MUL := 1.55
 ## 非行动者 / 准备席待机：轻呼吸起伏（战斗用 idle_tween；准备/招募用 sample_idle）。
 const IDLE_BOB_TILES := 0.045
 const IDLE_SQUASH := Vector2(1.04, 0.96)
@@ -30,21 +33,33 @@ const DRAG_TILT_PER_SPEED := 0.085
 const DRAG_SWAY_TILES := 0.1
 const DRAG_SHADOW_MUL := 1.95
 const DRAG_HOLD_ALPHA := 1.0
-## 近战蓄力：后撤 + 压扁；出手：冲向目标，撞上瞬间结算受击表现。
-const WINDUP_PULL_TILES := 0.16
-const WINDUP_SQUASH := Vector2(1.1, 0.88)
-const LUNGE_SECONDS := 0.08
-const LUNGE_ATTACKER_TILES := 0.38
-const LUNGE_TARGET_TILES := 0.16
-const RECOVER_SECONDS := 0.2
-const RANGED_RECOIL_TILES := 0.12
-const HIT_KNOCK_TILES := 0.1
+## 近战蓄力 / 出手 / 受击 / 死亡：与拖影同语汇（BACK 过冲、倾斜、影）。
+const WINDUP_PULL_TILES := 0.18
+const WINDUP_LIFT_TILES := 0.05
+const WINDUP_TILT := 0.22
+const WINDUP_SQUASH := Vector2(1.14, 0.86)
+const WINDUP_SHADOW_MUL := 1.45
+const LUNGE_SECONDS := 0.09
+const LUNGE_ATTACKER_TILES := 0.42
+const LUNGE_TARGET_TILES := 0.18
+const LUNGE_TILT := 0.28
+const LUNGE_SCALE := Vector2(0.86, 1.16)
+const LUNGE_SHADOW_MUL := 1.75
+const RECOVER_SECONDS := 0.22
+const RANGED_RECOIL_TILES := 0.14
+const RANGED_TILT := 0.18
+const HIT_KNOCK_TILES := 0.14
+const HIT_TILT := 0.32
+const HIT_SQUASH := Vector2(1.16, 0.86)
+const HIT_SHADOW_MUL := 1.65
 const HIT_FLASH_SECONDS := 0.16
-const SHAKE_MELEE_PX := 5.0
-const SHAKE_RANGED_PX := 2.5
+const SHAKE_MELEE_PX := 5.5
+const SHAKE_RANGED_PX := 2.8
 const SHAKE_SECONDS := 0.22
-const DEATH_SECONDS := 0.5
-const DEATH_TILT := 1.35
+const DEATH_SECONDS := 0.55
+const DEATH_KICK_TILT := 0.55
+const DEATH_TILT := 1.45
+const DEATH_SHADOW_MUL := 2.1
 
 
 class Pose:
@@ -106,6 +121,30 @@ func clear() -> void:
 	if _shake_tween != null:
 		_shake_tween.kill()
 	shake_strength = 0.0
+
+
+## 测试 / 切场景：打断全部 tween 并归零姿态，避免卡在蓄力偏移。
+func force_home_all() -> void:
+	for tracked: Tracked in _tracked.values():
+		_kill_all(tracked.pose)
+		_reset_pose_visual(tracked.pose)
+	for corpse in _corpses:
+		_kill_all(corpse.pose)
+		_reset_pose_visual(corpse.pose)
+
+
+func _reset_pose_visual(pose: Pose) -> void:
+	if pose == null:
+		return
+	pose.offset = Vector2.ZERO
+	pose.rotation = 0.0
+	pose.scale = Vector2.ONE
+	pose.alpha = 1.0
+	pose.flash = 0.0
+	pose.shadow_mul = 1.0
+	pose.idle_offset = Vector2.ZERO
+	pose.idle_scale = Vector2.ONE
+	pose.lunging = false
 
 
 func get_pose(rt: RtUnit) -> Pose:
@@ -244,12 +283,35 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	_prune_corpses()
 
 
-## 行走摆动跟随步进进度，与移动插值严格同步。
-func walk_pose(rt: RtUnit) -> Vector2:
+## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深；与步进插值同步。
+## 返回 { offset, rotation, scale, shadow_mul }（格单位 / 弧度）。
+func walk_pose(rt: RtUnit) -> Dictionary:
 	if rt == null or not rt.is_stepping():
-		return Vector2.ZERO
+		return {
+			"offset": Vector2.ZERO,
+			"rotation": 0.0,
+			"scale": Vector2.ONE,
+			"shadow_mul": 1.0,
+		}
 	var t := rt.step_t
-	return Vector2(sin(t * TAU) * WALK_TILT, -absf(sin(t * PI)) * WALK_HOP_TILES)
+	var hop := absf(sin(t * PI))
+	## 与拖影相同的过冲峰值：中段略弹高。
+	var overshoot := 1.0 + 0.45 * hop * (1.0 - hop)
+	var lift := hop * overshoot
+	var move := rt.step_to - rt.step_from
+	var dir := move.normalized() if move.length_squared() > 0.0001 else Vector2.ZERO
+	## 左右摆在 1/4、3/4 步峰值；朝向 lean 在腾空中段峰值，避免只采到中点时 tilt=0。
+	var sway := sin(t * TAU) * WALK_TILT
+	var lean := dir.x * WALK_LEAN * hop
+	var yaw := sway + lean
+	if absf(yaw) < 0.04:
+		yaw = signf(dir.x if not is_zero_approx(dir.x) else 1.0) * WALK_TILT * hop
+	return {
+		"offset": Vector2(dir.x * 0.03 * hop, -WALK_HOP_TILES * lift),
+		"rotation": yaw,
+		"scale": Vector2.ONE.lerp(WALK_SQUASH, hop),
+		"shadow_mul": 1.0 + (WALK_SHADOW_MUL - 1.0) * lift,
+	}
 
 
 func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
@@ -264,19 +326,33 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	if tracked != null:
 		corpse.pose.offset = tracked.pose.offset
 		corpse.pose.scale = tracked.pose.scale
+		corpse.pose.rotation = tracked.pose.rotation
+		corpse.pose.shadow_mul = tracked.pose.shadow_mul
 	_corpses.append(corpse)
 	var fall_dir := -1.0 if rt.is_player() else 1.0
 	var pose := corpse.pose
 	pose.flash = 1.0
 	var tween := _new_tween(pose)
-	tween.tween_interval(LUNGE_SECONDS)
-	tween.tween_property(pose, "rotation", DEATH_TILT * fall_dir, DEATH_SECONDS * 0.55) \
+	## 先小丑牌式踢起倾斜，再侧倒缩小淡出。
+	var kick_rot := pose.rotation + DEATH_KICK_TILT * fall_dir
+	var kick_off := pose.offset + Vector2(0.1 * fall_dir, -0.2)
+	tween.tween_property(pose, "rotation", kick_rot, DEATH_SECONDS * 0.18) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "offset", kick_off, DEATH_SECONDS * 0.18) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "shadow_mul", DEATH_SHADOW_MUL, DEATH_SECONDS * 0.18)
+	tween.parallel().tween_property(pose, "scale", Vector2(1.08, 1.12), DEATH_SECONDS * 0.18) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(pose, "rotation", DEATH_TILT * fall_dir, DEATH_SECONDS * 0.45) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(pose, "offset", pose.offset + Vector2(0.18 * fall_dir, -0.12), DEATH_SECONDS * 0.3) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "flash", 0.0, DEATH_SECONDS * 0.4)
-	tween.tween_property(pose, "scale", Vector2(0.75, 0.55), DEATH_SECONDS * 0.45)
-	tween.parallel().tween_property(pose, "alpha", 0.0, DEATH_SECONDS * 0.45)
+	tween.parallel().tween_property(
+		pose, "offset", kick_off + Vector2(0.22 * fall_dir, 0.08), DEATH_SECONDS * 0.35
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(pose, "flash", 0.0, DEATH_SECONDS * 0.35)
+	tween.tween_property(pose, "scale", Vector2(0.72, 0.5), DEATH_SECONDS * 0.4) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(pose, "alpha", 0.0, DEATH_SECONDS * 0.4)
+	tween.parallel().tween_property(pose, "shadow_mul", 0.4, DEATH_SECONDS * 0.4)
 	tween.tween_callback(func() -> void: corpse.done = true)
 
 
@@ -284,20 +360,29 @@ func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
 	var dir := _dir_to(rt, rt.target)
 	var windup := maxf(0.08, rt.get_stats().attack_windup if rt.get_stats() != null else 0.3)
 	var pose := tracked.pose
+	var tilt := _tilt_for_dir(-dir) * WINDUP_TILT
+	var pulled := -dir * WINDUP_PULL_TILES + Vector2(0.0, -WINDUP_LIFT_TILES)
 	var tween := _new_tween(pose)
-	tween.tween_property(pose, "offset", -dir * WINDUP_PULL_TILES, windup * 0.8) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(pose, "offset", pulled, windup * 0.8) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(pose, "scale", WINDUP_SQUASH, windup * 0.8) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "rotation", tilt, windup * 0.8) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "shadow_mul", WINDUP_SHADOW_MUL, windup * 0.8)
 	## 近战目标同步蓄力迎击，形成「双方对冲」。
 	if _is_melee(rt) and rt.target != null and rt.target.is_alive():
 		var target_tracked: Tracked = _tracked.get(rt.target.get_instance_id())
 		if target_tracked != null and not target_tracked.winding and not _is_busy(target_tracked.pose):
 			var tpose := target_tracked.pose
 			var ttween := _new_tween(tpose)
-			ttween.tween_property(tpose, "offset", dir * WINDUP_PULL_TILES * 0.6, windup * 0.8) \
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-			ttween.parallel().tween_property(tpose, "scale", Vector2(1.05, 0.93), windup * 0.8)
+			var t_pull := dir * WINDUP_PULL_TILES * 0.65 + Vector2(0.0, -WINDUP_LIFT_TILES * 0.6)
+			ttween.tween_property(tpose, "offset", t_pull, windup * 0.8) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			ttween.parallel().tween_property(tpose, "scale", Vector2(1.08, 0.9), windup * 0.8) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			ttween.parallel().tween_property(tpose, "rotation", _tilt_for_dir(dir) * WINDUP_TILT * 0.7, windup * 0.8)
+			ttween.parallel().tween_property(tpose, "shadow_mul", 1.3, windup * 0.8)
 
 
 func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
@@ -306,16 +391,24 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	var pose := tracked.pose
 	if not _is_melee(rt):
 		var recoil := _new_tween(pose)
-		recoil.tween_property(pose, "offset", -dir * RANGED_RECOIL_TILES, LUNGE_SECONDS) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		recoil.parallel().tween_property(pose, "scale", Vector2(0.92, 1.08), LUNGE_SECONDS)
+		var recoiled := -dir * RANGED_RECOIL_TILES + Vector2(0.0, -0.04)
+		recoil.tween_property(pose, "offset", recoiled, LUNGE_SECONDS) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		recoil.parallel().tween_property(pose, "scale", Vector2(0.9, 1.12), LUNGE_SECONDS) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		recoil.parallel().tween_property(pose, "rotation", _tilt_for_dir(-dir) * RANGED_TILT, LUNGE_SECONDS)
+		recoil.parallel().tween_property(pose, "shadow_mul", 1.4, LUNGE_SECONDS)
 		_tween_home(recoil, pose)
 		return
 	var lunge := _new_tween(pose)
 	pose.lunging = true
-	lunge.tween_property(pose, "offset", dir * LUNGE_ATTACKER_TILES, LUNGE_SECONDS) \
+	var lunged := dir * LUNGE_ATTACKER_TILES + Vector2(0.0, -0.06)
+	lunge.tween_property(pose, "offset", lunged, LUNGE_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	lunge.parallel().tween_property(pose, "scale", Vector2(0.9, 1.12), LUNGE_SECONDS)
+	lunge.parallel().tween_property(pose, "scale", LUNGE_SCALE, LUNGE_SECONDS) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	lunge.parallel().tween_property(pose, "rotation", _tilt_for_dir(dir) * LUNGE_TILT, LUNGE_SECONDS)
+	lunge.parallel().tween_property(pose, "shadow_mul", LUNGE_SHADOW_MUL, LUNGE_SECONDS)
 	lunge.tween_callback(func() -> void: pose.lunging = false)
 	_tween_home(lunge, pose)
 	if target == null:
@@ -331,22 +424,32 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	var charge := _new_tween(tpose)
 	charge.tween_property(tpose, "offset", -dir * LUNGE_TARGET_TILES, LUNGE_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	charge.parallel().tween_property(tpose, "rotation", _tilt_for_dir(-dir) * LUNGE_TILT * 0.7, LUNGE_SECONDS)
 	charge.tween_callback(_play_hit.bind(tpose, dir, SHAKE_MELEE_PX))
 
 
-## 受击：闪白 + 沿来向小幅击退 + 镜头震动。
+## 受击：闪白 + 小丑牌式踢退倾斜压扁 + 影加深 + BACK 弹回 + 镜头震动。
 func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
 	_flash(pose)
 	if pose.lunging and _is_busy(pose):
 		_shake(shake_px)
 		return
+	var knock := knock_dir
+	if knock.length_squared() < 0.0001:
+		knock = Vector2(0.0, 1.0)
+	else:
+		knock = knock.normalized()
+	var kicked := pose.offset + knock * HIT_KNOCK_TILES + Vector2(0.0, -0.05)
+	var tilt := _tilt_for_dir(knock) * HIT_TILT
 	var tween := _new_tween(pose)
-	tween.tween_property(pose, "offset", pose.offset + knock_dir * HIT_KNOCK_TILES, 0.05)
-	tween.parallel().tween_property(pose, "scale", Vector2(1.12, 0.9), 0.05)
-	tween.tween_property(pose, "offset", Vector2.ZERO, RECOVER_SECONDS) \
+	tween.tween_property(pose, "offset", kicked, 0.06) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "scale", Vector2.ONE, RECOVER_SECONDS) \
+	tween.parallel().tween_property(pose, "scale", HIT_SQUASH, 0.06) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "rotation", pose.rotation + tilt, 0.06) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "shadow_mul", HIT_SHADOW_MUL, 0.06)
+	_tween_home(tween, pose)
 	_shake(shake_px)
 
 
@@ -361,10 +464,15 @@ func _flash(pose: Pose) -> void:
 
 
 func _tween_home(tween: Tween, pose: Pose) -> void:
+	## 落座同款：BACK 弹性回正（位移 / 缩放 / 倾斜 / 影）。
 	tween.tween_property(pose, "offset", Vector2.ZERO, RECOVER_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(pose, "scale", Vector2.ONE, RECOVER_SECONDS) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "rotation", 0.0, RECOVER_SECONDS) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "shadow_mul", 1.0, RECOVER_SECONDS) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _shake(strength_px: float) -> void:
@@ -514,6 +622,13 @@ func _dir_to(rt: RtUnit, target: RtUnit) -> Vector2:
 	if dir == Vector2.ZERO:
 		return Vector2.UP if rt.is_player() else Vector2.DOWN
 	return dir
+
+
+## 水平分量主导的小丑牌式倾斜符号（右倾为正）。
+func _tilt_for_dir(dir: Vector2) -> float:
+	if absf(dir.x) >= absf(dir.y) * 0.35:
+		return signf(dir.x) if not is_zero_approx(dir.x) else 1.0
+	return signf(dir.x) * 0.55 if not is_zero_approx(dir.x) else (1.0 if dir.y >= 0.0 else -1.0)
 
 
 func _is_melee(rt: RtUnit) -> bool:
