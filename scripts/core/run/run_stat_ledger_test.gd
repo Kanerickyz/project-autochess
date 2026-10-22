@@ -11,7 +11,127 @@ static func run_all() -> bool:
 	ok = _test_orphan_entry_counts_in_sums() and ok
 	ok = _test_duplicate_ledger_isolates_reset() and ok
 	ok = _test_ledger_accumulates_across_records() and ok
+	ok = _test_note_combat_atk_hp_peak_and_tie() and ok
+	ok = _test_duplicate_peak_isolates_reset() and ok
+	ok = _test_collector_samples_on_effect_resolved() and ok
 	return ok
+
+
+static func _make_player_unit(unit_id: String, base_atk: int, base_hp: int) -> UnitInstance:
+	var data := UnitData.new()
+	data.id = unit_id
+	data.display_name = unit_id
+	data.stats = UnitStats.new()
+	data.stats.attack = base_atk
+	data.stats.max_hp = base_hp
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, UnitInstance.Team.PLAYER)
+	return unit
+
+
+static func _test_note_combat_atk_hp_peak_and_tie() -> bool:
+	var ledger := RunStatLedger.new()
+	var a := _make_player_unit("a", 5, 10)
+	a.stat_modifiers.add_flat(&"attack", 3)
+	a.stat_modifiers.add_flat(&"max_hp", 2)
+	## effective 8+12=20
+	ledger.note_combat_atk_hp(a)
+	if ledger.peak_combat_atk_hp_sum != 20 or ledger.peak_combat_entries.size() != 1:
+		push_error("peak: first note sum/entries")
+		return false
+	var frozen := ledger.peak_combat_entries[0]
+	if frozen.bonus_attack != 3 or frozen.bonus_max_hp != 2:
+		push_error(
+			"peak: freeze bonus atk=%d hp=%d expected 3/2"
+			% [frozen.bonus_attack, frozen.bonus_max_hp]
+		)
+		return false
+	## 同 instance 再采不堆
+	ledger.note_combat_atk_hp(a)
+	if ledger.peak_combat_entries.size() != 1:
+		push_error("peak: same instance should not stack")
+		return false
+	## 更高峰值替换
+	var b := _make_player_unit("b", 10, 20)
+	b.stat_modifiers.add_flat(&"attack", 5)
+	## 15+20=35
+	ledger.note_combat_atk_hp(b)
+	if ledger.peak_combat_atk_hp_sum != 35 or ledger.peak_combat_entries.size() != 1:
+		push_error("peak: higher should replace")
+		return false
+	if ledger.peak_combat_entries[0].unit == null or ledger.peak_combat_entries[0].unit.id != "b":
+		push_error("peak: replaced entry should be b")
+		return false
+	## 并列
+	var c := _make_player_unit("c", 15, 20)
+	ledger.note_combat_atk_hp(c)
+	if ledger.peak_combat_entries.size() != 2:
+		push_error("peak: tie should keep both, got %d" % ledger.peak_combat_entries.size())
+		return false
+	## 敌方不计
+	var enemy := _make_player_unit("e", 99, 99)
+	enemy.team = UnitInstance.Team.ENEMY
+	ledger.note_combat_atk_hp(enemy)
+	if ledger.peak_combat_entries.size() != 2 or ledger.peak_combat_atk_hp_sum != 35:
+		push_error("peak: enemy must not count")
+		return false
+	return true
+
+
+static func _test_duplicate_peak_isolates_reset() -> bool:
+	var live := RunStatLedger.new()
+	var u := _make_player_unit("peak", 4, 6)
+	u.stat_modifiers.add_flat(&"attack", 1)
+	live.note_combat_atk_hp(u)
+	var snap := live.duplicate_ledger()
+	live.reset()
+	if live.peak_combat_atk_hp_sum != 0 or not live.peak_combat_entries.is_empty():
+		push_error("duplicate peak: live should clear")
+		return false
+	if snap.peak_combat_atk_hp_sum != 11 or snap.peak_combat_entries.size() != 1:
+		push_error("duplicate peak: snapshot should survive")
+		return false
+	## 深拷贝：改 snapshot 条目不影响（活账本已空）；再 note live 不冲 snapshot
+	live.note_combat_atk_hp(_make_player_unit("other", 1, 1))
+	if snap.peak_combat_atk_hp_sum != 11:
+		push_error("duplicate peak: live note must not mutate snapshot sum")
+		return false
+	if snap.peak_combat_entries[0].unit == null or snap.peak_combat_entries[0].unit.id != "peak":
+		push_error("duplicate peak: snapshot entry identity")
+		return false
+	return true
+
+
+static func _test_collector_samples_on_effect_resolved() -> bool:
+	var ledger := RunStatLedger.new()
+	var collector := RunCombatStatCollector.new()
+	collector.configure(ledger)
+	var bus := CombatEventBus.new()
+	collector.bind_bus(bus)
+	var unit := _make_player_unit("buffed", 3, 5)
+	unit.stat_modifiers.add_flat(&"attack", 7)
+	unit.stat_modifiers.add_flat(&"max_hp", 4)
+	## 10+9=19
+	var payload := CombatEventPayload.new()
+	payload.target = unit
+	bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
+	collector.unbind_bus()
+	if ledger.peak_combat_atk_hp_sum != 19 or ledger.peak_combat_entries.size() != 1:
+		push_error(
+			"collector peak: sum=%d entries=%d"
+			% [ledger.peak_combat_atk_hp_sum, ledger.peak_combat_entries.size()]
+		)
+		return false
+	## sample_player_units 路径
+	var ledger2 := RunStatLedger.new()
+	var collector2 := RunCombatStatCollector.new()
+	collector2.configure(ledger2)
+	var other := _make_player_unit("sampled", 2, 2)
+	other.stat_modifiers.add_flat(&"max_hp", 8)
+	collector2.sample_player_units([other])
+	if ledger2.peak_combat_atk_hp_sum != 12:
+		push_error("sample_player_units: sum=%d expected 12" % ledger2.peak_combat_atk_hp_sum)
+		return false
+	return true
 
 
 static func _test_ledger_sums() -> bool:

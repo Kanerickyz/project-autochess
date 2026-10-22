@@ -1756,6 +1756,14 @@ func _on_actor_turn_ended(completed_turns: int) -> void:
 	if _tape_step_once or _tape_pause_requested:
 		_tape_boundary_pending = true
 	_update_tape_controls()
+	## 击杀叠层等可能不经 ON_EFFECT_RESOLVED 的目标链；回合末再采一次存活友方。
+	if (
+		_run_stat_ledger != null
+		and not _tape_stats_disabled
+		and not _combat_sandbox_mode
+		and _sim != null
+	):
+		_stat_collector.sample_player_units(_sim.get_units())
 
 
 ## 真倒带：同种子从锁阵重演到 target_turns（已完成一动数）。

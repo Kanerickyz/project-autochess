@@ -228,6 +228,25 @@ size_flags_horizontal = 3
 mouse_filter = 0
 script = ExtResource("2_arena")
 
+[node name="PeakCombatVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PeakCombatTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakCombatVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "战中攻+血"
+horizontal_alignment = 1
+
+[node name="PeakCombatArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakCombatVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+script = ExtResource("2_arena")
+
 [node name="FooterButtons" type="VBoxContainer" parent="Root/Column"]
 layout_mode = 2
 theme_override_constants/separation = 8

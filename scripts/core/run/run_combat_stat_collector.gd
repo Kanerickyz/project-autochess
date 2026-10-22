@@ -27,6 +27,17 @@ func unbind_bus() -> void:
 	_connected = false
 
 
+## 回合边界等处主动采样：兼容 RtUnit 或 UnitInstance；只计存活友方。
+func sample_player_units(units: Array) -> void:
+	if _ledger == null:
+		return
+	for item in units:
+		var unit := _coerce_unit_instance(item)
+		if unit == null or not unit.is_alive():
+			continue
+		_ledger.note_combat_atk_hp(unit)
+
+
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	if _ledger == null or payload == null:
 		return
@@ -46,12 +57,33 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 			var healer := payload.effect_owner if payload.effect_owner != null else payload.source
 			if healer != null and healer.team == UnitInstance.Team.PLAYER and payload.amount > 0:
 				_ledger.record_healing(_player_entry_id(healer), payload.amount)
+		CombatEvents.ON_EFFECT_RESOLVED:
+			_note_combat_atk_hp_if_player(payload.target)
+			_note_combat_atk_hp_if_player(payload.source)
+			_note_combat_atk_hp_if_player(payload.effect_owner)
+
+
+func _note_combat_atk_hp_if_player(unit: UnitInstance) -> void:
+	if unit == null or unit.team != UnitInstance.Team.PLAYER:
+		return
+	_ledger.note_combat_atk_hp(unit)
 
 
 func _record_player_source(source: UnitInstance, amount: int) -> void:
 	if source == null or source.team != UnitInstance.Team.PLAYER:
 		return
 	_ledger.record_damage(_player_entry_id(source), amount)
+
+
+static func _coerce_unit_instance(item: Variant) -> UnitInstance:
+	if item is UnitInstance:
+		return item as UnitInstance
+	if item is RtUnit:
+		var rt := item as RtUnit
+		if rt == null:
+			return null
+		return rt.unit
+	return null
 
 
 static func _player_entry_id(unit: UnitInstance) -> int:
