@@ -33,8 +33,9 @@ enum TargetSelector {
 }
 
 
-## 「附近友方」切比雪夫半径（格）。
-const NEARBY_ALLY_RADIUS := 2
+## 「附近」切比雪夫半径（格）：附近友方 / 附近敌人均为周围一格。
+const NEARBY_ALLY_RADIUS := 1
+const NEARBY_ENEMY_RADIUS := 1
 
 ## Optional gate evaluated when the trigger fires (before targets/actions).
 enum Condition {

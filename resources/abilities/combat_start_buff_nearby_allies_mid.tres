@@ -18,6 +18,6 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "combat_start_buff_nearby_allies_mid"
-display_name = "开战时 附近其他友方攻击+4"
+display_name = "开战时 周围一格其他友方攻击+4"
 merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

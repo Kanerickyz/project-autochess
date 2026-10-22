@@ -18,5 +18,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "ally_death_nearby_atk_small"
-display_name = "友方死亡时 附近其他友方攻击+1"
+display_name = "友方死亡时 周围一格其他友方攻击+1"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

@@ -612,13 +612,13 @@ func _pick_enemies_adjacent_to_event_target(
 		var unit_cell := _grid.find_cell_of(unit)
 		if unit_cell != Vector2i(-1, -1):
 			cell = unit_cell
-		if _grid.combat_distance(center, cell) == 1:
+		if _grid.combat_distance(center, cell) == EffectSpec.NEARBY_ENEMY_RADIUS:
 			result.append(unit)
 	result.sort_custom(_sort_listeners)
 	return result
 
 
-## 持有者附近友方（切比雪夫 ≤ EffectSpec.NEARBY_ALLY_RADIUS）。
+## 持有者附近友方（切比雪夫 ≤ EffectSpec.NEARBY_ALLY_RADIUS；现为周围一格）。
 func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[UnitInstance]:
 	var result: Array[UnitInstance] = []
 	if owner == null or _grid == null:
