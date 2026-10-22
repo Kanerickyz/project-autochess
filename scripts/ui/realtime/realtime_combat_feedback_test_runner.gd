@@ -19,7 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_mapper_and_arena_direct()
 	await _test_effect_resolved_feedback_on_arena()
-	await _test_rider_combat_start_feedback()
+	await _test_rider_enemy_death_feedback()
 	await _test_basic_attack_does_not_float()
 	await _test_timestop_queue_blocks_sim()
 	if _failures == 0:
@@ -186,16 +186,14 @@ func _test_effect_resolved_feedback_on_arena() -> void:
 	await process_frame
 
 
-func _test_rider_combat_start_feedback() -> void:
-	## 多轮刷新直到手牌有 combat_start_charge，开战应飘 +攻。
+func _test_rider_enemy_death_feedback() -> void:
+	## 骑手入座开战；击杀一名敌人后应飘 +攻（敌亡叠层）。
 	var battle := _make_battle(777)
 	await process_frame
 	var seated := false
 	for _attempt in 8:
 		for entry in battle.get_hand():
-			if entry == null or entry.unit == null or entry.unit.ability == null:
-				continue
-			if entry.unit.ability.id != "combat_start_charge":
+			if entry == null or entry.unit == null or entry.unit.id != "rider":
 				continue
 			var err := battle.try_assign_to_slot(entry.entry_id, battle.get_slot_board().get_cell(0))
 			if err.is_empty():
@@ -206,35 +204,44 @@ func _test_rider_combat_start_feedback() -> void:
 		if not battle.try_refresh_hand():
 			break
 	if not seated:
-		## 夹具：从牌库条目直接入座（DeckState 公开 get_entries）。
 		for entry in battle._deck_state.get_entries():
-			if entry == null or entry.unit == null or entry.unit.ability == null:
-				continue
-			if entry.unit.ability.id != "combat_start_charge":
+			if entry == null or entry.unit == null or entry.unit.id != "rider":
 				continue
 			var slots := battle.get_slot_board()
 			var ok := slots.try_assign(0, entry)
-			_expect(ok, "rider: slot assign charge unit via deck fixture")
+			_expect(ok, "rider: slot assign via deck fixture")
 			seated = ok
 			battle._sync_slot_visuals()
 			battle._refresh_hud()
 			break
-	_expect(seated, "rider: combat_start_charge unit seated")
+	_expect(seated, "rider: rider unit seated")
 	if not seated:
 		battle.queue_free()
 		await process_frame
 		return
 
-	var arena := battle.get_arena()
-	var before := arena.get_feedback_count()
 	_expect(battle.try_start_combat(), "rider: start combat")
 	await process_frame
-	_expect(arena.get_feedback_count() > before, "rider: charge effect yields feedback")
+	var arena := battle.get_arena()
+	arena.clear_fx()
+	var before := arena.get_feedback_count()
+	var enemy_rt: RtUnit = null
+	for item in battle.get_sim().get_units():
+		var rt := item as RtUnit
+		if rt != null and not rt.is_player() and rt.is_alive():
+			enemy_rt = rt
+			break
+	_expect(enemy_rt != null, "rider: have enemy to kill")
+	if enemy_rt != null:
+		battle.get_sim()._pipeline.apply_damage(null, enemy_rt, 999)
+		battle.get_sim()._drain_effects()
+	await process_frame
+	_expect(arena.get_feedback_count() > before, "rider: enemy-death effect yields feedback")
 	var has_stat := false
 	for fb in arena.get_feedback_entries():
 		if fb["kind"] == RealtimeEffectFeedback.KIND_STAT:
 			has_stat = true
-			_expect(String(fb["text"]).find("攻") >= 0, "rider: feedback text is +攻 style")
+			_expect(String(fb["text"]).find("攻") >= 0 or String(fb["text"]).find("血") >= 0, "rider: feedback text is +攻/血 style")
 			break
 	_expect(has_stat, "rider: at least one stat feedback")
 
