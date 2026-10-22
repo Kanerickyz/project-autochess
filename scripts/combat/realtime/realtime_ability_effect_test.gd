@@ -292,8 +292,8 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 	if specs.is_empty() or specs[0] == null:
 		push_error("berserker: missing spec")
 		return false
-	if int(specs[0].max_triggers_per_combat) != 3:
-		push_error("berserker: max_triggers_per_combat expected 3")
+	if int(specs[0].max_triggers_per_combat) > 0:
+		push_error("berserker: max_triggers_per_combat must be unlimited (<=0)")
 		return false
 	const BOARD := Vector2i(5, 8)
 	var sim := _new_sim()

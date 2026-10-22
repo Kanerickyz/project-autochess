@@ -11,7 +11,7 @@ action_type = 15
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
 trigger = &"OnKill"
-max_triggers_per_combat = 3
+max_triggers_per_combat = 0
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]
