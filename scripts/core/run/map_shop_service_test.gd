@@ -6,6 +6,7 @@ static var _failures: int = 0
 
 static func run_all() -> bool:
 	_failures = 0
+	_check("equipment_pool_costs_1_2_4", _test_equipment_pool_costs())
 	_check("buy_consumable", _test_buy_consumable())
 	_check("cant_afford_keeps_shelf", _test_cant_afford())
 	_check("refresh_consumables", _test_refresh())
@@ -16,6 +17,22 @@ static func run_all() -> bool:
 	else:
 		push_error("MapShopServiceTest: %d failure(s)" % _failures)
 	return _failures == 0
+
+
+static func _test_equipment_pool_costs() -> bool:
+	var cfg := MapShopConfig.load_or_default()
+	var by_id: Dictionary = {}
+	for item in cfg.get_equipment_pool():
+		var eq := item as EquipmentData
+		if eq == null:
+			continue
+		by_id[eq.id] = eq
+	var t1: EquipmentData = by_id.get("armor_t1") as EquipmentData
+	var t2: EquipmentData = by_id.get("armor_t2") as EquipmentData
+	var t3: EquipmentData = by_id.get("armor_t3") as EquipmentData
+	if t1 == null or t2 == null or t3 == null:
+		return false
+	return t1.cost == 1 and t2.cost == 2 and t3.cost == 4
 
 
 static func _check(name: String, ok: bool) -> void:
