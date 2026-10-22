@@ -17,7 +17,7 @@ static func run_all() -> bool:
 	ok = _check("occupancy_blocks_or_detours", _test_occupancy_blocks_or_detours()) and ok
 	ok = _check("chebyshev_attack_reach", _test_chebyshev_attack_reach()) and ok
 	ok = _check("ally_blocker_melee_reach", _test_ally_blocker_melee_reach()) and ok
-	ok = _check("ranged_projectile_delay", _test_ranged_projectile_delay()) and ok
+	ok = _check("ranged_damage_on_fire_projectile_visual", _test_ranged_damage_on_fire_projectile_visual()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
 	ok = _check("mid_combat_summon_waits_next_round", _test_mid_combat_summon_waits_next_round()) and ok
@@ -482,37 +482,52 @@ static func _test_ally_blocker_melee_reach() -> bool:
 	return true
 
 
-static func _test_ranged_projectile_delay() -> bool:
+## 远程：出手瞬间扣血；投射物仅演出，advance 不再二次结算。
+static func _test_ranged_damage_on_fire_projectile_visual() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 2)
-	sim.add_unit(
+	var shooter := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 5.0, "attack_windup": 0.0, "projectile_speed": 4.0, "steps_per_turn": 0,
+			"attack": 7,
+			"attack_reach": 2.0,
+			"attack_windup": 0.0,
+			"projectile_speed": 1.0,
+			"steps_per_turn": 0,
+			"sight_range": 20.0,
 		}),
-		Vector2(9.5, 26.5),
+		Vector2(9.5, 24.5),
 	)
-	var dummy := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(9.5, 21.5))
-	var spawned: Array[float] = []
-	sim.projectile_spawned.connect(func(_p: RtProjectile) -> void: spawned.append(sim.elapsed_seconds))
-	_run_until(sim, 0.15)
-	if spawned.is_empty() or sim.get_projectiles().is_empty():
-		push_error("ranged: projectile not spawned")
-		return false
+	var dummy := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {
+			"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0,
+		}),
+		Vector2(9.5, 22.5),
+	)
 	var full := dummy.unit.get_effective_max_hp()
-	if dummy.unit.current_hp != full:
-		push_error("ranged: damage applied before projectile arrival")
+	var guard := 0
+	while sim.get_projectiles().is_empty() and guard < 120:
+		sim.advance_fixed_step()
+		guard += 1
+	if sim.get_projectiles().is_empty():
+		push_error("ranged_visual: projectile not spawned")
 		return false
-	## 格心距 5、出手点减半径；速度 4 → 首发命中约在 1.1s 前后
-	_run_until(sim, 0.7)
-	if dummy.unit.current_hp != full:
-		push_error("ranged: damage applied too early (t=0.7)")
+	var expected := full - shooter.unit.get_effective_attack()
+	if dummy.unit.current_hp != expected:
+		push_error(
+			"ranged_visual: damage must apply on fire, hp=%d expected %d"
+			% [dummy.unit.current_hp, expected]
+		)
 		return false
-	_run_until(sim, 1.6)
-	if dummy.unit.current_hp >= full:
-		push_error("ranged: expected first hit by t=1.6, hp=%d" % dummy.unit.current_hp)
+	var hp_mid := dummy.unit.current_hp
+	for _i in 45:
+		sim._advance_projectiles()
+	if dummy.unit.current_hp != hp_mid:
+		push_error(
+			"ranged_visual: projectile advance must not deal damage (hp %d -> %d)"
+			% [hp_mid, dummy.unit.current_hp]
+		)
 		return false
-	## 回合制下后续回合还会再射；只断言首发延迟成立
-	return spawned[0] < 0.2
+	return true
 
 
 static func _test_deploy_time_freezes() -> bool:
@@ -802,26 +817,34 @@ static func _test_determinism_frame_rate_independent() -> bool:
 static func _test_projectile_vanishes_when_target_dead() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 10)
+	## 出手已结算；慢箭仍在飞时目标被置死，演出箭应消失且不再改血。
 	sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 10.0, "attack_windup": 0.0, "projectile_speed": 1.0, "steps_per_turn": 0, "attack": 50,
+			"attack_reach": 2.0, "attack_windup": 0.0, "projectile_speed": 1.0, "steps_per_turn": 0, "attack": 3,
+			"sight_range": 20.0,
 		}),
-		Vector2(9.5, 28.5),
+		Vector2(9.5, 24.5),
 	)
-	sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {
-			"attack_reach": 1.0, "attack_windup": 0.0, "steps_per_turn": 0, "attack": 1000,
-		}),
-		Vector2(9.5, 21.5),
-	)
-	var target := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100), Vector2(9.5, 20.5))
+	var target := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100), Vector2(9.5, 22.5))
 	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(1.5, 1.5))
-	_run_until(sim, 2.0)
-	if target.is_alive():
-		push_error("vanish: melee should have killed target")
+	var guard := 0
+	while sim.get_projectiles().is_empty() and guard < 120:
+		sim.advance_fixed_step()
+		guard += 1
+	if sim.get_projectiles().is_empty():
+		push_error("vanish: projectile not spawned")
 		return false
+	var hp_after_fire := target.unit.current_hp
+	target.unit.current_hp = 0
+	guard = 0
+	while not sim.get_projectiles().is_empty() and guard < 60:
+		sim.advance_fixed_step()
+		guard += 1
 	if not sim.get_projectiles().is_empty():
 		push_error("vanish: projectile to dead target should disappear")
+		return false
+	if hp_after_fire >= 100:
+		push_error("vanish: expected damage on fire before visual flight")
 		return false
 	return true
 
