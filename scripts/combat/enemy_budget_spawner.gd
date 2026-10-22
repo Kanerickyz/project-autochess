@@ -278,7 +278,7 @@ static func _sample_fill(
 
 	## 最近解 + 仅替换爬山（不改人数）
 	if best.is_empty() or best.size() != n:
-		best = _random_composition(pool, center, rng, max_ranged)
+		best = _random_composition(pool, center, rng, max_ranged, cfg)
 	best = _hill_climb(best, pool, target_e, cfg, rng, true, max_ranged)
 	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
 		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
@@ -304,21 +304,26 @@ static func _rejection_search(
 ) -> Array[UnitData]:
 	var best: Array[UnitData] = []
 	var best_err := INF
+	var best_power := -INF
 	var attempts := maxi(1, cfg.rejection_attempts)
+	var prefer_upper := cfg != null and cfg.prefer_upper_band
 	for _i in attempts:
 		var n := _roll_n(center, n_min, n_max, rng)
-		var comp := _random_composition(pool, n, rng, max_ranged)
+		var comp := _random_composition(pool, n, rng, max_ranged, cfg)
 		if require_formation and not _matches_formation(comp, formation):
 			continue
 		if max_ranged >= 0 and _count_ranged(comp) > max_ranged:
 			continue
 		var power := _power(comp, cfg)
 		var err := absf(power - target_e)
-		if err < best_err:
+		if _is_better_power_candidate(power, err, best_power, best_err, prefer_upper):
 			best_err = err
+			best_power = power
 			best = comp
 		if _power_within(power, target_e, band):
-			return comp
+			## 上沿偏好：带宽内仅当 ΣU≥E 时提前接受；下半带继续搜上沿。
+			if not prefer_upper or power >= target_e:
+				return comp
 	return best
 
 
@@ -332,13 +337,19 @@ static func _random_composition(
 	n: int,
 	rng: RandomNumberGenerator,
 	max_ranged: int = -1,
+	cfg: SpawnBudgetConfig = null,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or n <= 0:
 		return result
+	var selected_ids: Dictionary = {}
 	if max_ranged < 0:
 		for _i in n:
-			result.append(pool[rng.randi_range(0, pool.size() - 1)])
+			var picked := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+			if picked == null:
+				break
+			result.append(picked)
+			_note_selected_id(selected_ids, picked)
 		return result
 	var melee_pool: Array[UnitData] = []
 	var ranged_pool: Array[UnitData] = []
@@ -355,17 +366,80 @@ static func _random_composition(
 		else:
 			ranged_n = rng.randi_range(0, upper)
 	for _r in ranged_n:
-		result.append(ranged_pool[rng.randi_range(0, ranged_pool.size() - 1)])
+		var ranged_pick := _pick_unit_soft_dedup(ranged_pool, selected_ids, cfg, rng)
+		if ranged_pick == null:
+			break
+		result.append(ranged_pick)
+		_note_selected_id(selected_ids, ranged_pick)
 	var melee_needed := n - result.size()
 	for _m in melee_needed:
 		if not melee_pool.is_empty():
-			result.append(melee_pool[rng.randi_range(0, melee_pool.size() - 1)])
+			var melee_pick := _pick_unit_soft_dedup(melee_pool, selected_ids, cfg, rng)
+			if melee_pick == null:
+				break
+			result.append(melee_pick)
+			_note_selected_id(selected_ids, melee_pick)
 		elif not ranged_pool.is_empty() and result.size() < maxi(1, max_ranged):
 			## 近战池空且尚可再塞远程时补远程；否则重复已有远程以凑人数（再由 enforce 裁）。
-			result.append(ranged_pool[rng.randi_range(0, ranged_pool.size() - 1)])
+			var ranged_fill := _pick_unit_soft_dedup(ranged_pool, selected_ids, cfg, rng)
+			if ranged_fill == null:
+				break
+			result.append(ranged_fill)
+			_note_selected_id(selected_ids, ranged_fill)
 		elif not pool.is_empty():
-			result.append(pool[rng.randi_range(0, pool.size() - 1)])
+			var any_pick := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+			if any_pick == null:
+				break
+			result.append(any_pick)
+			_note_selected_id(selected_ids, any_pick)
 	return result
+
+
+## 同场已选 id 乘 soft_dedup；权重全灭则等权回退（允许重复以贴人数/预算）。
+static func _pick_unit_soft_dedup(
+	pool: Array[UnitData],
+	selected_ids: Dictionary,
+	cfg: SpawnBudgetConfig,
+	rng: RandomNumberGenerator,
+) -> UnitData:
+	if pool.is_empty() or rng == null:
+		return null
+	var soft := 1.0
+	if cfg != null:
+		soft = clampf(cfg.same_id_soft_dedup_weight, 0.0, 1.0)
+	var weights: Array[float] = []
+	var total := 0.0
+	for u in pool:
+		var w := 1.0
+		var id := _unit_id(u)
+		if selected_ids.has(id):
+			w = soft
+		weights.append(w)
+		total += w
+	if total <= 0.0000001:
+		return pool[rng.randi_range(0, pool.size() - 1)]
+	var roll := rng.randf() * total
+	var acc := 0.0
+	for i in pool.size():
+		acc += weights[i]
+		if roll <= acc:
+			return pool[i]
+	return pool[pool.size() - 1]
+
+
+static func _note_selected_id(selected_ids: Dictionary, unit: UnitData) -> void:
+	if unit == null:
+		return
+	selected_ids[_unit_id(unit)] = true
+
+
+static func _selected_ids_excluding(units: Array[UnitData], skip_index: int) -> Dictionary:
+	var ids: Dictionary = {}
+	for i in units.size():
+		if i == skip_index:
+			continue
+		_note_selected_id(ids, units[i])
+	return ids
 
 
 static func _count_ranged(units: Array[UnitData]) -> int:
@@ -505,9 +579,30 @@ static func _better_of(
 		return b
 	if b.is_empty():
 		return a
-	var err_a := absf(_power(a, cfg) - target_e)
-	var err_b := absf(_power(b, cfg) - target_e)
-	return a if err_a <= err_b else b
+	var power_a := _power(a, cfg)
+	var power_b := _power(b, cfg)
+	var err_a := absf(power_a - target_e)
+	var err_b := absf(power_b - target_e)
+	var prefer_upper := cfg != null and cfg.prefer_upper_band
+	if _is_better_power_candidate(power_b, err_b, power_a, err_a, prefer_upper):
+		return b
+	return a
+
+
+## 更优候选：误差更小优先；同误差时上沿偏好选更高 ΣU。
+static func _is_better_power_candidate(
+	power: float,
+	err: float,
+	best_power: float,
+	best_err: float,
+	prefer_upper: bool,
+) -> bool:
+	if err < best_err - 0.0001:
+		return true
+	if absf(err - best_err) <= 0.0001:
+		if prefer_upper and power > best_power + 0.0001:
+			return true
+	return false
 
 
 static func _hill_climb(
@@ -522,11 +617,16 @@ static func _hill_climb(
 	if seed_units.is_empty() or pool.is_empty():
 		return seed_units
 	var current: Array[UnitData] = seed_units.duplicate()
-	var best_err := absf(_power(current, cfg) - target_e)
+	var best_power := _power(current, cfg)
+	var best_err := absf(best_power - target_e)
+	var prefer_upper := cfg != null and cfg.prefer_upper_band
 	var swaps := maxi(0, cfg.hill_climb_swaps)
 	for _i in swaps:
 		var idx := rng.randi_range(0, current.size() - 1)
-		var replacement := pool[rng.randi_range(0, pool.size() - 1)]
+		var selected_ids := _selected_ids_excluding(current, idx)
+		var replacement := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+		if replacement == null:
+			continue
 		var trial: Array[UnitData] = current.duplicate()
 		trial[idx] = replacement
 		## 人数硬锁时禁止 ±1；否则偶发尝试增删。
@@ -534,12 +634,17 @@ static func _hill_climb(
 			if rng.randf() < 0.25 and trial.size() > 1 and rng.randf() < 0.5:
 				trial.remove_at(rng.randi_range(0, trial.size() - 1))
 			elif rng.randf() < 0.25:
-				trial.append(pool[rng.randi_range(0, pool.size() - 1)])
+				var append_ids := _selected_ids_excluding(trial, -1)
+				var append_u := _pick_unit_soft_dedup(pool, append_ids, cfg, rng)
+				if append_u != null:
+					trial.append(append_u)
 		if max_ranged >= 0 and _count_ranged(trial) > max_ranged:
 			continue
-		var err := absf(_power(trial, cfg) - target_e)
-		if err < best_err:
+		var power := _power(trial, cfg)
+		var err := absf(power - target_e)
+		if _is_better_power_candidate(power, err, best_power, best_err, prefer_upper):
 			best_err = err
+			best_power = power
 			current = trial
 	return current
 
