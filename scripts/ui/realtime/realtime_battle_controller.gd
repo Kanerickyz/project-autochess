@@ -126,9 +126,11 @@ const _SPEED_STEPS: Array[float] = [1.0, 2.0, 3.0]
 var _copy_layout_button: Button
 ## 沙盒准备：粘贴布局。
 var _paste_layout_button: Button
-## 剪贴板不可用/为空时的粘贴文本框。
-var _paste_dialog: AcceptDialog
+## 沙盒粘贴布局：自定义叠层（非 AcceptDialog，避免移动端底部按钮被裁切）。
+var _paste_dialog: Control
 var _paste_edit: TextEdit
+var _paste_apply_button: Button
+var _paste_cancel_button: Button
 ## 观战录音机三键。
 var _tape_row: HBoxContainer
 var _tape_prev_button: Button
@@ -1419,38 +1421,110 @@ func _on_paste_layout_pressed() -> void:
 func _ensure_paste_layout_dialog() -> void:
 	if _paste_dialog != null and is_instance_valid(_paste_dialog):
 		return
-	_paste_dialog = AcceptDialog.new()
-	_paste_dialog.name = "PasteLayoutDialog"
-	_paste_dialog.title = "粘贴布局"
-	_paste_dialog.ok_button_text = "应用"
-	_paste_dialog.dialog_hide_on_ok = false
-	_paste_dialog.exclusive = true
+	## 全屏遮罩 + 居中小面板；按钮用与 Dock 相同的普通 Button（高 36/40）。
+	var overlay := ColorRect.new()
+	overlay.name = "PasteLayoutDialog"
+	overlay.color = Color(0, 0, 0, 0.55)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(300, 280)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.16, 0.13, 0.11, 0.97)
+	panel_style.border_width_top = 2
+	panel_style.border_width_bottom = 2
+	panel_style.border_width_left = 2
+	panel_style.border_width_right = 2
+	panel_style.border_color = Color(0.42, 0.33, 0.22, 1)
+	panel_style.set_content_margin_all(10.0)
+	panel.add_theme_stylebox_override("panel", panel_style)
+	## 竖屏：约屏宽 86%、屏高 42%，避免再占满屏。
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	center.add_child(panel)
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 8)
+	panel.add_child(body)
+	var title := Label.new()
+	title.text = "粘贴布局"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	body.add_child(title)
 	var tip := Label.new()
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.text = "把复制的阵容/布局文本贴到下方，再点「应用」。"
+	tip.text = "把阵容/布局文本贴到下方，再点「应用」。"
+	tip.add_theme_font_size_override("font_size", 13)
 	body.add_child(tip)
+	## TextEdit 自带纵向滚动；占满中间区域，底部按钮始终可见。
 	_paste_edit = TextEdit.new()
 	_paste_edit.placeholder_text = "PAC_BATTLE v1 …"
 	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	_paste_edit.custom_minimum_size = Vector2(280, 200)
+	_paste_edit.scroll_fit_content_height = false
 	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_paste_edit.custom_minimum_size = Vector2(260, 100)
 	body.add_child(_paste_edit)
-	_paste_dialog.add_child(body)
-	_paste_dialog.confirmed.connect(_on_paste_dialog_confirmed)
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	btn_row.size_flags_vertical = Control.SIZE_SHRINK_END
+	body.add_child(btn_row)
+	_paste_cancel_button = Button.new()
+	_paste_cancel_button.name = "PasteCancelButton"
+	_paste_cancel_button.text = "取消"
+	_paste_cancel_button.custom_minimum_size = Vector2(0, 40)
+	_paste_cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_cancel_button.pressed.connect(_hide_paste_layout_dialog)
+	btn_row.add_child(_paste_cancel_button)
+	_paste_apply_button = Button.new()
+	_paste_apply_button.name = "PasteApplyButton"
+	_paste_apply_button.text = "应用"
+	_paste_apply_button.custom_minimum_size = Vector2(0, 40)
+	_paste_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_apply_button.pressed.connect(_on_paste_dialog_confirmed)
+	btn_row.add_child(_paste_apply_button)
+	_paste_dialog = overlay
 	add_child(_paste_dialog)
+	## 按视口收紧面板，保证按钮始终在屏内。
+	_paste_dialog.resized.connect(_fit_paste_layout_panel)
+	call_deferred("_fit_paste_layout_panel")
+
+
+func _fit_paste_layout_panel() -> void:
+	if _paste_dialog == null or not is_instance_valid(_paste_dialog):
+		return
+	var center := _paste_dialog.get_child(0) as CenterContainer
+	if center == null or center.get_child_count() < 1:
+		return
+	var panel := center.get_child(0) as Control
+	if panel == null:
+		return
+	var vp := get_viewport_rect().size
+	if vp.x < 8.0 or vp.y < 8.0:
+		return
+	var w := clampf(vp.x * 0.86, 260.0, 420.0)
+	var h := clampf(vp.y * 0.42, 240.0, 360.0)
+	panel.custom_minimum_size = Vector2(w, h)
 
 
 func _show_paste_layout_dialog(prefill: String) -> void:
 	_ensure_paste_layout_dialog()
+	_fit_paste_layout_panel()
 	if _paste_edit != null:
 		_paste_edit.text = prefill
 		_paste_edit.select_all()
-	_paste_dialog.popup_centered_ratio(0.8)
+	_paste_dialog.visible = true
+	_paste_dialog.move_to_front()
 	## 下一帧再抢焦点，避免被 Dock 按钮吃掉。
 	call_deferred("_focus_paste_edit")
+
+
+func _hide_paste_layout_dialog() -> void:
+	if _paste_dialog != null and is_instance_valid(_paste_dialog):
+		_paste_dialog.visible = false
 
 
 func _focus_paste_edit() -> void:
@@ -1463,8 +1537,7 @@ func _on_paste_dialog_confirmed() -> void:
 		return
 	var err: String = apply_layout_clipboard_text(_paste_edit.text, false)
 	if err.is_empty():
-		if _paste_dialog != null:
-			_paste_dialog.hide()
+		_hide_paste_layout_dialog()
 		return
 	## 失败时保持窗口，方便改正文。
 
