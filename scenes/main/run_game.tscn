@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://runendoverlay" path="res://scenes/ui/run/run_end_overlay.tscn" id="6"]
 [ext_resource type="PackedScene" uid="uid://runstatsoverlay" path="res://scenes/ui/run/run_stats_overlay.tscn" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/ui/placeholder/placeholder_node_screen.tscn" id="8"]
+[ext_resource type="PackedScene" uid="uid://mapshopscreen1" path="res://scenes/ui/map_shop/map_shop_screen.tscn" id="9"]
 
 [node name="RunGame" type="Node"]
 script = ExtResource("1")
@@ -29,6 +30,9 @@ layer = 2
 unique_name_in_owner = true
 
 [node name="PlaceholderNodeScreen" parent="UI" instance=ExtResource("8")]
+unique_name_in_owner = true
+
+[node name="MapShopScreen" parent="UI" instance=ExtResource("9")]
 unique_name_in_owner = true
 
 [node name="RunEndOverlay" parent="UI" instance=ExtResource("6")]

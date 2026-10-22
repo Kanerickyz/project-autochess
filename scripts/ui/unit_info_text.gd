@@ -130,6 +130,8 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
+	if entry.equipment != null:
+		lines.append(format_equipment(entry.equipment, with_stat_icons))
 	var main_ab := entry.get_main_ability()
 	if main_ab != null:
 		var scale := 1
@@ -152,11 +154,27 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	return "\n".join(lines)
 
 
+static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = false) -> String:
+	if equipment == null:
+		return ""
+	var title := equipment.get_display_name()
+	var block := equipment.get_armor_block()
+	if with_stat_icons:
+		return "【装备】%s — 受伤时抵挡 %d 点伤害" % [title, block]
+	return "【装备】%s — 护甲 %d" % [title, block]
+
+
 static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
 
 	var lines: PackedStringArray = []
+	var armor := unit.get_armor_block()
+	if armor > 0:
+		if with_stat_icons:
+			lines.append("【装备】护甲 — 受伤时抵挡 %d 点伤害" % armor)
+		else:
+			lines.append("【装备】护甲 %d" % armor)
 	if unit.unit_data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(

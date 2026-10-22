@@ -1340,6 +1340,8 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"tier": entry.unit.tier if entry.unit != null else 0,
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
 		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
+		"armor": entry.get_armor_block(),
+		"equipment_name": entry.get_equipment_display_name(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
 	}
@@ -1382,6 +1384,7 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
 		"attack": attack,
 		"hp": hp,
+		"armor": unit.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block(unit, true),
 		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
 	}
@@ -1960,6 +1963,7 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 				DeckUpgradeService.get_display_max_hp(entry),
 				0.95,
 				px,
+				entry.get_armor_block(),
 			)
 		if not label.is_empty():
 			var pos := cell_rect.position + Vector2(px * 0.05, px * 0.12)
@@ -2116,7 +2120,9 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
+		_draw_stat_badges(
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+		)
 
 
 func _draw_catalog_units(px: float) -> void:
@@ -2174,14 +2180,16 @@ func _draw_catalog_units(px: float) -> void:
 		)
 		var atk := 0
 		var hp := 0
+		var armor := 0
 		if deck_entry != null and stats != null:
 			atk = maxi(1, stats.attack + deck_entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + deck_entry.bonus_max_hp)
+			armor = deck_entry.get_armor_block()
 		else:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
 			atk = (stats.attack if stats != null else 0) * preview_mult
 			hp = (stats.max_hp if stats != null else 0) * preview_mult
-		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px)
+		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px, armor)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
@@ -2456,7 +2464,9 @@ func _draw_prepare_slots(px: float) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
+		_draw_stat_badges(
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+		)
 
 
 func _draw_units(px: float) -> void:
@@ -2508,11 +2518,22 @@ func _draw_units(px: float) -> void:
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
 		badges.append({
-			"center": center, "attack": rt.get_effective_attack(), "hp": rt.get_current_hp(), "alpha": alpha,
+			"center": center,
+			"attack": rt.get_effective_attack(),
+			"hp": rt.get_current_hp(),
+			"alpha": alpha,
+			"armor": rt.unit.get_armor_block() if rt.unit != null else 0,
 		})
 	_draw_corpses(px)
 	for badge in badges:
-		_draw_stat_badges(badge["center"], badge["attack"], badge["hp"], badge["alpha"], px)
+		_draw_stat_badges(
+			badge["center"],
+			badge["attack"],
+			badge["hp"],
+			badge["alpha"],
+			px,
+			int(badge.get("armor", 0)),
+		)
 
 
 func _draw_corpses(px: float) -> void:
@@ -2704,17 +2725,32 @@ func get_stat_badge_size(px: float) -> Vector2:
 	return Vector2(h * tex_size.x / maxf(1.0, tex_size.y), h)
 
 
-## 脚下居中一对纸片标签：左攻击（剑）、右生命（心）。
-func _draw_stat_badges(center: Vector2, attack: int, hp: int, alpha: float, px: float) -> void:
+## 脚下纸片标签：攻 + 血；有装备护甲时再画护甲标（无图则跳过护甲标）。
+func _draw_stat_badges(
+	center: Vector2,
+	attack: int,
+	hp: int,
+	alpha: float,
+	px: float,
+	armor: int = 0,
+) -> void:
 	var badge := get_stat_badge_size(px)
 	var gap := badge.y * 0.06
 	var top := center.y + px * 0.38 + badge.y * 0.05
-	var half_pair := badge.x + gap * 0.5
-	var cx := clampf(center.x, half_pair, maxf(half_pair, size.x - half_pair))
-	var atk_rect := Rect2(Vector2(cx - half_pair, top), badge)
-	var hp_rect := Rect2(Vector2(cx + gap * 0.5, top), badge)
+	var armor_tex := UiStatIcons.armor_texture()
+	var show_armor := armor > 0 and armor_tex != null
+	var count := 3 if show_armor else 2
+	var total_w := badge.x * float(count) + gap * float(count - 1)
+	var half_span := total_w * 0.5
+	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
+	var x0 := cx - half_span
+	var atk_rect := Rect2(Vector2(x0, top), badge)
+	var hp_rect := Rect2(Vector2(x0 + badge.x + gap, top), badge)
 	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
+	if show_armor:
+		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * 2.0, top), badge)
+		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
 
 
 func _draw_stat_badge(rect: Rect2, tex: Texture2D, value: int, alpha: float) -> void:

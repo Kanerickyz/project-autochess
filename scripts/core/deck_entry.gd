@@ -11,6 +11,8 @@ var experience: int = 0
 var bonus_attack: int = 0
 var bonus_max_hp: int = 0
 var bonus_crit_rate_percent: int = 0
+## 地图商店装备：每角色最多一件；跨遭遇保留。
+var equipment: EquipmentData = null
 ## 友方持久占位：座位下标（0 .. seat_grid-1）；-1 表示未入座。
 var seat_index: int = -1
 ## 落座时间序：越大越晚；0 表示从未成功落座。开战生成序 / 三合一最早座用。
@@ -71,3 +73,15 @@ func get_buff_summary() -> String:
 		elif buff != null:
 			names.append(buff.id)
 	return ", ".join(names)
+
+
+func get_armor_block() -> int:
+	if equipment == null:
+		return 0
+	return equipment.get_armor_block()
+
+
+func get_equipment_display_name() -> String:
+	if equipment == null:
+		return ""
+	return equipment.get_display_name()

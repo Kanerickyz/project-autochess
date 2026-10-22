@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MapShopConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/map_shop_config.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/data/map_shop_consumable_data.gd" id="2_cons"]
+[ext_resource type="Script" path="res://scripts/data/equipment_data.gd" id="3_eq"]
+[ext_resource type="Resource" path="res://resources/map_shop/big_hp_potion.tres" id="c_hp"]
+[ext_resource type="Resource" path="res://resources/map_shop/big_atk_potion.tres" id="c_atk"]
+[ext_resource type="Resource" path="res://resources/map_shop/qunbolong.tres" id="c_rare"]
+[ext_resource type="Resource" path="res://resources/equipment/armor_t1.tres" id="e_t1"]
+[ext_resource type="Resource" path="res://resources/equipment/armor_t2.tres" id="e_t2"]
+[ext_resource type="Resource" path="res://resources/equipment/armor_t3.tres" id="e_t3"]
+
+[resource]
+script = ExtResource("1")
+consumable_pool = Array[ExtResource("2_cons")]([ExtResource("c_hp"), ExtResource("c_atk"), ExtResource("c_rare")])
+equipment_pool = Array[ExtResource("3_eq")]([ExtResource("e_t1"), ExtResource("e_t2"), ExtResource("e_t3")])
+consumable_slot_count = 3
+equipment_slot_count = 3
+refresh_cost = 2

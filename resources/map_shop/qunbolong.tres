@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MapShopConsumableData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/map_shop_consumable_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "qunbolong"
+display_name = "群伯龙"
+cost = 5
+bonus_attack = 10
+bonus_max_hp = -5
