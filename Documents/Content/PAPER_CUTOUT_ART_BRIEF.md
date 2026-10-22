@@ -223,6 +223,8 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `goblin` | 火纹长袍 + 提炭火吊炉 | goblin 余烬 |
 | `gravewright` | 驼背老人 + 铁锹 + 提灯 | gravewright 掘墓 |
 | `soulcaller` | 黑面兜帽 + 骷髅杖 + 鬼火 | soulcaller 召魂 |
+| `devour` | **DEV 占位** `character_dev.png`（终稿前） | devour 吞噬 |
+| `shinobi` | **DEV 占位** `character_dev.png`（终稿前） | shinobi 影刺 |
 
 召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
