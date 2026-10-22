@@ -10,8 +10,7 @@ signal card_long_press_ended(entry_id: int)
 const ARENA_DRAG_KEY := RealtimeArenaView.DRAG_KEY
 const LONG_PRESS_MS := RealtimeArenaView.LONG_PRESS_MS
 const LONG_PRESS_SLOP_PX := RealtimeArenaView.LONG_PRESS_SLOP_PX
-const DRAG_PICKUP_SEC := RealtimeArenaView.DRAG_PICKUP_SEC
-const DRAG_SCALE := RealtimeArenaView.DRAG_SCALE
+const DRAG_VELOCITY_SMOOTH := 14.0
 
 var entry: DeckEntry
 var available: bool = true:
@@ -41,51 +40,69 @@ var _art: UnitArtCatalog = UnitArtCatalog.load_default()
 
 class DragGhost:
 	extends Control
-	## 跟手剪影：贴图优先，抬起用 Tween（与棋盘拖影同参数）。
+	## 小丑牌式跟手剪影：抬起过冲 + 水平速度倾斜 + 阴影；贴图优先。
 
 	var radius_px: float = 14.0
 	var color: Color = RealtimeArenaView.PLAYER_COLOR
 	var glyph: String = ""
 	var unit_id: String = ""
 	var texture: Texture2D
-	## 系统拖影会每帧改 position，抬起量只能画在 _draw 里。
 	var lift_px: float = 4.0
-	var _tween: Tween
+	var shadow_mul: float = 1.0
+	var _started_msec: int = 0
+	var _last_global := Vector2.ZERO
+	var _velocity_px := Vector2.ZERO
+	var _have_last := false
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_process(true)
-		scale = Vector2.ONE * 0.9
-		modulate.a = 0.7
-		lift_px = 4.0
-		_tween = create_tween()
-		_tween.set_parallel(true)
-		_tween.tween_property(self, "scale", Vector2.ONE * DRAG_SCALE, DRAG_PICKUP_SEC) \
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_tween.tween_property(self, "modulate:a", 0.95, DRAG_PICKUP_SEC * 0.7) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		_tween.tween_property(self, "lift_px", -14.0, DRAG_PICKUP_SEC) \
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_tween.chain().tween_callback(func() -> void: set_process(false))
+		_started_msec = Time.get_ticks_msec()
+		_have_last = false
+		_velocity_px = Vector2.ZERO
+		scale = Vector2.ONE
+		modulate.a = 0.9
+		rotation = 0.0
 
-	func _process(_delta: float) -> void:
-		## 抬起 Tween 期间刷新 lift_px 绘制。
+	func _process(delta: float) -> void:
+		var gp := global_position
+		if _have_last:
+			var instant := (gp - _last_global) / maxf(delta, 0.0001)
+			var vel_t := 1.0 - exp(-DRAG_VELOCITY_SMOOTH * delta)
+			_velocity_px = _velocity_px.lerp(instant, vel_t)
+		_last_global = gp
+		_have_last = true
+		var elapsed := float(Time.get_ticks_msec() - _started_msec) * 0.001
+		## 速度按「约一格 48px」换成格/秒，复用战场 sample。
+		var sample: Dictionary = RealtimeUnitMotion.sample_drag_hold(
+			elapsed,
+			_velocity_px / 48.0,
+		)
+		var scl: Vector2 = sample.get("scale", Vector2.ONE) as Vector2
+		scale = scl
+		rotation = float(sample.get("rotation", 0.0))
+		lift_px = float((sample.get("offset", Vector2.ZERO) as Vector2).y) * 48.0
+		shadow_mul = float(sample.get("shadow_mul", 1.0))
+		modulate.a = float(sample.get("alpha", 1.0))
 		queue_redraw()
-
-	func _exit_tree() -> void:
-		if _tween != null and _tween.is_valid():
-			_tween.kill()
-		_tween = null
 
 	func _draw() -> void:
 		var lift := Vector2(0.0, lift_px)
+		var shadow_a := clampf(0.22 * shadow_mul, 0.15, 0.5)
+		var shadow_y := 10.0 + 6.0 * maxf(0.0, shadow_mul - 1.0)
 		if texture != null:
 			var tex_size := texture.get_size()
 			var h := maxf(radius_px * 2.4, 28.0)
 			var w := h * tex_size.x / maxf(1.0, tex_size.y)
+			var shadow_rect := Rect2(
+				Vector2(-w * 0.28, -h * 0.15 + shadow_y),
+				Vector2(w * 0.56, maxf(6.0, h * 0.12 * shadow_mul)),
+			)
+			draw_rect(shadow_rect, Color(0.08, 0.06, 0.04, shadow_a), true)
 			var rect := Rect2(Vector2(-w * 0.5, -h * 0.85) + lift, Vector2(w, h))
 			draw_texture_rect(texture, rect, false, Color(1, 1, 1, 1))
 			return
+		draw_circle(Vector2(0.0, shadow_y), radius_px * 0.7 * shadow_mul, Color(0.08, 0.06, 0.04, shadow_a))
 		draw_circle(lift, radius_px, Color(color, 0.7))
 		var font := get_theme_default_font()
 		var font_size := clampi(int(radius_px * 1.1), 10, 22)
@@ -198,7 +215,6 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	ghost.color = color_for_unit(ghost.unit_id)
 	if _art != null:
 		ghost.texture = _art.get_texture(ghost.unit_id, true)
-	## 预览锚在脚底附近，抬起 Tween 更像「拎起角色」。
 	ghost.pivot_offset = Vector2.ZERO
 	set_drag_preview(ghost)
 	return {
