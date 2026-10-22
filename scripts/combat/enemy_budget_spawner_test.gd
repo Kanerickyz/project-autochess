@@ -35,8 +35,10 @@ static func run_all() -> bool:
 	ok = _check("fused_entry_uses_runtime_ability", _test_fused_entry_uses_runtime_ability()) and ok
 	ok = _check("recruit_enemy_pool_mirror_contract", _test_recruit_enemy_pool_mirror_contract()) and ok
 	ok = _check("same_id_soft_dedup_prefers_variety", _test_same_id_soft_dedup_prefers_variety()) and ok
+	ok = _check("greedy_fill_prefers_unique_ids", _test_greedy_fill_prefers_unique_ids()) and ok
 	ok = _check("prefer_upper_band_tie_breaks_higher", _test_prefer_upper_band_tie_breaks_higher()) and ok
 	ok = _check("formation_tag_weighted_pick", _test_formation_tag_weighted_pick()) and ok
+	ok = _check("better_of_prefers_more_unique_on_tie", _test_better_of_prefers_more_unique_on_tie()) and ok
 	if ok:
 		print("EnemyBudgetSpawnerTest: all passed")
 	else:
@@ -725,28 +727,37 @@ static func _test_recruit_enemy_pool_mirror_contract() -> bool:
 
 
 static func _test_same_id_soft_dedup_prefers_variety() -> bool:
-	## soft≈0 时应显著少于等权重复（同场面孔更散）。
+	## 人数 ≤ 池种类时，优先未选 → 应几乎全是唯一 id。
 	var pool: Array[UnitData] = []
 	for i in 8:
 		pool.append(_make_unit("u%d" % i, 10 + i, 3, 1.0, 1, 0.0, 0.0, true))
-	var cfg_soft := _make_config(pool)
-	cfg_soft.same_id_soft_dedup_weight = 0.0
-	var cfg_flat := _make_config(pool)
-	cfg_flat.same_id_soft_dedup_weight = 1.0
+	var cfg := _make_config(pool)
+	cfg.same_id_soft_dedup_weight = 0.05
 	var rng := RandomNumberGenerator.new()
-	var unique_soft := 0
-	var unique_flat := 0
-	var samples := 120
-	var fill_n := 4
+	var samples := 80
+	var fill_n := 5
+	var all_unique_n := 0
 	for seed_i in samples:
 		rng.seed = 4100 + seed_i
-		var soft_comp := EnemyBudgetSpawner._random_composition(pool, fill_n, rng, -1, cfg_soft)
-		rng.seed = 4100 + seed_i
-		var flat_comp := EnemyBudgetSpawner._random_composition(pool, fill_n, rng, -1, cfg_flat)
-		unique_soft += _unique_id_count(soft_comp)
-		unique_flat += _unique_id_count(flat_comp)
-	## soft 平均唯一 id 应明显高于等权。
-	return unique_soft > unique_flat + samples / 4
+		var comp := EnemyBudgetSpawner._random_composition(pool, fill_n, rng, -1, cfg)
+		if comp.size() == fill_n and _unique_id_count(comp) == fill_n:
+			all_unique_n += 1
+	return all_unique_n == samples
+
+
+static func _test_greedy_fill_prefers_unique_ids() -> bool:
+	## 贪心保底不得为贴 E 反复塞同一只（池内尚有未选种类时）。
+	var strong := _make_unit("strong", 30, 8, 1.0, 1, 0.0, 0.0, true)
+	var pool: Array[UnitData] = [strong]
+	for i in 5:
+		pool.append(_make_unit("m%d" % i, 12 + i, 3, 1.0, 1, 0.0, 0.0, true))
+	var cfg := _make_config(pool)
+	var u_strong := UnitPowerScore.compute_u(strong)
+	## 目标约 3×strong：旧贪心会 3 只 strong；新逻辑应尽量换面孔。
+	var fill := EnemyBudgetSpawner._greedy_fill(pool, u_strong * 3.0, 3, cfg, true)
+	if fill.size() != 3:
+		return false
+	return _unique_id_count(fill) == 3
 
 
 static func _unique_id_count(units: Array[UnitData]) -> int:
@@ -760,7 +771,7 @@ static func _unique_id_count(units: Array[UnitData]) -> int:
 
 
 static func _test_prefer_upper_band_tie_breaks_higher() -> bool:
-	## 同 |ΣU−E| 时 prefer_upper_band 选更高一侧。
+	## 同 |ΣU−E| 且面孔数相同时 prefer_upper_band 选更高一侧。
 	var low := _make_unit("low", 8, 2, 1.0, 1, 0.0, 0.0, true)
 	var high := _make_unit("high", 20, 6, 1.0, 1, 0.0, 0.0, true)
 	var cfg := _make_config([low, high])
@@ -774,10 +785,24 @@ static func _test_prefer_upper_band_tie_breaks_higher() -> bool:
 	var picked := EnemyBudgetSpawner._better_of(a, b, target_e, cfg)
 	if picked.is_empty() or picked[0] != high:
 		return false
-	## 关闭上沿偏好后：误差相等时保留先传入的 a（旧稳定次序）。
+	## 关闭上沿偏好后：误差与面孔数相等时保留先传入的 a。
 	cfg.prefer_upper_band = false
 	var picked_off := EnemyBudgetSpawner._better_of(a, b, target_e, cfg)
 	return not picked_off.is_empty() and picked_off[0] == low
+
+
+static func _test_better_of_prefers_more_unique_on_tie() -> bool:
+	## 同误差时面孔更散优先于堆叠同种。
+	var a := _make_unit("a", 10, 4, 1.0, 1, 0.0, 0.0, true)
+	var b := _make_unit("b", 10, 4, 1.0, 1, 0.0, 0.0, true)
+	var cfg := _make_config([a, b])
+	cfg.prefer_upper_band = true
+	var u := UnitPowerScore.compute_u(a)
+	var target_e := u * 2.0
+	var stacked: Array[UnitData] = [a, a]
+	var diverse: Array[UnitData] = [a, b]
+	var picked := EnemyBudgetSpawner._better_of(stacked, diverse, target_e, cfg)
+	return not picked.is_empty() and _unique_id_count(picked) == 2
 
 
 static func _test_formation_tag_weighted_pick() -> bool:

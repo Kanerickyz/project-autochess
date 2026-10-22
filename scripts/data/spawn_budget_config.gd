@@ -68,8 +68,8 @@ enum FormationTag {
 @export_range(1, 200, 1) var rejection_attempts: int = 64
 @export_range(0, 100, 1) var hill_climb_swaps: int = 32
 @export_range(1, 10, 1) var n_min: int = 1
-## 同场已选种类 id 软降权（0～1）：越小越不愿重复；0≈硬禁但仍在权重全灭时回退等权。
-@export_range(0.0, 1.0, 0.01) var same_id_soft_dedup_weight: float = 0.25
+## 同场已选种类须重复时的降权（0～1）：优先从未选种类抽；仅种类不够时 soft^次数。
+@export_range(0.0, 1.0, 0.01) var same_id_soft_dedup_weight: float = 0.05
 
 @export_group("Roster Count")
 ## 【弃用】普通战斗已改层绑定人数；保留字段兼容旧 .tres。

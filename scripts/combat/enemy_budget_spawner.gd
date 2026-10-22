@@ -305,6 +305,7 @@ static func _rejection_search(
 	var best: Array[UnitData] = []
 	var best_err := INF
 	var best_power := -INF
+	var best_unique := -1
 	var attempts := maxi(1, cfg.rejection_attempts)
 	var prefer_upper := cfg != null and cfg.prefer_upper_band
 	for _i in attempts:
@@ -316,13 +317,17 @@ static func _rejection_search(
 			continue
 		var power := _power(comp, cfg)
 		var err := absf(power - target_e)
-		if _is_better_power_candidate(power, err, best_power, best_err, prefer_upper):
+		var unique_n := _unique_id_count(comp)
+		if _is_better_composition(power, err, unique_n, best_power, best_err, best_unique, prefer_upper):
 			best_err = err
 			best_power = power
+			best_unique = unique_n
 			best = comp
 		if _power_within(power, target_e, band):
 			## 上沿偏好：带宽内仅当 ΣU≥E 时提前接受；下半带继续搜上沿。
-			if not prefer_upper or power >= target_e:
+			## 有重复面孔时不提前返回，继续搜更散的合法解。
+			var all_unique := unique_n >= comp.size()
+			if (not prefer_upper or power >= target_e) and all_unique:
 				return comp
 	return best
 
@@ -395,7 +400,7 @@ static func _random_composition(
 	return result
 
 
-## 同场已选 id 乘 soft_dedup；权重全灭则等权回退（允许重复以贴人数/预算）。
+## 优先从未选过的种类中等权抽取；仅当池内种类不够时才按 soft^次数 允许重复。
 static func _pick_unit_soft_dedup(
 	pool: Array[UnitData],
 	selected_ids: Dictionary,
@@ -404,16 +409,22 @@ static func _pick_unit_soft_dedup(
 ) -> UnitData:
 	if pool.is_empty() or rng == null:
 		return null
+	var unused: Array[UnitData] = []
+	for u in pool:
+		if int(selected_ids.get(_unit_id(u), 0)) <= 0:
+			unused.append(u)
+	if not unused.is_empty():
+		return unused[rng.randi_range(0, unused.size() - 1)]
 	var soft := 1.0
 	if cfg != null:
 		soft = clampf(cfg.same_id_soft_dedup_weight, 0.0, 1.0)
 	var weights: Array[float] = []
 	var total := 0.0
 	for u in pool:
+		var count := int(selected_ids.get(_unit_id(u), 0))
 		var w := 1.0
-		var id := _unit_id(u)
-		if selected_ids.has(id):
-			w = soft
+		if count > 0:
+			w = pow(soft, float(count))
 		weights.append(w)
 		total += w
 	if total <= 0.0000001:
@@ -430,7 +441,8 @@ static func _pick_unit_soft_dedup(
 static func _note_selected_id(selected_ids: Dictionary, unit: UnitData) -> void:
 	if unit == null:
 		return
-	selected_ids[_unit_id(unit)] = true
+	var id := _unit_id(unit)
+	selected_ids[id] = int(selected_ids.get(id, 0)) + 1
 
 
 static func _selected_ids_excluding(units: Array[UnitData], skip_index: int) -> Dictionary:
@@ -440,6 +452,15 @@ static func _selected_ids_excluding(units: Array[UnitData], skip_index: int) -> 
 			continue
 		_note_selected_id(ids, units[i])
 	return ids
+
+
+static func _unique_id_count(units: Array[UnitData]) -> int:
+	var seen: Dictionary = {}
+	for u in units:
+		if u == null:
+			continue
+		seen[_unit_id(u)] = true
+	return seen.size()
 
 
 static func _count_ranged(units: Array[UnitData]) -> int:
@@ -481,14 +502,23 @@ static func _enforce_max_ranged(
 		var best: UnitData = null
 		var best_err := INF
 		var current_power := _power(_without_index(result, i), cfg)
-		for cand in melee_pool:
-			var err := absf(current_power + _unit_u(cand, cfg) - target_e)
-			if err < best_err - 0.0001:
-				best_err = err
-				best = cand
-			elif is_equal_approx(err, best_err) and best != null:
-				if _unit_id(cand) < _unit_id(best):
+		var selected := _selected_ids_excluding(result, i)
+		## 先在未选近战里贴 E；没有未选才允许重复面孔。
+		for pass_i in 2:
+			var require_unused := pass_i == 0
+			for cand in melee_pool:
+				var cand_id := _unit_id(cand)
+				if require_unused and int(selected.get(cand_id, 0)) > 0:
+					continue
+				var err := absf(current_power + _unit_u(cand, cfg) - target_e)
+				if err < best_err - 0.0001:
+					best_err = err
 					best = cand
+				elif is_equal_approx(err, best_err) and best != null:
+					if _unit_id(cand) < _unit_id(best):
+						best = cand
+			if best != null:
+				break
 		result[i] = best
 	var cleaned: Array[UnitData] = []
 	for u2 in result:
@@ -584,22 +614,30 @@ static func _better_of(
 	var err_a := absf(power_a - target_e)
 	var err_b := absf(power_b - target_e)
 	var prefer_upper := cfg != null and cfg.prefer_upper_band
-	if _is_better_power_candidate(power_b, err_b, power_a, err_a, prefer_upper):
+	var unique_a := _unique_id_count(a)
+	var unique_b := _unique_id_count(b)
+	if _is_better_composition(power_b, err_b, unique_b, power_a, err_a, unique_a, prefer_upper):
 		return b
 	return a
 
 
-## 更优候选：误差更小优先；同误差时上沿偏好选更高 ΣU。
-static func _is_better_power_candidate(
+## 更优候选：误差更小 → 同误差面孔更散 → 上沿偏好更高 ΣU。
+static func _is_better_composition(
 	power: float,
 	err: float,
+	unique_n: int,
 	best_power: float,
 	best_err: float,
+	best_unique: int,
 	prefer_upper: bool,
 ) -> bool:
 	if err < best_err - 0.0001:
 		return true
 	if absf(err - best_err) <= 0.0001:
+		if unique_n > best_unique:
+			return true
+		if unique_n < best_unique:
+			return false
 		if prefer_upper and power > best_power + 0.0001:
 			return true
 	return false
@@ -619,6 +657,7 @@ static func _hill_climb(
 	var current: Array[UnitData] = seed_units.duplicate()
 	var best_power := _power(current, cfg)
 	var best_err := absf(best_power - target_e)
+	var best_unique := _unique_id_count(current)
 	var prefer_upper := cfg != null and cfg.prefer_upper_band
 	var swaps := maxi(0, cfg.hill_climb_swaps)
 	for _i in swaps:
@@ -642,9 +681,11 @@ static func _hill_climb(
 			continue
 		var power := _power(trial, cfg)
 		var err := absf(power - target_e)
-		if _is_better_power_candidate(power, err, best_power, best_err, prefer_upper):
+		var unique_n := _unique_id_count(trial)
+		if _is_better_composition(power, err, unique_n, best_power, best_err, best_unique, prefer_upper):
 			best_err = err
 			best_power = power
+			best_unique = unique_n
 			current = trial
 	return current
 
@@ -668,22 +709,32 @@ static func _greedy_fill(
 		return _unit_id(a) < _unit_id(b)
 	)
 	var power := 0.0
-	## 先尽量接近 E：每次选使 |new-E| 最小的单位。
+	var selected_ids: Dictionary = {}
+	## 先尽量接近 E；优先未选种类，种类不够填满人数时才允许重复。
 	while result.size() < remain_seats:
 		var best_unit: UnitData = null
 		var best_err := INF
-		for cand in sorted_pool:
-			var trial := power + _unit_u(cand, cfg)
-			var err := absf(trial - target_e)
-			## 非精确人数时：已超过且加人只会更差则跳过过大单位
-			if not exact_count and power >= target_e and trial > power:
-				continue
-			if err < best_err - 0.0001:
-				best_err = err
-				best_unit = cand
-			elif is_equal_approx(err, best_err) and best_unit != null:
-				if _unit_id(cand) < _unit_id(best_unit):
+		for pass_i in 2:
+			var require_unused := pass_i == 0
+			best_unit = null
+			best_err = INF
+			for cand in sorted_pool:
+				var cand_id := _unit_id(cand)
+				if require_unused and int(selected_ids.get(cand_id, 0)) > 0:
+					continue
+				var trial := power + _unit_u(cand, cfg)
+				var err := absf(trial - target_e)
+				## 非精确人数时：已超过且加人只会更差则跳过过大单位
+				if not exact_count and power >= target_e and trial > power:
+					continue
+				if err < best_err - 0.0001:
+					best_err = err
 					best_unit = cand
+				elif is_equal_approx(err, best_err) and best_unit != null:
+					if _unit_id(cand) < _unit_id(best_unit):
+						best_unit = cand
+			if best_unit != null:
+				break
 		if best_unit == null:
 			## 精确人数：仍须填满，取池中任意合法单位。
 			if exact_count and not sorted_pool.is_empty():
@@ -701,6 +752,7 @@ static func _greedy_fill(
 		):
 			break
 		result.append(best_unit)
+		_note_selected_id(selected_ids, best_unit)
 		power = next_power
 		if not exact_count and _power_within(power, target_e, 0.05):
 			break
