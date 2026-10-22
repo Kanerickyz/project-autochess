@@ -51,7 +51,10 @@ func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	if event_type == CombatEvents.ON_DAMAGE_TAKEN:
 		if payload.target != null and payload.target.team == UnitInstance.Team.PLAYER:
 			_friend_hurt_this_round += 1
-	_enqueue_for_event(event_type, payload, 0)
+	var start_depth := 0
+	if payload != null:
+		start_depth = maxi(0, payload.chain_depth)
+	_enqueue_for_event(event_type, payload, start_depth)
 
 
 func has_pending_steps() -> bool:
@@ -1339,12 +1342,17 @@ func _cells_in_radius(center: Vector2i, radius: int, include_center: bool) -> Ar
 
 
 func _emit_summoned(spawned: UnitInstance, depth: int) -> void:
-	if spawned == null or _bus == null:
+	if spawned == null:
 		return
 	var summoned_payload := CombatEventPayload.new()
 	summoned_payload.target = spawned
 	summoned_payload.to_cell = spawned.grid_pos
-	_enqueue_for_event(CombatEvents.ON_SUMMONED, summoned_payload, depth + 1)
+	summoned_payload.chain_depth = depth + 1
+	## 走总线：EffectResolver 入队技能链，RunCombatStatCollector 等旁路可统计。
+	if _bus != null:
+		_bus.emit_event(CombatEvents.ON_SUMMONED, summoned_payload)
+	else:
+		_enqueue_for_event(CombatEvents.ON_SUMMONED, summoned_payload, depth + 1)
 
 
 func _emit_friend_summoned(
@@ -1358,4 +1366,8 @@ func _emit_friend_summoned(
 	summon_payload.source = summon_context
 	summon_payload.target = spawned
 	summon_payload.to_cell = spawned.grid_pos
-	_enqueue_for_event(CombatEvents.ON_FRIEND_SUMMONED, summon_payload, depth + 1)
+	summon_payload.chain_depth = depth + 1
+	if _bus != null:
+		_bus.emit_event(CombatEvents.ON_FRIEND_SUMMONED, summon_payload)
+	else:
+		_enqueue_for_event(CombatEvents.ON_FRIEND_SUMMONED, summon_payload, depth + 1)

@@ -299,7 +299,12 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 	snap.combat_seconds = rs.total_combat_seconds
 	snap.gold = run_economy.gold
 	snap.roster.assign(deck_state.get_entries())
-	snap.ledger = _run_stat_ledger
+	## 拷贝账本：历程数字已是值拷贝；战斗合计也须与活账本脱钩（再开局 reset 不影响已展示快照）。
+	snap.ledger = (
+		_run_stat_ledger.duplicate_ledger()
+		if _run_stat_ledger != null
+		else RunStatLedger.new()
+	)
 	snap.highest_attack_entries = RunStatsSnapshot.pick_highest_attack(snap.roster)
 	snap.highest_max_hp_entries = RunStatsSnapshot.pick_highest_max_hp(snap.roster)
 	return snap
