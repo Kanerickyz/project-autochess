@@ -1,11 +1,13 @@
 [gd_resource type="Resource" script_class="MapShopConsumableData" format=3]
 
 [ext_resource type="Script" path="res://scripts/data/map_shop_consumable_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://fizs2yq5uy0oi" path="res://resources/map_shop/icons/qunbolong_icon.tres" id="2_icon"]
 
 [resource]
 script = ExtResource("1")
 id = "qunbolong"
 display_name = "群伯龙"
+icon = ExtResource("2_icon")
 cost = 5
 bonus_attack = 10
 bonus_max_hp = -5

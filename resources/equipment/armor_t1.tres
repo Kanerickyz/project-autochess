@@ -1,10 +1,12 @@
 [gd_resource type="Resource" script_class="EquipmentData" format=3]
 
 [ext_resource type="Script" path="res://scripts/data/equipment_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://wv146quef4ia6" path="res://resources/map_shop/icons/armor_icon.tres" id="2_icon"]
 
 [resource]
 script = ExtResource("1")
 id = "armor_t1"
 display_name = "护甲 I"
+icon = ExtResource("2_icon")
 cost = 1
 armor_block = 2

@@ -2257,12 +2257,23 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 			continue
 		var label := String(dict.get("label", ""))
 		var summary := String(dict.get("summary", ""))
-		var font_size := clampi(int(px * 0.26), 8, 12)
+		var font_size := clampi(int(px * 0.22), 8, 11)
 		var alpha := 0.4 if i == _map_shop_offer_drag_index else 1.0
+		var icon: Texture2D = dict.get("icon") as Texture2D
+		if icon != null:
+			var icon_h := px * 0.52
+			var tex_size := icon.get_size()
+			var icon_w := icon_h * tex_size.x / maxf(1.0, tex_size.y)
+			var icon_rect := Rect2(
+				cell_rect.position
+				+ Vector2((cell_rect.size.x - icon_w) * 0.5, cell_rect.size.y * 0.08),
+				Vector2(icon_w, icon_h),
+			)
+			draw_texture_rect(icon, icon_rect, false, Color(1, 1, 1, alpha))
 		var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 		var label_pos := cell_rect.position + Vector2(
 			(cell_rect.size.x - label_size.x) * 0.5,
-			cell_rect.size.y * 0.32,
+			cell_rect.size.y * (0.62 if icon != null else 0.32),
 		)
 		draw_string(
 			font,
@@ -2277,7 +2288,7 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 			var sum_size := font.get_string_size(summary, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 			var sum_pos := cell_rect.position + Vector2(
 				(cell_rect.size.x - sum_size.x) * 0.5,
-				cell_rect.size.y * 0.58,
+				cell_rect.size.y * (0.74 if icon != null else 0.58),
 			)
 			draw_string(
 				font,

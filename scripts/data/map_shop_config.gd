@@ -29,16 +29,22 @@ static func make_code_defaults() -> MapShopConfig:
 	config.equipment_slot_count = DEFAULT_EQUIPMENT_SLOTS
 	config.refresh_cost = DEFAULT_REFRESH_COST
 	config.consumable_pool = [
-		_make_consumable("big_hp_potion", "大生命魔药", 2, -1, 5),
-		_make_consumable("big_atk_potion", "大力量魔药", 2, 5, -1),
-		_make_consumable("qunbolong", "群伯龙", 5, 10, -5),
+		_make_consumable("big_hp_potion", "大生命魔药", 2, -1, 5, ICON_HP),
+		_make_consumable("big_atk_potion", "大力量魔药", 2, 5, -1, ICON_ATK),
+		_make_consumable("qunbolong", "群伯龙", 5, 10, -5, ICON_RARE),
 	]
 	config.equipment_pool = [
-		_make_equipment("armor_t1", "护甲 I", 1, 2),
-		_make_equipment("armor_t2", "护甲 II", 2, 6),
-		_make_equipment("armor_t3", "护甲 III", 4, 10),
+		_make_equipment("armor_t1", "护甲 I", 1, 2, ICON_ARMOR),
+		_make_equipment("armor_t2", "护甲 II", 2, 6, ICON_ARMOR),
+		_make_equipment("armor_t3", "护甲 III", 4, 10, ICON_ARMOR),
 	]
 	return config
+
+
+const ICON_HP := "res://resources/map_shop/icons/big_hp_potion_icon.tres"
+const ICON_ATK := "res://resources/map_shop/icons/big_atk_potion_icon.tres"
+const ICON_RARE := "res://resources/map_shop/icons/qunbolong_icon.tres"
+const ICON_ARMOR := "res://resources/map_shop/icons/armor_icon.tres"
 
 
 static func _make_consumable(
@@ -47,6 +53,7 @@ static func _make_consumable(
 	cost: int,
 	atk: int,
 	hp: int,
+	icon_path: String = "",
 ) -> MapShopConsumableData:
 	var item := MapShopConsumableData.new()
 	item.id = id
@@ -54,6 +61,8 @@ static func _make_consumable(
 	item.cost = cost
 	item.bonus_attack = atk
 	item.bonus_max_hp = hp
+	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
+		item.icon = load(icon_path) as Texture2D
 	return item
 
 
@@ -62,12 +71,15 @@ static func _make_equipment(
 	name: String,
 	cost: int,
 	block: int,
+	icon_path: String = ICON_ARMOR,
 ) -> EquipmentData:
 	var item := EquipmentData.new()
 	item.id = id
 	item.display_name = name
 	item.cost = cost
 	item.armor_block = block
+	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
+		item.icon = load(icon_path) as Texture2D
 	return item
 
 
