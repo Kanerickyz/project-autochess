@@ -31,6 +31,7 @@ enum EffectCategory {
 	ATTACK,
 	HP,
 	SPAWN,
+	GOLD,
 	OTHER,
 }
 
@@ -39,6 +40,7 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 	EffectCategory.ATTACK,
 	EffectCategory.HP,
 	EffectCategory.SPAWN,
+	EffectCategory.GOLD,
 	EffectCategory.OTHER,
 ]
 
@@ -239,6 +241,8 @@ func _effect_category_label(category: EffectCategory) -> String:
 			return "生命值"
 		EffectCategory.SPAWN:
 			return "生成角色"
+		EffectCategory.GOLD:
+			return "金币"
 		EffectCategory.OTHER:
 			return "其他"
 	return "其他"
@@ -366,6 +370,8 @@ func _classify_action(action: EffectAction) -> EffectCategory:
 			return EffectCategory.HP
 		EffectAction.Type.SPAWN_UNIT, EffectAction.Type.SPLIT_SELF:
 			return EffectCategory.SPAWN
+		EffectAction.Type.GRANT_GOLD, EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF:
+			return EffectCategory.GOLD
 		_:
 			return EffectCategory.OTHER
 

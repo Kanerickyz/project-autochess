@@ -377,6 +377,15 @@ func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 		UnitInfoText.STAT_ICON_HP,
 		"[img=%dx%d]%s[/img]" % [int(round(hp_w)), int(icon_h), hp_tex.resource_path],
 	)
+	var gold_tex: Texture2D = UiStatIcons.gold_texture()
+	if gold_tex != null:
+		var gold_w := icon_h * gold_tex.get_width() / maxf(1.0, float(gold_tex.get_height()))
+		escaped = escaped.replace(
+			UnitInfoText.STAT_ICON_GOLD,
+			"[img=%dx%d]%s[/img]" % [int(round(gold_w)), int(icon_h), gold_tex.resource_path],
+		)
+	else:
+		escaped = escaped.replace(UnitInfoText.STAT_ICON_GOLD, "金")
 	return escaped
 
 
