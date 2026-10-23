@@ -2442,6 +2442,7 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 	if result.get("ok", false):
 		_recruit_selected_candidate = -1
 		_recruit_selected_replace_id = -1
+		_try_show_party_bark_after_recruit()
 		return
 	var reason := String(result.get("reason", ""))
 	if _recruit_hint == null:
@@ -2453,6 +2454,27 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 			_recruit_hint.text = "队伍已满：请指定替换目标"
 		_:
 			_recruit_hint.text = "无法招募（%s）" % reason
+
+
+## 进队结算后：评估队伍台词并挂到说话人纸片上（Run 一次）。
+func _try_show_party_bark_after_recruit() -> void:
+	if _phase != Phase.RECRUIT or _recruit_session == null or _arena == null:
+		return
+	var bark := PartyBarkService.pick_recruit_join_bark(
+		_recruit_session.deck,
+		_recruit_session.played_party_bark_ids,
+	)
+	if bark == null:
+		return
+	_recruit_session.played_party_bark_ids = PartyBarkService.mark_played(
+		_recruit_session.played_party_bark_ids,
+		bark.id,
+	)
+	## session_changed 已 sync；再等一帧确保座位纸片已画好。
+	await get_tree().process_frame
+	if _phase != Phase.RECRUIT or _arena == null:
+		return
+	_arena.show_party_bark(bark.speaker_unit_id, bark.line)
 
 
 func _on_recruit_refresh_pressed() -> void:
