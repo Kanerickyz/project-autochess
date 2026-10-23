@@ -1130,11 +1130,14 @@ static func _test_death_heal_nearby_ally() -> bool:
 	return true
 
 
-## 标枪受伤 → 自身恢复 2 生命（软顶）。
+## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=4 → 三合一后 4）。
 static func _test_hurt_heal_self_2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
 		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 4:
+		push_error("hurt_heal_self_2: merge_value_mult expected 4")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
@@ -1146,17 +1149,17 @@ static func _test_hurt_heal_self_2() -> bool:
 	var hp_mid := spear.unit.current_hp
 	sim._pipeline.apply_damage(null, spear, 2)
 	sim._drain_effects()
-	## 扣 2 后疗回 2 → 净 0
-	if spear.unit.current_hp != hp_mid - 2 + 2:
+	## 扣 2 后疗回 1 → 净 −1
+	if spear.unit.current_hp != hp_mid - 2 + 1:
 		push_error(
 			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
-			% [spear.unit.current_hp, hp_mid]
+			% [spear.unit.current_hp, hp_mid - 1]
 		)
 		return false
 	return true
 
 
-## 伤 < 疗：受击疗截断为本击伤害，不能净回血。
+## 伤 = 疗：受击疗截断为本击伤害，不能净回血。
 static func _test_hurt_heal_capped_to_hit() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
@@ -1171,7 +1174,7 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 	var hp_before := spear.unit.current_hp
 	sim._pipeline.apply_damage(null, spear, 1)
 	sim._drain_effects()
-	## 技能写 2，但本次伤 1 → 只回 1，净 0；不得回满 2。
+	## 技能写 1，本次伤 1 → 回 1，净 0。
 	if spear.unit.current_hp != hp_before:
 		push_error(
 			"hurt_heal_capped: hp=%d expected %d (net 0 after 1 dmg)"
