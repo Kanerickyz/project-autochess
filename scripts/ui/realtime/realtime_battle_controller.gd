@@ -84,6 +84,8 @@ var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
+## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
+var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _recruit_shop_config: RecruitShopConfig = null
@@ -228,12 +230,39 @@ func is_combat_sandbox_mode() -> bool:
 
 func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void:
 	_disconnect_economy()
+	_disconnect_deck_merge()
 	_deck_state = deck_state
 	_economy = economy
 	_level = level
+	_connect_deck_merge()
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
 	_refresh_hud()
+
+
+func _connect_deck_merge() -> void:
+	if _deck_state == null:
+		return
+	if not _deck_state.triple_merged.is_connected(_on_deck_triple_merged):
+		_deck_state.triple_merged.connect(_on_deck_triple_merged)
+
+
+func _disconnect_deck_merge() -> void:
+	if _deck_state == null:
+		return
+	if _deck_state.triple_merged.is_connected(_on_deck_triple_merged):
+		_deck_state.triple_merged.disconnect(_on_deck_triple_merged)
+
+
+func _on_deck_triple_merged(product: DeckEntry, consumed_seats: Array) -> void:
+	if product == null:
+		return
+	_pending_merge_fx.append({
+		"seat": product.seat_index,
+		"seats": consumed_seats.duplicate(),
+		"unit_id": product.get_unit_id(),
+		"level": product.level,
+	})
 
 
 ## Run 地图阶段：保留竞技场背景作世界底图，隐藏战斗 HUD。
@@ -2080,6 +2109,32 @@ func _unbind_recruit_session() -> void:
 
 func _on_recruit_session_changed() -> void:
 	_sync_recruit_arena()
+	_refresh_recruit_hud()
+	if _pending_merge_fx.is_empty():
+		return
+	## 座位已重建后再播残影飞入 / 升星弹跳。
+	await _drain_pending_merge_fx()
+
+
+func _drain_pending_merge_fx() -> void:
+	if _arena == null or _phase != Phase.RECRUIT:
+		_pending_merge_fx.clear()
+		return
+	_recruit_animating = true
+	_refresh_recruit_hud()
+	while not _pending_merge_fx.is_empty():
+		var fx: Dictionary = _pending_merge_fx.pop_front()
+		var level := int(fx.get("level", 2))
+		if _recruit_hint != null:
+			_recruit_hint.text = "%d★ 三合一！" % level
+		flash_hint("%d★ 三合一！" % level)
+		await _arena.play_triple_merge_animation(
+			int(fx.get("seat", -1)),
+			fx.get("seats", []) as Array,
+			String(fx.get("unit_id", "")),
+			level,
+		)
+	_recruit_animating = false
 	_refresh_recruit_hud()
 
 
