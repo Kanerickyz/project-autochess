@@ -12,9 +12,13 @@ config_version=5
 
 config/name="Project Autochess"
 <<<<<<< HEAD
+<<<<<<< HEAD
 config/version="0.5.118"
 =======
 config/version="0.5.120"
+>>>>>>> origin/main
+=======
+config/version="0.5.121"
 >>>>>>> origin/main
 run/main_scene="res://scenes/main/main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
