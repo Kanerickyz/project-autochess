@@ -69,6 +69,10 @@ static func run_all() -> bool:
 	_check("devour_star2_skips_boss", _test_devour_star2_skips_boss())
 	_check("devour_rt_defer_kills_left_right", _test_devour_rt_defer_kills_left_right())
 	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
+	_check("combat_start_iron_heart", _test_combat_start_iron_heart())
+	_check("combat_start_edge_hex", _test_combat_start_edge_hex())
+	_check("combat_start_shield_boon", _test_combat_start_shield_boon())
+	_check("combat_start_banner_nearby", _test_combat_start_banner_nearby())
 
 	for sim in _created:
 		sim.dispose()
@@ -1568,6 +1572,113 @@ static func _test_devour_star2_skips_boss() -> bool:
 		return false
 	if devourer.get_effective_attack() != atk0:
 		push_error("devour2: should not absorb boss stats")
+		return false
+	return true
+
+
+static func _test_combat_start_iron_heart() -> bool:
+	var data := _load_unit("res://resources/units/realtime/iron_heart.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_self_max_hp_mid":
+		push_error("iron_heart: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 501)
+	var rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var base := rt.unit.get_effective_max_hp()
+	sim.begin_combat()
+	if rt.unit.get_effective_max_hp() != base + 12:
+		push_error(
+			"iron_heart: max_hp %d -> %d expected +12"
+			% [base, rt.unit.get_effective_max_hp()]
+		)
+		return false
+	return true
+
+
+static func _test_combat_start_edge_hex() -> bool:
+	var data := _load_unit("res://resources/units/realtime/edge_hex.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_buff_random_ally_atk_2":
+		push_error("edge_hex: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 502)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "ally", "attack": 3}),
+		Vector2(3.5, 6.5),
+	)
+	var ally_atk0 := ally.unit.get_effective_attack()
+	sim.begin_combat()
+	var edge_rt := sim.get_units()[0] as RtUnit
+	var edge_atk := edge_rt.unit.get_effective_attack()
+	var ally_atk := ally.unit.get_effective_attack()
+	if edge_atk != data.stats.attack + 2 and ally_atk != ally_atk0 + 2:
+		push_error(
+			"edge_hex: expected +2 atk on owner or ally (edge=%d ally=%d)"
+			% [edge_atk, ally_atk]
+		)
+		return false
+	return true
+
+
+static func _test_combat_start_shield_boon() -> bool:
+	var data := _load_unit("res://resources/units/realtime/shield_boon.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_buff_random_ally_hp_2":
+		push_error("shield_boon: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 503)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "ally", "max_hp": 5}),
+		Vector2(3.5, 6.5),
+	)
+	var hp0 := ally.unit.get_effective_max_hp()
+	var cur0 := ally.unit.current_hp
+	sim.begin_combat()
+	var hp1 := ally.unit.get_effective_max_hp()
+	var cur1 := ally.unit.current_hp
+	var buffed := hp1 == hp0 + 2 and cur1 == cur0 + 2
+	if not buffed:
+		var owner_rt := sim.get_units()[0] as RtUnit
+		var self_hp := owner_rt.unit.get_effective_max_hp()
+		var self_cur := owner_rt.unit.current_hp
+		if self_hp != data.stats.max_hp + 2 or self_cur != data.stats.max_hp + 2:
+			push_error(
+				"shield_boon: no +2 hp (ally %d->%d cur %d->%d self %d/%d)"
+				% [hp0, hp1, cur0, cur1, self_hp, self_cur]
+			)
+			return false
+	return true
+
+
+static func _test_combat_start_banner_nearby() -> bool:
+	var data := _load_unit("res://resources/units/realtime/banner.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_buff_nearby_allies_mid":
+		push_error("banner: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 504)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var nearby := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "near", "attack": 2}),
+		Vector2(3.5, 6.5),
+	)
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "far", "attack": 2}),
+		Vector2(2.5, 8.5),
+	)
+	var near0 := nearby.unit.get_effective_attack()
+	var far0 := far.unit.get_effective_attack()
+	sim.begin_combat()
+	if nearby.unit.get_effective_attack() != near0 + 4:
+		push_error(
+			"banner: nearby atk %d -> %d expected +4"
+			% [near0, nearby.unit.get_effective_attack()]
+		)
+		return false
+	if far.unit.get_effective_attack() != far0:
+		push_error("banner: far ally buffed unexpectedly")
 		return false
 	return true
 

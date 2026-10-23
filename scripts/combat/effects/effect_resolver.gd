@@ -1209,7 +1209,7 @@ func _absorb_stats_and_kill(owner: UnitInstance, target: UnitInstance) -> bool:
 func _scaled_action_value(owner: UnitInstance, value: int) -> int:
 	if owner == null:
 		return value
-	var ability: AbilityData = owner.unit_data.ability if owner.unit_data != null else null
+	var ability: AbilityData = owner.get_main_ability()
 	if ability != null and ability.id == "turn_start_strike_weakest":
 		## 影刺：1★ 2 点；三合一升星后（2★+）7 点（不走全局 ×6）。
 		return 2 if owner.level <= 1 else 7
