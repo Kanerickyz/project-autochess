@@ -1147,7 +1147,13 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			var seat_cell := _enemy_slots.get_cell(seat_i)
 			if seat_cell != Vector2i(-1, -1):
 				place = Vector2(seat_cell) + Vector2(0.5, 0.5)
-		_sim.add_unit(spawn["unit"], place)
+		## 必须每次新建实例：spawn["unit"] 会在首场战斗中被改血/改修饰，倒带重用会残血开局。
+		var unit := _fresh_enemy_unit_for_spawn(spawn.get("unit") as UnitInstance, place)
+		if unit == null:
+			continue
+		if unit.stats != null:
+			unit.stats.deploy_time = 0.0
+		_sim.add_unit(unit, place)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -1731,6 +1737,13 @@ func _on_tape_play_speed_pressed() -> void:
 func _on_tape_next_pressed() -> void:
 	if _phase != Phase.COMBAT or _sim == null or _sim.is_finished():
 		return
+	## 上一动已结束、正兑现停住：只确认暂停，勿清边界再开下一动（避免连跳）。
+	if _tape_boundary_pending:
+		_tape_step_once = false
+		_tape_pause_requested = false
+		_tape_paused = true
+		_update_tape_controls()
+		return
 	_tape_paused = false
 	_tape_pause_requested = false
 	_tape_boundary_pending = false
@@ -1777,7 +1790,9 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	if _sim == null:
 		_tape_rewinding = false
 		return
-	_sim.defer_effect_resolve = false
+	## 与实战一致：开战前先 defer，开战技能入队后经 flush 排空并排行动队列。
+	## 重演循环内保持 defer，每步后瞬时排空（等价播报时长为 0），避免与实战分叉提前终局。
+	_sim.defer_effect_resolve = true
 	_sim.begin_combat()
 	_sim.flush_combat_start_lock()
 	_tape_completed_turns = 0
@@ -1785,9 +1800,10 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	var max_steps := 30 * 60 * 10
 	while _tape_completed_turns < target and not _sim.is_finished() and guard < max_steps:
 		_sim.advance_fixed_step()
+		_resolve_pending_effects_instant()
 		guard += 1
 	_tape_completed_turns = _sim.get_completed_actor_turns()
-	_sim.defer_effect_resolve = true
+	_sim.release_presentation()
 	_tape_rewinding = false
 	_tape_paused = true
 	_tape_step_once = false
@@ -1795,9 +1811,37 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	_tape_boundary_pending = false
 	if target <= 0 and _tape_completed_turns <= 0:
 		_show_hint("已到开局")
+	elif _tape_completed_turns < target and _sim.is_finished():
+		## 重演已终局但仍少于目标：说明与实战仍有分叉；至少停在可继续倒带的状态。
+		_show_hint("已到可回放尽头")
 	_update_tape_controls()
 	if _arena != null:
+		_arena.clear_fx()
 		_arena.queue_redraw()
+
+
+## 倒带重演：不播介绍卡，按 FIFO 立刻结算队内全部待处理技能（含连锁）。
+func _resolve_pending_effects_instant() -> void:
+	if _sim == null:
+		return
+	var guard := 0
+	while _sim.has_pending_effects() and guard < 256:
+		_sim.resolve_next_pending_effect()
+		guard += 1
+	_sim.release_presentation()
+
+
+## 从敌方预生成模板重建开战实例（满血、无本场临时层）；保留 level。
+func _fresh_enemy_unit_for_spawn(template: UnitInstance, place: Vector2) -> UnitInstance:
+	if template == null or template.unit_data == null:
+		return null
+	var cell := Vector2i(floori(place.x), floori(place.y))
+	var unit := UnitInstance.from_unit_data(template.unit_data, cell, UnitInstance.Team.ENEMY)
+	if unit == null:
+		return null
+	unit.level = clampi(template.level, 1, 3)
+	unit.current_hp = unit.get_effective_max_hp()
+	return unit
 
 
 func _apply_layout_payload(payload) -> String:
@@ -2442,6 +2486,7 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 	if result.get("ok", false):
 		_recruit_selected_candidate = -1
 		_recruit_selected_replace_id = -1
+		_try_show_party_bark_after_recruit()
 		return
 	var reason := String(result.get("reason", ""))
 	if _recruit_hint == null:
@@ -2453,6 +2498,27 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 			_recruit_hint.text = "队伍已满：请指定替换目标"
 		_:
 			_recruit_hint.text = "无法招募（%s）" % reason
+
+
+## 进队结算后：评估队伍台词并挂到说话人纸片上（Run 一次）。
+func _try_show_party_bark_after_recruit() -> void:
+	if _phase != Phase.RECRUIT or _recruit_session == null or _arena == null:
+		return
+	var bark := PartyBarkService.pick_recruit_join_bark(
+		_recruit_session.deck,
+		_recruit_session.played_party_bark_ids,
+	)
+	if bark == null:
+		return
+	_recruit_session.played_party_bark_ids = PartyBarkService.mark_played(
+		_recruit_session.played_party_bark_ids,
+		bark.id,
+	)
+	## session_changed 已 sync；再等一帧确保座位纸片已画好。
+	await get_tree().process_frame
+	if _phase != Phase.RECRUIT or _arena == null:
+		return
+	_arena.show_party_bark(bark.speaker_unit_id, bark.line)
 
 
 func _on_recruit_refresh_pressed() -> void:

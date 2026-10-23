@@ -187,7 +187,7 @@
 | 咒刃 | `edge_hex.tres` | `edge_hex` |
 | 盾祷 | `shield_boon.tres` | `shield_boon` |
 
-敌方遭遇可复用上表模板。Boss 资源 `giant_knight.tres`（召唤统领）；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。
+敌方遭遇复用友方模板：`resources/units/enemies/enemy_{友方id}.tres`（`team_default = ENEMY`，显示名 **敌·** 前缀；数值与主技能同友方）。疗刃 / 余震 / 咒刃 / 盾祷 已写入 `act1_enemy_pool`、`default_spawn_budget` 与 `board_act1`。Boss 资源 `giant_knight.tres`（召唤统领）；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。
 
 ## 5. 起始牌库
 

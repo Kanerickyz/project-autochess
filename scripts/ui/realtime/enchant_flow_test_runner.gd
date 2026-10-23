@@ -14,6 +14,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_enchant_fuse_flow()
 	await _test_enchant_sandbox_skip_no_map_signal()
+	await _test_enchant_sandbox_random_ab()
 	await _test_enchant_team_seat_swap()
 	await _test_enchant_scroll_vs_drag_gesture()
 	if _failures == 0:
@@ -88,6 +89,56 @@ func _test_enchant_fuse_flow() -> void:
 func _process_n_frames(n: int) -> void:
 	for _i in n:
 		await process_frame
+
+
+func _test_enchant_sandbox_random_ab() -> void:
+	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
+	await process_frame
+
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 4
+	deck_cfg.starting_units = []
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	for id in ["ra", "rb", "rc"]:
+		var u := UnitData.new()
+		u.id = id
+		u.stats = UnitStats.new()
+		u.ability = HURT
+		deck.add_entry(u)
+
+	var economy := RunEconomy.new()
+	var level := load("res://resources/levels/board_act1.tres") as LevelData
+	battle.setup(deck, economy, level)
+	await battle.enter_enchant(0.0, true)
+	_expect(battle.is_enchant_sandbox_mode(), "sandbox for random")
+
+	var session := battle.get_enchant_session()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	_expect(session.randomize_ab_slots(rng), "sandbox randomize ok")
+	_expect(session.can_fuse(), "sandbox random fills forge")
+	_expect(session.slot_a_entry_id != session.slot_b_entry_id, "sandbox A/B distinct")
+
+	var dock := battle.get_dock()
+	var hud := dock.find_child("EnchantHud", true, false) as Control if dock != null else null
+	_expect(hud != null, "enchant hud present")
+	var random_btn: Button = null
+	if hud != null:
+		for child in hud.get_children():
+			if child is HBoxContainer:
+				for btn in child.get_children():
+					if btn is Button and (btn as Button).text == "随机":
+						random_btn = btn as Button
+						break
+	_expect(random_btn != null and random_btn.visible, "sandbox shows 随机 button")
+	if random_btn != null:
+		_expect(not random_btn.disabled, "随机 enabled with materials")
+
+	battle.queue_free()
+	await process_frame
 
 
 func _test_enchant_sandbox_skip_no_map_signal() -> void:
@@ -198,8 +249,16 @@ func _test_enchant_scroll_vs_drag_gesture() -> void:
 	arena.queue_redraw()
 	await process_frame
 
-	var seat0 := slots.get_cell(0)
-	var center := arena.tile_to_local(Vector2(seat0) + Vector2(0.5, 0.5))
+	## 用中间列队员测拖（避开左右滑条外缘）。
+	var mid_seat := -1
+	for si in slots.slot_count:
+		var c := slots.get_cell(si)
+		if c.x == 2:
+			mid_seat = si
+			break
+	_expect(mid_seat >= 0, "has middle-column member for drag tests")
+	var seat_mid := slots.get_cell(mid_seat)
+	var center := arena.tile_to_local(Vector2(seat_mid) + Vector2(0.5, 0.5))
 	_press_arena(arena, center, true)
 	_expect(not arena._enchant_team_pan_active, "press on member does not start pan")
 	_expect(arena._enchant_team_press_id >= 0, "member press tracked")
@@ -248,6 +307,35 @@ func _test_enchant_scroll_vs_drag_gesture() -> void:
 		_expect(arena._enchant_team_pan_active, "press empty team cell starts scroll pan")
 		_expect(arena._enchant_team_press_id < 0, "empty cell press is not member press")
 		_press_arena(arena, empty_center, false)
+
+	## 左右边条：棋盘外留白 + 边列外缘可跟手滚。
+	arena._enchant_team_drag_id = -1
+	arena._enchant_team_press_id = -1
+	arena._enchant_team_pan_active = false
+	var board := arena.get_board_rect()
+	var side_y := center.y
+	var gutter_pos := Vector2(board.position.x - 8.0, side_y)
+	_expect(arena._is_enchant_side_scroll_zone(gutter_pos), "left gutter is side scroll zone")
+	_press_arena(arena, gutter_pos, true)
+	_expect(arena._enchant_team_pan_active, "press left gutter starts scroll pan")
+	_expect(arena._enchant_team_press_id < 0, "gutter press is not member press")
+	_expect(arena._enchant_team_drag_id < 0, "gutter press does not start drag")
+	_press_arena(arena, gutter_pos, false)
+
+	## 边列队员中部仍可拖（内缘滑条只吃外缘）。
+	arena._enchant_team_pan_active = false
+	var edge_cell := Vector2i(0, seat_mid.y)
+	var edge_center := arena.tile_to_local(Vector2(edge_cell) + Vector2(0.5, 0.5))
+	_expect(not arena._is_enchant_side_scroll_zone(edge_center), "edge cell center is not side strip")
+	_press_arena(arena, edge_center, true)
+	_expect(arena._enchant_team_press_id >= 0, "edge column center still tracks member")
+	var move_edge := InputEventMouseMotion.new()
+	move_edge.position = edge_center + Vector2(0, -28)
+	move_edge.relative = Vector2(0, -28)
+	arena._gui_input(move_edge)
+	_expect(arena._enchant_team_drag_id >= 0, "edge column center vertical still drags")
+	_expect(not arena._enchant_team_pan_active, "edge column center drag does not pan")
+	_press_arena(arena, move_edge.position, false)
 
 	arena.queue_free()
 	await process_frame

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PartyBarkLine" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/party_bark_line.gd" id="1_line"]
+
+[resource]
+script = ExtResource("1_line")
+id = "soulcaller_greets_echo"
+speaker_unit_id = "soulcaller"
+required_unit_ids = PackedStringArray("soulcaller", "echo_spear")
+line = "你也来了"
+once_per_run = true
