@@ -242,7 +242,7 @@
 | 吞噬 | 左右吞噬 | `turn_start_devour_lr_allies` | 献祭·吞纳 | 自己回合开始消灭左右邻格友方并吞其全部攻与生命上限；2★ 排除首领；吞取值不 ×6 |
 | 血僧 | 浴血凝脉 | `hurt_gain_max_hp` | 生命·成长 | 受伤时恢复 4 生命（三合一后 8；`merge_value_mult=2`） |
 | 命卫 | 饮命回春 | `kill_heal_self_mid` | 生命·收割 | 击杀时自身恢复 8 生命 |
-| 铁心 | 铁心蓄势 | `combat_start_self_max_hp_mid` | 生命·开场 | 开战时自身生命上限 +12 |
+| 铁心 | 铁心蓄势 | `combat_start_self_max_hp_mid` | 生命·开场 | 开战时自身生命上限 +12（三合一后 +36；`merge_value_mult=3`） |
 | 愈修 | 痛彻回春 | `hurt_heal_self_small` | 生命·自愈 | 受伤时自身恢复 4 生命 |
 | 疗刃 | 收刀济友 | `kill_heal_random_ally_2` | 收割·输血 | 自己击杀时随机友方恢复 2 生命（三合一后 6；含自己） |
 | 余震 | 震波余刃 | `kill_damage_random_enemy_1` | 收割·点残 | 自己击杀时对随机敌人造成 1 伤害（三合一后 3） |

@@ -1632,6 +1632,9 @@ static func _test_combat_start_iron_heart() -> bool:
 	if data == null or data.ability == null or data.ability.id != "combat_start_self_max_hp_mid":
 		push_error("iron_heart: ability mount")
 		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("iron_heart: merge_value_mult expected 3")
+		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 501)
 	var rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
@@ -1641,6 +1644,20 @@ static func _test_combat_start_iron_heart() -> bool:
 		push_error(
 			"iron_heart: max_hp %d -> %d expected +12"
 			% [base, rt.unit.get_effective_max_hp()]
+		)
+		return false
+	## 三合一（2★）：merge_value_mult=3 → +36
+	var sim2 := _new_sim()
+	sim2.configure(ARENA, 511)
+	var merged := _make_from_data(data, UnitInstance.Team.PLAYER)
+	merged.level = 2
+	var rt2 := sim2.add_unit(merged, Vector2(2.5, 6.5))
+	var base2 := rt2.unit.get_effective_max_hp()
+	sim2.begin_combat()
+	if rt2.unit.get_effective_max_hp() != base2 + 36:
+		push_error(
+			"iron_heart 2★: max_hp %d -> %d expected +36"
+			% [base2, rt2.unit.get_effective_max_hp()]
 		)
 		return false
 	return true
