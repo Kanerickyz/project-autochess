@@ -1012,14 +1012,21 @@ func _boss_can_summon(actor: RtUnit) -> bool:
 	var data := actor.unit.unit_data if actor.unit != null else null
 	if data == null or data.pick_summon_unit(_rng) == null:
 		return false
-	var cap := maxi(0, data.summon_max_alive)
-	if cap <= 0:
-		return false
-	if _count_alive_boss_summons() >= cap:
+	if not _boss_has_alive_summon_room(data):
 		return false
 	if _boss_summon_total_budget_left(actor) <= 0:
 		return false
 	return _find_boss_summon_cell(actor) != Vector2i(-1, -1)
+
+
+## summon_max_alive <= 0：无场上存活数量上限。
+func _boss_has_alive_summon_room(data: UnitData) -> bool:
+	if data == null:
+		return false
+	var cap := data.summon_max_alive
+	if cap <= 0:
+		return true
+	return _count_alive_boss_summons() < cap
 
 
 func _boss_perform_summon(actor: RtUnit) -> void:
@@ -1027,9 +1034,8 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		return
 	var data := actor.unit.unit_data
 	var per := maxi(1, data.summon_per_action)
-	var cap := maxi(0, data.summon_max_alive)
 	var spawned := 0
-	while spawned < per and _count_alive_boss_summons() < cap and _boss_summon_total_budget_left(actor) > 0:
+	while spawned < per and _boss_has_alive_summon_room(data) and _boss_summon_total_budget_left(actor) > 0:
 		var cell := _find_boss_summon_cell(actor)
 		if cell == Vector2i(-1, -1):
 			break
