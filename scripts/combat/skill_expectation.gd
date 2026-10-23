@@ -46,6 +46,7 @@ const ACTION_WEIGHTS := {
 	EffectAction.Type.SWAP_POSITIONS: 0.75,
 	EffectAction.Type.APPLY_CELL_EFFECT: 0.8,
 	EffectAction.Type.GRANT_GOLD: 0.4,
+	EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF: 1.15,
 	EffectAction.Type.STOCK_FREE_BUFF: 0.5,
 	EffectAction.Type.SHOP_CHARACTER_BONUS_HP: 0.45,
 }

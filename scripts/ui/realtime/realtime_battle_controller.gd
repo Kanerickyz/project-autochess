@@ -36,11 +36,19 @@ var _encounter: EncounterData
 var _tier_index: int = 0
 ## 层预算抽阵上下文（Run 传入；测试可省略并按 encounter 旗标推断）。
 var _floor_index: int = 0
+## 地图普通层数（Boss 层 = floor_count+1）；用于 Boss 前最后三层敌方 2★。
+var _map_floor_count: int = 15
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 
 
 func get_floor_index() -> int:
 	return _floor_index
+
+
+func set_map_floor_count(count: int) -> void:
+	_map_floor_count = maxi(1, count)
+
+
 var _spawn_budget_config: SpawnBudgetConfig = null
 var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
@@ -1142,6 +1150,7 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		_stat_collector.bind_bus(_bus)
 	_sim = RealtimeCombatSim.new(_bus)
 	_sim.configure(_board_size, last_seed)
+	_sim.set_economy(_economy)
 	_sim.splash_triggered.connect(_arena.add_splash_fx)
 	_sim.unit_died.connect(_on_unit_died)
 	_sim.combat_finished.connect(_on_combat_finished)
@@ -1285,6 +1294,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		_enemy_slots.seat_cols,
 		rng,
 		team_snap,
+		_map_floor_count,
 	)
 	var result: Array = []
 	for item in seated:
@@ -1298,12 +1308,32 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 			continue
 		var cell := _enemy_slots.get_cell(seat_i)
 		var unit := UnitInstance.from_unit_data(unit_data, cell, UnitInstance.Team.ENEMY)
+		var star_lv := clampi(int(item.get("level", 1)), 1, 3)
+		_apply_enemy_star_level(unit, star_lv)
 		result.append({
 			"unit": unit,
 			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
 	return result
+
+
+## 敌方 2★：身体 ×3（等同三份 1★ 底模加总）；技能倍率由 unit.level 驱动。
+func _apply_enemy_star_level(unit: UnitInstance, level: int) -> void:
+	if unit == null:
+		return
+	var lv := clampi(level, 1, 3)
+	unit.level = lv
+	if lv <= 1 or unit.stats == null:
+		return
+	var body_mult := 1
+	for _i in range(lv - 1):
+		body_mult *= 3
+	if body_mult <= 1:
+		return
+	unit.stats.attack = maxi(1, unit.stats.attack * body_mult)
+	unit.stats.max_hp = maxi(1, unit.stats.max_hp * body_mult)
+	unit.current_hp = unit.stats.max_hp
 
 
 ## 多格足迹：预览/开场表现落在足迹几何中心（2×2 四格正中），非锚座格心。

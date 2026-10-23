@@ -124,6 +124,12 @@ func get_effect_resolver() -> EffectResolver:
 	return _effect_resolver
 
 
+## 注入 Run 经济，供战斗内 GRANT_GOLD / 读金加身等效果使用。
+func set_economy(economy: RunEconomy) -> void:
+	if _effect_resolver != null:
+		_effect_resolver.set_economy(economy)
+
+
 func get_arena_size() -> Vector2:
 	return _arena_size
 
@@ -1322,6 +1328,7 @@ func _setup_effect_resolver() -> void:
 	_effect_pipeline.defer_death_removal = true
 	_effect_resolver = EffectResolver.new(_effect_grid, _bus, _effect_pipeline, _rng)
 	_bus.combat_event.connect(_effect_resolver.on_event)
+	## economy 由外部 set_economy 注入；重建 resolver 后需再调一次。
 	for rt in _units:
 		if rt != null and rt.unit != null and rt.is_alive():
 			_register_on_effect_grid(rt.unit, rt.get_cell())

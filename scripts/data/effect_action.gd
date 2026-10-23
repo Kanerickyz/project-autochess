@@ -23,6 +23,8 @@ enum Type {
 	## 吞噬：将目标当前有效攻击与生命上限加到持有者本场临时层，并经伤害管线消灭目标（触发死亡/友亡）。
 	## 转移量不走 merge_value_mult / 全局 ×6。
 	ABSORB_STATS_AND_KILL,
+	## 开战读金加身：攻/血各 +⌊玩家当前金/2⌋（不扣金；不加升星倍率；仅玩家友方）。
+	BUFF_STATS_FROM_GOLD_HALF,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

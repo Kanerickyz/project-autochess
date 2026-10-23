@@ -56,6 +56,7 @@ func start_combat(
 	damage_pipeline.set_rng(_rng)
 	effect_resolver = EffectResolver.new(grid, event_bus, damage_pipeline, _rng)
 	effect_resolver.set_deck_state(deck_state)
+	## 旧网格环若注入经济可再调 set_economy；主路径走 RealtimeCombatSim。
 	damage_pipeline.set_effect_resolver(effect_resolver)
 	event_bus.combat_event.connect(effect_resolver.on_event)
 
