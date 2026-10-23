@@ -1277,6 +1277,7 @@ func _on_bus_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	for rt in _units:
 		if rt.unit == payload.target:
 			rt.last_hit_time = elapsed_seconds
+			rt.last_hit_amount = maxi(0, payload.amount)
 			unit_damaged.emit(rt, payload.amount)
 			return
 

@@ -53,8 +53,11 @@ const HIT_TILT := 0.32
 const HIT_SQUASH := Vector2(1.16, 0.86)
 const HIT_SHADOW_MUL := 1.65
 const HIT_FLASH_SECONDS := 0.16
-const SHAKE_MELEE_PX := 5.5
-const SHAKE_RANGED_PX := 2.8
+## 震屏（像素）：幅度随实际扣血；下限保证可读，上限防糊屏。
+const SHAKE_BASE_PX := 1.2
+const SHAKE_PER_DAMAGE_PX := 1.1
+const SHAKE_MIN_PX := 1.5
+const SHAKE_MAX_PX := 14.0
 const SHAKE_SECONDS := 0.22
 const DEATH_SECONDS := 0.55
 const DEATH_KICK_TILT := 0.55
@@ -307,9 +310,15 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
 		if rt.last_hit_time != tracked.last_hit:
 			tracked.last_hit = rt.last_hit_time
-			_play_hit(tracked.pose, Vector2.ZERO, SHAKE_RANGED_PX)
+			_play_hit(tracked.pose, Vector2.ZERO, shake_px_for_damage(rt.last_hit_amount))
 	_sync_idle_states(units, current_actor)
 	_prune_corpses()
+
+
+## 伤害 → 震屏像素；amount≤0 时仍给可读下限。
+static func shake_px_for_damage(amount: int) -> float:
+	var raw := SHAKE_BASE_PX + float(maxi(0, amount)) * SHAKE_PER_DAMAGE_PX
+	return clampf(raw, SHAKE_MIN_PX, SHAKE_MAX_PX)
 
 
 ## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深；与步进插值同步。
@@ -445,10 +454,12 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	_tween_home(lunge, pose)
 	if target == null:
 		return
+	## 扣血已在出手瞬间结算；用 last_hit_amount 驱动震幅。
+	var hit_shake := shake_px_for_damage(target.last_hit_amount)
 	var target_tracked: Tracked = _tracked.get(target.get_instance_id())
 	if target_tracked == null:
 		## 目标已在本步被击杀：残影自己播放闪白，这里只补震屏。
-		create_tween().tween_callback(_shake.bind(SHAKE_MELEE_PX)).set_delay(LUNGE_SECONDS / maxf(0.25, speed_scale))
+		create_tween().tween_callback(_shake.bind(hit_shake)).set_delay(LUNGE_SECONDS / maxf(0.25, speed_scale))
 		return
 	## 撞上瞬间才播受击；同步时间戳，避免轮询再播一次。
 	target_tracked.last_hit = target.last_hit_time
@@ -458,7 +469,7 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	charge.parallel().tween_property(tpose, "rotation", _tilt_for_dir(-dir) * LUNGE_TILT * 0.7, LUNGE_SECONDS)
 	## 撞上后走 _play_hit → 始终 _tween_home（攻击者 mid-lunge 早退除外）。
-	charge.tween_callback(_play_hit.bind(tpose, dir, SHAKE_MELEE_PX))
+	charge.tween_callback(_play_hit.bind(tpose, dir, hit_shake))
 
 
 ## 打断当前 action tween（若有），再 BACK 弹回原位。
