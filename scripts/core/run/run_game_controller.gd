@@ -75,6 +75,8 @@ func _start_new_run() -> void:
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
+	if run_controller.map_config != null:
+		_battle.set_map_floor_count(run_controller.map_config.floor_count)
 	_hide_encounter_ui()
 	_suppress_map_show = true
 	_opening_recruit_pending = true

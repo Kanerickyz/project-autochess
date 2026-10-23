@@ -10,6 +10,7 @@ var _rng: RandomNumberGenerator
 var _pending_batches: Array[QueuedEffectBatch] = []
 var _friend_hurt_this_round: int = 0
 var _deck_state: DeckState
+var _economy: RunEconomy
 ## owner.instance_id -> { EffectSpec.get_instance_id(): count }
 var _spec_trigger_counts: Dictionary = {}
 ## 技能 DEAL_DAMAGE 执行期间抑制 OnDealDamage 再入队，避免捎带伤连环刷触发。
@@ -32,6 +33,10 @@ func _init(
 
 func set_deck_state(deck_state: DeckState) -> void:
 	_deck_state = deck_state
+
+
+func set_economy(economy: RunEconomy) -> void:
+	_economy = economy
 
 
 func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
@@ -1003,6 +1008,46 @@ func _execute_action(
 			executed = true
 		EffectAction.Type.ABSORB_STATS_AND_KILL:
 			executed = _absorb_stats_and_kill(owner, target)
+		EffectAction.Type.GRANT_GOLD:
+			## 仅玩家友方产金；敌方镜像空转。金额走升星倍率（经济技能常用 merge_value_mult=3）。
+			if owner == null or owner.team != UnitInstance.Team.PLAYER:
+				return false
+			if _economy == null:
+				return false
+			var gold_amount := _scaled_action_value(owner, action.value)
+			if gold_amount <= 0:
+				return false
+			_economy.grant(gold_amount)
+			print("[Effect] %s grants +%d gold (now=%d)" % [owner.id, gold_amount, _economy.gold])
+			executed = true
+		EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF:
+			## 开战读金加身：不扣金、不加升星倍率；敌方空转。
+			if owner == null or owner.team != UnitInstance.Team.PLAYER:
+				return false
+			if target == null or not target.is_alive():
+				return false
+			var gold_now := _economy.gold if _economy != null else 0
+			var half := gold_now / 2
+			if half <= 0:
+				return false
+			target.stat_modifiers.add_flat(&"attack", half)
+			target.stat_modifiers.add_flat(&"max_hp", half)
+			target.current_hp = mini(
+				target.get_effective_max_hp(),
+				target.current_hp + half,
+			)
+			print(
+				"[Effect] %s gold-half buff +%d/+%d (gold=%d eff %d/%d)"
+				% [
+					target.id,
+					half,
+					half,
+					gold_now,
+					target.get_effective_attack(),
+					target.get_effective_max_hp(),
+				]
+			)
+			executed = true
 
 	if executed and emit_resolved:
 		_emit_effect_resolved(owner, action, target, payload, spec)

@@ -3,7 +3,11 @@ extends RefCounted
 
 signal gold_changed(new_amount: int)
 
+## 旗帜本局成功购买次数（阶梯价 2→3→4→5→6）。
+const BANNER_COST_STEPS: Array[int] = [2, 3, 4, 5, 6]
+
 var gold: int = 0
+var banner_purchase_count: int = 0
 var _config: EconomyConfig
 
 
@@ -16,7 +20,18 @@ func reset() -> void:
 		gold = 0
 	else:
 		gold = _config.starting_gold
+	banner_purchase_count = 0
 	gold_changed.emit(gold)
+
+
+## 下一次成功购买旗帜的标价。
+func get_banner_cost() -> int:
+	var idx := clampi(banner_purchase_count, 0, BANNER_COST_STEPS.size() - 1)
+	return BANNER_COST_STEPS[idx]
+
+
+func note_banner_purchased() -> void:
+	banner_purchase_count = maxi(0, banner_purchase_count + 1)
 
 
 func can_afford(amount: int) -> bool:

@@ -464,6 +464,8 @@ static func format_action(
 			return "复制 %d%% 生命" % scaled_value
 		EffectAction.Type.GRANT_GOLD:
 			return "获得 +%d 金" % scaled_value
+		EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF:
+			return "开战时攻/血各 +⌊当前金/2⌋（不扣金）"
 		EffectAction.Type.PERMANENT_DECK_STAT:
 			var pstat: String = String(action.stat_name)
 			if pstat == "attack":

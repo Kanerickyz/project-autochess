@@ -11,6 +11,7 @@ var _config: RecruitShopConfig
 var _economy: RunEconomy
 var _item_offers: Array[PrepareItemData] = []
 var _snapshot_items: Array[PrepareItemData] = []
+var _snapshot_banner_purchase_count: int = 0
 var _open: bool = false
 
 
@@ -19,6 +20,7 @@ func configure(config: RecruitShopConfig, economy: RunEconomy) -> void:
 	_economy = economy
 	_item_offers.clear()
 	_snapshot_items.clear()
+	_snapshot_banner_purchase_count = 0
 	_open = false
 
 
@@ -30,6 +32,9 @@ func open_shop(deck: DeckState) -> void:
 	_open = true
 	roll_offers(deck)
 	_snapshot_items = _item_offers.duplicate()
+	_snapshot_banner_purchase_count = (
+		_economy.banner_purchase_count if _economy != null else 0
+	)
 
 
 func close_shop() -> void:
@@ -54,6 +59,8 @@ func roll_offers(deck: DeckState) -> void:
 ## 重置到进门快照（与 RecruitSession.reset 对齐）。
 func restore_snapshot() -> void:
 	_item_offers = _snapshot_items.duplicate()
+	if _economy != null:
+		_economy.banner_purchase_count = _snapshot_banner_purchase_count
 	shop_changed.emit()
 
 
@@ -68,6 +75,10 @@ func get_item_offer(index: int) -> PrepareItemData:
 
 
 func get_item_cost(item: PrepareItemData) -> int:
+	if item != null and item.item_type == PrepareItemData.ItemType.BANNER:
+		if _economy != null:
+			return _economy.get_banner_cost()
+		return RecruitShopConfig.DEFAULT_BANNER_COST
 	if _config == null:
 		return 0 if item == null else maxi(0, item.cost)
 	return _config.resolve_item_cost(item)
@@ -103,6 +114,7 @@ func try_buy_banner(slot_index: int, deck: DeckState) -> Dictionary:
 		_economy.grant(cost)
 		failed["reason"] = "cap_failed"
 		return failed
+	_economy.note_banner_purchased()
 	## 未满席时可反复购买同一旗帜槽；满 10 后清空该槽。
 	if deck.is_seat_cap_maxed():
 		_item_offers[slot_index] = null

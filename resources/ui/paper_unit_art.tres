@@ -73,8 +73,8 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_blue.png" id="b_berserker"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_red.png" id="r_berserker"]
-[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="b_character_dev"]
-[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="r_character_dev"]
+[ext_resource type="Texture2D" uid="uid://bg3btpfjsxd01" path="res://assets/sprites/placeholders/character_dev.png" id="b_character_dev"]
+[ext_resource type="Texture2D" uid="uid://cdevenemyred01" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="r_character_dev"]
 
 
 [resource]
@@ -89,15 +89,19 @@ archetype_by_unit_id = {
 "barbarian": &"axe",
 "berserker": &"berserker",
 "blood_acolyte": &"blood_acolyte",
+"blood_wage": &"blood_wage",
 "boss_minion_t4": &"boss_minion_t4",
 "boss_minion_t5": &"boss_minion_t5",
 "bus": &"ram",
 "chick": &"slime",
+"coffer_ward": &"coffer_ward",
 "crossbow": &"crossbow",
 "dirge_horn": &"dirge_horn",
 "devour": &"devour",
 "edge_hex": &"edge_hex",
 "echo_spear": &"echo_spear",
+"paymaster": &"paymaster",
+
 "fused_enchant": &"fused_enchant",
 "giant_knight": &"giant_knight",
 "goblin": &"goblin",
@@ -129,6 +133,7 @@ archetype_by_unit_id = {
 "valkyrie": &"valkyrie",
 "vita_keeper": &"vita_keeper",
 "wardrum": &"wardrum",
+"wergild": &"wergild",
 "zombie_fly": &"skeleton"
 }
 default_archetype = &"spear"
@@ -143,9 +148,11 @@ player_textures = {
 &"berserker": ExtResource("b_berserker"),
 
 &"blood_acolyte": ExtResource("b_blood_acolyte"),
+&"blood_wage": ExtResource("b_character_dev"),
 &"boss_minion_t4": ExtResource("b_captain"),
 &"boss_minion_t5": ExtResource("b_valkyrie"),
 &"captain": ExtResource("b_captain"),
+&"coffer_ward": ExtResource("b_character_dev"),
 &"crossbow": ExtResource("b_crossbow"),
 &"devour": ExtResource("b_character_dev"),
 &"edge_hex": ExtResource("b_character_dev"),
@@ -162,6 +169,7 @@ player_textures = {
 &"mend_friar": ExtResource("b_mend_friar"),
 &"mirror_warden": ExtResource("b_mirror_warden"),
 &"musket": ExtResource("b_musket"),
+&"paymaster": ExtResource("b_character_dev"),
 &"ram": ExtResource("b_ram"),
 &"relic_aegis": ExtResource("b_relic_aegis"),
 &"rider": ExtResource("b_rider"),
@@ -177,7 +185,8 @@ player_textures = {
 &"spike_shield": ExtResource("b_spike_shield"),
 &"valkyrie": ExtResource("b_valkyrie"),
 &"vita_keeper": ExtResource("b_vita_keeper"),
-&"wardrum": ExtResource("b_wardrum")
+&"wardrum": ExtResource("b_wardrum"),
+&"wergild": ExtResource("b_character_dev")
 }
 enemy_textures = {
 &"aftershock": ExtResource("r_character_dev"),
@@ -190,9 +199,11 @@ enemy_textures = {
 &"berserker": ExtResource("r_berserker"),
 
 &"blood_acolyte": ExtResource("r_blood_acolyte"),
+&"blood_wage": ExtResource("r_character_dev"),
 &"boss_minion_t4": ExtResource("r_captain"),
 &"boss_minion_t5": ExtResource("r_valkyrie"),
 &"captain": ExtResource("r_captain"),
+&"coffer_ward": ExtResource("r_character_dev"),
 &"crossbow": ExtResource("r_crossbow"),
 &"devour": ExtResource("r_character_dev"),
 &"edge_hex": ExtResource("r_character_dev"),
@@ -209,6 +220,7 @@ enemy_textures = {
 &"mend_friar": ExtResource("r_mend_friar"),
 &"mirror_warden": ExtResource("r_mirror_warden"),
 &"musket": ExtResource("r_musket"),
+&"paymaster": ExtResource("r_character_dev"),
 &"ram": ExtResource("r_ram"),
 &"relic_aegis": ExtResource("r_relic_aegis"),
 &"rider": ExtResource("r_rider"),
@@ -224,5 +236,6 @@ enemy_textures = {
 &"spike_shield": ExtResource("r_spike_shield"),
 &"valkyrie": ExtResource("r_valkyrie"),
 &"vita_keeper": ExtResource("r_vita_keeper"),
-&"wardrum": ExtResource("r_wardrum")
+&"wardrum": ExtResource("r_wardrum"),
+&"wergild": ExtResource("r_character_dev")
 }

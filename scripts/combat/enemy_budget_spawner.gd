@@ -11,6 +11,7 @@ const MAX_SEATS_HARD := 10
 ## { "unit_data": UnitData, "seat_index": int, "power_u": float }
 ## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略。
 
+## floor_count：地图普通层数；Boss 前最后三层可刷 2★（见 is_pre_boss_star2_floor）。
 static func roll(
 	wave: WaveData,
 	config: SpawnBudgetConfig,
@@ -22,6 +23,7 @@ static func roll(
 	seat_cols: int,
 	rng: RandomNumberGenerator,
 	team_entries: Array = [],
+	floor_count: int = 15,
 ) -> Array:
 	if wave == null:
 		return []
@@ -138,7 +140,65 @@ static func roll(
 		## 极端保底：至少 1 个最接近 E 的单位。
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
 
-	return _seat_units(all_units, cols, seat_count, cfg)
+	var seated := _seat_units(all_units, cols, seat_count, cfg)
+	_assign_pre_boss_star2_levels(
+		seated,
+		floor_index,
+		floor_count,
+		node_type,
+		rng,
+		cfg,
+	)
+	return seated
+
+
+## Boss 前最后三层（floor_count-2 … floor_count）的普通/精英可出 2★。
+static func is_pre_boss_star2_floor(floor_index: int, floor_count: int) -> bool:
+	var fc := maxi(1, floor_count)
+	return floor_index >= fc - 2 and floor_index <= fc
+
+
+static func _assign_pre_boss_star2_levels(
+	seated: Array,
+	floor_index: int,
+	floor_count: int,
+	node_type: MapNodeType.Type,
+	rng: RandomNumberGenerator,
+	cfg: SpawnBudgetConfig,
+) -> void:
+	if node_type == MapNodeType.Type.BOSS:
+		return
+	if not is_pre_boss_star2_floor(floor_index, floor_count):
+		return
+	if seated.is_empty() or rng == null:
+		return
+	## 约半数升 2★，至少 1 只（有人时）。
+	var promoted := 0
+	for item in seated:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var ud: UnitData = item.get("unit_data") as UnitData
+		if ud != null and ud.is_boss_leader:
+			item["level"] = 1
+			continue
+		var make_star2 := rng.randf() < 0.5
+		item["level"] = 2 if make_star2 else 1
+		if make_star2:
+			promoted += 1
+			## 强度分按 2★ 身体重算，便于日志/调试。
+			if cfg != null and ud != null:
+				item["power_u"] = _unit_u(ud, cfg) * 3.0
+	if promoted == 0:
+		for item2 in seated:
+			if typeof(item2) != TYPE_DICTIONARY:
+				continue
+			var ud2: UnitData = item2.get("unit_data") as UnitData
+			if ud2 != null and ud2.is_boss_leader:
+				continue
+			item2["level"] = 2
+			if cfg != null and ud2 != null:
+				item2["power_u"] = _unit_u(ud2, cfg) * 3.0
+			break
 
 
 static func _player_roster_count(team_entries: Array) -> int:
@@ -875,6 +935,7 @@ static func _seat_units(
 			"unit_data": unit,
 			"seat_index": seat_i,
 			"power_u": _unit_u(unit, cfg),
+			"level": 1,
 		})
 	return result
 
