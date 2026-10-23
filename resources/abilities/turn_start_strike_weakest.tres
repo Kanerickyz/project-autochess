@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Resource_teleport"]
 script = ExtResource("3_act")
-action_type = 18
+action_type = 14
 
 [sub_resource type="Resource" id="Resource_dmg"]
 script = ExtResource("3_act")
@@ -16,7 +16,7 @@ value = 2
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
 trigger = &"OnRoundStart"
-target_selector = 31
+target_selector = 21
 actions = Array[ExtResource("3_act")]([SubResource("Resource_teleport"), SubResource("Resource_dmg")])
 
 [resource]

@@ -1350,11 +1350,9 @@ static func _test_turn_start_strike_weakest_damage() -> bool:
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var assailant := UnitInstance.from_unit_data(data, Vector2i(4, 26), UnitInstance.Team.PLAYER)
 	assailant.level = 2
-	var victim := UnitInstance.from_unit_data(
-		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
-		Vector2i(12, 10),
-		UnitInstance.Team.ENEMY,
-	)
+	## 用占位敌，避免依赖敌镜像身体预算（盾卫已降为 T1 4/1）。
+	var victim := _dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0})
+	victim.stats.max_hp = 20
 	victim.current_hp = 20
 	grid.place(assailant, Vector2i(4, 26))
 	grid.place(victim, Vector2i(12, 10))
@@ -1532,9 +1530,10 @@ static func _test_devour_rt_defer_kills_left_right() -> bool:
 	if not up.is_alive():
 		push_error("devour_rt: up neighbor must survive")
 		return false
-	if devourer.unit.get_effective_attack() != 4 + 2 + 3:
+	## 吞噬基础攻 6（T3 偏厚 10/6）+ 左右友方攻 2+3。
+	if devourer.unit.get_effective_attack() != 6 + 2 + 3:
 		push_error(
-			"devour_rt: atk=%d expected 9"
+			"devour_rt: atk=%d expected 11"
 			% devourer.unit.get_effective_attack()
 		)
 		return false
