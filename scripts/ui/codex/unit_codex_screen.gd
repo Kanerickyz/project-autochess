@@ -31,6 +31,8 @@ enum EffectCategory {
 	ATTACK,
 	HP,
 	SPAWN,
+	GOLD,
+	DAMAGE,
 	OTHER,
 }
 
@@ -39,6 +41,8 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 	EffectCategory.ATTACK,
 	EffectCategory.HP,
 	EffectCategory.SPAWN,
+	EffectCategory.GOLD,
+	EffectCategory.DAMAGE,
 	EffectCategory.OTHER,
 ]
 
@@ -199,7 +203,14 @@ func _build_effect_filters() -> void:
 	for child in _effect_filter.get_children():
 		child.queue_free()
 	_effect_buttons.clear()
+	## 与触发筛一样：池中未出现的效果分类不显示（「全部效果」始终保留）。
+	var present: Dictionary = {}
+	for unit in _all_units:
+		for cat in _unit_effect_categories(unit):
+			present[cat] = true
 	for category in EFFECT_CATEGORY_ORDER:
+		if category != EffectCategory.ALL and not present.has(category):
+			continue
 		var button := Button.new()
 		button.toggle_mode = true
 		button.button_group = _effect_button_group
@@ -210,6 +221,9 @@ func _build_effect_filters() -> void:
 		_effect_buttons[category] = button
 	if _effect_buttons.has(_selected_effect):
 		(_effect_buttons[_selected_effect] as Button).button_pressed = true
+	elif _effect_buttons.has(EffectCategory.ALL):
+		_selected_effect = EffectCategory.ALL
+		(_effect_buttons[EffectCategory.ALL] as Button).button_pressed = true
 
 
 func _add_trigger_button(trigger: StringName, label: String) -> void:
@@ -239,6 +253,10 @@ func _effect_category_label(category: EffectCategory) -> String:
 			return "生命值"
 		EffectCategory.SPAWN:
 			return "生成角色"
+		EffectCategory.GOLD:
+			return "金币"
+		EffectCategory.DAMAGE:
+			return "伤害"
 		EffectCategory.OTHER:
 			return "其他"
 	return "其他"
@@ -351,23 +369,40 @@ func _collect_ability_effect_categories(ability: AbilityData, cats: Dictionary) 
 		for action in spec.actions:
 			if action == null:
 				continue
-			cats[_classify_action(action)] = true
+			for category in _classify_action_categories(action):
+				cats[category] = true
 
 
-func _classify_action(action: EffectAction) -> EffectCategory:
+## 单条效果可挂多标签（如读金加身 → 金币 + 攻击 + 生命）。
+func _classify_action_categories(action: EffectAction) -> Array[EffectCategory]:
+	var out: Array[EffectCategory] = []
 	match action.action_type:
 		EffectAction.Type.MODIFY_STAT, EffectAction.Type.PERMANENT_DECK_STAT:
 			if action.stat_name == &"attack":
-				return EffectCategory.ATTACK
-			if action.stat_name == &"max_hp":
-				return EffectCategory.HP
-			return EffectCategory.OTHER
+				out.append(EffectCategory.ATTACK)
+			elif action.stat_name == &"max_hp":
+				out.append(EffectCategory.HP)
+			else:
+				out.append(EffectCategory.OTHER)
 		EffectAction.Type.HEAL, EffectAction.Type.SET_HP_FROM_ALLY_PERCENT, EffectAction.Type.SHOP_CHARACTER_BONUS_HP:
-			return EffectCategory.HP
+			out.append(EffectCategory.HP)
 		EffectAction.Type.SPAWN_UNIT, EffectAction.Type.SPLIT_SELF:
-			return EffectCategory.SPAWN
+			out.append(EffectCategory.SPAWN)
+		EffectAction.Type.GRANT_GOLD:
+			out.append(EffectCategory.GOLD)
+		EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF:
+			out.append(EffectCategory.GOLD)
+			out.append(EffectCategory.ATTACK)
+			out.append(EffectCategory.HP)
+		EffectAction.Type.DEAL_DAMAGE, EffectAction.Type.FRIENDS_HURT_AOE, EffectAction.Type.FUSE_EXPLODE:
+			out.append(EffectCategory.DAMAGE)
+		EffectAction.Type.ABSORB_STATS_AND_KILL:
+			## 吞纳攻/血，可同时按攻击与生命筛选。
+			out.append(EffectCategory.ATTACK)
+			out.append(EffectCategory.HP)
 		_:
-			return EffectCategory.OTHER
+			out.append(EffectCategory.OTHER)
+	return out
 
 
 func _unit_matches_effect(unit: UnitData) -> bool:

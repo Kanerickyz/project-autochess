@@ -1601,6 +1601,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	var key := inspect_key
 	if key.is_empty():
 		key = "entry:%d" % entry.entry_id
+	var unit_cost := entry.unit.cost if entry.unit != null else 0
 	return {
 		"inspect_key": key,
 		"center": center,
@@ -1613,6 +1614,9 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"equipment_name": entry.get_equipment_display_name(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
+		## 与攻/血同列展示角色花费（招募价另传 recruit_cost 时覆盖）。
+		"recruit_cost": maxi(0, unit_cost),
+		"recruit_cost_affordable": true,
 	}
 
 
@@ -1642,6 +1646,9 @@ func _info_from_unit_data(
 		"hp": hp * stat_mult,
 		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level, true),
 		"texture": _art.get_texture(data.id, true) if _art != null else null,
+		## 默认展示角色花费；招募候选可覆盖为当场价。
+		"recruit_cost": maxi(0, data.cost),
+		"recruit_cost_affordable": true,
 	}
 	if recruit_cost >= 0:
 		info["recruit_cost"] = recruit_cost
@@ -1651,6 +1658,7 @@ func _info_from_unit_data(
 
 func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
 	var unit_id := unit.unit_data.id if unit.unit_data != null else ""
+	var unit_cost := unit.unit_data.cost if unit.unit_data != null else 0
 	return {
 		"inspect_key": "inst:%d" % unit.get_instance_id(),
 		"center": center,
@@ -1662,6 +1670,8 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"armor": unit.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block(unit, true),
 		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
+		"recruit_cost": maxi(0, unit_cost),
+		"recruit_cost_affordable": true,
 	}
 
 

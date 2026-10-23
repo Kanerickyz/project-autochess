@@ -1,9 +1,10 @@
 class_name UnitInfoText
 extends RefCounted
 
-## 技能介绍卡内联攻/血图标占位；RichTextLabel 再换成脚下同款贴图。
+## 技能介绍卡内联攻/血/金币图标占位；RichTextLabel 再换成脚下同款贴图。
 const STAT_ICON_ATK := "⟦ATK⟧"
 const STAT_ICON_HP := "⟦HP⟧"
+const STAT_ICON_GOLD := "⟦GOLD⟧"
 
 const TRIGGER_LABELS := {
 	CombatEvents.ON_COMBAT_START: "开战时",
@@ -467,9 +468,9 @@ static func format_action(
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
 			return "复制 %d%% 生命" % scaled_value
 		EffectAction.Type.GRANT_GOLD:
-			return "获得 +%d 金" % scaled_value
+			return "获得 +%s%d" % [STAT_ICON_GOLD, scaled_value]
 		EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF:
-			return "开战时攻/血各 +⌊当前金/2⌋（不扣金）"
+			return "开战时攻/血各 +⌊当前%s/2⌋（不扣金）" % STAT_ICON_GOLD
 		EffectAction.Type.PERMANENT_DECK_STAT:
 			var pstat: String = String(action.stat_name)
 			if pstat == "attack":
