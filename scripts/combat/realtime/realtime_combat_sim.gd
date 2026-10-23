@@ -486,10 +486,14 @@ func _begin_next_actor_turn() -> void:
 func _end_current_actor_turn() -> void:
 	if not _actor_turn_active:
 		return
+	var ending := _current_actor
 	_actor_turn_active = false
 	_current_actor = null
 	_actor_has_attacked = false
 	_actor_steps_left = 0
+	if ending != null and ending.is_alive() and ending.state == RtUnit.State.ATTACKING:
+		ending.state = RtUnit.State.MOVING
+		ending.attack_timer = 0.0
 	_queue_cursor += 1
 	_completed_actor_turns += 1
 	current_actor_changed.emit(null)
@@ -525,19 +529,9 @@ func _advance_current_actor() -> void:
 		can_boss_teleport_fn,
 	)
 
-	if (
-		decision.fire
-		and not rt.is_stepping()
-		and rt.is_alive()
-		and rt.target != null
-		and rt.target.is_alive()
-	):
-		_fire(rt)
-		if _consume_turn_refresh_armed(rt):
+	if decision.fire:
+		if _try_complete_current_actor_attack():
 			return
-		_actor_has_attacked = true
-		_end_current_actor_turn()
-		return
 
 	if decision.summon:
 		rt.state = RtUnit.State.SUMMONING
@@ -573,6 +567,37 @@ func _advance_current_actor() -> void:
 		return
 
 	_end_current_actor_turn()
+
+
+## 观战时停（技能卡 / 出手 tween）会 hold 固定步；前摇计时仍须推进，避免弩手等远程卡在蓄力姿。
+func advance_attack_windup_under_hold(dt: float) -> void:
+	if dt <= 0.0 or not presentation_hold or not _actor_turn_active or _actor_has_attacked:
+		return
+	var rt := _current_actor
+	if rt == null or not rt.is_alive() or rt.is_stepping():
+		return
+	if rt.state != RtUnit.State.ATTACKING:
+		return
+	if rt.attack_timer > RtUnitBrain.TIME_EPSILON:
+		rt.attack_timer -= dt
+	if rt.attack_timer <= RtUnitBrain.TIME_EPSILON:
+		_try_complete_current_actor_attack()
+
+
+func _try_complete_current_actor_attack() -> bool:
+	var rt := _current_actor
+	if _actor_has_attacked or rt == null:
+		return false
+	if rt.is_stepping() or not rt.is_alive():
+		return false
+	if rt.target == null or not rt.target.is_alive():
+		return false
+	_fire(rt)
+	if _consume_turn_refresh_armed(rt):
+		return true
+	_actor_has_attacked = true
+	_end_current_actor_turn()
+	return true
 
 
 func _fire(rt: RtUnit) -> void:

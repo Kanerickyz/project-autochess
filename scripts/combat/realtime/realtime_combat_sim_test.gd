@@ -49,6 +49,7 @@ static func run_all() -> bool:
 	ok = _check("ranged_attack_reach_clamped_to_2", _test_ranged_attack_reach_clamped_to_2()) and ok
 	ok = _check("acquire_prefers_lane_on_chebyshev_tie", _test_acquire_prefers_lane_on_chebyshev_tie()) and ok
 	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
+	ok = _check("windup_advances_under_presentation_hold", _test_windup_advances_under_presentation_hold()) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -1704,4 +1705,44 @@ static func _test_boss_visual_centers_in_footprint() -> bool:
 	if boss.position.distance_to(anchor_center) < 0.25:
 		push_error("visual_center: still at anchor cell center %s" % boss.position)
 		return false
+	return true
+
+
+## 观战时停 hold 固定步时，当前行动者攻击前摇仍应走完并出手（弩手等远程蓄力）。
+static func _test_windup_advances_under_presentation_hold() -> bool:
+	var bow_data := load("res://resources/units/realtime/crossbow.tres") as UnitData
+	if bow_data == null:
+		push_error("windup hold: crossbow data missing")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 880)
+	var bow := sim.add_unit(
+		UnitInstance.from_unit_data(bow_data, Vector2i(9, 20), UnitInstance.Team.PLAYER),
+		Vector2(9.5, 20.5),
+	)
+	var foe := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 500, {"id": "foe", "steps_per_turn": 0, "attack_reach": 1.0}),
+		Vector2(9.5, 18.5),
+	)
+	sim.begin_combat()
+	var found_windup := false
+	for _i in 500:
+		if sim.get_current_actor() == bow:
+			if bow.state == RtUnit.State.ATTACKING and bow.attack_timer > 0.02:
+				found_windup = true
+				break
+		sim.advance_fixed_step()
+	if not found_windup:
+		push_error("windup hold: crossbow never entered attack windup")
+		return false
+	var atk_before := bow.last_attack_time
+	sim.hold_for_presentation()
+	var guard := 0
+	while bow.attack_timer > RtUnitBrain.TIME_EPSILON and guard < 80:
+		sim.advance_attack_windup_under_hold(0.05)
+		guard += 1
+	if bow.last_attack_time == atk_before:
+		push_error("windup hold: expected ranged fire while presentation held")
+		return false
+	sim.release_presentation()
 	return true

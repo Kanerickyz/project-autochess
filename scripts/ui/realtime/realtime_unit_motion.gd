@@ -274,7 +274,17 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
 		## 出手后 state 仍停在 ATTACKING（计时器 ≤ 0），只把计时中的前摇视为蓄力。
 		var was_winding := tracked.winding
-		var winding := rt.state == RtUnit.State.ATTACKING and rt.target != null and rt.attack_timer > 0.0
+		var winding := (
+			rt.state == RtUnit.State.ATTACKING
+			and rt.target != null
+			and rt.attack_timer > 0.0
+			and (current_actor == null or current_actor == rt)
+		)
+		if was_winding and not winding and current_actor != rt:
+			_soft_home(tracked.pose)
+			_soft_home_partner(tracked)
+			tracked.winding = false
+			was_winding = false
 		if winding and not was_winding:
 			_play_windup(rt, tracked)
 		var did_strike := rt.last_attack_time != tracked.last_attack

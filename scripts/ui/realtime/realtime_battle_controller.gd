@@ -2713,6 +2713,9 @@ func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
 		return
+	var scaled_dt := delta * time_scale
+	if _sim.presentation_hold:
+		_sim.advance_attack_windup_under_hold(scaled_dt)
 	if _timestop_queue.is_blocking():
 		_sim.hold_for_presentation()
 		var done := _timestop_queue.tick(delta, time_scale)
