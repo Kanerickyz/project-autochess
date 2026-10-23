@@ -80,9 +80,11 @@
 [resource]
 script = ExtResource("1_cat")
 archetype_by_unit_id = {
+"aftershock": &"aftershock",
 "apothecary": &"apothecary",
 "arcane": &"arcane",
 "archer": &"archer",
+"blade_mender": &"blade_mender",
 "banner": &"banner",
 "barbarian": &"axe",
 "berserker": &"berserker",
@@ -94,6 +96,7 @@ archetype_by_unit_id = {
 "crossbow": &"crossbow",
 "dirge_horn": &"dirge_horn",
 "devour": &"devour",
+"edge_hex": &"edge_hex",
 "echo_spear": &"echo_spear",
 "fused_enchant": &"fused_enchant",
 "giant_knight": &"giant_knight",
@@ -112,6 +115,7 @@ archetype_by_unit_id = {
 "relic_aegis": &"relic_aegis",
 "rider": &"rider",
 "rune_plate": &"rune_plate",
+"shield_boon": &"shield_boon",
 "shinobi": &"shinobi",
 "skeleton": &"skeleton",
 "slime_split": &"slime",
@@ -129,9 +133,11 @@ archetype_by_unit_id = {
 }
 default_archetype = &"spear"
 player_textures = {
+&"aftershock": ExtResource("b_character_dev"),
 &"apothecary": ExtResource("b_apothecary"),
 &"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
+&"blade_mender": ExtResource("b_character_dev"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
 &"berserker": ExtResource("b_berserker"),
@@ -142,6 +148,7 @@ player_textures = {
 &"captain": ExtResource("b_captain"),
 &"crossbow": ExtResource("b_crossbow"),
 &"devour": ExtResource("b_character_dev"),
+&"edge_hex": ExtResource("b_character_dev"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
 &"echo_spear": ExtResource("b_echo_spear"),
 &"fused_enchant": ExtResource("b_fused_enchant"),
@@ -160,6 +167,7 @@ player_textures = {
 &"rider": ExtResource("b_rider"),
 &"rune_plate": ExtResource("b_rune_plate"),
 &"shield": ExtResource("b_shield"),
+&"shield_boon": ExtResource("b_character_dev"),
 &"shinobi": ExtResource("b_character_dev"),
 &"skeleton": ExtResource("b_skeleton"),
 &"slime": ExtResource("b_slime"),
@@ -172,9 +180,11 @@ player_textures = {
 &"wardrum": ExtResource("b_wardrum")
 }
 enemy_textures = {
+&"aftershock": ExtResource("r_character_dev"),
 &"apothecary": ExtResource("r_apothecary"),
 &"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),
+&"blade_mender": ExtResource("r_character_dev"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
 &"berserker": ExtResource("r_berserker"),
@@ -185,6 +195,7 @@ enemy_textures = {
 &"captain": ExtResource("r_captain"),
 &"crossbow": ExtResource("r_crossbow"),
 &"devour": ExtResource("r_character_dev"),
+&"edge_hex": ExtResource("r_character_dev"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
 &"echo_spear": ExtResource("r_echo_spear"),
 &"fused_enchant": ExtResource("r_fused_enchant"),
@@ -203,6 +214,7 @@ enemy_textures = {
 &"rider": ExtResource("r_rider"),
 &"rune_plate": ExtResource("r_rune_plate"),
 &"shield": ExtResource("r_shield"),
+&"shield_boon": ExtResource("r_character_dev"),
 &"shinobi": ExtResource("r_character_dev"),
 &"skeleton": ExtResource("r_skeleton"),
 &"slime": ExtResource("r_slime"),

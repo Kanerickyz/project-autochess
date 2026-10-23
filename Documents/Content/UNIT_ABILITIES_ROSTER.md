@@ -4,7 +4,7 @@
 > 功能规则见 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md)；友方角色见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)。  
 > **本篇写**：技能内容池——名称、触发、效果草案、相对强度。  
 > **本篇不写**：定点数 / 百分比；玩家可见流派标签。挂载（**1 技能 ↔ 1 角色**）见 [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6。  
-> **【资源】** 本篇技能条目均有 ability 资源；**三十二人** 1:1 挂载已绑（见角色库 §6）。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
+> **【资源】** 本篇技能条目均有 ability 资源；**三十七人** 1:1 挂载已绑（见角色库 §6）。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
 
 
 ## 1. 范围与共识
@@ -55,6 +55,10 @@
 | `hurt_gain_max_hp` | 浴血凝脉 | 挨打 · 高频 | 否 | 自己受伤时，**恢复 4** 生命（三合一后 **8**；`merge_value_mult=2`；不改生命上限；受击疗≤本次伤；本场技能受疗预算 100） | **中庸** | 血僧 | 生命·成长 |
 | `hurt_heal_self_small` | 痛彻回春 | 挨打 · 高频 | 否 | 自己受伤时，自身恢复 **4** 当前生命 | **偏弱～中庸** | 愈修 | 生命·自愈 |
 | `kill_heal_self_mid` | 饮命回春 | 出手 · 条件稀有 | 否 | 自己击杀时，自身恢复 **8** 当前生命 | **中庸** | 命卫 | 生命·收割 |
+| `kill_heal_random_ally_2` | 收刀济友 | 出手 · 条件稀有 | 否* | 自己击杀时，**随机一名友方**恢复 **2** 当前生命（三合一后 **6**；`merge_value_mult=3`；含自己） | **中庸** | 疗刃 | 收割·输血；`OnKill` + `RANDOM_ALLY` |
+| `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`） | **偏弱** | 余震 | 收割·点残；`OnKill` + `RANDOM_ENEMY` |
+| `combat_start_buff_random_ally_atk_2` | 咒刃点锋 | 开场 · 一场一次 | 否* | 开战时，**随机一名友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`；含自己） | **偏弱～中庸** | 咒刃 | 开场·惠攻；`OnCombatStart` |
+| `combat_start_buff_random_ally_hp_2` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**随机一名友方**本场临时生命上限与当前各 **+2**（三合一后 **+6**；`merge_value_mult=3`；含自己） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart` |
 | `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | 掘墓 | 见 §4 |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时**小幅**提高攻击 | **中庸** | 鼓手 | 节奏；附近=1 格；非全场回合开始 |
 | `turn_start_nearby_hp_small` | 固脉一剂 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时生命上限与当前各 **+2**（三合一后 **+8**；`merge_value_mult=4`） | **中庸** | 药师 | 医疗·加厚；附近=持有者周围 1 格 |
