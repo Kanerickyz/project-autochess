@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="PartyBarkCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/party_bark_catalog.gd" id="1_cat"]
+[ext_resource type="Script" path="res://scripts/data/party_bark_line.gd" id="2_line_script"]
+[ext_resource type="Resource" path="res://resources/barks/soulcaller_echo_spear.tres" id="3_line"]
+
+[resource]
+script = ExtResource("1_cat")
+lines = Array[ExtResource("2_line_script")]([ExtResource("3_line")])

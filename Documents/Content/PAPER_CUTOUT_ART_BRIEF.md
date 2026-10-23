@@ -249,6 +249,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 |----|------|
 | 形态 | 一对倒角八边形纸片：米白纸边 + 粗炭黑墨线 + 平涂底色；左攻击、右生命 |
 | 资源 | `assets/sprites/paper_cutout/ui/stat_{attack,hp}.png` |
+| 对话气泡 | `assets/sprites/paper_cutout/ui/speech_bubbles/speech_bubble_{medium,wide,compact}.png`（源表 `art_source/paper_cutout/ui/speech_bubbles_sheet.jpg`；本版招募台词默认 medium） |
 | 数字 | 运行时绘制；位数过多时缩字号 |
 | 尺寸 | 只随格子尺寸变化，所有兵种同一尺寸 |
 | 位置 | 贴图脚下居中；贴边时内收 |

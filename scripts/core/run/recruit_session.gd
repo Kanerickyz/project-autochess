@@ -32,6 +32,8 @@ var _snapshot_locked: Array[bool] = []
 ## 跨场招募保留：上一场结束时仍锁定的候选人（按槽）。
 var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
+## 本 Run 已播过的队伍羁绊台词 id；招募重置不清除。
+var played_party_bark_ids: PackedStringArray = PackedStringArray()
 
 
 func configure(
@@ -71,6 +73,11 @@ func begin(p_progress_ratio: float = 0.0, p_map_floor: int = 0) -> void:
 func clear_persisted_locks() -> void:
 	_persisted_candidates.clear()
 	_persisted_locked.clear()
+
+
+## 新 Run：清空队伍台词已播标记（与进门快照/重置无关）。
+func clear_party_bark_flags() -> void:
+	played_party_bark_ids = PackedStringArray()
 
 
 func get_candidates() -> Array[UnitData]:

@@ -4,6 +4,7 @@ extends Resource
 
 @export var id: String = ""
 @export var display_name: String = ""
+@export var icon: Texture2D
 @export_range(0, 99, 1) var cost: int = 1
 @export var bonus_attack: int = 0
 @export var bonus_max_hp: int = 0
@@ -13,6 +14,10 @@ func get_display_name() -> String:
 	if not display_name.is_empty():
 		return display_name
 	return id if not id.is_empty() else "消耗品"
+
+
+func get_icon() -> Texture2D:
+	return icon
 
 
 func get_effect_summary() -> String:
