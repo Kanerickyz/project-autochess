@@ -37,6 +37,7 @@ static func run_all() -> bool:
 	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
 	ok = _check("boss_summon_lifetime_total_cap", _test_boss_summon_lifetime_total_cap()) and ok
+	ok = _check("boss_summon_zero_caps_uncapped", _test_boss_summon_zero_caps_uncapped()) and ok
 	ok = _check("boss_summon_respects_cooldown", _test_boss_summon_respects_cooldown()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
 	ok = _check("boss_teleport_to_empty_cell", _test_boss_teleport_to_empty_cell()) and ok
@@ -1228,6 +1229,59 @@ static func _test_boss_summon_lifetime_total_cap() -> bool:
 		return false
 	if boss.boss_summons_spawned_total > 3:
 		push_error("summon_total: spawned %d (max 3)" % boss.boss_summons_spawned_total)
+		return false
+	return true
+
+
+## summon_max_alive/total = 0：无数量硬上限；小兵死后可补员且可超过原「3」档。
+static func _test_boss_summon_zero_caps_uncapped() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 56)
+	sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100000, {
+			"sight_range": 0.0, "attack_reach": 0.0, "id": "far_ally",
+		}),
+		Vector2(16.5, 30.5),
+	)
+	var boss := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 80, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0,
+			"attack_windup": 0.0, "sight_range": 40.0, "id": "boss_uncap",
+			"is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
+			"summon_unit": make_summon_body(), "summon_max_alive": 0,
+			"summon_max_total": 0, "summon_per_action": 1, "summon_cooldown_actions": 0,
+		}),
+		Vector2(4.5, 2.5),
+	)
+	if boss == null:
+		push_error("summon_uncap: boss null")
+		return false
+	sim.begin_combat()
+	var guard := 0
+	while guard < 800 and boss.boss_summons_spawned_total < 4:
+		sim.advance_fixed_step()
+		guard += 1
+	if boss.boss_summons_spawned_total < 4:
+		push_error(
+			"summon_uncap: expected >=4 spawns without cap, got %d"
+			% boss.boss_summons_spawned_total
+		)
+		return false
+	for u in sim.get_units():
+		var rt := u as RtUnit
+		if rt == null or not rt.is_alive() or rt.unit == null:
+			continue
+		if rt.unit.is_combat_summon:
+			rt.unit.current_hp = 0
+			rt.state = RtUnit.State.DEAD
+	var before_total := boss.boss_summons_spawned_total
+	for _i in 400:
+		sim.advance_fixed_step()
+	if boss.boss_summons_spawned_total <= before_total:
+		push_error(
+			"summon_uncap: expected refill after deaths (total %d → %d)"
+			% [before_total, boss.boss_summons_spawned_total]
+		)
 		return false
 	return true
 
