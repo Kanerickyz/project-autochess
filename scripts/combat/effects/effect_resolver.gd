@@ -330,6 +330,10 @@ func _resolve_targets(
 				result.append(weakest)
 		EffectSpec.TargetSelector.ORTHOGONAL_LEFT_RIGHT_ALLIES:
 			result.append_array(_pick_orthogonal_left_right_allies(owner, spec.exclude_owner))
+		EffectSpec.TargetSelector.RANDOM_ANY_UNIT:
+			var any_unit := _pick_random_any_unit(owner, spec.exclude_owner)
+			if any_unit != null:
+				result.append(any_unit)
 	return result
 
 
@@ -376,6 +380,28 @@ func _pick_random_enemy(owner: UnitInstance) -> UnitInstance:
 		return null
 	var enemy_team := UnitInstance.Team.ENEMY if owner.team == UnitInstance.Team.PLAYER else UnitInstance.Team.PLAYER
 	var candidates := _grid.get_units_by_team(enemy_team, true)
+	if candidates.is_empty():
+		return null
+	if _rng != null:
+		return candidates[_rng.randi_range(0, candidates.size() - 1)]
+	return candidates[0]
+
+
+## 敌我双方存活单位中随机一名；可排除持有者（死亡触发时持有者通常已不在存活池）。
+func _pick_random_any_unit(owner: UnitInstance, exclude_owner: bool) -> UnitInstance:
+	if _grid == null:
+		return null
+	var candidates: Array[UnitInstance] = []
+	for unit in _grid.get_alive_units():
+		if unit == null or not unit.is_alive():
+			continue
+		if (
+			exclude_owner
+			and owner != null
+			and unit.instance_id == owner.instance_id
+		):
+			continue
+		candidates.append(unit)
 	if candidates.is_empty():
 		return null
 	if _rng != null:
