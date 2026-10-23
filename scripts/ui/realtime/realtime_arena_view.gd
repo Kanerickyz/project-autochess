@@ -91,6 +91,9 @@ const DRAG_FOLLOW_RATE := 18.0
 const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
 const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
+## 三合一合成演出：残影飞入 → 合成体弹跳闪白 + 星标。
+const MERGE_FLY_SEC := 0.28
+const MERGE_POP_SEC := 0.42
 
 var board_size: Vector2i = Vector2i(5, 8)
 ## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
@@ -207,6 +210,18 @@ var _press_pos := Vector2.ZERO
 var _press_ms: int = -1
 var _press_info: Dictionary = {}
 var _press_tap: Callable
+## 三合一演出态（招募上区）；由 play_triple_merge_animation 驱动。
+var _merge_active: bool = false
+var _merge_tween: Tween
+var _merge_survivor_seat: int = -1
+var _merge_unit_id: String = ""
+var _merge_level: int = 1
+## Array[Dictionary]：{from: Vector2i, to: Vector2i, t: float}
+var _merge_ghosts: Array = []
+var _merge_survivor_scale: float = 1.0
+var _merge_survivor_flash: float = 0.0
+var _merge_ring: float = 0.0
+var _merge_label_alpha: float = 0.0
 var _info_shown := false
 ## 当前信息卡对应的单位（用于角色库把该剪影画到最上层）。
 var _shown_info: Dictionary = {}
@@ -396,6 +411,92 @@ func clear_party_bark() -> void:
 		_party_speech_bubble.dismiss()
 
 
+func is_merge_animating() -> bool:
+	return _merge_active
+
+
+## 三合一反馈：原料残影飞向合成座 → 合成体弹跳闪白并弹出星标。
+## survivor_seat / source_seats 为 PrepareSlotBoard 下标；座位几何取自 recruit_team_slots。
+func play_triple_merge_animation(
+	survivor_seat: int,
+	source_seats: Array,
+	unit_id: String,
+	new_level: int,
+) -> void:
+	clear_merge_fx()
+	if recruit_team_slots == null or recruit_team_slots.cells.is_empty():
+		return
+	if survivor_seat < 0 or survivor_seat >= recruit_team_slots.cells.size():
+		return
+	_merge_active = true
+	_merge_survivor_seat = survivor_seat
+	_merge_unit_id = unit_id
+	_merge_level = clampi(new_level, 1, 3)
+	_merge_survivor_scale = 0.28
+	_merge_survivor_flash = 0.0
+	_merge_ring = 0.0
+	_merge_label_alpha = 0.0
+	_merge_ghosts.clear()
+	var dest: Vector2i = recruit_team_slots.cells[survivor_seat]
+	for seat_v in source_seats:
+		var seat := int(seat_v)
+		if seat < 0 or seat == survivor_seat:
+			continue
+		if seat >= recruit_team_slots.cells.size():
+			continue
+		_merge_ghosts.append({
+			"from": recruit_team_slots.cells[seat],
+			"to": dest,
+			"t": 0.0,
+		})
+	_merge_tween = create_tween()
+	_merge_tween.set_parallel(true)
+	for i in _merge_ghosts.size():
+		var idx := i
+		_merge_tween.tween_method(
+			func(v: float) -> void:
+				if idx >= 0 and idx < _merge_ghosts.size():
+					_merge_ghosts[idx]["t"] = v
+				queue_redraw(),
+			0.0,
+			1.0,
+			MERGE_FLY_SEC,
+		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	_merge_tween.set_parallel(false)
+	_merge_tween.tween_property(self, "_merge_survivor_scale", 1.32, MERGE_POP_SEC * 0.45) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_merge_tween.parallel().tween_property(self, "_merge_survivor_flash", 1.0, MERGE_POP_SEC * 0.28) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_merge_tween.parallel().tween_property(self, "_merge_ring", 1.0, MERGE_POP_SEC * 0.55) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_merge_tween.parallel().tween_property(self, "_merge_label_alpha", 1.0, MERGE_POP_SEC * 0.25)
+	_merge_tween.tween_property(self, "_merge_survivor_scale", 1.0, MERGE_POP_SEC * 0.55) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_merge_tween.parallel().tween_property(self, "_merge_survivor_flash", 0.0, MERGE_POP_SEC * 0.4)
+	_merge_tween.parallel().tween_property(self, "_merge_label_alpha", 0.0, MERGE_POP_SEC * 0.45) \
+		.set_delay(MERGE_POP_SEC * 0.2)
+	_merge_tween.parallel().tween_property(self, "_merge_ring", 0.0, MERGE_POP_SEC * 0.35) \
+		.set_delay(MERGE_POP_SEC * 0.2)
+	await _merge_tween.finished
+	clear_merge_fx()
+
+
+func clear_merge_fx() -> void:
+	if _merge_tween != null and _merge_tween.is_valid():
+		_merge_tween.kill()
+	_merge_tween = null
+	_merge_active = false
+	_merge_survivor_seat = -1
+	_merge_unit_id = ""
+	_merge_level = 1
+	_merge_ghosts.clear()
+	_merge_survivor_scale = 1.0
+	_merge_survivor_flash = 0.0
+	_merge_ring = 0.0
+	_merge_label_alpha = 0.0
+	queue_redraw()
+
+
 func _ensure_party_speech_bubble() -> PartySpeechBubble:
 	if _party_speech_bubble != null and is_instance_valid(_party_speech_bubble):
 		return _party_speech_bubble
@@ -496,6 +597,7 @@ func clear_fx() -> void:
 	_fx.clear()
 	_feedback.clear()
 	_motion.clear()
+	clear_merge_fx()
 	_cancel_press()
 
 
@@ -2597,9 +2699,17 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			entry.entry_id == _recruit_team_drag_id or entry.entry_id == _map_shop_team_drag_id
 		)
 		var alpha := DRAG_SOURCE_ALPHA if dragging else 0.9
+		var merge_pose: RealtimeUnitMotion.Pose = null
+		var idle_seed := _idle_seed_for(entry.get_unit_id(), i)
+		if _merge_active and i == _merge_survivor_seat:
+			merge_pose = RealtimeUnitMotion.Pose.new()
+			merge_pose.scale = Vector2.ONE * _merge_survivor_scale
+			merge_pose.flash = _merge_survivor_flash
+			merge_pose.shadow_mul = 1.0 + 0.55 * _merge_survivor_flash
+			idle_seed = -1
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
+			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
 		)
 		var atk := 0
 		var hp := 0
@@ -2609,6 +2719,8 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
+	if _merge_active:
+		_draw_merge_fx(px, off)
 
 
 func _draw_catalog_units(px: float) -> void:
@@ -2676,6 +2788,60 @@ func _draw_catalog_units(px: float) -> void:
 			atk = (stats.attack if stats != null else 0) * preview_mult
 			hp = (stats.max_hp if stats != null else 0) * preview_mult
 		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px, armor)
+
+
+func _draw_merge_fx(px: float, off: Vector2) -> void:
+	if not _merge_active:
+		return
+	## 残影飞向合成座。
+	for ghost in _merge_ghosts:
+		var t := clampf(float(ghost.get("t", 0.0)), 0.0, 1.0)
+		var from_c: Vector2i = ghost.get("from", NO_CELL)
+		var to_c: Vector2i = ghost.get("to", NO_CELL)
+		if from_c == NO_CELL or to_c == NO_CELL:
+			continue
+		var from_tile := Vector2(from_c) + Vector2(0.5, 0.5)
+		var to_tile := Vector2(to_c) + Vector2(0.5, 0.5)
+		var tile := from_tile.lerp(to_tile, t)
+		var ghost_alpha := (1.0 - t) * 0.72
+		if ghost_alpha <= 0.02:
+			continue
+		_draw_body(
+			tile, 0.7, 0.0, 0.0, PLAYER_COLOR, ghost_alpha, "", px, true, off,
+			true, _merge_unit_id, null, Vector2.ZERO, 1.0, -1,
+		)
+	if _merge_survivor_seat < 0 or _merge_survivor_seat >= recruit_team_slots.cells.size():
+		return
+	var dest_cell: Vector2i = recruit_team_slots.cells[_merge_survivor_seat]
+	var dest_center := tile_to_local(Vector2(dest_cell) + Vector2(0.5, 0.5)) + off
+	## 冲击环。
+	if _merge_ring > 0.02:
+		var ring_r := px * (0.35 + _merge_ring * 0.95)
+		var ring_a := (1.0 - _merge_ring) * 0.85
+		draw_arc(
+			dest_center, ring_r, 0.0, TAU, 36,
+			Color(1.0, 0.92, 0.45, ring_a), maxf(2.0, px * 0.08), true
+		)
+		draw_arc(
+			dest_center, ring_r * 0.72, 0.0, TAU, 28,
+			Color(1.0, 0.98, 0.8, ring_a * 0.55), maxf(1.5, px * 0.05), true
+		)
+	## 星级标。
+	if _merge_label_alpha > 0.02 and _merge_level >= 2:
+		var font := get_theme_default_font()
+		var label := "%d★" % _merge_level
+		var font_size := clampi(int(px * 0.55), 16, 36)
+		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var lift := px * (0.55 + 0.2 * _merge_ring)
+		var pos := dest_center + Vector2(-text_size.x * 0.5, -lift)
+		draw_string(
+			font, pos + Vector2(1.5, 1.5), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			Color(0.1, 0.08, 0.05, _merge_label_alpha * 0.55)
+		)
+		draw_string(
+			font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			Color(1.0, 0.92, 0.35, _merge_label_alpha)
+		)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:

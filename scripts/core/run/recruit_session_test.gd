@@ -413,9 +413,26 @@ static func _test_auto_merge_three_same_level() -> bool:
 	var base_hp := ARCHER.stats.max_hp
 	var expected_atk := (base_atk + 1) + (base_atk + 3) + base_atk
 	var expected_hp := (base_hp + 2) + (base_hp + 4) + base_hp
+	var merge_signal_count := 0
+	var merge_level_seen := 0
+	deck.triple_merged.connect(func(product: DeckEntry, _seats: Array) -> void:
+		merge_signal_count += 1
+		if product != null:
+			merge_level_seen = product.level
+	)
 	var c := deck.add_entry(ARCHER)
 	if c == null:
 		push_error("RecruitSessionTest: third archer should add then merge")
+		return false
+	if merge_signal_count != 1:
+		push_error(
+			"RecruitSessionTest: triple_merged should fire once, got %d" % merge_signal_count
+		)
+		return false
+	if merge_level_seen != 2:
+		push_error(
+			"RecruitSessionTest: triple_merged product level should be 2, got %d" % merge_level_seen
+		)
 		return false
 	if deck.size() != 1:
 		push_error("RecruitSessionTest: 3 same id/level should merge to 1, size=%d" % deck.size())
