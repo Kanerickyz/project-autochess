@@ -22,6 +22,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_sample_idle()
+	_test_shake_scales_with_damage()
 	await _test_windup_cancel_soft_home()
 	await _test_strike_action_tween_lifecycle()
 	await _test_long_press_info()
@@ -34,6 +35,25 @@ func _run() -> void:
 	if _failures == 0:
 		print("RealtimeUnitMotionTest: all passed")
 	quit(0 if _failures == 0 else 1)
+
+
+func _test_shake_scales_with_damage() -> void:
+	var low := RealtimeUnitMotion.shake_px_for_damage(1)
+	var mid := RealtimeUnitMotion.shake_px_for_damage(4)
+	var high := RealtimeUnitMotion.shake_px_for_damage(20)
+	var zero := RealtimeUnitMotion.shake_px_for_damage(0)
+	_expect(low >= RealtimeUnitMotion.SHAKE_MIN_PX - 0.001, "shake floor for 1 dmg")
+	_expect(mid > low + 0.5, "higher damage shakes harder (1→4)")
+	_expect(high > mid + 0.5, "higher damage shakes harder (4→20)")
+	_expect(high <= RealtimeUnitMotion.SHAKE_MAX_PX + 0.001, "shake capped at max")
+	_expect(zero >= RealtimeUnitMotion.SHAKE_MIN_PX - 0.001, "zero damage still readable floor")
+	var motion := RealtimeUnitMotion.new()
+	root.add_child(motion)
+	motion._shake(mid)
+	_expect(is_equal_approx(motion.shake_strength, mid), "impulse sets shake_strength")
+	motion._shake(low)
+	_expect(is_equal_approx(motion.shake_strength, mid), "weaker impulse does not reduce active shake")
+	motion.queue_free()
 
 
 func _test_sample_idle() -> void:

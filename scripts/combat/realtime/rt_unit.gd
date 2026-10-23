@@ -23,6 +23,8 @@ var attack_timer: float = 0.0
 ## 表现层读取：最近一次出手 / 受击 / 落地时刻（sim.elapsed_seconds）
 var last_attack_time: float = NEVER
 var last_hit_time: float = NEVER
+## 最近一次实际扣血量（护甲减免后）；供震屏幅度等表现使用。
+var last_hit_amount: int = 0
 var spawn_time: float = 0.0
 ## 0 = 开战即参与行动队列；>0 表示至少等到该回合序号才可在队列中被选为当前行动者。
 var action_eligible_from_round: int = 0
