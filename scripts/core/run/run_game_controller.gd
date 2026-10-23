@@ -31,6 +31,7 @@ var _suppress_map_show: bool = false
 var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
 var _pending_end_victory: bool = false
 var _pending_end_snapshot: RunStatsSnapshot
+var _pending_map_hint: String = ""
 
 
 func _ready() -> void:
@@ -93,7 +94,9 @@ func _show_map() -> void:
 		_battle.exit_map_shop()
 		_battle.exit_enchant()
 		_battle.set_world_backdrop_mode(true)
-	_map_screen.show_map(run_controller)
+	var hint := _pending_map_hint
+	_pending_map_hint = ""
+	_map_screen.show_map(run_controller, hint)
 
 
 func _hide_encounter_ui() -> void:
@@ -146,6 +149,7 @@ func _on_map_node_selected(node_id: int) -> void:
 
 
 func _on_placeholder_continue() -> void:
+	_grant_pending_node_floor_gold()
 	_placeholder_screen.hide_placeholder()
 	run_controller.complete_encounter()
 
@@ -221,6 +225,22 @@ func _on_enchant_finished(_did_fuse: bool) -> void:
 	run_controller.complete_encounter()
 
 
+## 事件 / 商店离开：与战斗胜场同公式（第 n 层 → n+3 金）。
+func _grant_pending_node_floor_gold() -> int:
+	if run_controller == null or run_economy == null:
+		return 0
+	var node_type := run_controller.get_pending_node_type()
+	if not MapNodeType.grants_node_completion_gold(node_type):
+		return 0
+	var node := run_controller.get_pending_node()
+	if node == null:
+		return 0
+	var amount := run_economy.grant_floor_gold(node.get_floor())
+	if amount > 0:
+		_pending_map_hint = "节点完成  +%d 金" % amount
+	return amount
+
+
 ## 地图商店：Arena 主路径（上队伍 / 下货架），与招募同屏半场；结束回地图。
 func _open_map_shop() -> void:
 	if _map_shop_busy:
@@ -241,6 +261,7 @@ func _open_map_shop() -> void:
 
 
 func _on_map_shop_finished() -> void:
+	_grant_pending_node_floor_gold()
 	_map_shop_service.close_shop()
 	_map_shop_busy = false
 	run_controller.complete_encounter()

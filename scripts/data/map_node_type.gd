@@ -20,6 +20,11 @@ static func is_combat(type: Type) -> bool:
 	return type == Type.COMBAT or type == Type.ELITE or type == Type.BOSS
 
 
+## 事件 / 商店（含 ? 解析结果）离开节点时发层结算金；战斗在胜场结算发；附魔等另案。
+static func grants_node_completion_gold(type: Type) -> bool:
+	return type == Type.EVENT or type == Type.SHOP
+
+
 static func display_name(type: Type) -> String:
 	match type:
 		Type.START:

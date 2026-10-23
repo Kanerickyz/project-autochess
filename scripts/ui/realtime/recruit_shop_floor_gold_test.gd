@@ -7,6 +7,7 @@ static func run_all() -> bool:
 	var ok := true
 	ok = _check("floor_gold_amount", _test_floor_gold_amount()) and ok
 	ok = _check("grant_floor_gold", _test_grant_floor_gold()) and ok
+	ok = _check("node_completion_gold_types", _test_node_completion_gold_types()) and ok
 	ok = _check("kill_gold_noop", _test_kill_gold_noop()) and ok
 	ok = _check("seat_cap_banner", _test_seat_cap_banner()) and ok
 	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
@@ -75,6 +76,20 @@ static func _test_floor_gold_amount() -> bool:
 	if RunEconomy.resolve_floor_gold_amount(0) != 4:
 		return false
 	if RunEconomy.resolve_floor_gold_amount(-2) != 0:
+		return false
+	return true
+
+
+static func _test_node_completion_gold_types() -> bool:
+	if not MapNodeType.grants_node_completion_gold(MapNodeType.Type.EVENT):
+		return false
+	if not MapNodeType.grants_node_completion_gold(MapNodeType.Type.SHOP):
+		return false
+	if MapNodeType.grants_node_completion_gold(MapNodeType.Type.COMBAT):
+		return false
+	if MapNodeType.grants_node_completion_gold(MapNodeType.Type.ENCHANT):
+		return false
+	if MapNodeType.grants_node_completion_gold(MapNodeType.Type.MYSTERY):
 		return false
 	return true
 
