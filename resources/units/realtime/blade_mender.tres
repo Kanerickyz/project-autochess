@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/kill_heal_random_ally_2.tres" id="3_ability"]
+[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="icon_tex"]
+
+[sub_resource type="Resource" id="UnitStats_blade_mender"]
+script = ExtResource("2_stats")
+max_hp = 2
+attack = 2
+steps_per_turn = 1
+crit_rate_percent = 0
+attack_interval = 1.25
+attack_windup = 0.5
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.4
+mass = 1.7
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "blade_mender"
+display_name = "疗刃"
+cost = 2
+tier = 1
+command_cost = 3
+stats = SubResource("UnitStats_blade_mender")
+ability = ExtResource("3_ability")
+icon = ExtResource("icon_tex")
