@@ -65,6 +65,31 @@ func _initialize() -> void:
 			ok = false
 			break
 
+	## 货架物品与上半场角色均可长按 inspect（同信息卡路径）。
+	if arena != null and not arena.map_shop_offers.is_empty():
+		var offer0: Dictionary = arena.map_shop_offers[0]
+		var offer_cell: Vector2i = offer0.get("cell", Vector2i(-1, -1))
+		if offer0.get("item") != null and offer_cell.x >= 0:
+			var offer_center := (
+				arena.tile_to_local(Vector2(offer_cell) + Vector2(0.5, 0.5))
+				+ Vector2(0.0, arena.ally_half_slide_y)
+			)
+			var offer_info := arena.inspect_at(offer_center)
+			if offer_info.is_empty() or not bool(offer_info.get("is_item", false)):
+				push_error("map shop offer should be inspectable as item")
+				ok = false
+		if arena.recruit_team_slots != null:
+			var seat0 := arena.recruit_team_slots.get_entry(0)
+			if seat0 != null:
+				var team_cell := arena.recruit_team_slots.get_cell(0)
+				var team_center := (
+					arena.tile_to_local(Vector2(team_cell) + Vector2(0.5, 0.5))
+					+ Vector2(0.0, arena.enemy_half_slide_y)
+				)
+				if arena.inspect_at(team_center).is_empty():
+					push_error("map shop team unit should be inspectable")
+					ok = false
+
 	var entry := deck.get_entries()[0]
 	svc._consumable_offers[0] = MapShopConfig._make_consumable("big_hp_potion", "大生命", 2, -1, 5)
 	battle.on_map_shop_changed()

@@ -144,6 +144,7 @@ func _init() -> void:
 
 
 ## info: {name, side_player, attack, hp, skills, texture?, tier?}
+## 物品：{is_item, kind_label, cost, armor?, skills, texture?} — 隐藏攻血标，侧栏写种类与价格。
 ## anchor: 单位贴图头顶（父节点本地坐标）；bounds: 可放置范围。
 ## slide_dir: 滑动切换水平方向（-1 左 / 0 首次弹出 / +1 右），小丑牌式倾斜用。
 func show_info(
@@ -204,18 +205,28 @@ func hide_info() -> void:
 
 func _apply_content(info: Dictionary) -> void:
 	var is_player := bool(info.get("side_player", true))
+	var is_item := bool(info.get("is_item", false))
 	_portrait.texture = info.get("texture") as Texture2D
 	_portrait.visible = _portrait.texture != null
 	_name_label.text = String(info.get("name", "未知"))
-	var tier := int(info.get("tier", 0))
-	var side := "我方" if is_player else "敌方"
-	_side_label.text = "%s · T%d" % [side, tier] if tier > 0 else side
-	_side_label.add_theme_color_override("font_color", PLAYER_ACCENT if is_player else ENEMY_ACCENT)
+	if is_item:
+		var kind := String(info.get("kind_label", "物品"))
+		var cost := int(info.get("cost", 0))
+		_side_label.text = "%s · %d金" % [kind, cost] if cost > 0 else kind
+		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT)
+	else:
+		var tier := int(info.get("tier", 0))
+		var side := "我方" if is_player else "敌方"
+		_side_label.text = "%s · T%d" % [side, tier] if tier > 0 else side
+		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT if is_player else ENEMY_ACCENT)
 	_style.border_color = INK
-	_attack_badge.value = int(info.get("attack", 0))
-	_hp_badge.value = int(info.get("hp", 0))
-	_attack_badge.queue_redraw()
-	_hp_badge.queue_redraw()
+	_attack_badge.visible = not is_item
+	_hp_badge.visible = not is_item
+	if not is_item:
+		_attack_badge.value = int(info.get("attack", 0))
+		_hp_badge.value = int(info.get("hp", 0))
+		_attack_badge.queue_redraw()
+		_hp_badge.queue_redraw()
 	var armor := int(info.get("armor", 0))
 	var armor_tex := UiStatIcons.armor_texture()
 	if _armor_badge != null:
@@ -224,7 +235,7 @@ func _apply_content(info: Dictionary) -> void:
 		_armor_badge.visible = armor > 0 and armor_tex != null
 		_armor_badge.queue_redraw()
 	_skills_label.clear()
-	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", ""))))
+	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), is_item))
 
 
 func _compute_position(anchor: Vector2, foot: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
@@ -323,9 +334,10 @@ func _kill_motion() -> void:
 
 
 ## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标。
-func _format_skills_bbcode(raw: String) -> String:
+## is_item：商店物品详情，空文案不套「无技能」单位兜底。
+func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 	if raw.is_empty() or raw == "无技能":
-		return "无技能：只会普通攻击。"
+		return "商店物品。" if is_item else "无技能：只会普通攻击。"
 	var lines: PackedStringArray = []
 	for line in raw.split("\n"):
 		var text := line.strip_edges()

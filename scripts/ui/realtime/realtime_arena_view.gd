@@ -161,6 +161,8 @@ var _drag_visual_half_width: float = 0.0
 var _drag_visual_half_height: float = 0.0
 var _drag_label: String = ""
 var _drag_unit_id: String = ""
+## 非单位拖影贴图（地图商店货架物品纸片）；有值时优先于 unit_id 查表。
+var _drag_texture: Texture2D = null
 ## 拖影 Pose：跟手时由 sample_drag_hold 驱动；落座用 Tween 弹性回正。
 var _drag_pose: RealtimeUnitMotion.Pose = RealtimeUnitMotion.Pose.new()
 var _drag_tween: Tween
@@ -707,7 +709,7 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 			if offer_i >= 0:
 				_map_shop_offer_press_index = offer_i
 				_map_shop_team_press_id = -1
-				_begin_press(mb.position, {}, Callable())
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(cell)
@@ -905,6 +907,7 @@ func _begin_enchant_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO)
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = entry.get_display_name()
 	_drag_unit_id = entry.get_unit_id()
+	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -1029,6 +1032,7 @@ func _clear_drag_visual() -> void:
 	_drag_settling = false
 	_drag_started_at = -1.0
 	_drag_velocity_tiles = Vector2.ZERO
+	_drag_texture = null
 	_drag_pose.offset = Vector2.ZERO
 	_drag_pose.scale = Vector2.ONE
 	_drag_pose.alpha = 1.0
@@ -1360,6 +1364,18 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	if map_shop_active:
+		if recruit_team_slots != null:
+			for i in recruit_team_slots.cells.size():
+				var team_entry := recruit_team_slots.get_entry(i)
+				if team_entry != null:
+					var team_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + enemy_off))
+		for oi in map_shop_offers.size():
+			var offer_info := _info_from_map_shop_offer_index(oi, ally_off)
+			if not offer_info.is_empty():
+				out.append(offer_info)
+		return out
 	if catalog_active:
 		for i in catalog_units.size():
 			var entry: Variant = catalog_units[i]
@@ -1499,6 +1515,60 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 	}
 
 
+## 地图商店货架物品：与角色同用 RealtimeUnitInfoCard，攻血标隐藏、侧栏写种类与价格。
+func _info_from_map_shop_offer_index(index: int, half_off: Vector2) -> Dictionary:
+	if index < 0 or index >= map_shop_offers.size():
+		return {}
+	var dict: Variant = map_shop_offers[index]
+	if not (dict is Dictionary):
+		return {}
+	var offer := dict as Dictionary
+	if offer.get("item") == null:
+		return {}
+	var cell: Vector2i = offer.get("cell", NO_CELL)
+	if cell == NO_CELL:
+		return {}
+	var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+	var kind: StringName = offer.get("kind", &"consumable")
+	var kind_label := "装备" if kind == &"equipment" else "消耗品"
+	var skills := ""
+	var armor := 0
+	if kind == &"equipment":
+		var eq := offer.get("item") as EquipmentData
+		if eq != null:
+			armor = eq.get_armor_block()
+			skills = (
+				"护甲：抵挡 %d 点伤害。\n挂在一名队伍成员上，跨遭遇保留；每角色最多一件。"
+				% armor
+			)
+	else:
+		var cons := offer.get("item") as MapShopConsumableData
+		if cons != null:
+			skills = (
+				"%s\n永久改变目标角色属性；拖到上半场角色使用，该槽清空。"
+				% cons.get_effect_summary()
+			)
+		else:
+			skills = String(offer.get("summary", ""))
+	if skills.is_empty():
+		skills = String(offer.get("summary", "商店物品"))
+	return {
+		"inspect_key": "map_shop_offer:%d" % index,
+		"center": center,
+		"name": String(offer.get("label", "物品")),
+		"side_player": true,
+		"tier": 0,
+		"is_item": true,
+		"kind_label": kind_label,
+		"cost": int(offer.get("cost", 0)),
+		"attack": 0,
+		"hp": 0,
+		"armor": armor,
+		"skills": skills,
+		"texture": offer.get("icon") as Texture2D,
+	}
+
+
 func _candidate_needs_replace(index: int) -> bool:
 	if index < 0 or index >= recruit_candidates.size():
 		return recruit_needs_replace
@@ -1530,6 +1600,7 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = unit.display_name if unit != null else String(info.get("label", ""))
 	_drag_unit_id = unit.id if unit != null else ""
+	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -1556,6 +1627,7 @@ func _begin_recruit_item_drag(index: int, from_local: Vector2 = Vector2.ZERO) ->
 	_drag_visual_half_height = 0.0
 	_drag_label = String(info.get("label", item.get_display_name()))
 	_drag_unit_id = ""
+	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -1643,6 +1715,7 @@ func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO)
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = entry.get_display_name()
 	_drag_unit_id = entry.get_unit_id()
+	_drag_texture = null
 	recruit_sell_preview_gold = DeckUpgradeService.get_sell_price(entry)
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
@@ -1755,6 +1828,7 @@ func _begin_map_shop_offer_drag(index: int, from_local: Vector2 = Vector2.ZERO) 
 	_drag_visual_half_height = 0.0
 	_drag_label = String(info.get("label", ""))
 	_drag_unit_id = ""
+	_drag_texture = info.get("icon") as Texture2D
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -1806,6 +1880,7 @@ func _begin_map_shop_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO
 	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
 	_drag_label = entry.get_display_name()
 	_drag_unit_id = entry.get_unit_id()
+	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -1844,6 +1919,7 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
 		_drag_label = String(dict.get("label", ""))
 		_drag_unit_id = String(dict.get("unit_id", ""))
+		_drag_texture = null
 		_hover_cell = tile_to_cell(local_to_tile(at_position))
 		_ensure_external_drag_visual(at_position)
 		return true
@@ -1855,6 +1931,7 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 	_drag_visual_half_height = float(dict.get("visual_half_height", 0.0))
 	_drag_label = String(dict.get("label", ""))
 	_drag_unit_id = String(dict.get("unit_id", ""))
+	_drag_texture = null
 	_hover_cell = tile_to_cell(local_to_tile(at_position))
 	_ensure_external_drag_visual(at_position)
 	return true
@@ -2236,8 +2313,19 @@ func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_of
 
 func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
-	var font := get_theme_default_font()
+	var indices: Array[int] = []
 	for i in map_shop_offers.size():
+		indices.append(i)
+	## 长按详情时把焦点货架纸片画到最后，抬起不被邻格挡住。
+	if _info_shown:
+		var focus_key := String(_shown_info.get("inspect_key", ""))
+		if focus_key.begins_with("map_shop_offer:"):
+			var focus_idx := int(focus_key.get_slice(":", 1))
+			var at := indices.find(focus_idx)
+			if at >= 0:
+				indices.remove_at(at)
+				indices.append(focus_idx)
+	for i in indices:
 		var info: Variant = map_shop_offers[i]
 		if not (info is Dictionary):
 			continue
@@ -2255,71 +2343,33 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 		draw_rect(cell_rect, border, false, 2.0)
 		if item == null:
 			continue
-		var label := String(dict.get("label", ""))
-		var summary := String(dict.get("summary", ""))
-		var font_size := clampi(int(px * 0.22), 8, 11)
 		var alpha := 0.4 if i == _map_shop_offer_drag_index else 1.0
 		var icon: Texture2D = dict.get("icon") as Texture2D
-		if icon != null:
-			var icon_h := px * 0.52
-			var tex_size := icon.get_size()
-			var icon_w := icon_h * tex_size.x / maxf(1.0, tex_size.y)
-			var icon_rect := Rect2(
-				cell_rect.position
-				+ Vector2((cell_rect.size.x - icon_w) * 0.5, cell_rect.size.y * 0.08),
-				Vector2(icon_w, icon_h),
-			)
-			draw_texture_rect(icon, icon_rect, false, Color(1, 1, 1, alpha))
-		var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-		var label_pos := cell_rect.position + Vector2(
-			(cell_rect.size.x - label_size.x) * 0.5,
-			cell_rect.size.y * (0.62 if icon != null else 0.32),
-		)
-		draw_string(
-			font,
-			label_pos,
+		var label := String(dict.get("label", ""))
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		## 与角色同路径：纸片剪影 + 接触阴影；详请走长按信息卡。
+		_draw_body(
+			center_tile,
+			0.55,
+			0.0,
+			0.0,
+			PLAYER_COLOR,
+			alpha,
 			label,
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			font_size,
-			Color(0.95, 1.0, 0.95, alpha),
+			px,
+			true,
+			off,
+			true,
+			"",
+			null,
+			Vector2.ZERO,
+			1.0,
+			_idle_seed_for("map_shop:%d" % i, i),
+			icon,
 		)
-		if not summary.is_empty():
-			var sum_size := font.get_string_size(summary, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-			var sum_pos := cell_rect.position + Vector2(
-				(cell_rect.size.x - sum_size.x) * 0.5,
-				cell_rect.size.y * (0.74 if icon != null else 0.58),
-			)
-			draw_string(
-				font,
-				sum_pos,
-				summary,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				font_size,
-				Color(0.85, 0.95, 1.0, alpha * 0.95),
-			)
 		var cost := int(dict.get("cost", 0))
 		var affordable := bool(dict.get("affordable", true))
-		## 价格标画在格内底部，避免下半场货架上方「X金」被半场/UI 裁切。
-		_draw_map_shop_cost_tag(cell_rect, cost, affordable, px, alpha)
-
-
-func _draw_map_shop_cost_tag(
-	cell_rect: Rect2, cost: int, affordable: bool, px: float, alpha: float
-) -> void:
-	var font := get_theme_default_font()
-	var text := "%d金" % cost
-	var font_size := clampi(int(px * 0.32), 9, 13)
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var pos := cell_rect.position + Vector2(
-		(cell_rect.size.x - text_size.x) * 0.5,
-		cell_rect.size.y * 0.82,
-	)
-	var color := (
-		Color(1.0, 0.9, 0.35, 0.95 * alpha) if affordable else Color(1.0, 0.35, 0.3, 0.95 * alpha)
-	)
-	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
 
 
 func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
@@ -2332,15 +2382,27 @@ func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
 		return
 	var ok := _find_recruit_team_entry_at(cell) >= 0
 	draw_rect(cell_rect, Color(0.35, 0.95, 0.65, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.3))
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.32), 9, 14)
-	var label := _drag_label if not _drag_label.is_empty() else "购买"
-	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var pos := cell_rect.position + Vector2(
-		(cell_rect.size.x - text_size.x) * 0.5,
-		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+	if _drag_visual_alive:
+		return
+	_draw_body(
+		Vector2(cell) + Vector2(0.5, 0.5),
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		0.45,
+		_drag_label,
+		px,
+		true,
+		Vector2.ZERO,
+		true,
+		_drag_unit_id,
+		null,
+		Vector2.ZERO,
+		1.0,
+		-1,
+		_drag_texture,
 	)
-	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.9))
 
 
 func _draw_map_shop_team_seat_hint(px: float) -> void:
@@ -2940,6 +3002,7 @@ func _draw_body(
 	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
+	override_tex: Texture2D = null,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
@@ -2948,7 +3011,9 @@ func _draw_body(
 	if footprint_span >= 1.5:
 		rx *= 1.35
 		ry *= 1.35
-	var tex: Texture2D = _art.get_texture(unit_id, is_player) if _art != null else null
+	var tex: Texture2D = override_tex
+	if tex == null and _art != null:
+		tex = _art.get_texture(unit_id, is_player)
 	if tex != null:
 		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed)
 		return
@@ -3271,6 +3336,10 @@ func _draw_drag_follower(px: float) -> void:
 		true,
 		_drag_unit_id,
 		_drag_pose,
+		null,
+		1.0,
+		-1,
+		_drag_texture,
 	)
 
 
