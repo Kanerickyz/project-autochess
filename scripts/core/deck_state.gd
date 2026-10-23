@@ -2,6 +2,8 @@ class_name DeckState
 extends RefCounted
 
 signal deck_changed
+## 自动三合一完成：product 为合成体；consumed_seats 为被合三人的座位（可含 -1）。
+signal triple_merged(product: DeckEntry, consumed_seats: Array)
 
 ## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 4×5=20）。
 const SEAT_CAP_HARD_MAX := 10
@@ -552,6 +554,9 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	if earliest != null and earliest.seat_index >= 0:
 		product.seat_index = earliest.seat_index
 		product.seat_assign_seq = earliest.seat_assign_seq
+	var consumed_seats: Array = []
+	for src in [a, b, c]:
+		consumed_seats.append(src.seat_index if src != null else -1)
 	## MAP_SHOP §5.2：参与合成成员的装备中随机留一件，其余消失不退金。
 	var merged_eq := _pick_merge_equipment([a, b, c])
 	product.equipment = merged_eq
@@ -561,6 +566,7 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
 	_entries.append(product)
+	triple_merged.emit(product, consumed_seats)
 	return product
 
 

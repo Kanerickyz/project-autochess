@@ -413,9 +413,34 @@ static func _test_auto_merge_three_same_level() -> bool:
 	var base_hp := ARCHER.stats.max_hp
 	var expected_atk := (base_atk + 1) + (base_atk + 3) + base_atk
 	var expected_hp := (base_hp + 2) + (base_hp + 4) + base_hp
+	## 用字典承接信号副作用（lambda 对局部 int 的捕获不可靠）。
+	var merge_probe := {"count": 0, "level": 0, "seats": 0}
+	deck.triple_merged.connect(func(product: DeckEntry, seats: Array) -> void:
+		merge_probe["count"] = int(merge_probe["count"]) + 1
+		merge_probe["seats"] = seats.size()
+		if product != null:
+			merge_probe["level"] = product.level
+	)
 	var c := deck.add_entry(ARCHER)
 	if c == null:
 		push_error("RecruitSessionTest: third archer should add then merge")
+		return false
+	if int(merge_probe["count"]) != 1:
+		push_error(
+			"RecruitSessionTest: triple_merged should fire once, got %d" % int(merge_probe["count"])
+		)
+		return false
+	if int(merge_probe["level"]) != 2:
+		push_error(
+			"RecruitSessionTest: triple_merged product level should be 2, got %d"
+			% int(merge_probe["level"])
+		)
+		return false
+	if int(merge_probe["seats"]) != 3:
+		push_error(
+			"RecruitSessionTest: triple_merged should pass 3 seats, got %d"
+			% int(merge_probe["seats"])
+		)
 		return false
 	if deck.size() != 1:
 		push_error("RecruitSessionTest: 3 same id/level should merge to 1, size=%d" % deck.size())
