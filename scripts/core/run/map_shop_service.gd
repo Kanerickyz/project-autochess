@@ -152,10 +152,22 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		return failed
 	entry.bonus_attack += item.bonus_attack
 	entry.bonus_max_hp += item.bonus_max_hp
+	## 永久生命降至 ≤0：角色销毁离队（不退金、不出售）。
+	var destroyed := false
+	if DeckUpgradeService.get_display_max_hp(entry) <= 0:
+		var doomed_id := entry.entry_id
+		destroyed = _deck.remove_entry(doomed_id)
+		entry = null
 	_consumable_offers[slot_index] = null
-	_deck.deck_changed.emit()
+	if not destroyed:
+		_deck.deck_changed.emit()
 	shop_changed.emit()
-	return {"result": BuyResult.OK, "reason": "", "entry": entry}
+	return {
+		"result": BuyResult.OK,
+		"reason": "",
+		"entry": entry,
+		"destroyed": destroyed,
+	}
 
 
 ## 拖装备到角色：扣金；已有装备时旧/新随机留一件，不退金；槽空。

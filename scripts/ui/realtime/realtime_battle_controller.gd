@@ -1020,6 +1020,8 @@ func _on_map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int) -
 			_map_shop_ui.set_hint("已装备")
 		else:
 			_map_shop_ui.set_hint("装备冲突：保留了旧装备")
+	elif bool(result.get("destroyed", false)):
+		_map_shop_ui.set_hint("生命归零，角色已销毁")
 	else:
 		_map_shop_ui.set_hint("消耗品已生效")
 	on_map_shop_changed()

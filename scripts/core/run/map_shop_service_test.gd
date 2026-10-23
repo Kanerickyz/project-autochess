@@ -8,6 +8,7 @@ static func run_all() -> bool:
 	_failures = 0
 	_check("equipment_pool_costs_1_2_4", _test_equipment_pool_costs())
 	_check("buy_consumable", _test_buy_consumable())
+	_check("consumable_destroys_at_zero_hp", _test_consumable_destroys_at_zero_hp())
 	_check("cant_afford_keeps_shelf", _test_cant_afford())
 	_check("refresh_consumables", _test_refresh())
 	_check("equipment_conflict_no_refund", _test_equipment_conflict())
@@ -101,6 +102,45 @@ static func _test_buy_consumable() -> bool:
 	if entry.bonus_attack != atk_before + 5:
 		return false
 	if entry.bonus_max_hp != hp_before - 1:
+		return false
+	if econ.gold != gold_before - 2:
+		return false
+	if svc.get_consumable_offer(0) != null:
+		return false
+	return true
+
+
+## 1 血角色吃生命 −1：扣金、货架清空、角色离队（不退出售金）。
+static func _test_consumable_destroys_at_zero_hp() -> bool:
+	var unit := _make_unit("fragile")
+	unit.stats.max_hp = 1
+	unit.stats.attack = 1
+	var deck := _make_deck(unit)
+	var entry := deck.get_entries()[0]
+	var entry_id := entry.entry_id
+	var econ := _make_economy(10)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var svc := MapShopService.new()
+	var config := MapShopConfig.make_code_defaults()
+	config.consumable_pool = [
+		MapShopConfig._make_consumable("big_atk_potion", "大力量魔药", 2, 5, -1),
+	]
+	config.equipment_pool = []
+	svc.configure(config, econ, deck, rng)
+	svc.open_shop()
+	svc._consumable_offers[0] = config.consumable_pool[0]
+	var gold_before := econ.gold
+	var result := svc.try_buy_consumable_on_entry(0, entry_id)
+	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
+		return false
+	if not bool(result.get("destroyed", false)):
+		return false
+	if result.get("entry", entry) != null:
+		return false
+	if deck.get_entry(entry_id) != null:
+		return false
+	if deck.get_entries().size() != 0:
 		return false
 	if econ.gold != gold_before - 2:
 		return false
