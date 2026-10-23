@@ -64,6 +64,8 @@ var _had_boss_leader: bool = false
 var _turn_refresh_armed_instance_id: int = -1
 ## 自开战起已完整结束的「一动」次数（录音机倒带游标）。
 var _completed_actor_turns: int = 0
+## begin_combat 后：开战技能排空且行动队列已排出。
+var _combat_queue_seeded: bool = false
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -254,19 +256,33 @@ func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
 	return _boss_try_teleport(rt, origin)
 
 
-## 标记开战：广播游戏开始 → 排出敌我混排行动队列。未显式调用时首个固定步会自动调用。
+## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出敌我混排行动队列。
+## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵/时停播报后再结算并排队列。
 func begin_combat() -> void:
 	if _started or _finished:
 		return
 	_started = true
 	_completed_actor_turns = 0
+	_combat_queue_seeded = false
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
-	_drain_effects(true)
-	_build_action_queue_from_lock_order()
-	_queue_cursor = 0
-	_round_index = 1
-	_current_actor = null
-	_actor_turn_active = false
+	if defer_effect_resolve:
+		if not has_pending_effects():
+			_seed_action_queue_if_ready()
+		return
+	_flush_combat_start_lock()
+
+
+## 测试/倒带：无视 defer，立刻排空开战技能并排行动队列。
+func flush_combat_start_lock() -> void:
+	_flush_combat_start_lock()
+
+
+func try_seed_action_queue() -> void:
+	_seed_action_queue_if_ready()
+
+
+func is_action_queue_seeded() -> bool:
+	return _combat_queue_seeded
 
 
 func has_started() -> bool:
@@ -350,12 +366,14 @@ func peek_pending_effect_batch() -> QueuedEffectBatch:
 ## 执行队首一批技能（真值写入）；同步生成/死亡。供「先卡再结算」第二拍调用。
 func resolve_next_pending_effect() -> bool:
 	if _effect_resolver == null or not _effect_resolver.has_pending_steps():
+		_seed_action_queue_if_ready()
 		return false
 	_sync_effect_grid_from_rt_positions()
 	_effect_resolver.process_next_step()
 	_sync_rt_positions_from_effect_grid()
 	_sync_effect_spawns_from_grid()
 	_sync_deaths_from_hp()
+	_seed_action_queue_if_ready()
 	return true
 
 
@@ -363,6 +381,12 @@ func advance_fixed_step() -> void:
 	if _finished:
 		return
 	begin_combat()
+	if _started and not _combat_queue_seeded:
+		if has_pending_effects():
+			return
+		_seed_action_queue_if_ready()
+		if not _combat_queue_seeded:
+			return
 
 	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
 	_tick_all_deploying()
@@ -383,6 +407,24 @@ func advance_fixed_step() -> void:
 	elapsed_seconds = fixed_step_count * FIXED_DT
 	## 胜负在每一动结束后检查；若本步刚结束一动则此处已查过，再查一次无害。
 	_check_finished()
+
+
+func _flush_combat_start_lock() -> void:
+	_drain_effects(true)
+	_seed_action_queue_if_ready()
+
+
+func _seed_action_queue_if_ready() -> void:
+	if _combat_queue_seeded or not _started or _finished:
+		return
+	if has_pending_effects():
+		return
+	_combat_queue_seeded = true
+	_build_action_queue_from_lock_order()
+	_queue_cursor = 0
+	_round_index = 1
+	_current_actor = null
+	_actor_turn_active = false
 
 
 ## COMBAT §7.1：友入座序与敌配置序交错（友0敌0友1敌1…）；一侧用尽续另一侧。

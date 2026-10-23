@@ -1090,9 +1090,9 @@ func _begin_combat_from_prepare() -> void:
 	_rebuild_cards()
 
 	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
-	_sim.begin_combat()
-	## 开战广播已强制排空；此后技能入队延迟结算，由播报队列先卡再执行。
+	## 开战技能先入队，由时停「先卡再结算」排空后再排行动队列（COMBAT_FEEDBACK §5）。
 	_sim.defer_effect_resolve = true
+	_sim.begin_combat()
 	_lock_phase_active = false
 	_set_phase(Phase.COMBAT)
 	_update_tape_controls()
@@ -1777,9 +1777,9 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	if _sim == null:
 		_tape_rewinding = false
 		return
-	_sim.begin_combat()
-	## 倒带重演：立即结算技能，不走路演时停。
 	_sim.defer_effect_resolve = false
+	_sim.begin_combat()
+	_sim.flush_combat_start_lock()
 	_tape_completed_turns = 0
 	var guard := 0
 	var max_steps := 30 * 60 * 10
@@ -2648,6 +2648,12 @@ func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
 		return
+	if (
+		_sim.has_started()
+		and not _sim.is_action_queue_seeded()
+		and not _sim.has_pending_effects()
+	):
+		_sim.try_seed_action_queue()
 	if _timestop_queue.is_blocking():
 		_sim.hold_for_presentation()
 		var done := _timestop_queue.tick(delta, time_scale)
@@ -2741,6 +2747,8 @@ func _on_skill_result_done() -> void:
 	if _sim != null and _sim.has_pending_effects():
 		_start_next_skill_card()
 		return
+	if _sim != null:
+		_sim.try_seed_action_queue()
 	_timestop_queue.clear()
 	if _sim != null:
 		_sim.release_presentation()
