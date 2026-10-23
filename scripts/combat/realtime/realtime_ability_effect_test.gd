@@ -1130,11 +1130,14 @@ static func _test_death_heal_nearby_ally() -> bool:
 	return true
 
 
-## 标枪受伤 → 自身恢复 2 生命（软顶）。
+## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=4 → 三合一后 4）。
 static func _test_hurt_heal_self_2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
 		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 4:
+		push_error("hurt_heal_self_2: merge_value_mult expected 4")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
@@ -1146,17 +1149,17 @@ static func _test_hurt_heal_self_2() -> bool:
 	var hp_mid := spear.unit.current_hp
 	sim._pipeline.apply_damage(null, spear, 2)
 	sim._drain_effects()
-	## 扣 2 后疗回 2 → 净 0
-	if spear.unit.current_hp != hp_mid - 2 + 2:
+	## 扣 2 后疗回 1 → 净 −1
+	if spear.unit.current_hp != hp_mid - 2 + 1:
 		push_error(
 			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
-			% [spear.unit.current_hp, hp_mid]
+			% [spear.unit.current_hp, hp_mid - 1]
 		)
 		return false
 	return true
 
 
-## 伤 < 疗：受击疗截断为本击伤害，不能净回血。
+## 伤 = 疗：受击疗截断为本击伤害，不能净回血。
 static func _test_hurt_heal_capped_to_hit() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
@@ -1171,7 +1174,7 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 	var hp_before := spear.unit.current_hp
 	sim._pipeline.apply_damage(null, spear, 1)
 	sim._drain_effects()
-	## 技能写 2，但本次伤 1 → 只回 1，净 0；不得回满 2。
+	## 技能写 1，本次伤 1 → 回 1，净 0。
 	if spear.unit.current_hp != hp_before:
 		push_error(
 			"hurt_heal_capped: hp=%d expected %d (net 0 after 1 dmg)"
@@ -1347,11 +1350,9 @@ static func _test_turn_start_strike_weakest_damage() -> bool:
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var assailant := UnitInstance.from_unit_data(data, Vector2i(4, 26), UnitInstance.Team.PLAYER)
 	assailant.level = 2
-	var victim := UnitInstance.from_unit_data(
-		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
-		Vector2i(12, 10),
-		UnitInstance.Team.ENEMY,
-	)
+	## 用占位敌，避免依赖敌镜像身体预算（盾卫已降为 T1 4/1）。
+	var victim := _dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0})
+	victim.stats.max_hp = 20
 	victim.current_hp = 20
 	grid.place(assailant, Vector2i(4, 26))
 	grid.place(victim, Vector2i(12, 10))
@@ -1529,9 +1530,10 @@ static func _test_devour_rt_defer_kills_left_right() -> bool:
 	if not up.is_alive():
 		push_error("devour_rt: up neighbor must survive")
 		return false
-	if devourer.unit.get_effective_attack() != 4 + 2 + 3:
+	## 吞噬基础攻 6（T3 偏厚 10/6）+ 左右友方攻 2+3。
+	if devourer.unit.get_effective_attack() != 6 + 2 + 3:
 		push_error(
-			"devour_rt: atk=%d expected 9"
+			"devour_rt: atk=%d expected 11"
 			% devourer.unit.get_effective_attack()
 		)
 		return false
