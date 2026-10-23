@@ -387,6 +387,10 @@ static func _format_target(spec: EffectSpec) -> String:
 			return "对周围一格当前生命最低的队友"
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ENEMY:
 			return "对当前生命最低的敌人"
+		EffectSpec.TargetSelector.RANDOM_ANY_UNIT:
+			if spec.exclude_owner:
+				return "对随机一名其他存活角色"
+			return "对随机一名存活角色"
 	return ""
 
 

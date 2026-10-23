@@ -33,6 +33,8 @@ enum TargetSelector {
 	## 持有者正交左右邻格友方（同一行、列 ±1；不含上下/斜向；可 exclude_owner）。
 	## 持有者星级 ≥2 时跳过首领（is_boss_leader）。
 	ORTHOGONAL_LEFT_RIGHT_ALLIES,
+	## 随机一名存活单位（敌我双方）；须追加在枚举末尾。可 exclude_owner。
+	RANDOM_ANY_UNIT,
 }
 
 

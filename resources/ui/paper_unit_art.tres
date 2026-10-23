@@ -90,6 +90,8 @@ archetype_by_unit_id = {
 "berserker": &"berserker",
 "blood_acolyte": &"blood_acolyte",
 "blood_wage": &"blood_wage",
+"funeral_pyre": &"funeral_pyre",
+"scatter_hex": &"scatter_hex",
 "boss_minion_t4": &"boss_minion_t4",
 "boss_minion_t5": &"boss_minion_t5",
 "bus": &"ram",
@@ -149,6 +151,8 @@ player_textures = {
 
 &"blood_acolyte": ExtResource("b_blood_acolyte"),
 &"blood_wage": ExtResource("b_character_dev"),
+&"funeral_pyre": ExtResource("b_character_dev"),
+&"scatter_hex": ExtResource("b_character_dev"),
 &"boss_minion_t4": ExtResource("b_captain"),
 &"boss_minion_t5": ExtResource("b_valkyrie"),
 &"captain": ExtResource("b_captain"),
@@ -200,6 +204,8 @@ enemy_textures = {
 
 &"blood_acolyte": ExtResource("r_blood_acolyte"),
 &"blood_wage": ExtResource("r_character_dev"),
+&"funeral_pyre": ExtResource("r_character_dev"),
+&"scatter_hex": ExtResource("r_character_dev"),
 &"boss_minion_t4": ExtResource("r_captain"),
 &"boss_minion_t5": ExtResource("r_valkyrie"),
 &"captain": ExtResource("r_captain"),
