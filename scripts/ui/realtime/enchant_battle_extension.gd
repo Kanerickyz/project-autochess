@@ -1,6 +1,6 @@
 class_name EnchantBattleExtension
 extends RefCounted
-## 附魔阶段：Arena 拖拽 + 底栏（投入金币 / 重置 / 融合 / 跳过 / 继续）。
+## 附魔阶段：Arena 拖拽 + 底栏（投入金币 / 重置 / 随机 / 融合 / 跳过 / 继续）。
 
 
 var _battle: RealtimeBattleController
@@ -9,6 +9,7 @@ var _hud: Control
 var _stats_label: Label
 var _btn_invest: Button
 var _btn_reset: Button
+var _btn_random: Button
 var _btn_fuse: Button
 var _btn_skip: Button
 var _btn_continue: Button
@@ -178,6 +179,11 @@ func _ensure_hud() -> void:
 	_btn_reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_reset.pressed.connect(_on_reset)
 	row.add_child(_btn_reset)
+	_btn_random = Button.new()
+	_btn_random.text = "随机"
+	_btn_random.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_random.pressed.connect(_on_random)
+	row.add_child(_btn_random)
 	_btn_fuse = Button.new()
 	_btn_fuse.text = "融合"
 	_btn_fuse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -201,6 +207,13 @@ func _refresh() -> void:
 	_btn_fuse.disabled = not _session.can_fuse()
 	_btn_invest.disabled = not _session.can_invest_gold()
 	_btn_reset.disabled = _session.fused_this_visit
+	## 随机仅试验场：满池滚列表时快速试配方。
+	if _btn_random != null:
+		_btn_random.visible = _expanded_team
+		_btn_random.disabled = (
+			_session.fused_this_visit
+			or _session.get_material_entry_ids().size() < 2
+		)
 	_btn_skip.disabled = _session.fused_this_visit
 	_btn_continue.disabled = not _session.fused_this_visit
 	_stats_label.text = _format_stats_line()
@@ -243,6 +256,18 @@ func _on_reset() -> void:
 	if _session == null:
 		return
 	_session.reset_forge()
+	if _battle != null:
+		_battle.on_enchant_forge_changed()
+	_refresh()
+
+
+func _on_random() -> void:
+	if _session == null or not _expanded_team:
+		return
+	if not _session.randomize_ab_slots():
+		if _battle != null:
+			_battle.flash_hint("可用原料不足两人")
+		return
 	if _battle != null:
 		_battle.on_enchant_forge_changed()
 	_refresh()

@@ -19,6 +19,7 @@ static func run_all() -> bool:
 	_test_fusion_fail_sacrifices_materials()
 	_test_invest_and_guaranteed_success()
 	_test_reset_clears_slots_and_gold()
+	_test_randomize_ab_slots()
 	if _failures == 0:
 		print("EnchantSessionTest: all tests passed")
 	else:
@@ -209,6 +210,37 @@ static func _test_reset_clears_slots_and_gold() -> void:
 	_assert(session.gold_invested_g == 0, "G cleared")
 	_assert(session.slot_a_entry_id < 0 and session.slot_b_entry_id < 0, "slots cleared")
 	_assert(economy.gold == gold_after, "reset does not refund run gold")
+
+
+static func _test_randomize_ab_slots() -> void:
+	var deck := _deck_with_two()
+	var entries := deck.get_entries()
+	var session := EnchantSession.new()
+	session.configure(deck, null, true)
+	session.begin()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	_assert(session.randomize_ab_slots(rng), "randomize with two materials")
+	_assert(session.can_fuse(), "randomize fills A/B")
+	_assert(session.slot_a_entry_id != session.slot_b_entry_id, "A/B distinct")
+	var id_set := {entries[0].entry_id: true, entries[1].entry_id: true}
+	_assert(id_set.has(session.slot_a_entry_id) and id_set.has(session.slot_b_entry_id), "picks from deck")
+	session.try_invest_gold()
+	_assert(session.gold_invested_g == 1, "invest after random")
+	rng.seed = 7
+	_assert(session.randomize_ab_slots(rng), "randomize again")
+	_assert(session.gold_invested_g == 0, "recipe change clears G")
+	var solo := DeckState.new()
+	solo.configure(DeckConfig.new())
+	var u := UnitData.new()
+	u.id = "only"
+	u.stats = UnitStats.new()
+	u.ability = _HurtAbility
+	solo.add_entry(u)
+	var solo_session := EnchantSession.new()
+	solo_session.configure(solo, null, true)
+	solo_session.begin()
+	_assert(not solo_session.randomize_ab_slots(rng), "need two materials")
 
 
 static func _assert(cond: bool, label: String) -> void:
