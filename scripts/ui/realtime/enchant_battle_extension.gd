@@ -1,13 +1,12 @@
 class_name EnchantBattleExtension
 extends RefCounted
-## 附魔阶段：Arena 拖拽 + 底栏（投入金币 / 重置 / 随机 / 融合 / 跳过 / 继续）。
+## 附魔阶段：Arena 拖拽 + 底栏（重置 / 随机 / 融合 / 跳过 / 继续）。
 
 
 var _battle: RealtimeBattleController
 var _session: EnchantSession
 var _hud: Control
 var _stats_label: Label
-var _btn_invest: Button
 var _btn_reset: Button
 var _btn_random: Button
 var _btn_fuse: Button
@@ -169,11 +168,6 @@ func _ensure_hud() -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hud.add_child(row)
-	_btn_invest = Button.new()
-	_btn_invest.text = "投入金币"
-	_btn_invest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_invest.pressed.connect(_on_invest)
-	row.add_child(_btn_invest)
 	_btn_reset = Button.new()
 	_btn_reset.text = "重置"
 	_btn_reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -205,7 +199,6 @@ func _refresh() -> void:
 	if _session == null:
 		return
 	_btn_fuse.disabled = not _session.can_fuse()
-	_btn_invest.disabled = not _session.can_invest_gold()
 	_btn_reset.disabled = _session.fused_this_visit
 	## 随机仅试验场：满池滚列表时快速试配方。
 	if _btn_random != null:
@@ -231,25 +224,10 @@ func _refresh() -> void:
 func _format_stats_line() -> String:
 	if _session == null:
 		return ""
-	var gold_balance := 0
-	if _session.economy != null:
-		gold_balance = _session.economy.gold
-	var p := _session.get_expected_price()
-	var g := _session.gold_invested_g
-	if not _session.can_fuse():
-		return "金币 %d · 放入 A/B 后显示预期价与成功率" % gold_balance
 	var rate := _session.get_success_percent()
-	var rate_text := "必成" if _session.is_guaranteed_success() else "%.0f%%" % rate
-	return "金币 %d · 预期价 P=%d · 已投 G=%d · 成功率 %s" % [gold_balance, p, g, rate_text]
-
-
-func _on_invest() -> void:
-	if _session == null:
-		return
-	if not _session.try_invest_gold():
-		_battle.flash_hint("无法投币")
-		return
-	_refresh()
+	if not _session.can_fuse():
+		return "放入 A/B 后可融合 · 成功率 %.0f%%" % rate
+	return "成功率 %.0f%% · 点融合检定（失败失去 A/B）" % rate
 
 
 func _on_reset() -> void:

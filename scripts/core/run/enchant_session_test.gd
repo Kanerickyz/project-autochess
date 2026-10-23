@@ -17,8 +17,8 @@ static func run_all() -> bool:
 	_test_fused_skips_triple_merge()
 	_test_session_once_per_visit()
 	_test_fusion_fail_sacrifices_materials()
-	_test_invest_and_guaranteed_success()
-	_test_reset_clears_slots_and_gold()
+	_test_fixed_success_rate_eighty()
+	_test_reset_clears_slots()
 	_test_randomize_ab_slots()
 	if _failures == 0:
 		print("EnchantSessionTest: all tests passed")
@@ -172,51 +172,44 @@ static func _test_fusion_fail_sacrifices_materials() -> void:
 	_assert(session.can_fuse() == false, "slots cleared")
 
 
-static func _test_invest_and_guaranteed_success() -> void:
+static func _test_fixed_success_rate_eighty() -> void:
+	_assert(is_equal_approx(EnchantPricing.SUCCESS_PERCENT, 80.0), "const 80")
+	_assert(is_equal_approx(EnchantPricing.compute_success_percent(), 80.0), "rate 80")
+	_assert(EnchantPricing.roll_succeeds(0.0), "roll 0 succeeds")
+	_assert(EnchantPricing.roll_succeeds(0.79), "roll 0.79 succeeds")
+	_assert(not EnchantPricing.roll_succeeds(0.80), "roll 0.80 fails")
+	_assert(not EnchantPricing.roll_succeeds(0.99), "roll 0.99 fails")
 	var deck := _deck_with_two()
 	var entries := deck.get_entries()
-	var economy := RunEconomy.new()
-	economy.grant(50)
 	var session := EnchantSession.new()
-	session.configure(deck, economy)
+	session.configure(deck)
 	session.begin()
 	session.set_slot(&"a", entries[0].entry_id)
 	session.set_slot(&"b", entries[1].entry_id)
-	var p := session.get_expected_price()
-	_assert(p >= EnchantPricing.MIN_PRICE, "expected price positive")
-	for _i in p:
-		_assert(session.try_invest_gold(), "invest step")
-	_assert(session.is_guaranteed_success(), "guaranteed at G>=P")
-	session.set_test_unit_roll(0.99)
-	var result := session.try_fuse()
-	_assert(result.get("success", false), "guaranteed fuse succeeds")
+	_assert(is_equal_approx(session.get_success_percent(), 80.0), "session shows 80")
+	session.set_test_unit_roll(0.5)
+	var ok_fuse := session.try_fuse()
+	_assert(ok_fuse.get("success", false), "0.5 under 80% succeeds")
 	_assert(deck.size() == 1, "fused product remains")
-	_assert(economy.gold == 50 - p, "gold spent on invest only")
 
 
-static func _test_reset_clears_slots_and_gold() -> void:
+static func _test_reset_clears_slots() -> void:
 	var deck := _deck_with_two()
 	var entries := deck.get_entries()
-	var economy := RunEconomy.new()
-	economy.grant(10)
 	var session := EnchantSession.new()
-	session.configure(deck, economy)
+	session.configure(deck)
 	session.begin()
 	session.set_slot(&"a", entries[0].entry_id)
 	session.set_slot(&"b", entries[1].entry_id)
-	_assert(session.try_invest_gold(), "invest once")
-	var gold_after := economy.gold
 	session.reset_forge()
-	_assert(session.gold_invested_g == 0, "G cleared")
 	_assert(session.slot_a_entry_id < 0 and session.slot_b_entry_id < 0, "slots cleared")
-	_assert(economy.gold == gold_after, "reset does not refund run gold")
 
 
 static func _test_randomize_ab_slots() -> void:
 	var deck := _deck_with_two()
 	var entries := deck.get_entries()
 	var session := EnchantSession.new()
-	session.configure(deck, null, true)
+	session.configure(deck)
 	session.begin()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -225,11 +218,8 @@ static func _test_randomize_ab_slots() -> void:
 	_assert(session.slot_a_entry_id != session.slot_b_entry_id, "A/B distinct")
 	var id_set := {entries[0].entry_id: true, entries[1].entry_id: true}
 	_assert(id_set.has(session.slot_a_entry_id) and id_set.has(session.slot_b_entry_id), "picks from deck")
-	session.try_invest_gold()
-	_assert(session.gold_invested_g == 1, "invest after random")
 	rng.seed = 7
 	_assert(session.randomize_ab_slots(rng), "randomize again")
-	_assert(session.gold_invested_g == 0, "recipe change clears G")
 	var solo := DeckState.new()
 	solo.configure(DeckConfig.new())
 	var u := UnitData.new()
@@ -238,7 +228,7 @@ static func _test_randomize_ab_slots() -> void:
 	u.ability = _HurtAbility
 	solo.add_entry(u)
 	var solo_session := EnchantSession.new()
-	solo_session.configure(solo, null, true)
+	solo_session.configure(solo)
 	solo_session.begin()
 	_assert(not solo_session.randomize_ab_slots(rng), "need two materials")
 
