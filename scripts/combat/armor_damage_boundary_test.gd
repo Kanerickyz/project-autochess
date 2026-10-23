@@ -10,7 +10,8 @@ static func run_all() -> bool:
 	_check("full_block_no_hurt_event", _test_full_block())
 	_check("partial_block_emits_hurt", _test_partial_block())
 	_check("realtime_full_block", _test_realtime_full_block())
-	_check("armor_depletes_and_destroys_equipment", _test_armor_depletes())
+	_check("armor_depletes_keeps_equipment", _test_armor_depletes())
+	_check("armor_refills_after_deplete", _test_armor_refill())
 	_check("partial_hit_leaves_remaining_armor", _test_armor_partial_deplete())
 	if _failures == 0:
 		print("ArmorDamageBoundaryTest: all tests passed")
@@ -136,11 +137,28 @@ static func _test_armor_depletes() -> bool:
 	pipeline.apply_damage(null, target, 5, false)
 	if target.get_armor_block() != 0:
 		return false
-	if entry.equipment != null:
+	if entry.equipment == null:
+		return false
+	if entry.get_armor_block() != 0:
+		return false
+	entry.refill_equipment_armor()
+	if entry.get_armor_block() != 5:
 		return false
 	if target.current_hp != 20:
 		return false
 	return true
+
+
+static func _test_armor_refill() -> bool:
+	var eq := EquipmentData.new()
+	eq.armor_block = 3
+	var entry := DeckEntry.new()
+	entry.attach_equipment(eq)
+	entry.apply_armor_remaining(0)
+	if entry.equipment == null:
+		return false
+	entry.refill_equipment_armor()
+	return entry.get_armor_block() == 3
 
 
 static func _test_armor_partial_deplete() -> bool:

@@ -553,7 +553,10 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 		product.seat_index = earliest.seat_index
 		product.seat_assign_seq = earliest.seat_assign_seq
 	## MAP_SHOP §5.2：参与合成成员的装备中随机留一件，其余消失不退金。
-	product.equipment = _pick_merge_equipment([a, b, c])
+	var merged_eq := _pick_merge_equipment([a, b, c])
+	product.equipment = merged_eq
+	if merged_eq != null:
+		product.equipment_armor_max = merged_eq.get_armor_block()
 	_merge_attached_buffs(product, [a, b, c])
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])

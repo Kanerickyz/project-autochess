@@ -497,6 +497,7 @@ func _begin_next_actor_turn() -> void:
 		if _queue_cursor >= _action_queue.size():
 			_queue_cursor = 0
 			_round_index += 1
+			_refill_player_equipment_armor_for_new_round()
 		var candidate := _action_queue[_queue_cursor]
 		if candidate != null and candidate.is_alive() and _units.has(candidate):
 			if candidate.action_eligible_from_round > _round_index:
@@ -523,6 +524,22 @@ func _begin_next_actor_turn() -> void:
 		scanned += 1
 
 	current_actor_changed.emit(null)
+
+
+## 行动队列走完一轮：友方装备护甲回满（与遭遇开战一致）。
+func _refill_player_equipment_armor_for_new_round() -> void:
+	for rt in _units:
+		if rt == null or not rt.is_alive() or rt.unit == null:
+			continue
+		if not rt.is_player():
+			continue
+		if rt.unit._deck_entry_ref == null:
+			continue
+		var entry := rt.unit._deck_entry_ref.get_ref() as DeckEntry
+		if entry == null:
+			continue
+		entry.refill_equipment_armor()
+		rt.unit.armor_block = entry.get_armor_block()
 
 
 func _end_current_actor_turn() -> void:
