@@ -187,6 +187,7 @@ var _enchant_team_pan_active: bool = false
 var _enchant_team_pan_last_y: float = 0.0
 var _enchant_forge_press: bool = false
 var _recruit_team_press_id: int = -1
+var _party_speech_bubble: PartySpeechBubble
 ## 地图商店货架拖拽：map_shop_offers 数组下标。
 var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
@@ -350,6 +351,52 @@ func local_to_tile(local_pos: Vector2) -> Vector2:
 
 func tile_to_local(tile_pos: Vector2) -> Vector2:
 	return get_board_rect().position + tile_pos * get_cell_px()
+
+
+## 招募上区队伍成员纸片中心（本地坐标，含半场 slide）；找不到返回零向量且 ok=false。
+func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
+	var result := {"ok": false, "tip": Vector2.ZERO}
+	if not recruit_active or recruit_team_slots == null or unit_id.is_empty():
+		return result
+	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	for i in recruit_team_slots.cells.size():
+		var entry := recruit_team_slots.get_entry(i)
+		if entry == null or entry.unit == null:
+			continue
+		if String(entry.unit.id) != unit_id:
+			continue
+		var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+		var center := tile_to_local(tile) + enemy_off
+		## 尖角对准纸片上沿略上方。
+		var tip := center + Vector2(0.0, -get_cell_px() * 0.55)
+		result["ok"] = true
+		result["tip"] = tip
+		return result
+	return result
+
+
+func show_party_bark(unit_id: String, text: String) -> void:
+	if text.is_empty():
+		return
+	var tip_info := get_recruit_team_unit_tip(unit_id)
+	if not bool(tip_info.get("ok", false)):
+		return
+	var bubble := _ensure_party_speech_bubble()
+	bubble.present_at(tip_info["tip"] as Vector2, text)
+
+
+func clear_party_bark() -> void:
+	if _party_speech_bubble != null:
+		_party_speech_bubble.dismiss()
+
+
+func _ensure_party_speech_bubble() -> PartySpeechBubble:
+	if _party_speech_bubble != null and is_instance_valid(_party_speech_bubble):
+		return _party_speech_bubble
+	_party_speech_bubble = PartySpeechBubble.new()
+	_party_speech_bubble.name = "PartySpeechBubble"
+	add_child(_party_speech_bubble)
+	return _party_speech_bubble
 
 
 func tile_to_cell(tile_pos: Vector2) -> Vector2i:
@@ -1905,6 +1952,7 @@ func clear_recruit_mode() -> void:
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	clear_party_bark()
 	_clear_drag_visual()
 	queue_redraw()
 

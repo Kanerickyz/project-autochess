@@ -72,6 +72,7 @@ func _start_new_run() -> void:
 	deck_state.reset_from_config()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
+	_recruit_session.clear_party_bark_flags()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	_hide_encounter_ui()
 	_suppress_map_show = true
