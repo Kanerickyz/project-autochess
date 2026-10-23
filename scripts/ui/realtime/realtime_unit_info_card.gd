@@ -32,6 +32,7 @@ class StatBadge:
 	extends Control
 	var texture: Texture2D
 	var value := 0
+	var value_color := RealtimeArenaView.STAT_TEXT
 
 	func _draw() -> void:
 		if texture == null:
@@ -45,7 +46,7 @@ class StatBadge:
 			size.x * RealtimeArenaView.STAT_NUMBER_CENTER_X - text_w * 0.5,
 			size.y * 0.5 + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
 		)
-		draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, RealtimeArenaView.STAT_TEXT)
+		draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, value_color)
 
 
 var _portrait: TextureRect
@@ -54,6 +55,7 @@ var _side_label: Label
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
 var _armor_badge: StatBadge
+var _gold_badge: StatBadge
 var _skills_label: RichTextLabel
 var _style: StyleBoxFlat
 var _motion: Tween
@@ -124,6 +126,9 @@ func _init() -> void:
 	_armor_badge = _make_badge(UiStatIcons.armor_texture())
 	_armor_badge.visible = false
 	badges.add_child(_armor_badge)
+	_gold_badge = _make_badge(UiStatIcons.gold_texture())
+	_gold_badge.visible = false
+	badges.add_child(_gold_badge)
 
 	var rule := ColorRect.new()
 	rule.color = Color(INK, 0.35)
@@ -143,7 +148,7 @@ func _init() -> void:
 	column.add_child(_skills_label)
 
 
-## info: {name, side_player, attack, hp, skills, texture?, tier?}
+## info: {name, side_player, attack, hp, skills, texture?, tier?, recruit_cost?, recruit_cost_affordable?}
 ## 物品：{is_item, kind_label, cost, armor?, skills, texture?} — 隐藏攻血标，侧栏写种类与价格。
 ## anchor: 单位贴图头顶（父节点本地坐标）；bounds: 可放置范围。
 ## slide_dir: 滑动切换水平方向（-1 左 / 0 首次弹出 / +1 右），小丑牌式倾斜用。
@@ -234,6 +239,18 @@ func _apply_content(info: Dictionary) -> void:
 		_armor_badge.value = armor
 		_armor_badge.visible = armor > 0 and armor_tex != null
 		_armor_badge.queue_redraw()
+	var recruit_cost := int(info.get("recruit_cost", -1))
+	if _gold_badge != null:
+		var gold_tex := UiStatIcons.gold_texture()
+		_gold_badge.texture = gold_tex
+		_gold_badge.value = recruit_cost
+		_gold_badge.visible = not is_item and recruit_cost >= 0 and gold_tex != null
+		_gold_badge.value_color = (
+			RealtimeArenaView.STAT_TEXT
+			if bool(info.get("recruit_cost_affordable", true))
+			else Color(0.85, 0.22, 0.18, 1.0)
+		)
+		_gold_badge.queue_redraw()
 	_skills_label.clear()
 	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), is_item))
 

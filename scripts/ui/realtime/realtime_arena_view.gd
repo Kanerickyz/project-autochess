@@ -64,6 +64,7 @@ const CALLOUT_SECONDS := 0.45
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
 const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
+const STAT_GOLD_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_gold.png")
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸。
@@ -1446,9 +1447,16 @@ func _collect_inspectables() -> Array[Dictionary]:
 			if unit != null and cell != NO_CELL:
 				var tile := Vector2(cell) + Vector2(0.5, 0.5)
 				var cand_i := int(cand.get("index", -1))
-				out.append(_info_from_unit_data(
-					unit, tile_to_local(tile) + ally_off, "cand:%d" % cand_i
-				))
+				out.append(
+					_info_from_unit_data(
+						unit,
+						tile_to_local(tile) + ally_off,
+						"cand:%d" % cand_i,
+						1,
+						int(cand.get("cost", 0)),
+						bool(cand.get("affordable", true)),
+					)
+				)
 		return out
 	if sim != null and sim.has_started():
 		for item in sim.get_units():
@@ -1511,6 +1519,8 @@ func _info_from_unit_data(
 	center: Vector2,
 	inspect_key: String = "",
 	preview_level: int = 1,
+	recruit_cost: int = -1,
+	recruit_cost_affordable: bool = true,
 ) -> Dictionary:
 	var key := inspect_key
 	if key.is_empty():
@@ -1520,7 +1530,7 @@ func _info_from_unit_data(
 	var atk := data.stats.attack if data.stats != null else 0
 	var hp := data.stats.max_hp if data.stats != null else 0
 	var star_tag := "" if level <= 1 else " · %d★" % level
-	return {
+	var info := {
 		"inspect_key": key,
 		"center": center,
 		"name": UnitInfoText.get_display_name_from_unit_data(data) + star_tag,
@@ -1531,6 +1541,10 @@ func _info_from_unit_data(
 		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level, true),
 		"texture": _art.get_texture(data.id, true) if _art != null else null,
 	}
+	if recruit_cost >= 0:
+		info["recruit_cost"] = recruit_cost
+		info["recruit_cost_affordable"] = recruit_cost_affordable
+	return info
 
 
 func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
@@ -2719,22 +2733,31 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
-		_draw_stat_badges(tile_to_local(center_tile) + off, atk, hp, alpha, px)
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
-		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
+		_draw_stat_badges(
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
+		)
 		if locked:
 			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
-	var font := get_theme_default_font()
-	var text := "%d金" % cost
-	var font_size := clampi(int(px * 0.35), 9, 14)
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.85)
-	var color := Color(1.0, 0.9, 0.35, 0.95) if affordable else Color(1.0, 0.35, 0.3, 0.95)
-	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+	_draw_recruit_gold_badge(center, cost, affordable, 1.0, px)
+
+
+func _draw_recruit_gold_badge(
+	center: Vector2, cost: int, affordable: bool, alpha: float, px: float
+) -> void:
+	if STAT_GOLD_TEX == null:
+		return
+	var badge := get_stat_badge_size(px)
+	var top := center.y + px * 0.38 + badge.y * 0.05
+	var half_span := badge.x * 0.5
+	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
+	var rect := Rect2(Vector2(cx - half_span, top), badge)
+	var text_color := STAT_TEXT if affordable else Color(0.85, 0.22, 0.18, 1.0)
+	_draw_stat_badge(rect, STAT_GOLD_TEX, cost, alpha, text_color)
 
 
 func _draw_recruit_lock_tag(center: Vector2, px: float) -> void:
@@ -3208,27 +3231,40 @@ func _draw_stat_badges(
 	alpha: float,
 	px: float,
 	armor: int = 0,
+	gold_cost: int = -1,
+	gold_affordable: bool = true,
 ) -> void:
 	var badge := get_stat_badge_size(px)
 	var gap := badge.y * 0.06
 	var top := center.y + px * 0.38 + badge.y * 0.05
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
-	var count := 3 if show_armor else 2
+	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
+	var count := 2 + (1 if show_armor else 0) + (1 if show_gold else 0)
 	var total_w := badge.x * float(count) + gap * float(count - 1)
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
-	var atk_rect := Rect2(Vector2(x0, top), badge)
-	var hp_rect := Rect2(Vector2(x0 + badge.x + gap, top), badge)
+	var slot := 0
+	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	slot += 1
 	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
+	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	slot += 1
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
 	if show_armor:
-		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * 2.0, top), badge)
+		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		slot += 1
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
+	if show_gold:
+		var gold_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
+		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
 
 
-func _draw_stat_badge(rect: Rect2, tex: Texture2D, value: int, alpha: float) -> void:
+func _draw_stat_badge(
+	rect: Rect2, tex: Texture2D, value: int, alpha: float, text_color: Color = STAT_TEXT
+) -> void:
 	draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
 	var text := str(maxi(0, value))
 	var font_size := maxi(8, int(rect.size.y * 0.62))
@@ -3244,7 +3280,13 @@ func _draw_stat_badge(rect: Rect2, tex: Texture2D, value: int, alpha: float) -> 
 		rect.position.y + rect.size.y * 0.5 + (ascent - descent) * 0.5,
 	)
 	draw_string(
-		STAT_FONT, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(STAT_TEXT, STAT_TEXT.a * alpha),
+		STAT_FONT,
+		baseline,
+		text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size,
+		Color(text_color, text_color.a * alpha),
 	)
 
 
