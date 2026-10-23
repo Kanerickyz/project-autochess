@@ -178,7 +178,7 @@ theme_override_constants/margin_bottom = 8
 
 [node name="PeakVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 10
 
 [node name="PeakTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox"]
 layout_mode = 2
@@ -186,22 +186,18 @@ theme_override_colors/font_color = Color(0.88, 0.78, 0.52, 1)
 theme_override_font_sizes/font_size = 15
 text = "巅峰"
 
-[node name="PeakRow" type="HBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="PeakAttackVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
+[node name="PeakAttackVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
+theme_override_constants/separation = 4
 
-[node name="PeakAttackTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakAttackVBox"]
+[node name="PeakAttackTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakAttackVBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.82, 0.88, 1)
 theme_override_font_sizes/font_size = 13
 text = "最高攻击"
-horizontal_alignment = 1
 
-[node name="PeakAttackArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakAttackVBox"]
+[node name="PeakAttackArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakAttackVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
@@ -209,18 +205,18 @@ size_flags_horizontal = 3
 mouse_filter = 0
 script = ExtResource("2_arena")
 
-[node name="PeakHpVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
+[node name="PeakHpVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
+theme_override_constants/separation = 4
 
-[node name="PeakHpTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakHpVBox"]
+[node name="PeakHpTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakHpVBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.82, 0.88, 1)
 theme_override_font_sizes/font_size = 13
 text = "最高生命"
-horizontal_alignment = 1
 
-[node name="PeakHpArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakHpVBox"]
+[node name="PeakHpArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakHpVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
@@ -228,18 +224,18 @@ size_flags_horizontal = 3
 mouse_filter = 0
 script = ExtResource("2_arena")
 
-[node name="PeakCombatVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow"]
+[node name="PeakCombatVBox" type="VBoxContainer" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
+theme_override_constants/separation = 4
 
-[node name="PeakCombatTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakCombatVBox"]
+[node name="PeakCombatTitle" type="Label" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakCombatVBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.82, 0.88, 1)
 theme_override_font_sizes/font_size = 13
 text = "战中攻+血"
-horizontal_alignment = 1
 
-[node name="PeakCombatArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakRow/PeakCombatVBox"]
+[node name="PeakCombatArena" type="Control" parent="Root/Column/Scroll/Page/PeakPanel/PeakMargin/PeakVBox/PeakCombatVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
