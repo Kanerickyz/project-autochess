@@ -37,7 +37,7 @@
 | **攻击方式** | 是 | 近战单体 / 远程投射物 / 近战溅射（由 `projectile_speed`、`splash_radius` 组合决定，见 UNITS §4.2） |
 | **生命 / 攻击** | 是 | 友方单维常用 **1–10 整数**；其它战斗字段可对表同定位角色 |
 | **主技能** | 视情况 | 自带技能单位：绑定已有 `AbilityData` 或新建条目；白板可留空 |
-| **花费 / 品阶** | 友方入店 | `cost`、`tier`；与 [UNITS_ROSTER](./UNITS_ROSTER.md) §3.2 品阶尺一致 |
+| **花费 / 品阶** | 友方入店 | `cost`、`tier`；与 [UNITS_ROSTER](./UNITS_ROSTER.md) §3.3 品阶尺一致（频率主轴） |
 | **内部轴 / 流派偏好** | 建议 | 仅写进 Content 内部备注列，不进玩家 UI |
 | **入池** | 视投放 | 招募 `default_recruit_config.tres`、敌池 `resources/spawn/*`、关卡 `enemy_pool` 等 |
 | **美术** | 默认占位 | 终稿前见 §4；终稿后见 [PAPER_CUTOUT_ART_BRIEF](./PAPER_CUTOUT_ART_BRIEF.md) |
