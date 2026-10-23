@@ -1132,6 +1132,7 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		var entry := _slots.get_entry(slot_i)
 		if entry == null:
 			continue
+		entry.refill_equipment_armor()
 		var cell := _slots.get_cell(slot_i)
 		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 		if unit == null:

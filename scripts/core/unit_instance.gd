@@ -255,7 +255,7 @@ func get_armor_block() -> int:
 
 
 ## 护甲抵消后的最终扣血；≤0 表示全额挡住（不算受伤）。
-## 抵消量会消耗护甲；耗尽后回写队伍并销毁装备。
+## 抵消量会消耗护甲；耗尽后回写队伍（装备保留，下回合 / 新遭遇回满）。
 func mitigate_incoming_damage(amount: int) -> int:
 	if amount <= 0:
 		return 0
