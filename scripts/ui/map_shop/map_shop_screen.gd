@@ -409,7 +409,9 @@ func _try_buy_on_seat(slot_index: int, is_consumable: bool, seat_index: int) -> 
 			_hint_label.text = "购买失败"
 		_refresh_all()
 		return
-	if is_consumable:
+	if is_consumable and bool(result.get("destroyed", false)):
+		_hint_label.text = "生命归零，角色已销毁"
+	elif is_consumable:
 		_hint_label.text = "已使用消耗品"
 	elif bool(result.get("kept_new", true)):
 		_hint_label.text = "已装备"
