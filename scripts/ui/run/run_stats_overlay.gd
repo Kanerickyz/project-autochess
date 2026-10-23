@@ -5,7 +5,8 @@ signal continue_pressed
 
 const ROSTER_HINT := "长按查看技能 · 按住可滑动切换"
 const ROSTER_COLUMNS := 5
-const PEAK_COLUMNS := 3
+## 巅峰各小节与「队伍」同宽分行铺排，列数一致以保持卡牌体量。
+const PEAK_COLUMNS := ROSTER_COLUMNS
 ## 接近角色库体量：竖屏宽约 5 列时单格 ~88–96px。
 const CATALOG_CELL_TARGET_PX := 96.0
 
