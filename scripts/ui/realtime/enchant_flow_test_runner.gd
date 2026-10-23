@@ -14,6 +14,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_enchant_fuse_flow()
 	await _test_enchant_sandbox_skip_no_map_signal()
+	await _test_enchant_sandbox_random_ab()
 	await _test_enchant_team_seat_swap()
 	await _test_enchant_scroll_vs_drag_gesture()
 	if _failures == 0:
@@ -88,6 +89,56 @@ func _test_enchant_fuse_flow() -> void:
 func _process_n_frames(n: int) -> void:
 	for _i in n:
 		await process_frame
+
+
+func _test_enchant_sandbox_random_ab() -> void:
+	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
+	await process_frame
+
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 4
+	deck_cfg.starting_units = []
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	for id in ["ra", "rb", "rc"]:
+		var u := UnitData.new()
+		u.id = id
+		u.stats = UnitStats.new()
+		u.ability = HURT
+		deck.add_entry(u)
+
+	var economy := RunEconomy.new()
+	var level := load("res://resources/levels/board_act1.tres") as LevelData
+	battle.setup(deck, economy, level)
+	await battle.enter_enchant(0.0, true)
+	_expect(battle.is_enchant_sandbox_mode(), "sandbox for random")
+
+	var session := battle.get_enchant_session()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	_expect(session.randomize_ab_slots(rng), "sandbox randomize ok")
+	_expect(session.can_fuse(), "sandbox random fills forge")
+	_expect(session.slot_a_entry_id != session.slot_b_entry_id, "sandbox A/B distinct")
+
+	var dock := battle.get_dock()
+	var hud := dock.find_child("EnchantHud", true, false) as Control if dock != null else null
+	_expect(hud != null, "enchant hud present")
+	var random_btn: Button = null
+	if hud != null:
+		for child in hud.get_children():
+			if child is HBoxContainer:
+				for btn in child.get_children():
+					if btn is Button and (btn as Button).text == "随机":
+						random_btn = btn as Button
+						break
+	_expect(random_btn != null and random_btn.visible, "sandbox shows 随机 button")
+	if random_btn != null:
+		_expect(not random_btn.disabled, "随机 enabled with materials")
+
+	battle.queue_free()
+	await process_frame
 
 
 func _test_enchant_sandbox_skip_no_map_signal() -> void:

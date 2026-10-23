@@ -91,6 +91,31 @@ func reset_forge() -> void:
 	session_changed.emit()
 
 
+## 从可熔原料中随机抽两名不同队员放入 A/B（试验场快捷；配方变更会清零已投 G）。
+func randomize_ab_slots(rng: RandomNumberGenerator = null) -> bool:
+	if not is_active or fused_this_visit:
+		return false
+	var ids := get_material_entry_ids()
+	if ids.size() < 2:
+		return false
+	var pick_rng := rng
+	if pick_rng == null:
+		pick_rng = RandomNumberGenerator.new()
+		pick_rng.randomize()
+	var i := pick_rng.randi_range(0, ids.size() - 1)
+	var j := pick_rng.randi_range(0, ids.size() - 2)
+	if j >= i:
+		j += 1
+	var id_a := ids[i]
+	var id_b := ids[j]
+	## 直接写入；点「随机」视为新一轮配方，始终清零已投 G。
+	slot_a_entry_id = id_a
+	slot_b_entry_id = id_b
+	gold_invested_g = 0
+	session_changed.emit()
+	return true
+
+
 func set_slot(slot: StringName, entry_id: int) -> bool:
 	if fused_this_visit or not is_active:
 		return false
