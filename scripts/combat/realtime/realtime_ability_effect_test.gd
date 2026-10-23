@@ -50,6 +50,7 @@ static func run_all() -> bool:
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
 	_check("death_spawn_pack", _test_death_spawn_pack())
+	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
@@ -875,6 +876,9 @@ static func _test_death_spawn_pack() -> bool:
 	if data == null or data.ability == null or data.ability.id != "death_spawn_pack":
 		push_error("spawn: goblin ability not mounted")
 		return false
+	if data.ability.merge_value_mult != 4:
+		push_error("spawn: death_spawn_pack merge_value_mult expected 4")
+		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 3)
 	var light := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
@@ -903,13 +907,58 @@ static func _test_death_spawn_pack() -> bool:
 	if light.is_alive():
 		push_error("spawn: light infantry should have died (killer atk=%d)" % killer.unit.get_effective_attack())
 		return false
-	var tokens := 0
+	var token: RtUnit = null
 	for item in sim.get_units():
 		var rt := item as RtUnit
 		if rt.unit.id == "token_ember" and rt.is_alive():
-			tokens += 1
-	if tokens < 1:
-		push_error("spawn: expected token_ember on field, got %d (units=%d)" % [tokens, sim.get_units().size()])
+			token = rt
+			break
+	if token == null:
+		push_error("spawn: expected token_ember on field (units=%d)" % sim.get_units().size())
+		return false
+	if token.unit.stats.attack != 1 or token.unit.stats.max_hp != 1:
+		push_error(
+			"spawn 1★: token %d/%d expected 1/1"
+			% [token.unit.stats.attack, token.unit.stats.max_hp]
+		)
+		return false
+	return true
+
+
+## 余烬 2★：死亡生成 4/4 随从（merge_value_mult=4）。
+static func _test_death_spawn_pack_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/goblin.tres")
+	if data == null or data.ability == null or data.ability.id != "death_spawn_pack":
+		push_error("ember 2★: ability not mounted")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var ember := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	ember.level = 2
+	ember.current_hp = 0
+	grid.place(ember, Vector2i(9, 20))
+	var payload := CombatEventPayload.new()
+	payload.source = ember
+	payload.target = ember
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	var token: UnitInstance = null
+	for u in grid.get_all_units():
+		if u != null and u.id == "token_ember" and u.is_alive():
+			token = u
+			break
+	if token == null or token.stats == null:
+		push_error("ember 2★: missing token_ember")
+		return false
+	if token.stats.attack != 4 or token.stats.max_hp != 4 or token.current_hp != 4:
+		push_error(
+			"ember 2★: token %d/%d expected 4/4"
+			% [token.stats.attack, token.stats.max_hp]
+		)
 		return false
 	return true
 

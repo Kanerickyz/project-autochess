@@ -1314,8 +1314,9 @@ func _spawn_unit(
 			and action.spawn_unit != null
 			and action.spawn_unit.stats != null
 		):
+			## merge_value_mult>0 时按星级放大随从攻/血（如掘墓×3、余烬×4）；0 仍用 token 底值。
 			var spawn_ability: AbilityData = owner.get_main_ability()
-			if spawn_ability != null and spawn_ability.id == "kill_spawn_weak":
+			if spawn_ability != null and spawn_ability.merge_value_mult > 0:
 				var stat_mult := UnitInstance.ability_value_multiplier_for(
 					spawn_ability, owner.level
 				)

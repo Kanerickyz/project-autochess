@@ -216,7 +216,7 @@
 | 链枷 | 血怒一击 | `deal_damage_gain_atk_small` | 厮杀 | 溅射多次出手叠攻 |
 | 蛮斧 | 同仇敌忾 | `ally_death_self_atk_mid` | 成长·阵亡 | 听友亡自强 |
 | 游侠 | 援军呼应 | `ally_deploy_self_atk_small` | 成长·上场 | **其他友方**生成完成时小幅自加攻（`OnFriendSummoned`） |
-| 余烬 | 散兵余烬 | `death_spawn_pack` | 生成·随从 | 死后生成 1 随从 |
+| 余烬 | 散兵余烬 | `death_spawn_pack` | 生成·随从 | 死后生成 1 只 1/1 随从（三合一后 4/4） |
 | 标枪 | 伤势回春 | `hurt_heal_self_2` | 挨打·自愈 | 受伤时自身恢复 1 生命（三合一后 4；`merge_value_mult=4`） |
 
 | 刺盾 | 铁壁反震 | `hurt_reflect_small` | 坚韧·反震 | 挨打回敬施害者 |
