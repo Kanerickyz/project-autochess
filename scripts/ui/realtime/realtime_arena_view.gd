@@ -80,6 +80,9 @@ const SHAKE_BLEED_PX := 8.0
 ## 长按查看单位信息（SAP 式）：按住超过阈值弹卡，松手收起且不触发点按。
 const LONG_PRESS_MS := 380
 const LONG_PRESS_SLOP_PX := 10.0
+## 附魔试验场左右滑条：伸进棋盘内缘（勿盖住边列中心）+ 伸出到树带留白，方便两边跟手滚。
+const ENCHANT_SCROLL_SIDE_INNER_TILES := 0.35
+const ENCHANT_SCROLL_SIDE_OUTER_TILES := 1.25
 ## 拖角色：小丑牌式抬起 / 速度倾斜 / 落座（采样见 RealtimeUnitMotion.sample_drag_hold）。
 const DRAG_PICKUP_SEC := RealtimeUnitMotion.DRAG_PICKUP_SEC
 const DRAG_SETTLE_SEC := 0.2
@@ -788,6 +791,13 @@ func _gui_input_enchant(event: InputEvent) -> void:
 				_begin_press(mb.position, forge_info, Callable())
 				accept_event()
 				return
+			## 左右边条优先滚列表（可盖住边列角色外缘）；中间点队员仍开拖。
+			if enchant_team_scroll_enabled and _is_enchant_side_scroll_zone(mb.position):
+				_enchant_team_press_id = -1
+				_enchant_team_pan_active = true
+				_enchant_team_pan_last_y = mb.position.y
+				accept_event()
+				return
 			var entry_id := _find_enchant_team_entry_at(cell)
 			if entry_id >= 0:
 				_enchant_team_press_id = entry_id
@@ -863,6 +873,30 @@ func _is_enchant_team_scroll_cell(cell: Vector2i) -> bool:
 		return false
 	var mid := BoardHalf.midline_row(board_size.y)
 	return cell.y >= mid
+
+
+## 队伍半场左右边条：含棋盘外留白 + 边列外缘；边列中心仍留给拖队员。
+func _is_enchant_side_scroll_zone(local_pos: Vector2) -> bool:
+	if not enchant_team_scroll_enabled:
+		return false
+	var tile := local_to_tile(local_pos)
+	var mid := float(BoardHalf.midline_row(board_size.y))
+	if tile.y < mid or tile.y >= float(board_size.y):
+		return false
+	var rect := get_board_rect()
+	var px := get_cell_px()
+	if rect.size.x <= 1.0 or px <= 1.0:
+		return false
+	var inner := px * ENCHANT_SCROLL_SIDE_INNER_TILES
+	var outer := px * ENCHANT_SCROLL_SIDE_OUTER_TILES
+	if local_pos.x >= rect.position.x - outer and local_pos.x <= rect.position.x + inner:
+		return true
+	if (
+		local_pos.x >= rect.position.x + rect.size.x - inner
+		and local_pos.x <= rect.position.x + rect.size.x + outer
+	):
+		return true
+	return false
 
 
 func _find_enchant_team_entry_at(hover: Vector2i) -> int:
