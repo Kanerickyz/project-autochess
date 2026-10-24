@@ -14,7 +14,6 @@ const HIGH_FREQ_TRIGGERS := {
 	&"OnDamageTaken": true,
 	&"OnDealDamage": true,
 	&"OnAttackHit": true,
-	&"OnCrit": true,
 }
 
 
@@ -199,8 +198,6 @@ static func _stat_short_label(stat_name: StringName) -> String:
 			return "攻"
 		&"max_hp":
 			return "生命"
-		&"crit_rate_percent":
-			return "暴"
 		&"attack_range":
 			return "射程"
 		&"move_range":

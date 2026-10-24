@@ -10,7 +10,6 @@ var level: int = 1
 var experience: int = 0
 var bonus_attack: int = 0
 var bonus_max_hp: int = 0
-var bonus_crit_rate_percent: int = 0
 ## 地图商店装备：每角色最多一件；跨遭遇保留。
 var equipment: EquipmentData = null
 ## 护甲满额（战斗内可耗尽，离开战斗节点回满；下场开战再同步；装备本身不销毁）。

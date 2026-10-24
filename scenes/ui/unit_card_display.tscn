@@ -169,28 +169,6 @@ text = "1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CritRoot" type="Node2D" parent="StatBar"]
-unique_name_in_owner = true
-position = Vector2(34, 9)
-
-[node name="CritIcon" type="Polygon2D" parent="StatBar/CritRoot"]
-unique_name_in_owner = true
-position = Vector2(-10, 0)
-
-[node name="CritLabel" type="Label" parent="StatBar/CritRoot"]
-unique_name_in_owner = true
-offset_left = 2.0
-offset_top = -6.0
-offset_right = 22.0
-offset_bottom = 10.0
-theme_override_colors/font_color = Color(0.98, 0.98, 0.99, 1)
-theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.08, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 11
-text = "5%"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="HealthRoot" type="Node2D" parent="StatBar"]
 unique_name_in_owner = true
 position = Vector2(51, 9)

@@ -26,7 +26,6 @@ const COLOR_PIG := Color(0.95, 0.65, 0.75, 1.0)
 const COLOR_T2 := Color(0.3, 0.65, 0.85, 1.0)
 const COLOR_LEVEL := Color(1.0, 0.92, 0.2, 1.0)
 const COLOR_ATTACK := Color(0.55, 0.58, 0.62, 1.0)
-const COLOR_CRIT := Color(1.0, 0.82, 0.25, 1.0)
 const COLOR_DAMAGE_POPUP := Color(1.0, 0.25, 0.2, 1.0)
 const COLOR_HEALTH := Color(0.92, 0.18, 0.22, 1.0)
 const COLOR_OUTLINE_WHITE := Color(1.0, 1.0, 1.0, 1.0)
@@ -72,9 +71,6 @@ static var _paper_opaque_cache: Dictionary = {}
 @onready var _attack_root: Node2D = %AttackRoot
 @onready var _attack_icon: Polygon2D = %AttackIcon
 @onready var _attack_label: Label = %AttackLabel
-@onready var _crit_root: Node2D = %CritRoot
-@onready var _crit_icon: Polygon2D = %CritIcon
-@onready var _crit_label: Label = %CritLabel
 @onready var _health_root: Node2D = %HealthRoot
 @onready var _health_icon: Polygon2D = %HealthIcon
 @onready var _health_label: Label = %HealthLabel
@@ -107,7 +103,6 @@ var _unit_data: UnitData
 var _override_attack: int = -1
 var _override_hp: int = -1
 var _override_max_hp: int = -1
-var _override_crit_percent: int = -1
 var _card_size: Vector2 = SIZE_DEFAULT
 var _show_current_hp: bool = false
 var _team: UnitInstance.Team = UnitInstance.Team.PLAYER
@@ -223,7 +218,6 @@ func set_portrait_fill_ratio(ratio: float, character_cy_ratio: float = -1.0) -> 
 func bind_unit_instance(unit: UnitInstance) -> void:
 	_unit = unit
 	_unit_data = unit.unit_data if unit != null else null
-	_override_crit_percent = -1
 	_show_current_hp = true
 	if unit != null:
 		_team = unit.team
@@ -240,14 +234,12 @@ func bind_unit_data(
 	atk: int = -1,
 	hp: int = -1,
 	max_hp: int = -1,
-	crit_percent: int = -1,
 ) -> void:
 	_unit = null
 	_unit_data = data
 	_override_attack = atk
 	_override_hp = hp
 	_override_max_hp = max_hp
-	_override_crit_percent = crit_percent
 	_show_current_hp = false
 	_team = data.team_default if data != null else UnitInstance.Team.PLAYER
 	refresh_stats()
@@ -277,7 +269,6 @@ func bind_deck_entry(entry: DeckEntry, level_config: LevelConfig) -> void:
 		DeckUpgradeService.get_display_attack(entry),
 		DeckUpgradeService.get_display_max_hp(entry),
 		DeckUpgradeService.get_display_max_hp(entry),
-		DeckUpgradeService.get_display_crit_rate(entry),
 	)
 	set_level(entry.level)
 	set_experience(
@@ -311,7 +302,7 @@ static func format_damage_popup_text(amount: int) -> String:
 	return "-%d!" % amount
 
 
-func pop_damage_number(amount: int, duration: float = -1.0, is_crit: bool = false) -> Tween:
+func pop_damage_number(amount: int, duration: float = -1.0) -> Tween:
 	if _damage_popup == null:
 		return null
 	_kill_popup_tween()
@@ -320,9 +311,6 @@ func pop_damage_number(amount: int, duration: float = -1.0, is_crit: bool = fals
 		duration = CombatAnimationConfig.DUR_DAMAGE_POPUP
 	var font_mult := CombatAnimationConfig.damage_pop_font_mult(amount)
 	var start_scale_val := DAMAGE_POPUP_SCALE_START * CombatAnimationConfig.damage_pop_overshoot(amount)
-	if is_crit:
-		font_mult *= CombatAnimationConfig.CRIT_POPUP_FONT_MULT
-		start_scale_val *= CombatAnimationConfig.CRIT_POPUP_OVERSHOOT_MULT
 	var font_size := maxi(DAMAGE_POPUP_FONT_MIN, int(DAMAGE_POPUP_FONT_BASE * card_scale * font_mult))
 	var popup_size := Vector2(
 		DAMAGE_POPUP_WIDTH_BASE * card_scale * font_mult,
@@ -335,15 +323,8 @@ func pop_damage_number(amount: int, duration: float = -1.0, is_crit: bool = fals
 		maxi(6, int(font_size * 0.24)),
 	)
 	_damage_popup.visible = true
-	if is_crit:
-		_damage_popup.add_theme_color_override(
-			"font_color",
-			CombatAnimationConfig.COLOR_CRIT_POPUP,
-		)
-		_damage_popup.modulate = Color.WHITE
-	else:
-		_damage_popup.add_theme_color_override("font_color", COLOR_DAMAGE_POPUP)
-		_damage_popup.modulate = Color.WHITE
+	_damage_popup.add_theme_color_override("font_color", COLOR_DAMAGE_POPUP)
+	_damage_popup.modulate = Color.WHITE
 	_damage_popup.rotation = 0.0
 	var center_x := _card_size.x * 0.5
 	var center_y := 4.0 * card_scale + popup_size.y * 0.5
@@ -477,11 +458,8 @@ func refresh_stats() -> void:
 		return
 	var attack := _resolve_attack()
 	var health := _resolve_health_display()
-	var crit := _resolve_crit_percent()
 	if _attack_label != null:
 		_attack_label.text = str(attack)
-	if _crit_label != null:
-		_crit_label.text = "%d%%" % crit
 	if _health_label != null:
 		_health_label.text = health
 	_apply_hp_visual(true)
@@ -518,16 +496,6 @@ func _resolve_attack() -> int:
 	if _unit_data != null and _unit_data.stats != null:
 		return _unit_data.stats.attack
 	return 0
-
-
-func _resolve_crit_percent() -> int:
-	if _unit != null:
-		return int(round(_unit.get_effective_crit_rate() * 100.0))
-	if _override_crit_percent >= 0:
-		return _override_crit_percent
-	if _unit_data != null and _unit_data.stats != null:
-		return _unit_data.stats.crit_rate_percent
-	return 5
 
 
 func _resolve_health_display() -> String:
@@ -602,25 +570,15 @@ func _apply_layout() -> void:
 		_stat_bar.size = Vector2(w * 0.85, stat_h)
 
 	var stat_w := _stat_bar.size.x
-	var atk_w := stat_w * 0.33
-	var crit_w := stat_w * 0.34
-	var hp_w := stat_w * 0.33
+	var atk_w := stat_w * 0.5
+	var hp_w := stat_w * 0.5
 	var badge_h := stat_h
 	var font_size := maxi(9, int(11.0 * scale))
 	_layout_stat_badge(_attack_root, _attack_label, Vector2(0.0, 0.0), atk_w, badge_h, font_size)
 	_layout_stat_badge(
-		_crit_root,
-		_crit_label,
-		Vector2(atk_w, 0.0),
-		crit_w,
-		badge_h,
-		font_size,
-		0.62,
-	)
-	_layout_stat_badge(
 		_health_root,
 		_health_label,
-		Vector2(atk_w + crit_w, 0.0),
+		Vector2(atk_w, 0.0),
 		hp_w,
 		badge_h,
 		font_size,
@@ -982,19 +940,6 @@ func _apply_icon_shapes() -> void:
 			Vector2(hs * 0.95, -hs * 0.15),
 		])
 		_health_icon.color = COLOR_HEALTH
-	if _crit_icon != null:
-		var cs := 6.0 * scale
-		_crit_icon.polygon = PackedVector2Array([
-			Vector2(0.0, -cs),
-			Vector2(cs * 0.28, -cs * 0.28),
-			Vector2(cs, 0.0),
-			Vector2(cs * 0.28, cs * 0.28),
-			Vector2(0.0, cs),
-			Vector2(-cs * 0.28, cs * 0.28),
-			Vector2(-cs, 0.0),
-			Vector2(-cs * 0.28, -cs * 0.28),
-		])
-		_crit_icon.color = COLOR_CRIT
 
 
 func _get_animation_root() -> Node2D:

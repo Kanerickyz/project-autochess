@@ -60,7 +60,6 @@
  ├ 攻击前摇（attack_windup）
  ├ 投射物速度（projectile_speed）
  ├ 溅射半径（splash_radius）
- └ 暴击率（crit_rate_percent，沿用；本版名单为零）
 移动与索敌
  ├ 一回合步数（steps_per_turn，整数）— 本动最多走几格
  └ 索敌范围（sight_range）— 切比雪夫格距

@@ -77,7 +77,7 @@ BuffCardData (Resource)
 
 | 类型 | 说明 | 示例 |
 |------|------|------|
-| `PERMANENT_STAT` | 写入 `DeckEntry.bonus_attack` / `bonus_max_hp` / `bonus_crit_rate_percent` | 力量祝福 +1 攻 |
+| `PERMANENT_STAT` | 写入 `DeckEntry.bonus_attack` / `bonus_max_hp` | 力量祝福 +1 攻 |
 | `RULE_FLAG` | 条目规则标记，战斗逻辑读取 | 沉重脚步：禁止移动 |
 | `COMBAT_TRIGGER` | 战斗事件触发，可接 Run 经济 | 亡者遗金：死亡 +1 金 |
 
@@ -86,7 +86,7 @@ BuffCardData (Resource)
 ```
 DeckEntry
 ├── unit: UnitData
-├── level, experience, bonus_attack, bonus_max_hp, bonus_crit_rate_percent
+├── level, experience, bonus_attack, bonus_max_hp
 ├── attached_buffs: Array[BuffCardData]   # 取代 attached_skills
 └── rule_flags: Dictionary             # 可选，如 cannot_move: true
 ```
@@ -130,7 +130,7 @@ DeckEntry
 
 ### 4.2 苹果 / 梨 / 肉骨 / 大蒜（永久属性）
 
-- 购买并附加瞬间写入 `DeckEntry.bonus_attack` / `bonus_max_hp` / `bonus_crit_rate_percent`（数值见上表 `value`；`crit_rate_percent` 已由 `ShopEffectResolver` 支持）
+- 购买并附加瞬间写入 `DeckEntry.bonus_attack` / `bonus_max_hp`（数值见上表 `value`）
 - UI 手牌/牌库卡面显示合并后的攻血；可与牌库升级 `bonus_*` 叠加
 
 ### 4.3 亡者遗金

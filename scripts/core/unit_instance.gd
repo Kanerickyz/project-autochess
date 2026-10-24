@@ -66,7 +66,6 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	unit.stats = entry.unit.stats.duplicate_stats() if entry.unit.stats else UnitStats.new()
 	unit.stats.attack += entry.bonus_attack
 	unit.stats.max_hp += entry.bonus_max_hp
-	unit.stats.crit_rate_percent += entry.bonus_crit_rate_percent
 	var new_max := unit.get_effective_max_hp()
 	if new_max > old_max:
 		unit.current_hp += new_max - old_max
@@ -241,13 +240,6 @@ func get_effective_max_hp() -> int:
 	if stats == null:
 		return 1
 	return maxi(1, stats.max_hp + stat_modifiers.get_flat_bonus(&"max_hp"))
-
-
-func get_effective_crit_rate() -> float:
-	if stats == null:
-		return 0.0
-	var rate := stats.crit_rate_percent + stat_modifiers.get_flat_bonus(&"crit_rate_percent")
-	return clampf(float(rate) / 100.0, 0.0, 1.0)
 
 
 func get_armor_block() -> int:

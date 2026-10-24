@@ -190,8 +190,6 @@ func _owner_qualifies_for_event(
 			return payload.target == owner
 		CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL:
 			return payload.source == owner
-		CombatEvents.ON_CRIT:
-			return payload.source == owner
 		CombatEvents.ON_MOVE:
 			return payload.source == owner
 		CombatEvents.ON_COMBAT_START:
@@ -972,23 +970,10 @@ func _execute_action(
 					stat_unit.stats.max_hp += stat_value
 					stat_unit.current_hp += stat_value
 					executed = true
-				&"crit_rate_percent":
-					if stat_unit.deck_entry_id >= 0 and _deck_state != null:
-						var crit_entry := _deck_state.get_entry(stat_unit.deck_entry_id)
-						if crit_entry != null:
-							crit_entry.bonus_crit_rate_percent += stat_value
-							_deck_state.deck_changed.emit()
-					stat_unit.stats.crit_rate_percent += stat_value
-					executed = true
 			if executed:
 				print(
-					"[Effect] %s permanent +%d %s (crit=%d%%)"
-					% [
-						stat_unit.id,
-						stat_value,
-						action.stat_name,
-						int(round(stat_unit.get_effective_crit_rate() * 100.0)),
-					]
+					"[Effect] %s permanent +%d %s"
+					% [stat_unit.id, stat_value, action.stat_name]
 				)
 		EffectAction.Type.SWAP_POSITIONS:
 			if owner == null or target == null or not owner.is_alive():
@@ -1192,7 +1177,7 @@ func _execute_fuse_explode_batch(
 		executed.append({"action": damage_action, "target": enemy})
 		hit_count += 1
 	if owner.is_alive():
-		_pipeline.apply_damage(owner, owner, owner.current_hp, false)
+		_pipeline.apply_damage(owner, owner, owner.current_hp)
 	if hit_count == 0:
 		executed.append({"action": action, "target": owner})
 	print(
@@ -1258,7 +1243,7 @@ func _absorb_stats_and_kill(owner: UnitInstance, target: UnitInstance) -> bool:
 	var lethal := maxi(1, target.current_hp)
 	if _pipeline != null:
 		_suppress_deal_damage_triggers += 1
-		_pipeline.apply_damage(owner, target, lethal, false)
+		_pipeline.apply_damage(owner, target, lethal)
 		_suppress_deal_damage_triggers = maxi(0, _suppress_deal_damage_triggers - 1)
 	else:
 		target.current_hp = 0

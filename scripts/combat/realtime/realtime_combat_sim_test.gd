@@ -75,7 +75,7 @@ static func _check(name: String, passed: bool) -> bool:
 
 
 const _STAT_OVERRIDE_KEYS := [
-	"max_hp", "attack", "steps_per_turn", "crit_rate_percent", "attack_interval",
+	"max_hp", "attack", "steps_per_turn", "attack_interval",
 	"attack_windup", "attack_reach", "sight_range", "body_radius", "mass",
 	"projectile_speed", "splash_radius", "deploy_time", "attack_range",
 ]
@@ -85,7 +85,6 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	var stats := UnitStats.new()
 	stats.max_hp = 100
 	stats.attack = 10
-	stats.crit_rate_percent = 0
 	stats.steps_per_turn = 1
 	stats.attack_interval = 1.0
 	stats.attack_windup = 0.3

@@ -184,7 +184,6 @@ static func _make_unit(
 	var stats := UnitStats.new()
 	stats.max_hp = hp
 	stats.attack = attack
-	stats.crit_rate_percent = 0
 	stats.steps_per_turn = maxi(0, roundi(speed))
 	stats.attack_reach = reach
 	stats.projectile_speed = projectile_speed

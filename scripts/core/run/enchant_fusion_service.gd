@@ -33,7 +33,6 @@ static func fuse(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionar
 
 	var inherit_seat := a.seat_index
 	var inherit_seq := a.seat_assign_seq
-	var crit_bonus := a.bonus_crit_rate_percent + b.bonus_crit_rate_percent
 	var buff_sources := [a, b]
 
 	if not deck.remove_entry(entry_id_a):
@@ -43,7 +42,7 @@ static func fuse(deck: DeckState, entry_id_a: int, entry_id_b: int) -> Dictionar
 		result["error"] = "remove_b_failed"
 		return result
 
-	var product := deck.add_fused_enchant_entry(ability, atk, hp, base_atk, base_hp, crit_bonus)
+	var product := deck.add_fused_enchant_entry(ability, atk, hp, base_atk, base_hp)
 	if product == null:
 		result["error"] = "add_failed"
 		return result
@@ -108,7 +107,6 @@ static func apply_fused_panel_to_entry(entry: DeckEntry, a: DeckEntry, b: DeckEn
 	var panel := compute_fused_panel(a, b)
 	entry.bonus_attack = int(panel["display_attack"]) - int(panel["base_attack"])
 	entry.bonus_max_hp = int(panel["display_max_hp"]) - int(panel["base_max_hp"])
-	entry.bonus_crit_rate_percent = a.bonus_crit_rate_percent + b.bonus_crit_rate_percent
 
 
 static func _merge_buffs(product: DeckEntry, sources: Array) -> void:

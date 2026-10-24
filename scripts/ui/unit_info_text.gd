@@ -17,7 +17,6 @@ const TRIGGER_LABELS := {
 	CombatEvents.ON_DAMAGE_TAKEN: "受伤时",
 
 	CombatEvents.ON_DEAL_DAMAGE: "造成伤害时",
-	CombatEvents.ON_CRIT: "造成暴击时",
 	CombatEvents.ON_KILL: "击杀时",
 	CombatEvents.ON_DEATH: "死亡时",
 	CombatEvents.ON_ATTACK_HIT: "受击前",
@@ -41,12 +40,11 @@ static func get_display_name(unit: UnitInstance) -> String:
 static func get_stats_line(unit: UnitInstance) -> String:
 	if unit == null or unit.stats == null:
 		return "—"
-	return "Lv.%d · %d/%d 生命 · %d 攻击 · %d%% 暴击" % [
+	return "Lv.%d · %d/%d 生命 · %d 攻击" % [
 		unit.level,
 		unit.current_hp,
 		unit.get_effective_max_hp(),
 		unit.get_effective_attack(),
-		int(round(unit.get_effective_crit_rate() * 100.0)),
 	]
 
 
@@ -56,13 +54,11 @@ static func get_stats_line_from_entry(entry: DeckEntry) -> String:
 	var stats := entry.unit.stats
 	var max_hp := stats.max_hp + entry.bonus_max_hp
 	var attack := stats.attack + entry.bonus_attack
-	var crit := stats.crit_rate_percent + entry.bonus_crit_rate_percent
-	return "Lv.%d · %d/%d 生命 · %d 攻击 · %d%% 暴击" % [
+	return "Lv.%d · %d/%d 生命 · %d 攻击" % [
 		entry.level,
 		max_hp,
 		max_hp,
 		attack,
-		crit,
 	]
 
 
@@ -70,11 +66,10 @@ static func get_stats_line_from_unit_data(data: UnitData) -> String:
 	if data == null or data.stats == null:
 		return "—"
 	var stats := data.stats
-	return "Lv.1 · %d/%d 生命 · %d 攻击 · %d%% 暴击" % [
+	return "Lv.1 · %d/%d 生命 · %d 攻击" % [
 		stats.max_hp,
 		stats.max_hp,
 		stats.attack,
-		stats.crit_rate_percent,
 	]
 
 
@@ -422,8 +417,6 @@ static func format_action(
 				stat = "攻击"
 			elif stat == "max_hp":
 				stat = "生命上限"
-			elif stat == "crit_rate_percent":
-				stat = "暴击率"
 			elif stat == "steps_per_turn":
 				stat = "每回合步数"
 			return "%s%s %s" % [sign, scaled_value, stat]
@@ -481,8 +474,6 @@ static func format_action(
 				pstat = "攻击"
 			elif pstat == "max_hp":
 				pstat = "生命上限"
-			elif pstat == "crit_rate_percent":
-				pstat = "暴击率"
 			return "永久 +%d %s" % [scaled_value, pstat]
 		EffectAction.Type.STOCK_FREE_BUFF:
 			var buff_name := "增益"

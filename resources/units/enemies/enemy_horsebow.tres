@@ -10,7 +10,6 @@ max_hp = 3
 attack = 10
 steps_per_turn = 1
 attack_range = 2
-crit_rate_percent = 0
 attack_interval = 1.1
 attack_windup = 0.35
 attack_reach = 2.0

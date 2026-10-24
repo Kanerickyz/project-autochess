@@ -216,7 +216,6 @@ func add_fused_enchant_entry(
 	display_max_hp: int,
 	base_attack: int,
 	base_max_hp: int,
-	crit_rate_bonus: int = 0,
 ) -> DeckEntry:
 	if EnchantFusionService.FUSED_UNIT == null or runtime_ability == null:
 		return null
@@ -227,7 +226,6 @@ func add_fused_enchant_entry(
 	entry.runtime_main_ability = runtime_ability.duplicate(true) as AbilityData
 	entry.bonus_attack = display_attack - base_attack
 	entry.bonus_max_hp = display_max_hp - base_max_hp
-	entry.bonus_crit_rate_percent = crit_rate_bonus
 	_entries.append(entry)
 	deck_changed.emit()
 	return entry
@@ -554,9 +552,6 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	product.experience = 0
 	product.bonus_attack = sum_atk - base_atk
 	product.bonus_max_hp = sum_hp - base_hp
-	product.bonus_crit_rate_percent = (
-		a.bonus_crit_rate_percent + b.bonus_crit_rate_percent + c.bonus_crit_rate_percent
-	)
 	## PLAYER §4.1：合成体占三只中落座时间最早者座位；另两座随移除变空。
 	var earliest := _earliest_seated_among([a, b, c])
 	if earliest != null and earliest.seat_index >= 0:
@@ -696,7 +691,6 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.experience = source.experience
 	entry.bonus_attack = source.bonus_attack
 	entry.bonus_max_hp = source.bonus_max_hp
-	entry.bonus_crit_rate_percent = source.bonus_crit_rate_percent
 	if source.equipment != null:
 		entry.equipment = source.equipment.duplicate(true) as EquipmentData
 	else:

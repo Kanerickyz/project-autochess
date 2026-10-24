@@ -508,16 +508,6 @@ func spawn_melee_clash_spark(world_pos: Vector2, duration: float) -> void:
 	)
 
 
-func spawn_crit_hit_spark(world_pos: Vector2, duration: float) -> void:
-	MeleeClashSpark.spawn(
-		self,
-		world_pos,
-		cell_size,
-		CombatAnimationConfig.CRIT_HIT_SPARK_TINT,
-		duration,
-	)
-
-
 func spawn_death_spark(world_pos: Vector2, team: UnitInstance.Team, duration: float) -> void:
 	MeleeClashSpark.spawn(
 		self,

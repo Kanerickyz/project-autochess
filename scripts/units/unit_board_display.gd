@@ -238,24 +238,16 @@ func play_hit_impact(
 	pace_scale: float = 1.0,
 	knockback_dir: Vector2 = Vector2.ZERO,
 	damage_amount: int = 0,
-	is_crit: bool = false,
 ) -> Tween:
 	_kill_fx_tween()
 	var impact_scale := _impact_pace_scale(pace_scale)
-	if is_crit:
-		impact_scale *= 1.12
 	var flash_dur := maxf(
 		CombatAnimationConfig.DUR_HIT_FLASH * impact_scale,
 		CombatAnimationConfig.MIN_IMPACT_DURATION,
 	)
-	if is_crit:
-		flash_dur *= 1.1
 	var original := modulate
 	var peak_flash := Color(2.0, 2.0, 2.0, 1.0)
 	var mid_flash := Color(1.35, 0.65, 0.65, 1.0)
-	if is_crit:
-		peak_flash = CombatAnimationConfig.CRIT_HIT_TINT * 1.5
-		mid_flash = CombatAnimationConfig.CRIT_HIT_TINT
 	_fx_tween = create_tween()
 	_fx_tween.tween_callback(func() -> void:
 		if _card != null:
@@ -263,8 +255,6 @@ func play_hit_impact(
 	)
 	if knockback_dir.length_squared() > 0.01:
 		var knockback_mult := CombatAnimationConfig.KNOCKBACK_PX
-		if is_crit:
-			knockback_mult *= CombatAnimationConfig.CRIT_KNOCKBACK_MULT
 		var push := knockback_dir.normalized() * knockback_mult
 		var base_pos := position
 		var knocked := base_pos + push
@@ -291,12 +281,12 @@ func play_hit_flash(pace_scale: float = 1.0) -> Tween:
 	return play_hit_impact(pace_scale)
 
 
-func pop_damage_number(amount: int, duration: float = -1.0, is_crit: bool = false) -> Tween:
+func pop_damage_number(amount: int, duration: float = -1.0) -> Tween:
 	if _card == null:
 		return null
 	if duration < 0.0:
 		duration = CombatAnimationConfig.DUR_DAMAGE_POPUP
-	return _card.pop_damage_number(amount, duration, is_crit)
+	return _card.pop_damage_number(amount, duration)
 
 
 func play_buff_pop(pace_scale: float = 1.0) -> Tween:

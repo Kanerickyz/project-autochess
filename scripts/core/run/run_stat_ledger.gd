@@ -106,7 +106,6 @@ static func _clone_peak_entry(source: DeckEntry) -> DeckEntry:
 	entry.level = source.level
 	entry.bonus_attack = source.bonus_attack
 	entry.bonus_max_hp = source.bonus_max_hp
-	entry.bonus_crit_rate_percent = source.bonus_crit_rate_percent
 	entry.attached_buffs = source.attached_buffs.duplicate()
 	entry.attached_abilities = source.attached_abilities.duplicate()
 	entry.rule_flags = source.rule_flags.duplicate(true)

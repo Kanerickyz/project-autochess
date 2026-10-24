@@ -1,15 +1,15 @@
 class_name DamagePipelineCritTest
 extends RefCounted
+## 暴击已移除：伤害按基数结算，不放大。
 
 static var _failures: int = 0
 
 
 static func run_all() -> bool:
 	_failures = 0
-	_test_roll_damage_full_crit_rate()
-	_test_roll_damage_zero_crit_rate()
+	_test_roll_damage_stays_flat()
 	_test_roll_damage_no_source()
-	_test_apply_rolled_damage_emits_crit_flag()
+	_test_apply_rolled_damage_deals_base()
 	if _failures == 0:
 		print("DamagePipelineCritTest: all tests passed")
 	else:
@@ -35,11 +35,10 @@ static func _pipeline(bus: CombatEventBus, grid: BoardGrid) -> DamagePipeline:
 	return pipeline
 
 
-static func _unit(attack: int, crit_rate_percent: int) -> UnitInstance:
+static func _unit(attack: int) -> UnitInstance:
 	var unit := UnitInstance.new("test", Vector2i(0, 0), UnitInstance.Team.PLAYER)
 	unit.stats = UnitStats.new()
 	unit.stats.attack = attack
-	unit.stats.crit_rate_percent = crit_rate_percent
 	unit.current_hp = 10
 	return unit
 
@@ -59,34 +58,24 @@ static func _assert_true(value: bool, message: String) -> void:
 		push_error("DamagePipelineCritTest FAIL: %s" % message)
 
 
-static func _test_roll_damage_full_crit_rate() -> void:
+static func _test_roll_damage_stays_flat() -> void:
 	var pipeline := _pipeline(_bus(), _grid())
-	var attacker := _unit(4, 100)
+	var attacker := _unit(4)
 	var rolled: DamageRoll = pipeline.roll_damage(attacker, attacker.get_effective_attack())
-	_assert_true(rolled.is_crit, "100% crit rate should crit")
-	_assert_eq(rolled.amount, 6, "crit damage 150% of 4")
-
-
-static func _test_roll_damage_zero_crit_rate() -> void:
-	var pipeline := _pipeline(_bus(), _grid())
-	var attacker := _unit(4, 0)
-	var rolled: DamageRoll = pipeline.roll_damage(attacker, attacker.get_effective_attack())
-	_assert_eq(rolled.is_crit, false, "0% crit rate should not crit")
-	_assert_eq(rolled.amount, 4, "non-crit damage unchanged")
+	_assert_eq(rolled.amount, 4, "damage stays at base 4")
 
 
 static func _test_roll_damage_no_source() -> void:
 	var pipeline := _pipeline(_bus(), _grid())
 	var rolled: DamageRoll = pipeline.roll_damage(null, 5)
-	_assert_eq(rolled.is_crit, false, "null source should not crit")
 	_assert_eq(rolled.amount, 5, "null source damage unchanged")
 
 
-static func _test_apply_rolled_damage_emits_crit_flag() -> void:
+static func _test_apply_rolled_damage_deals_base() -> void:
 	var grid := _grid()
 	var bus := _bus()
 	var pipeline := _pipeline(bus, grid)
-	var attacker := _unit(2, 100)
+	var attacker := _unit(2)
 	var defender := UnitInstance.new("defender", Vector2i(1, 0), UnitInstance.Team.ENEMY)
 	defender.stats = UnitStats.new()
 	defender.stats.max_hp = 10
@@ -103,5 +92,5 @@ static func _test_apply_rolled_damage_emits_crit_flag() -> void:
 	var payload: CombatEventPayload = captured[0]
 	_assert_true(payload != null, "damage event emitted")
 	if payload != null:
-		_assert_true(payload.is_crit, "payload marks crit")
-		_assert_eq(payload.amount, 3, "crit damage 150% of 2 rounded")
+		_assert_eq(payload.amount, 2, "dealt base 2")
+		_assert_eq(defender.current_hp, 8, "defender hp after base damage")

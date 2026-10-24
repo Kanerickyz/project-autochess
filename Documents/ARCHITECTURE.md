@@ -203,16 +203,9 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 | `CombatArena` | 玩家阵容 + 刷怪结果实例化、开战/结束信号 |
 | `UnitBrain` | 攻速计时、寻敌、移动（简化可网格邻接） |
 | `AbilitySystem` | 主动技调度门面（冷却、施法请求）；效果应用委托 `EffectResolver` |
-| `DamagePipeline` | 伤害结算、暴击判定、治疗；结算后向 `CombatEventBus` 派发事件 |
+| `DamagePipeline` | 伤害结算、治疗；结算后向 `CombatEventBus` 派发事件 |
 | `CombatEventBus` | 战斗域事件分发（见 §3.7） |
 | `EffectResolver` | 匹配 Trigger、解析目标、应用 `EffectSpec` |
-
-**DamagePipeline（暴击）**：
-
-- 默认暴击率 `UnitStats.crit_rate_percent = 5`；`UnitInstance.get_effective_crit_rate()` 含战斗临时加成
-- `roll_damage` / `apply_rolled_damage`：暴击倍率 `CRIT_DAMAGE_MULT = 1.5`（150% 伤害）
-- `source == null` 的环境伤害（如格子灼烧）**不**暴击
-- 暴击成功时额外 emit `OnCrit`；`CombatEventPayload.is_crit` 供表现层（金色跳字、震屏、spark）
 
 **事件派发约定**：伤害结算完成后 `emit OnDamageTaken(target)`、`OnDealDamage(source)` 等，由 §3.7 监听并触发联动技能。
 
@@ -244,7 +237,7 @@ extends Resource
 ```
 
 - **牌库等级**：`DeckEntry.level`（1–3）+ `LevelConfig` 经验阈值；商店购买同名合并；升级永久 +1/+1；战斗技能数值 × `UnitInstance.level`
-- **牌库永久加成**：`DeckEntry.bonus_attack` / `bonus_max_hp` / `bonus_crit_rate_percent`；`UnitInstance.from_deck_entry()` 将 `bonus_crit_rate_percent` 合并进 `stats.crit_rate_percent`
+- **牌库永久加成**：`DeckEntry.bonus_attack` / `bonus_max_hp`；同步进场上实例的攻击与生命上限
 - **联动技能（Ability）**：`UnitData.ability`（**必填**）+ 可选 `passives`；`AbilityData` 持有 `Array[EffectSpec]`，战斗内由 `CombatEventBus` 驱动
 - **增益（Buff） / 事件选项**：商店与事件的**非战斗永久改写**走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`），**不**默认并入 `get_all_effect_specs()`。凡会进入战斗触发的效果必须挂 `EffectSpec`（见 BUFF_SYSTEM）
 - **tags**：供 `allies_with_tag` 等目标选择使用；**v1 不做**「凑 N 个同 tag 触发团队增益」的 Trait 系统
@@ -278,13 +271,13 @@ flowchart LR
 
 ```
 OnCombatStart, OnFriendSummoned, OnSummoned, OnFriendDeath, OnRoundStart,
-OnDamageTaken, OnDealDamage, OnCrit, OnKill, OnDeath, OnAttackHit,
+OnDamageTaken, OnDealDamage, OnKill, OnDeath, OnAttackHit,
 OnLineAttack, OnMove, OnEffectResolved, OnEffectFizzled
 ```
 
 - **商店阶段事件**（`ShopEvents`，由 `ShopEffectResolver` 处理，不走战斗 `CombatEventBus`）：`OnBuy`, `OnSell`, `OnLevelUp`
 
-- **载荷 `CombatEventPayload`**：`event_type`, `source`, `target`, `amount`, `is_crit`, `damage_type`, `grid_pos` 等。
+- **载荷 `CombatEventPayload`**：`event_type`, `source`, `target`, `amount`, `damage_type`, `grid_pos` 等。
 
 #### EffectResolver
 
@@ -305,7 +298,7 @@ extends Resource
 @export var effect_actions: Array[EffectAction] = []
 ```
 
-`EffectAction` 示例：`MODIFY_STAT`（attack / max_hp / crit_rate_percent）、`HEAL`、`DEAL_DAMAGE`、`SPAWN_UNIT`、`PERMANENT_DECK_STAT`、`APPLY_CELL_EFFECT`、`FRIENDS_HURT_AOE`、`SWAP_POSITIONS` 等；字段含 `duration`（秒 / `permanent_combat`）、`stack_rule`（刷新 / 叠加 / 独立实例）。
+`EffectAction` 示例：`MODIFY_STAT`（attack / max_hp）、`HEAL`、`DEAL_DAMAGE`、`SPAWN_UNIT`、`PERMANENT_DECK_STAT`、`APPLY_CELL_EFFECT`、`FRIENDS_HURT_AOE`、`SWAP_POSITIONS` 等；字段含 `duration`（秒 / `permanent_combat`）、`stack_rule`（刷新 / 叠加 / 独立实例）。
 
 #### StatModifierStack（运行时，每单位）
 
