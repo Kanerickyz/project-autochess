@@ -65,10 +65,18 @@ static func add_experience(entry: DeckEntry, config: LevelConfig) -> bool:
 	return leveled
 
 
+## 出售价 = 角色招募原价 × 3^(星级−1)：1★ 原价，2★ 三合一后 3×，3★ 9×。
 static func get_sell_price(entry: DeckEntry, _config: LevelConfig = null) -> int:
-	if entry == null:
+	if entry == null or entry.unit == null:
 		return 0
-	return maxi(1, entry.level)
+	var base_cost := entry.unit.cost
+	if base_cost <= 0:
+		base_cost = 1
+	var level := maxi(1, entry.level)
+	var mult := 1
+	for _i in range(level - 1):
+		mult *= 3
+	return base_cost * mult
 
 
 static func get_display_attack(entry: DeckEntry) -> int:
