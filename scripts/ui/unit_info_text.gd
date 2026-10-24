@@ -173,7 +173,7 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 	var armor := unit.get_armor_block()
 	if armor > 0:
 		if with_stat_icons:
-			lines.append("【装备】护甲 — 受伤时抵挡 %d 点伤害" % armor)
+			lines.append("【装备】护甲 — 有护甲时不扣血，最多消耗 %d 点护甲" % armor)
 		else:
 			lines.append("【装备】护甲 %d" % armor)
 	if unit.unit_data.ability != null:
