@@ -698,6 +698,7 @@ static func _test_unlocked_tier_merges_into_pool() -> bool:
 	var deck := _make_deck([], 5)
 	var economy := _make_economy(5)
 	var session := _make_session(deck, economy, 11, 0.5)
+	session.map_floor_count = 15
 	## map_floor=4 → TierUnlock 解锁 T2（全局规则：第 4 层起）。
 	session.map_floor = 4
 	if session.get_preferred_tier() != 2:
@@ -724,6 +725,32 @@ static func _test_unlocked_tier_merges_into_pool() -> bool:
 			break
 	if not saw_t1 or not saw_t2:
 		push_error("RecruitSessionTest: unlocked tier must merge lower tiers into pool")
+		return false
+	## 倒数 6 层：可出 T3，不再出 T1。
+	session.map_floor = 10
+	if session.get_preferred_tier() != 3 or session.get_min_tier() != 2:
+		push_error(
+			"RecruitSessionTest: floor 10/15 expected max3 min2, got %d/%d"
+			% [session.get_preferred_tier(), session.get_min_tier()]
+		)
+		return false
+	var saw_late_t1 := false
+	var saw_t3 := false
+	for _i in 160:
+		var late: UnitData = session._pick_one(3)
+		if late == null:
+			push_error("RecruitSessionTest: late pool pick returned null")
+			return false
+		if late.tier == 1:
+			saw_late_t1 = true
+			break
+		if late.tier == 3:
+			saw_t3 = true
+	if saw_late_t1:
+		push_error("RecruitSessionTest: last-6 floors must not pick T1")
+		return false
+	if not saw_t3:
+		push_error("RecruitSessionTest: last-6 floors must be able to pick T3")
 		return false
 	return true
 

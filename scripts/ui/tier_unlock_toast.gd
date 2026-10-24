@@ -1,8 +1,8 @@
 class_name TierUnlockToast
 extends PanelContainer
 
-const SHOW_SEC := 3.2
-const FADE_SEC := 0.35
+const SHOW_SEC := 2.0
+const FADE_SEC := 0.28
 
 @onready var _title_label: Label = %TitleLabel
 @onready var _subtitle_label: Label = %SubtitleLabel
@@ -18,8 +18,14 @@ func _ready() -> void:
 func show_unlock(tier: int) -> void:
 	if tier <= 1:
 		return
-	_title_label.text = "Tier %d 已解锁！" % tier
-	_subtitle_label.text = "商店现可 roll 出最高 Tier %d 的角色与增益" % tier
+	if _title_label == null:
+		_title_label = get_node_or_null("%TitleLabel") as Label
+	if _subtitle_label == null:
+		_subtitle_label = get_node_or_null("%SubtitleLabel") as Label
+	if _title_label != null:
+		_title_label.text = "T%d 角色已解锁" % tier
+	if _subtitle_label != null:
+		_subtitle_label.text = "本层起招募可抽到 T%d 角色" % tier
 	_kill_tween()
 	visible = true
 	modulate.a = 0.0
