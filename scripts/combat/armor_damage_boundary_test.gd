@@ -8,7 +8,8 @@ static var _failures: int = 0
 static func run_all() -> bool:
 	_failures = 0
 	_check("full_block_no_hurt_event", _test_full_block())
-	_check("partial_block_emits_hurt", _test_partial_block())
+	_check("overflow_block_no_hp", _test_overflow_block_no_hp())
+	_check("partial_armor_no_hp_no_hurt", _test_partial_block())
 	_check("realtime_full_block", _test_realtime_full_block())
 	_check("armor_depletes_keeps_equipment", _test_armor_depletes())
 	_check("armor_refills_after_deplete", _test_armor_refill())
@@ -55,6 +56,34 @@ static func _test_full_block() -> bool:
 	return true
 
 
+static func _test_overflow_block_no_hp() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var target := UnitInstance.new("tank", Vector2i(1, 0), UnitInstance.Team.ENEMY)
+	target.stats = UnitStats.new()
+	target.stats.max_hp = 5
+	target.current_hp = 5
+	target.armor_block = 2
+	grid.place(target, Vector2i(1, 0))
+
+	var hurt_count := [0]
+	bus.combat_event.connect(func(event_type: StringName, _payload: CombatEventPayload) -> void:
+		if event_type == CombatEvents.ON_DAMAGE_TAKEN:
+			hurt_count[0] = int(hurt_count[0]) + 1
+	)
+
+	pipeline.apply_damage(null, target, 99, false)
+	if target.current_hp != 5:
+		return false
+	if target.get_armor_block() != 0:
+		return false
+	if int(hurt_count[0]) != 0:
+		return false
+	return true
+
+
 static func _test_partial_block() -> bool:
 	var grid := BoardGrid.new()
 	grid.configure(Vector2i(8, 8))
@@ -67,19 +96,18 @@ static func _test_partial_block() -> bool:
 	target.armor_block = 2
 	grid.place(target, Vector2i(1, 0))
 
-	var captured: Array = [null]
-	bus.combat_event.connect(func(event_type: StringName, payload: CombatEventPayload) -> void:
+	var hurt_count := [0]
+	bus.combat_event.connect(func(event_type: StringName, _payload: CombatEventPayload) -> void:
 		if event_type == CombatEvents.ON_DAMAGE_TAKEN:
-			captured[0] = payload
+			hurt_count[0] = int(hurt_count[0]) + 1
 	)
 
 	pipeline.apply_damage(null, target, 5, false)
-	if target.current_hp != 17:
+	if target.current_hp != 20:
 		return false
-	var payload: CombatEventPayload = captured[0]
-	if payload == null:
+	if target.get_armor_block() != 0:
 		return false
-	if payload.amount != 3:
+	if int(hurt_count[0]) != 0:
 		return false
 	return true
 

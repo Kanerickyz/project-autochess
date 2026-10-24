@@ -3007,6 +3007,8 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
 
 
 func _on_combat_finished(won: bool) -> void:
+	if _deck_state != null:
+		_deck_state.refill_all_equipment_armor()
 	_timestop_queue.clear()
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
