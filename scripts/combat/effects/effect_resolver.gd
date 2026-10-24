@@ -1365,7 +1365,7 @@ func _spawn_unit(
 	if not _has_spawn_cell_available(prefer_player_half):
 		return false
 	var summon_context := owner if owner != null else payload.target
-	## 每次数以 spawn_count 为准；召魂 2★+ 见 AllyDeathSpawnRules。
+	## 每次数以 spawn_count 为准（召魂等同，无额外只数规则）。
 	var spawn_total := AllyDeathSpawnRules.spawn_count_for_owner(action, owner)
 	var spawned_any := false
 	for i in spawn_total:
