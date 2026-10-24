@@ -7,16 +7,17 @@
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
 action_type = 3
-value = 3
+value = 2
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
-trigger = &"OnCrit"
+trigger = &"OnDealDamage"
 target_selector = 1
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]
 script = ExtResource("1_ab")
-id = "crit_extra_damage_mid"
-display_name = "暴击时 对目标造成3伤害"
+id = "deal_damage_extra_2"
+display_name = "造成伤害时 对事件目标造成2伤害"
+merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

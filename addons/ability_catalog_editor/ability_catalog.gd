@@ -20,7 +20,6 @@ const COMBAT_TRIGGERS: Array[StringName] = [
 	CombatEvents.ON_ROUND_START,
 	CombatEvents.ON_DAMAGE_TAKEN,
 	CombatEvents.ON_DEAL_DAMAGE,
-	CombatEvents.ON_CRIT,
 	CombatEvents.ON_KILL,
 	CombatEvents.ON_DEATH,
 	CombatEvents.ON_ATTACK_HIT,

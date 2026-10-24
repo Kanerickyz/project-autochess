@@ -18,7 +18,6 @@ enum MovementPattern {
 @export var movement_pattern: MovementPattern = MovementPattern.ORTHOGONAL
 ## 一回合（一动）最多可走的八向格数；0 = 本动不挪步。主路径与旧网格工具环共用。
 @export_range(0, 8, 1) var steps_per_turn: int = 1
-@export_range(0, 100, 1) var crit_rate_percent: int = 5
 
 ## 主路径战斗（格坐标）。长度单位为逻辑格（tile），时间单位为秒。
 @export_group("Combat")
@@ -53,7 +52,6 @@ func duplicate_stats() -> UnitStats:
 	copy.attack_range = attack_range
 	copy.movement_pattern = movement_pattern
 	copy.steps_per_turn = steps_per_turn
-	copy.crit_rate_percent = crit_rate_percent
 	copy.attack_interval = attack_interval
 	copy.attack_windup = attack_windup
 	copy.attack_reach = attack_reach

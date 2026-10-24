@@ -267,7 +267,6 @@ func _make_seat_cell(seat_index: int) -> PanelContainer:
 			DeckUpgradeService.get_display_attack(entry),
 			DeckUpgradeService.get_display_max_hp(entry),
 			DeckUpgradeService.get_display_max_hp(entry),
-			DeckUpgradeService.get_display_crit_rate(entry),
 		)
 		card.set_level(entry.get_star_display_level())
 		card.set_state(false, false)

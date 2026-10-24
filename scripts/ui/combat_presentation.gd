@@ -356,7 +356,7 @@ func _collect_line_attack_followups(
 					}
 				deaths.append(payload)
 				last_index = j
-			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
+			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
 				last_index = j
 			_:
 				return {
@@ -475,7 +475,7 @@ func _collect_strike_followups(
 					"last_index": last_index,
 					"next_hit_index": -1,
 				}
-			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_CRIT, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
+			CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL, CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_ENEMY_DEATH:
 				last_index = j
 			_:
 				return {
@@ -871,23 +871,14 @@ func _start_damage(
 		return tweens
 
 	var pace_scale := _pace_scale()
-	var is_crit := payload.is_crit
 	if payload.amount > 0:
-		_request_damage_shake(payload.amount, skill_style, is_crit)
+		_request_damage_shake(payload.amount, skill_style)
 		var pop: Tween = node.pop_damage_number(
 			payload.amount,
 			_dur(CombatAnimationConfig.DUR_DAMAGE_POPUP),
-			is_crit,
 		)
 		if pop != null:
 			tweens.append(pop)
-		if is_crit:
-			var target_cell := _logic_cell(payload.target)
-			if target_cell != Vector2i(-1, -1):
-				_presentation.spawn_crit_hit_spark(
-					_presentation.grid_to_world(target_cell),
-					_dur(CombatAnimationConfig.DUR_CRIT_HIT_SPARK),
-				)
 
 	var knockback := Vector2.ZERO
 	if not suppress_knockback:
@@ -896,18 +887,16 @@ func _start_damage(
 	if skill_style:
 		impact = node.play_skill_damage_flash(pace_scale, knockback, payload.amount)
 	else:
-		impact = node.play_hit_impact(pace_scale, knockback, payload.amount, is_crit)
+		impact = node.play_hit_impact(pace_scale, knockback, payload.amount)
 	if impact != null:
 		tweens.append(impact)
 	return tweens
 
 
-func _request_damage_shake(amount: int, skill_style: bool, is_crit: bool = false) -> void:
+func _request_damage_shake(amount: int, skill_style: bool) -> void:
 	if amount <= 0:
 		return
 	var intensity := CombatAnimationConfig.shake_intensity(amount, skill_style)
-	if is_crit:
-		intensity += CombatAnimationConfig.CRIT_SHAKE_BONUS
 	_add_camera_impulse(intensity)
 
 

@@ -3,8 +3,6 @@ extends RefCounted
 ## 战斗唯一的扣血入口；命中/受伤/死亡全部经 CombatEventBus 广播。
 ## 出手命中时可与主目标对砍：双方同批扣血，无先后手。
 
-const CRIT_DAMAGE_MULT := 1.5
-
 var _bus: CombatEventBus
 var _rng: RandomNumberGenerator
 
@@ -32,11 +30,11 @@ func resolve_hit(
 	if primary == null or not primary.is_alive():
 		return killed
 	var source_instance: UnitInstance = source.unit if source != null else null
-	_emit(CombatEvents.ON_ATTACK_HIT, source_instance, primary.unit, 0, false)
+	_emit(CombatEvents.ON_ATTACK_HIT, source_instance, primary.unit, 0)
 
 	var counter := can_counterattack(primary, source)
 	if counter:
-		_emit(CombatEvents.ON_ATTACK_HIT, primary.unit, source_instance, 0, false)
+		_emit(CombatEvents.ON_ATTACK_HIT, primary.unit, source_instance, 0)
 
 	## 同批打击表：先全部扣血，再统一标死，避免「先打死对方导致无法反打」。
 	var pending: Array[Dictionary] = []
@@ -64,30 +62,21 @@ func resolve_hit(
 		if tgt == null or not tgt.is_alive() or amount <= 0:
 			continue
 		var rolled := amount
-		var is_crit := false
-		if src != null and _rng != null:
-			var crit_rate := src.get_effective_crit_rate()
-			if crit_rate > 0.0 and _rng.randf() < crit_rate:
-				is_crit = true
-				rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
 		## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
 		var final_amount := tgt.unit.mitigate_incoming_damage(rolled)
 		if final_amount <= 0:
 			continue
 		var hp_before := tgt.unit.current_hp
 		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - final_amount)
-		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, is_crit, hp_before)
-		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, is_crit, hp_before)
-		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, is_crit, hp_before)
-		if is_crit and src != null:
-			_emit(CombatEvents.ON_CRIT, src, tgt.unit, final_amount, true, hp_before)
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
+		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
 			death_pending.append({
 				"source": src,
 				"target": tgt,
 				"rolled": final_amount,
-				"is_crit": is_crit,
 				"hp_before": hp_before,
 			})
 
@@ -102,15 +91,14 @@ func resolve_hit(
 			continue
 		var src2: UnitInstance = death["source"]
 		var rolled2: int = int(death["rolled"])
-		var is_crit2: bool = bool(death["is_crit"])
 		var hp_before2: int = int(death.get("hp_before", -1))
 		tgt2.state = RtUnit.State.DEAD
 		tgt2.target = null
-		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
-		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
-		_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
+		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+		_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2)
 		if src2 != null:
-			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, is_crit2, hp_before2)
+			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2)
 		killed.append(tgt2)
 	return killed
 
@@ -159,33 +147,25 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if target == null or not target.is_alive() or amount <= 0:
 		return false
 	var rolled := amount
-	var is_crit := false
-	if source != null and _rng != null:
-		var crit_rate := source.get_effective_crit_rate()
-		if crit_rate > 0.0 and _rng.randf() < crit_rate:
-			is_crit = true
-			rolled = maxi(1, int(round(float(amount) * CRIT_DAMAGE_MULT)))
 	## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
 	var final_amount := target.unit.mitigate_incoming_damage(rolled)
 	if final_amount <= 0:
 		return false
 	var hp_before := target.unit.current_hp
 	target.unit.current_hp = maxi(0, target.unit.current_hp - final_amount)
-	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, is_crit, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, is_crit, hp_before)
-	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, final_amount, is_crit, hp_before)
-	if is_crit and source != null:
-		_emit(CombatEvents.ON_CRIT, source, target.unit, final_amount, true, hp_before)
+	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
+	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, final_amount, hp_before)
 	if target.unit.is_alive():
 		return false
 
 	target.state = RtUnit.State.DEAD
 	target.target = null
-	_emit(CombatEvents.ON_DEATH, source, target.unit, final_amount, is_crit, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, final_amount, is_crit, hp_before)
-	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, final_amount, is_crit, hp_before)
+	_emit(CombatEvents.ON_DEATH, source, target.unit, final_amount, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, final_amount, hp_before)
+	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, final_amount, hp_before)
 	if source != null:
-		_emit(CombatEvents.ON_KILL, source, target.unit, final_amount, is_crit, hp_before)
+		_emit(CombatEvents.ON_KILL, source, target.unit, final_amount, hp_before)
 	return true
 
 
@@ -194,7 +174,6 @@ func _emit(
 	source: UnitInstance,
 	target: UnitInstance,
 	amount: int,
-	is_crit: bool = false,
 	target_hp_before: int = -1,
 ) -> void:
 	if _bus == null:
@@ -203,6 +182,5 @@ func _emit(
 	payload.source = source
 	payload.target = target
 	payload.amount = amount
-	payload.is_crit = is_crit
 	payload.target_hp_before = target_hp_before
 	_bus.emit_event(event_type, payload)

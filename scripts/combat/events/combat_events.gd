@@ -14,7 +14,6 @@ const ON_DAMAGE_TAKEN := &"OnDamageTaken"
 const ON_HEAL_APPLIED := &"OnHealApplied"
 
 const ON_DEAL_DAMAGE := &"OnDealDamage"
-const ON_CRIT := &"OnCrit"
 const ON_KILL := &"OnKill"
 const ON_DEATH := &"OnDeath"
 const ON_ATTACK_HIT := &"OnAttackHit"

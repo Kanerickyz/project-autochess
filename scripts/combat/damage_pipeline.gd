@@ -3,8 +3,6 @@ extends RefCounted
 
 const _GridLine := preload("res://scripts/combat/grid_line.gd")
 
-const CRIT_DAMAGE_MULT := 1.5
-
 var _bus: CombatEventBus
 var _grid: BoardGrid
 var defer_death_removal: bool = false
@@ -27,23 +25,8 @@ func set_effect_resolver(resolver: EffectResolver) -> void:
 	_effect_resolver = resolver
 
 
-func roll_damage(
-	source: UnitInstance,
-	base_amount: int,
-	allow_crit: bool = true,
-) -> DamageRoll:
-	var result := DamageRoll.new(base_amount, false)
-	if base_amount <= 0:
-		result.amount = 0
-		return result
-	if source == null or not allow_crit or _rng == null:
-		return result
-	var crit_rate := source.get_effective_crit_rate()
-	if crit_rate <= 0.0:
-		return result
-	if _rng.randf() < crit_rate:
-		result.is_crit = true
-		result.amount = maxi(1, int(round(float(base_amount) * CRIT_DAMAGE_MULT)))
+func roll_damage(_source: UnitInstance, base_amount: int) -> DamageRoll:
+	var result := DamageRoll.new(maxi(0, base_amount))
 	return result
 
 
@@ -51,7 +34,6 @@ func apply_damage(
 	source: UnitInstance,
 	target: UnitInstance,
 	amount: int,
-	is_crit: bool = false,
 ) -> void:
 	if target == null or not target.is_alive():
 		return
@@ -68,14 +50,11 @@ func apply_damage(
 	payload.source = source
 	payload.target = target
 	payload.amount = final_amount
-	payload.is_crit = is_crit
 	payload.target_hp_before = hp_before
 
 	_bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
 	_bus.emit_event(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, payload)
 	_bus.emit_event(CombatEvents.ON_DEAL_DAMAGE, payload)
-	if is_crit and source != null:
-		_bus.emit_event(CombatEvents.ON_CRIT, payload)
 
 
 	if not target.is_alive():
@@ -93,10 +72,9 @@ func apply_rolled_damage(
 	source: UnitInstance,
 	target: UnitInstance,
 	base_amount: int,
-	allow_crit: bool = true,
 ) -> void:
-	var rolled := roll_damage(source, base_amount, allow_crit)
-	apply_damage(source, target, rolled.amount, rolled.is_crit)
+	var rolled := roll_damage(source, base_amount)
+	apply_damage(source, target, rolled.amount)
 
 
 func apply_attack_exchange(attacker: UnitInstance, defender: UnitInstance) -> void:

@@ -5,11 +5,9 @@ const COLOR_PLAYER := "#6eb5ff"
 const COLOR_ENEMY := "#ff6b6b"
 const COLOR_SYSTEM := "#aaaaaa"
 const COLOR_DAMAGE := "#ffb347"
-const COLOR_CRIT_DAMAGE := "#ffd700"
 
 const SKIP_TYPES := {
 	CombatEvents.ON_DEAL_DAMAGE: true,
-	CombatEvents.ON_CRIT: true,
 	CombatEvents.ON_FRIEND_DEATH: true,
 	CombatEvents.ON_ENEMY_DEATH: true,
 	CombatEvents.ON_MOVE: true,
@@ -38,17 +36,9 @@ static func format_event(event_type: StringName, payload: CombatEventPayload) ->
 		CombatEvents.ON_DAMAGE_TAKEN:
 			if payload.target == null:
 				return ""
-			var dmg_color := COLOR_CRIT_DAMAGE if payload.is_crit else COLOR_DAMAGE
-			var dmg := "[color=%s]%d[/color]" % [dmg_color, payload.amount]
+			var dmg := "[color=%s]%d[/color]" % [COLOR_DAMAGE, payload.amount]
 			if payload.source == null:
 				return "%s 受到格子效果 %s 伤害" % [_color_name(payload.target), dmg]
-			if payload.is_crit:
-				return "%s 对 %s 造成 %s [color=%s]暴击[/color] 伤害" % [
-					_color_name(payload.source),
-					_color_name(payload.target),
-					dmg,
-					COLOR_CRIT_DAMAGE,
-				]
 			return "%s 对 %s 造成 %s 伤害" % [
 				_color_name(payload.source),
 				_color_name(payload.target),

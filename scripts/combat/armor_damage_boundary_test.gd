@@ -44,7 +44,7 @@ static func _test_full_block() -> bool:
 			hurt_count[0] = int(hurt_count[0]) + 1
 	)
 
-	pipeline.apply_damage(null, target, 5, false)
+	pipeline.apply_damage(null, target, 5)
 	if target.current_hp != 20:
 		return false
 	if int(hurt_count[0]) != 0:
@@ -73,7 +73,7 @@ static func _test_partial_block() -> bool:
 			captured[0] = payload
 	)
 
-	pipeline.apply_damage(null, target, 5, false)
+	pipeline.apply_damage(null, target, 5)
 	if target.current_hp != 17:
 		return false
 	var payload: CombatEventPayload = captured[0]
@@ -134,7 +134,7 @@ static func _test_armor_depletes() -> bool:
 	target.armor_block = entry.get_armor_block()
 	grid.place(target, Vector2i(1, 0))
 
-	pipeline.apply_damage(null, target, 5, false)
+	pipeline.apply_damage(null, target, 5)
 	if target.get_armor_block() != 0:
 		return false
 	if entry.equipment == null:

@@ -36,7 +36,7 @@ class BattleLayoutPayload extends RefCounted:
 	var seat_cap: int = 5
 	var seed: int = 0
 	var encounter_type: String = ENC_COMBAT
-	## 友方：Dictionary keys: unit_id, seat, level, bonus_atk, bonus_hp, bonus_crit, buffs(Array[String]), ability_path
+	## 友方：Dictionary keys: unit_id, seat, level, bonus_atk, bonus_hp, buffs(Array[String]), ability_path
 	var allies: Array = []
 	## 敌方：Dictionary keys: unit_id, seat, level
 	var enemies: Array = []
@@ -246,7 +246,6 @@ static func build_deck_entries(payload: BattleLayoutPayload) -> Array[DeckEntry]
 		entry.level = clampi(int(row.get("level", 1)), 1, 3)
 		entry.bonus_attack = int(row.get("bonus_atk", 0))
 		entry.bonus_max_hp = int(row.get("bonus_hp", 0))
-		entry.bonus_crit_rate_percent = int(row.get("bonus_crit", 0))
 		entry.seat_index = int(row.get("seat", -1))
 		next_seq += 1
 		entry.seat_assign_seq = next_seq
@@ -305,7 +304,6 @@ static func _entries_to_ally_rows(entries: Array[DeckEntry]) -> Array:
 			"level": clampi(entry.level, 1, 3),
 			"bonus_atk": entry.bonus_attack,
 			"bonus_hp": entry.bonus_max_hp,
-			"bonus_crit": entry.bonus_crit_rate_percent,
 			"buffs": buffs,
 			"ability_path": ability_path,
 		})
@@ -320,7 +318,6 @@ static func _format_ally_line(row: Dictionary) -> String:
 	parts.append("lv=%d" % int(row.get("level", 1)))
 	parts.append("atk+=%d" % int(row.get("bonus_atk", 0)))
 	parts.append("hp+=%d" % int(row.get("bonus_hp", 0)))
-	parts.append("crit+=%d" % int(row.get("bonus_crit", 0)))
 	var buffs: Array = row.get("buffs", [])
 	if not buffs.is_empty():
 		var ids: PackedStringArray = []
@@ -356,7 +353,6 @@ static func _parse_ally_line(raw: String) -> Dictionary:
 		"level": 1,
 		"bonus_atk": 0,
 		"bonus_hp": 0,
-		"bonus_crit": 0,
 		"buffs": [],
 		"ability_path": "",
 	}
@@ -371,7 +367,7 @@ static func _parse_ally_line(raw: String) -> Dictionary:
 		elif tok.begins_with("hp+="):
 			row["bonus_hp"] = int(tok.substr(4))
 		elif tok.begins_with("crit+="):
-			row["bonus_crit"] = int(tok.substr(6))
+			continue
 		elif tok.begins_with("buffs="):
 			var list: Array[String] = []
 			for b in tok.substr(6).split(",", false):

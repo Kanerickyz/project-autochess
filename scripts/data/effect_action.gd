@@ -32,7 +32,6 @@ enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }
 const STAT_NAMES: Array[StringName] = [
 	&"attack",
 	&"max_hp",
-	&"crit_rate_percent",
 	&"attack_range",
 	&"move_range",
 	&"steps_per_turn",

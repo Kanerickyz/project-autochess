@@ -83,12 +83,6 @@ static func get_display_max_hp(entry: DeckEntry) -> int:
 	return entry.unit.stats.max_hp + entry.bonus_max_hp
 
 
-static func get_display_crit_rate(entry: DeckEntry) -> int:
-	if entry == null or entry.unit == null or entry.unit.stats == null:
-		return 0
-	return entry.unit.stats.crit_rate_percent + entry.bonus_crit_rate_percent
-
-
 static func _apply_level_up(entry: DeckEntry, config: LevelConfig) -> void:
 	entry.level += 1
 	entry.bonus_attack += config.bonus_attack_per_level_up

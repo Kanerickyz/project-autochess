@@ -12,7 +12,6 @@ const TRIGGER_ENTRIES: Array[Dictionary] = [
 	{"id": CombatEvents.ON_ROUND_START, "label": "回合开始时"},
 	{"id": CombatEvents.ON_DAMAGE_TAKEN, "label": "受伤时"},
 	{"id": CombatEvents.ON_DEAL_DAMAGE, "label": "造成伤害时"},
-	{"id": CombatEvents.ON_CRIT, "label": "造成暴击时"},
 	{"id": CombatEvents.ON_KILL, "label": "击杀时"},
 	{"id": CombatEvents.ON_DEATH, "label": "死亡时"},
 	{"id": CombatEvents.ON_ATTACK_HIT, "label": "攻击命中时"},

@@ -8,7 +8,7 @@ const MOUNT_TABLE := {
 	"knight": "hurt_gain_atk_small",
 	"rider": "enemy_death_self_atk_hp_small",
 	"mini_pekka": "kill_gain_atk_mid",
-	"musketeer": "crit_extra_damage_mid",
+	"musketeer": "deal_damage_extra_2",
 	"valkyrie": "deal_damage_gain_atk_small",
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "ally_deploy_self_atk_small",
@@ -41,7 +41,7 @@ static func run_all() -> bool:
 	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
-	_check("crit_extra_damage_mid", _test_crit_extra_damage_mid())
+	_check("deal_damage_extra_2", _test_deal_damage_extra_2())
 	_check("kill_gain_atk_mid", _test_kill_gain_atk_mid())
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
 	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
@@ -59,7 +59,7 @@ static func run_all() -> bool:
 	_check("combat_skill_heal_budget", _test_combat_skill_heal_budget())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
-	_check("musketeer_has_nonzero_crit", _test_musketeer_has_nonzero_crit())
+	_check("deal_damage_extra_2_star2", _test_deal_damage_extra_2_star2())
 	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
 	_check("turn_start_strike_weakest_damage", _test_turn_start_strike_weakest_damage())
 	_check(
@@ -545,22 +545,14 @@ static func _test_deal_damage_gain_atk() -> bool:
 
 
 
-static func _test_musketeer_has_nonzero_crit() -> bool:
+static func _musketeer_extra_damage(level: int) -> int:
 	var data := _load_unit("res://resources/units/realtime/musketeer.tres")
-	if data == null or data.stats == null:
-		push_error("crit_rate: musketeer missing")
-		return false
-	if data.stats.crit_rate_percent <= 0:
-		push_error("crit_rate: musketeer crit_rate_percent=%d, expected >0 for OnCrit skill" % data.stats.crit_rate_percent)
-		return false
-	return true
-
-
-static func _test_crit_extra_damage_mid() -> bool:
-	var data := _load_unit("res://resources/units/realtime/musketeer.tres")
-	if data == null or data.ability == null or data.ability.id != "crit_extra_damage_mid":
-		push_error("crit: musketeer ability not mounted")
-		return false
+	if data == null or data.ability == null or data.ability.id != "deal_damage_extra_2":
+		push_error("musketeer: ability deal_damage_extra_2 not mounted")
+		return -1
+	if data.ability.merge_value_mult != 3:
+		push_error("musketeer: merge_value_mult expected 3")
+		return -1
 	var sim := _new_sim()
 	sim.configure(ARENA, 99)
 	var gun := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
@@ -568,22 +560,34 @@ static func _test_crit_extra_damage_mid() -> bool:
 		_dummy(UnitInstance.Team.ENEMY, 500, {"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0}),
 		Vector2(9.5, 18.5),
 	)
-	# 强制必暴，验证 OnCrit → DEAL_DAMAGE 55
-	gun.unit.stats.crit_rate_percent = 100
+	gun.unit.level = level
 	gun.unit.stats.projectile_speed = 0.0
 	gun.unit.stats.attack_windup = 0.0
-	gun.unit.stats.attack_interval = 0.3
+	gun.unit.stats.attack_interval = 8.0
 	gun.unit.stats.attack_reach = 3.0
 	gun.unit.stats.steps_per_turn = 0
+	var bonus := 2 * UnitInstance.ability_value_multiplier_for(data.ability, level)
+	var expected := gun.unit.get_effective_attack() + bonus
 	var hp_before := enemy.unit.current_hp
 	var guard := 0
-	while enemy.unit.current_hp > hp_before - 55 and guard < 200:
+	while enemy.unit.current_hp > hp_before - expected and guard < 400:
 		sim.advance_fixed_step()
 		guard += 1
-	var dealt := hp_before - enemy.unit.current_hp
-	# 普攻 + 暴击额外伤；至少应包含 +55
-	if dealt < 55:
-		push_error("crit: dealt %d, expected at least 55 bonus path" % dealt)
+	return hp_before - enemy.unit.current_hp
+
+
+static func _test_deal_damage_extra_2() -> bool:
+	var dealt := _musketeer_extra_damage(1)
+	if dealt != 9:
+		push_error("musketeer: dealt %d, expected attack 7 + extra 2" % dealt)
+		return false
+	return true
+
+
+static func _test_deal_damage_extra_2_star2() -> bool:
+	var dealt := _musketeer_extra_damage(2)
+	if dealt != 13:
+		push_error("musketeer star2: dealt %d, expected attack 7 + extra 6" % dealt)
 		return false
 	return true
 

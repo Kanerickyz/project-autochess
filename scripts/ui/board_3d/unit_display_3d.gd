@@ -212,7 +212,6 @@ func play_hit_impact(
 	pace_scale: float = 1.0,
 	knockback_dir: Vector2 = Vector2.ZERO,
 	damage_amount: int = 0,
-	is_crit: bool = false,
 ) -> Tween:
 	_kill_fx_tween()
 	var display_tween: Tween = null
@@ -221,7 +220,6 @@ func play_hit_impact(
 			pace_scale,
 			Vector2.ZERO,
 			damage_amount,
-			is_crit,
 		)
 
 	if knockback_dir.length_squared() <= 0.01:
@@ -231,8 +229,6 @@ func play_hit_impact(
 		pace_scale,
 		CombatAnimationConfig.MIN_IMPACT_DURATION / CombatAnimationConfig.DUR_HIT_FLASH,
 	)
-	if is_crit:
-		impact_scale *= 1.12
 	var flash_dur := maxf(
 		CombatAnimationConfig.DUR_HIT_FLASH * impact_scale,
 		CombatAnimationConfig.MIN_IMPACT_DURATION,
@@ -241,9 +237,7 @@ func play_hit_impact(
 		knockback_dir.normalized().x,
 		0.0,
 		knockback_dir.normalized().y,
-	) * CombatAnimationConfig.KNOCKBACK_PX * (
-		CombatAnimationConfig.CRIT_KNOCKBACK_MULT if is_crit else 1.0
-	)
+	) * CombatAnimationConfig.KNOCKBACK_PX
 	var knocked := _home_position + push
 	var push_t := flash_dur * 0.35
 	_fx_tween = create_tween()
@@ -259,20 +253,20 @@ func play_skill_damage_flash(
 	knockback_dir: Vector2 = Vector2.ZERO,
 	damage_amount: int = 0,
 ) -> Tween:
-	return play_hit_impact(pace_scale, knockback_dir, damage_amount, false)
+	return play_hit_impact(pace_scale, knockback_dir, damage_amount)
 
 
-func pop_damage_number(amount: int, duration: float = -1.0, is_crit: bool = false) -> Tween:
+func pop_damage_number(amount: int, duration: float = -1.0) -> Tween:
 	if duration < 0.0:
 		duration = CombatAnimationConfig.DUR_DAMAGE_POPUP
 	if _vfx_layer != null and _project_screen.is_valid():
-		return _spawn_screen_damage_popup(amount, duration, is_crit)
+		return _spawn_screen_damage_popup(amount, duration)
 	if _display != null:
-		return _display.pop_damage_number(amount, duration, is_crit)
+		return _display.pop_damage_number(amount, duration)
 	return null
 
 
-func _spawn_screen_damage_popup(amount: int, duration: float, is_crit: bool) -> Tween:
+func _spawn_screen_damage_popup(amount: int, duration: float) -> Tween:
 	var label := Label.new()
 	label.text = UnitCardDisplay.format_damage_popup_text(amount)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -281,18 +275,11 @@ func _spawn_screen_damage_popup(amount: int, duration: float, is_crit: bool) -> 
 	var font_size := int(UnitCardDisplay.DAMAGE_POPUP_FONT_BASE * font_mult)
 	var start_scale_val := UnitCardDisplay.DAMAGE_POPUP_SCALE_START\
 		* CombatAnimationConfig.damage_pop_overshoot(amount)
-	if is_crit:
-		font_size = int(font_size * CombatAnimationConfig.CRIT_POPUP_FONT_MULT)
-		start_scale_val *= CombatAnimationConfig.CRIT_POPUP_OVERSHOOT_MULT
 	label.add_theme_font_override("font", UI_FONT)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_constant_override("outline_size", maxi(6, int(font_size * 0.24)))
-	if is_crit:
-		label.add_theme_color_override("font_color", CombatAnimationConfig.COLOR_CRIT_POPUP)
-		label.modulate = Color.WHITE
-	else:
-		label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2, 1.0))
-		label.modulate = Color.WHITE
+	label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2, 1.0))
+	label.modulate = Color.WHITE
 	var popup_w := UnitCardDisplay.DAMAGE_POPUP_WIDTH_BASE * font_mult
 	var popup_h := UnitCardDisplay.DAMAGE_POPUP_HEIGHT_BASE * font_mult
 	var anchor := get_billboard_top_global()

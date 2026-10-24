@@ -66,7 +66,6 @@ const TRIGGER_NAMES: PackedStringArray = [
 	"OnDamageTaken",
 
 	"OnDealDamage",
-	"OnCrit",
 	"OnKill",
 	"OnDeath",
 	"OnAttackHit",
