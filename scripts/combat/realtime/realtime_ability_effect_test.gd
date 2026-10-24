@@ -57,7 +57,7 @@ static func run_all() -> bool:
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
-	_check("combat_skill_heal_budget", _test_combat_skill_heal_budget())
+	_check("blood_acolyte_combat_start_permanent", _test_blood_acolyte_combat_start_permanent())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
 	_check("deal_damage_extra_2_star2", _test_deal_damage_extra_2_star2())
@@ -148,30 +148,24 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	if UnitInstance.ability_value_multiplier(3) != 36:
 		push_error("ability mult: 3★ expected 36")
 		return false
-	## 血僧：merge_value_mult=2 → 1★×1 / 2★×2 / 3★×4；基础治疗 4 → 三合一后恢复 8。
-	var blood := load("res://resources/abilities/hurt_gain_max_hp.tres") as AbilityData
-	if blood == null or blood.merge_value_mult != 2:
-		push_error("ability mult: hurt_gain_max_hp should use merge_value_mult=2")
+	## 血僧禅心固本：merge_value_mult=3；基础 +1/+1 → 2★ 各 +3。
+	var blood := load("res://resources/abilities/combat_start_permanent_self_atk_hp_1.tres") as AbilityData
+	if blood == null or blood.merge_value_mult != 3:
+		push_error("ability mult: combat_start_permanent_self_atk_hp_1 should use merge_value_mult=3")
 		return false
-	if UnitInstance.ability_value_multiplier_for(blood, 1) != 1:
-		push_error("ability mult: blood 1★ scale expected 1")
-		return false
-	if UnitInstance.ability_value_multiplier_for(blood, 2) != 2:
-		push_error("ability mult: blood 2★ scale expected 2")
-		return false
-	if UnitInstance.ability_value_multiplier_for(blood, 3) != 4:
-		push_error("ability mult: blood 3★ scale expected 4")
+	if UnitInstance.ability_value_multiplier_for(blood, 2) != 3:
+		push_error("ability mult: blood 2★ scale expected 3")
 		return false
 	var act: EffectAction = null
 	if not blood.effect_specs.is_empty() and blood.effect_specs[0] != null:
 		var specs_actions: Array = blood.effect_specs[0].actions
 		if not specs_actions.is_empty():
 			act = specs_actions[0] as EffectAction
-	if act == null or act.value != 4:
-		push_error("ability mult: blood base value expected 4")
+	if act == null or act.value != 1:
+		push_error("ability mult: blood base atk value expected 1")
 		return false
-	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 8:
-		push_error("ability mult: blood 2★ effective expected +8")
+	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 3:
+		push_error("ability mult: blood 2★ effective atk expected +3")
 		return false
 	return true
 
@@ -1282,50 +1276,28 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 	return true
 
 
-## 本场技能受疗预算 100：累计达上限后不再疗。
-static func _test_combat_skill_heal_budget() -> bool:
+## 血僧：开战永久 +1/+1（本场 stats 与有效攻血立刻可见）。
+static func _test_blood_acolyte_combat_start_permanent() -> bool:
 	var data := _load_unit("res://resources/units/realtime/blood_acolyte.tres")
-	if data == null or data.ability == null or data.ability.id != "hurt_gain_max_hp":
-		push_error("heal_budget: blood_acolyte / hurt_gain_max_hp not mounted")
+	if data == null or data.ability == null or data.ability.id != "combat_start_permanent_self_atk_hp_1":
+		push_error("blood_perm: ability mount")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 4202)
 	var monk := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	## 抬高上限：反复受 1 伤+疗 1，需撑过预算 100。
-	monk.unit.stats.max_hp = 200
-	monk.unit.current_hp = 150
+	var base_atk := monk.unit.get_effective_attack()
+	var base_hp := monk.unit.get_effective_max_hp()
 	sim.begin_combat()
-	var budget := UnitInstance.COMBAT_SKILL_HEAL_BUDGET
-	var hp_start := monk.unit.current_hp
-	for _i in range(budget):
-		sim._pipeline.apply_damage(null, monk, 1)
-		sim._drain_effects()
-	if monk.unit.combat_skill_heal_received != budget:
+	if monk.unit.get_effective_attack() != base_atk + 1:
 		push_error(
-			"heal_budget: after %d hits received=%d expected %d"
-			% [budget, monk.unit.combat_skill_heal_received, budget]
+			"blood_perm: atk %d -> %d expected +1"
+			% [base_atk, monk.unit.get_effective_attack()]
 		)
 		return false
-	## 每击净 0 → hp 仍为起点。
-	if monk.unit.current_hp != hp_start:
+	if monk.unit.get_effective_max_hp() != base_hp + 1:
 		push_error(
-			"heal_budget: hp=%d expected %d after budget fills (net 0)"
-			% [monk.unit.current_hp, hp_start]
-		)
-		return false
-	## 预算耗尽后再挨 1：只掉血不疗。
-	sim._pipeline.apply_damage(null, monk, 1)
-	sim._drain_effects()
-	if monk.unit.combat_skill_heal_received != budget:
-		push_error(
-			"heal_budget: received grew past budget to %d"
-			% monk.unit.combat_skill_heal_received
-		)
-		return false
-	if monk.unit.current_hp != hp_start - 1:
-		push_error(
-			"heal_budget: after over-budget hit hp=%d expected %d"
-			% [monk.unit.current_hp, hp_start - 1]
+			"blood_perm: max_hp %d -> %d expected +1"
+			% [base_hp, monk.unit.get_effective_max_hp()]
 		)
 		return false
 	return true
