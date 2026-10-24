@@ -1086,7 +1086,7 @@ static func _test_ally_death_spawn_weak() -> bool:
 	return true
 
 
-## 召魂 2★+：每次友方角色死亡生成 3 只 2/2 随从。
+## 召魂 2★（三合一）：友方角色死亡生成 1 只 6/6 随从（merge_value_mult=3）。
 static func _test_ally_death_spawn_merged_triple() -> bool:
 	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
 	if data == null:
@@ -1130,20 +1130,20 @@ static func _test_ally_death_spawn_merged_triple() -> bool:
 			continue
 		if rt.unit.id != "token_weak":
 			continue
-		if rt.get_stats().attack != 2 or rt.get_stats().max_hp != 2:
+		if rt.get_stats().attack != 6 or rt.get_stats().max_hp != 6:
 			push_error(
-				"merged_spawn: token stats %d/%d expected 2/2"
+				"merged_spawn: token stats %d/%d expected 6/6"
 				% [rt.get_stats().attack, rt.get_stats().max_hp]
 			)
 			return false
 		tokens.append(rt)
-	if tokens.size() != 3:
+	if tokens.size() != 1:
 		push_error(
-			"merged_spawn: expected 3 token_weak, got %d (summons=%d)"
+			"merged_spawn: expected 1 token_weak 6/6, got %d (summons=%d)"
 			% [tokens.size(), caller.unit.combat_summons_spawned]
 		)
 		return false
-	if caller.unit.combat_summons_spawned != 3:
+	if caller.unit.combat_summons_spawned != 1:
 		push_error("merged_spawn: summons_spawned=%d" % caller.unit.combat_summons_spawned)
 		return false
 	return true
