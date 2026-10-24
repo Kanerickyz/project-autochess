@@ -1698,7 +1698,7 @@ func _info_from_map_shop_offer_index(index: int, half_off: Vector2) -> Dictionar
 		if eq != null:
 			armor = eq.get_armor_block()
 			skills = (
-				"护甲：有护甲时不扣血（伤害大于护甲时护甲归零、溢出也不扣血）。\n挂在一名队伍成员上，跨节点保留；下场战斗开战回满；每角色最多一件。"
+				"护甲：有护甲时不扣血（伤害大于护甲时护甲归零、溢出也不扣血）。\n挂在一名队伍成员上，跨节点保留；离开战斗节点后回满；每角色最多一件。"
 				% armor
 			)
 	else:

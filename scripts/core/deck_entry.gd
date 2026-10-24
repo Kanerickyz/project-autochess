@@ -13,7 +13,7 @@ var bonus_max_hp: int = 0
 var bonus_crit_rate_percent: int = 0
 ## 地图商店装备：每角色最多一件；跨遭遇保留。
 var equipment: EquipmentData = null
-## 护甲满额（战斗内可耗尽，下一场战斗节点开战回满；装备本身不销毁）。
+## 护甲满额（战斗内可耗尽，离开战斗节点回满；下场开战再同步；装备本身不销毁）。
 var equipment_armor_max: int = 0
 ## 友方持久占位：座位下标（0 .. seat_grid-1）；-1 表示未入座。
 var seat_index: int = -1
@@ -106,7 +106,7 @@ func apply_armor_remaining(remaining: int) -> void:
 	equipment.armor_block = maxi(0, remaining)
 
 
-## 新一场战斗节点开战：护甲恢复至满额。
+## 离开战斗节点 / 新一场开战：护甲恢复至满额。
 func refill_equipment_armor() -> void:
 	if equipment == null:
 		equipment_armor_max = 0
