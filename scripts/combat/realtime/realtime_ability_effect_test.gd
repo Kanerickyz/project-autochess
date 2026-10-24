@@ -148,13 +148,13 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	if UnitInstance.ability_value_multiplier(3) != 36:
 		push_error("ability mult: 3★ expected 36")
 		return false
-	## 血僧禅心固本：merge_value_mult=3；基础 +1/+1 → 2★ 各 +3。
+	## 血僧禅心固本：全局升星 ×6；基础 +1/+1 → 2★ 各 +6。
 	var blood := load("res://resources/abilities/combat_start_permanent_self_atk_hp_1.tres") as AbilityData
-	if blood == null or blood.merge_value_mult != 3:
-		push_error("ability mult: combat_start_permanent_self_atk_hp_1 should use merge_value_mult=3")
+	if blood == null:
+		push_error("ability mult: missing combat_start_permanent_self_atk_hp_1")
 		return false
-	if UnitInstance.ability_value_multiplier_for(blood, 2) != 3:
-		push_error("ability mult: blood 2★ scale expected 3")
+	if UnitInstance.ability_value_multiplier_for(blood, 2) != 6:
+		push_error("ability mult: blood 2★ scale expected 6")
 		return false
 	var act: EffectAction = null
 	if not blood.effect_specs.is_empty() and blood.effect_specs[0] != null:
@@ -164,8 +164,8 @@ static func _test_ability_merge_value_multiplier() -> bool:
 	if act == null or act.value != 1:
 		push_error("ability mult: blood base atk value expected 1")
 		return false
-	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 3:
-		push_error("ability mult: blood 2★ effective atk expected +3")
+	if act.value * UnitInstance.ability_value_multiplier_for(blood, 2) != 6:
+		push_error("ability mult: blood 2★ effective atk expected +6")
 		return false
 	return true
 
@@ -1276,28 +1276,46 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 	return true
 
 
-## 血僧：开战永久 +1/+1（本场 stats 与有效攻血立刻可见）。
+## 血僧：开战永久 +1/+1；须写入 DeckEntry（2★ +6/+6）。
 static func _test_blood_acolyte_combat_start_permanent() -> bool:
 	var data := _load_unit("res://resources/units/realtime/blood_acolyte.tres")
 	if data == null or data.ability == null or data.ability.id != "combat_start_permanent_self_atk_hp_1":
 		push_error("blood_perm: ability mount")
 		return false
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 10
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	var entry := deck.add_entry(data)
+	entry.level = 2
 	var sim := _new_sim()
 	sim.configure(ARENA, 4202)
-	var monk := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	sim.set_deck_state(deck)
+	var monk := sim.add_unit(
+		UnitInstance.from_deck_entry(entry, Vector2i(9, 20), UnitInstance.Team.PLAYER),
+		Vector2(9.5, 20.5),
+	)
 	var base_atk := monk.unit.get_effective_attack()
 	var base_hp := monk.unit.get_effective_max_hp()
 	sim.begin_combat()
-	if monk.unit.get_effective_attack() != base_atk + 1:
+	sim.flush_combat_start_lock()
+	var expected := 6
+	if monk.unit.get_effective_attack() != base_atk + expected:
 		push_error(
-			"blood_perm: atk %d -> %d expected +1"
-			% [base_atk, monk.unit.get_effective_attack()]
+			"blood_perm 2★: atk %d -> %d expected +%d"
+			% [base_atk, monk.unit.get_effective_attack(), expected]
 		)
 		return false
-	if monk.unit.get_effective_max_hp() != base_hp + 1:
+	if monk.unit.get_effective_max_hp() != base_hp + expected:
 		push_error(
-			"blood_perm: max_hp %d -> %d expected +1"
-			% [base_hp, monk.unit.get_effective_max_hp()]
+			"blood_perm 2★: max_hp %d -> %d expected +%d"
+			% [base_hp, monk.unit.get_effective_max_hp(), expected]
+		)
+		return false
+	if entry.bonus_attack != expected or entry.bonus_max_hp != expected:
+		push_error(
+			"blood_perm: deck entry bonus atk/hp expected %d/%d got %d/%d"
+			% [expected, expected, entry.bonus_attack, entry.bonus_max_hp]
 		)
 		return false
 	return true

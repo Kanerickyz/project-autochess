@@ -130,6 +130,12 @@ func set_economy(economy: RunEconomy) -> void:
 		_effect_resolver.set_economy(economy)
 
 
+## 注入本局牌库，供开战永久属性等写入 DeckEntry.bonus_*。
+func set_deck_state(deck_state: DeckState) -> void:
+	if _effect_resolver != null:
+		_effect_resolver.set_deck_state(deck_state)
+
+
 func get_arena_size() -> Vector2:
 	return _arena_size
 
