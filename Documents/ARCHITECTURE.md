@@ -153,9 +153,10 @@ LEVEL_LOAD → PREPARE（布阵）→ COMBAT（刷怪 + 自动战斗）→ RESOL
 
 #### 3.2.1 Tier 解锁
 
-- **职责**：`TierUnlock.get_max_unlocked_tier(map_floor)`（见 `scripts/core/tier_unlock.gd`）
-- **输入**：地图层号（1-based；**T2 自第 4 层**）。招募 / 敌池抽阵用层号；商店访问序可作同刻度代理
-- **输出**：`max_unlocked_tier`（1–6）；各槽 roll 时过滤 `tier <= max`
+- **职责**：`TierUnlock.get_max_unlocked_tier(map_floor, floor_count)` / `get_min_unlocked_tier`（见 `scripts/core/tier_unlock.gd`）
+- **输入**：地图层号（1-based）与本幕 `floor_count`。**T2 自第 4 层**；**T3 自倒数 6 层**；招募另用最低档（倒数 6 层起踢出 T1）
+- **输出**：最高 / 最低可抽品阶；招募 roll 过滤 `min ≤ tier ≤ max`；敌池仍只滤最高档
+- **提示**：部署阶段新档解锁时 `TierUnlockToast`（约 2 秒）
 - **默认定价**：`cost == tier`（可 per-resource 覆盖）
 - **状态**：**逻辑已实现**；池内容与权重仍可迭代
 

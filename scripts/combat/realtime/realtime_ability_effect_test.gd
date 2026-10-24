@@ -1462,11 +1462,26 @@ static func _test_turn_start_strike_weakest_teleport_deferred() -> bool:
 
 
 static func _test_tier_unlock_t2_from_floor_4() -> bool:
-	if TierUnlock.get_max_unlocked_tier(3) != 1:
+	const FC := 15
+	if TierUnlock.get_max_unlocked_tier(3, FC) != 1:
 		push_error("tier_unlock: floor 3 should be T1")
 		return false
-	if TierUnlock.get_max_unlocked_tier(4) != 2:
+	if TierUnlock.get_max_unlocked_tier(4, FC) != 2:
 		push_error("tier_unlock: floor 4 should unlock T2")
+		return false
+	## 倒数 6 层前仍最高 T2（floor 9 with fc=15）。
+	if TierUnlock.get_max_unlocked_tier(9, FC) != 2:
+		push_error("tier_unlock: floor 9/15 should still be max T2")
+		return false
+	if TierUnlock.get_min_unlocked_tier(9, FC) != 1:
+		push_error("tier_unlock: floor 9/15 should still allow T1")
+		return false
+	## 倒数 6 层起 T3，且最低 T2。
+	if TierUnlock.get_max_unlocked_tier(10, FC) != 3:
+		push_error("tier_unlock: floor 10/15 should unlock T3")
+		return false
+	if TierUnlock.get_min_unlocked_tier(10, FC) != 2:
+		push_error("tier_unlock: floor 10/15 should drop T1")
 		return false
 	return true
 

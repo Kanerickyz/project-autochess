@@ -3,19 +3,19 @@
 [ext_resource type="Script" path="res://scripts/ui/tier_unlock_toast.gd" id="1"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
-bg_color = Color(0.12, 0.1, 0.06, 0.95)
+bg_color = Color(0.1, 0.09, 0.07, 0.72)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.92, 0.72, 0.18, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-content_margin_left = 20.0
+border_color = Color(0.92, 0.72, 0.18, 0.85)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 22.0
 content_margin_top = 14.0
-content_margin_right = 20.0
+content_margin_right = 22.0
 content_margin_bottom = 14.0
 
 [node name="TierUnlockToast" type="PanelContainer"]
@@ -34,7 +34,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.86, 0.35, 1)
 theme_override_font_sizes/font_size = 22
-text = "Tier 2 已解锁！"
+text = "T2 角色已解锁"
 horizontal_alignment = 1
 
 [node name="SubtitleLabel" type="Label" parent="VBox"]
@@ -42,6 +42,6 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.82, 0.78, 0.68, 1)
 theme_override_font_sizes/font_size = 14
-text = "商店现可 roll 出最高 Tier 2 的角色与增益"
+text = "本层起招募可抽到 T2 角色"
 horizontal_alignment = 1
 autowrap_mode = 2

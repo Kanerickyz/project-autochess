@@ -19,8 +19,10 @@ var candidates: Array[UnitData] = []
 var candidate_locked: Array[bool] = []
 var is_active: bool = false
 var progress_ratio: float = 0.0
-## 地图层号（1-based）；>0 时品阶解锁走 TierUnlock（T2 自第 4 层）。
+## 地图层号（1-based）；>0 时品阶解锁走 TierUnlock（T2 自第 4 层；T3 自倒数 6 层）。
 var map_floor: int = 0
+## 本幕普通层数；与 map_floor 一起算倒数 6 层档。
+var map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT
 ## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
 
@@ -52,12 +54,17 @@ func configure(
 		_rng.randomize()
 
 
-func begin(p_progress_ratio: float = 0.0, p_map_floor: int = 0) -> void:
+func begin(
+	p_progress_ratio: float = 0.0,
+	p_map_floor: int = 0,
+	p_map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+) -> void:
 	if deck == null or economy == null:
 		push_error("RecruitSession.begin: deck/economy missing")
 		return
 	progress_ratio = clampf(p_progress_ratio, 0.0, 1.0)
 	map_floor = maxi(0, p_map_floor)
+	map_floor_count = maxi(1, p_map_floor_count)
 	## 开局招募不继承上一场锁定。
 	if require_nonempty_roster:
 		clear_persisted_locks()
@@ -153,14 +160,23 @@ func is_roster_full() -> bool:
 
 
 func get_preferred_tier() -> int:
-	## 主路径：按地图层解锁（T2 自第 4 层）。无层号时回退旧进度三段。
+	## 主路径：按地图层解锁（T2 自第 4 层；T3 自倒数 6 层）。无层号时回退旧进度三段。
 	if map_floor > 0:
-		return TierUnlock.get_max_unlocked_tier(map_floor)
+		return TierUnlock.get_max_unlocked_tier(map_floor, map_floor_count)
 	if progress_ratio < 1.0 / 3.0:
 		return 1
 	if progress_ratio < 2.0 / 3.0:
 		return 2
 	return 3
+
+
+func get_min_tier() -> int:
+	if map_floor > 0:
+		return TierUnlock.get_min_unlocked_tier(map_floor, map_floor_count)
+	## 进度三段回退：后段踢出 T1，与倒数档一致。
+	if progress_ratio >= 2.0 / 3.0:
+		return 2
+	return 1
 
 
 func can_afford_recruit(candidate_index: int) -> bool:
@@ -435,8 +451,9 @@ func _apply_persisted_locks() -> void:
 		var unit: UnitData = _persisted_candidates[i] if i < _persisted_candidates.size() else null
 		if unit == null:
 			continue
-		## 锁定单位须仍在当前解锁池内，否则改抽并解锁。
-		if unit.tier > preferred:
+		## 锁定单位须仍在当前解锁池内（含最低品阶），否则改抽并解锁。
+		var min_tier := get_min_tier()
+		if unit.tier > preferred or unit.tier < min_tier:
 			candidates[i] = _pick_one(preferred)
 			candidate_locked[i] = false
 			continue
@@ -478,12 +495,13 @@ func _pick_one(preferred_tier: int) -> UnitData:
 	var pool := _player_pool()
 	if pool.is_empty():
 		return null
-	## 解锁到 T 时：把 ≤T 的角色全部并入可抽池（不是只抽当前最高 tier）。
+	## 解锁到 T 时：把 [min, T] 并入可抽池（倒数 6 层起 min=2，不再出 T1）。
+	var min_tier := get_min_tier()
 	var unlocked: Array[UnitData] = []
 	for unit in pool:
 		if unit == null:
 			continue
-		if unit.tier <= preferred_tier:
+		if unit.tier >= min_tier and unit.tier <= preferred_tier:
 			unlocked.append(unit)
 	if unlocked.is_empty():
 		return pool[_rng.randi_range(0, pool.size() - 1)]

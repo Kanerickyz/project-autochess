@@ -18,6 +18,7 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
 const DEFAULT_BOARD_SIZE := Vector2i(5, 8)
+const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn")
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
 ## 战斗推进倍速（仅表现层；不影响结果）
@@ -45,6 +46,10 @@ func get_floor_index() -> int:
 	return _floor_index
 
 
+func get_map_floor_count() -> int:
+	return _map_floor_count
+
+
 func set_map_floor_count(count: int) -> void:
 	_map_floor_count = maxi(1, count)
 
@@ -66,6 +71,10 @@ var _last_encounter_elapsed_seconds: float = 0.0
 var _floor_gold: int = 0
 var _hint_text: String = ""
 var _hint_remaining: float = 0.0
+## 本 Run 已提示过的最高解锁品阶；部署阶段新档出现时播 toast。
+var _announced_max_tier: int = 1
+var _tier_toast_wrap: CenterContainer
+var _tier_toast: TierUnlockToast
 var _enemy_spawns: Array = []
 var _encounter_rng: RandomNumberGenerator
 ## 开战锁阵阶段：部署/开战技能只播动画·UI，不走行动内播报队列。
@@ -184,6 +193,7 @@ func _ready() -> void:
 	_ensure_layout_clipboard_buttons()
 	_ensure_tape_controls()
 	_ensure_recruit_hud()
+	_ensure_tier_unlock_toast()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -380,6 +390,7 @@ func start_encounter(
 	_restore_combat_chrome_after_recruit()
 	_rebuild_cards()
 	_set_phase(Phase.PREPARE)
+	_maybe_show_tier_unlock_toast()
 
 
 func get_phase() -> Phase:
@@ -3046,6 +3057,40 @@ func _find_player_unit_at(tile_pos: Vector2) -> RtUnit:
 
 
 # --- HUD / 手牌 ---
+
+
+func _ensure_tier_unlock_toast() -> void:
+	if _tier_toast != null:
+		return
+	_tier_toast_wrap = CenterContainer.new()
+	_tier_toast_wrap.name = "TierUnlockToastWrap"
+	_tier_toast_wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tier_toast_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tier_toast_wrap.z_index = 48
+	_tier_toast = TIER_UNLOCK_TOAST_SCENE.instantiate() as TierUnlockToast
+	_tier_toast_wrap.add_child(_tier_toast)
+	add_child(_tier_toast_wrap)
+
+
+func _maybe_show_tier_unlock_toast() -> void:
+	if _combat_sandbox_mode:
+		return
+	if _floor_index <= 0:
+		return
+	_ensure_tier_unlock_toast()
+	var max_tier := TierUnlock.get_max_unlocked_tier(_floor_index, _map_floor_count)
+	if max_tier <= _announced_max_tier:
+		return
+	_announced_max_tier = max_tier
+	if _tier_toast != null:
+		_tier_toast.show_unlock(max_tier)
+
+
+## 新 Run 时重置品阶解锁提示（由 Run 入口调用）。
+func reset_tier_unlock_announcements() -> void:
+	_announced_max_tier = 1
+	if _tier_toast != null:
+		_tier_toast.hide_immediately()
 
 
 func _show_hint(text: String) -> void:

@@ -77,6 +77,7 @@ func _start_new_run() -> void:
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(run_controller.map_config.floor_count)
+	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
 	_suppress_map_show = true
 	_opening_recruit_pending = true
@@ -203,7 +204,7 @@ func _open_opening_recruit() -> void:
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = true
 	## 开局：第 1 层尺 → 仅 T1。
-	_recruit_session.begin(0.0, 1)
+	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
@@ -284,24 +285,34 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = false
-	_recruit_session.begin(_recruit_progress_ratio(), _recruit_map_floor())
+	_recruit_session.begin(
+		_recruit_progress_ratio(),
+		_recruit_map_floor(),
+		_recruit_map_floor_count(),
+	)
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
 
 func _recruit_progress_ratio() -> float:
-	var floors := 12
-	if run_controller.map_config != null:
-		floors = maxi(1, run_controller.map_config.floor_count)
+	var floors := _recruit_map_floor_count()
 	var depth := run_controller.run_state.completed_encounter_count
 	return clampf(float(depth) / float(floors), 0.0, 1.0)
 
 
-## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层）。
+## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层；T3 自倒数 6 层）。
 func _recruit_map_floor() -> int:
 	if _battle != null:
 		return maxi(1, _battle.get_floor_index())
 	return 1
+
+
+func _recruit_map_floor_count() -> int:
+	if run_controller != null and run_controller.map_config != null:
+		return maxi(1, run_controller.map_config.floor_count)
+	if _battle != null:
+		return maxi(1, _battle.get_map_floor_count())
+	return TierUnlock.DEFAULT_FLOOR_COUNT
 
 
 func _on_recruit_finished(_kept: bool) -> void:

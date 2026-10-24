@@ -35,7 +35,9 @@ static func roll(
 	seat_count = mini(seat_count, MAX_SEATS_HARD)
 	var cols := maxi(1, seat_cols)
 
-	var pool := _resolve_pool(cfg, fallback_pool, tier_index, floor_index, team_entries)
+	var pool := _resolve_pool(
+		cfg, fallback_pool, tier_index, floor_index, team_entries, floor_count
+	)
 	if pool.is_empty():
 		push_warning(
 			"EnemyBudgetSpawner: filtered enemy pool empty (tier_index=%d floor=%d)"
@@ -228,6 +230,7 @@ static func _resolve_pool(
 	tier_index: int,
 	floor_index: int,
 	team_entries: Array = [],
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
 ) -> Array[UnitData]:
 	var source: Array[UnitData] = []
 	if cfg != null and not cfg.enemy_pool.is_empty():
@@ -239,7 +242,7 @@ static func _resolve_pool(
 	## 品阶硬过滤：地图层解锁 ∩ 玩家现有队伍最高品阶（有队伍时）。
 	## 层号优先；层未知时回退遭遇序代理（tier_index+1）。
 	var progress_key := floor_index if floor_index > 0 else tier_index + 1
-	var progress_tier := TierUnlock.get_max_unlocked_tier(progress_key)
+	var progress_tier := TierUnlock.get_max_unlocked_tier(progress_key, floor_count)
 	var max_tier := progress_tier
 	var player_max := _player_roster_max_tier(team_entries)
 	if player_max > 0:
