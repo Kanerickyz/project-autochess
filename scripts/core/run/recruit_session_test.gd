@@ -23,6 +23,7 @@ static func run_all() -> bool:
 	passed = _test_auto_merge_three_same_level() and passed
 	passed = _test_auto_merge_skips_max_star() and passed
 	passed = _test_sell_refunds_and_reset_rolls_back() and passed
+	passed = _test_sell_price_unit_cost_and_triple() and passed
 	passed = _test_fused_enchant_survives_recruit_reset() and passed
 	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	passed = _test_unlocked_tier_merges_into_pool() and passed
@@ -562,6 +563,35 @@ static func _test_sell_refunds_and_reset_rolls_back() -> bool:
 	var inactive := session.try_sell(sell_id)
 	if inactive.get("ok", false):
 		push_error("RecruitSessionTest: inactive session must not sell")
+		return false
+	return true
+
+
+static func _test_sell_price_unit_cost_and_triple() -> bool:
+	var e1 := DeckEntry.new()
+	e1.unit = ARCHER
+	e1.level = 1
+	if DeckUpgradeService.get_sell_price(e1) != ARCHER.cost:
+		push_error(
+			"RecruitSessionTest: 1★ sell expected cost %d, got %d"
+			% [ARCHER.cost, DeckUpgradeService.get_sell_price(e1)]
+		)
+		return false
+	var e2 := DeckEntry.new()
+	e2.unit = KNIGHT
+	e2.level = 2
+	var expected_triple := KNIGHT.cost * 3
+	if DeckUpgradeService.get_sell_price(e2) != expected_triple:
+		push_error(
+			"RecruitSessionTest: 2★ sell expected %d, got %d"
+			% [expected_triple, DeckUpgradeService.get_sell_price(e2)]
+		)
+		return false
+	var e3 := DeckEntry.new()
+	e3.unit = KNIGHT
+	e3.level = 3
+	if DeckUpgradeService.get_sell_price(e3) != KNIGHT.cost * 9:
+		push_error("RecruitSessionTest: 3★ sell expected 9× cost")
 		return false
 	return true
 
