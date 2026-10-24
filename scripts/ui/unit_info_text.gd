@@ -450,6 +450,10 @@ static func format_action(
 				var stats := action.spawn_unit.stats
 				var atk := stats.attack
 				var hp := stats.max_hp
+				if ability != null and ability.merge_value_mult > 0:
+					var stat_mult := UnitInstance.ability_value_multiplier_for(ability, unit_level)
+					atk *= stat_mult
+					hp *= stat_mult
 				if action.spawn_hp_override > 0:
 					hp = action.spawn_hp_override
 				if count > 1:
