@@ -103,6 +103,11 @@ static func roll(
 		## 远程上限：杜绝全远程阵；第一关最多 1，其后 ≤⌈0.4n⌉ 且至少留 1 近战。
 		max_ranged = resolve_max_ranged(target_total, first_floor)
 		var fill_n := clampi(target_total - fixed_units.size(), 0, remain_seats)
+		var tier_caps := EnemyTierIntro.compute_effective_caps(
+			floor_index, target_total, node_type, team_entries, floor_count
+		)
+		var t2_base := EnemyTierIntro.count_units_tier(fixed_units, 2)
+		var t3_base := EnemyTierIntro.count_units_tier(fixed_units, 3)
 		if remain_seats > 0 and fill_n > 0 and not pool.is_empty():
 			## 人数硬约束优先：先定 fill_n，再在预算软约束下抽人。
 			fill = _sample_fill(
@@ -113,10 +118,16 @@ static func roll(
 				node_type,
 				rng,
 				max_ranged,
+				tier_caps.x,
+				tier_caps.y,
+				t2_base,
+				t3_base,
 			)
 		elif remain_seats > 0 and fill_n > 0 and remain_e <= 0.0 and fixed_units.is_empty():
 			## 无固定且预算异常：仍按人数硬约束贪心填满。
-			fill = _greedy_fill(pool, target_e, fill_n, cfg, true)
+			fill = _greedy_fill(
+				pool, target_e, fill_n, cfg, true, tier_caps.x, tier_caps.y, t2_base, t3_base
+			)
 			fill = _enforce_max_ranged(fill, pool, max_ranged, target_e, cfg)
 
 	var all_units: Array[UnitData] = []
@@ -138,6 +149,19 @@ static func roll(
 				all_units = capped_n
 		if max_ranged >= 0:
 			all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
+		if node_type != MapNodeType.Type.BOSS:
+			var caps_post := EnemyTierIntro.compute_effective_caps(
+				floor_index, all_units.size(), node_type, team_entries, floor_count
+			)
+			all_units = _enforce_tier_caps(
+				all_units,
+				fixed_units.size(),
+				pool,
+				caps_post.x,
+				caps_post.y,
+				target_e,
+				cfg,
+			)
 	if all_units.is_empty() and not pool.is_empty() and node_type != MapNodeType.Type.BOSS:
 		## 极端保底：至少 1 个最接近 E 的单位。
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
@@ -299,6 +323,10 @@ static func _sample_fill(
 	node_type: MapNodeType.Type,
 	rng: RandomNumberGenerator,
 	max_ranged: int = -1,
+	t2_cap: int = 9999,
+	t3_cap: int = 9999,
+	t2_base: int = 0,
+	t3_base: int = 0,
 ) -> Array[UnitData]:
 	var n := maxi(0, exact_fill_n)
 	if n <= 0 or pool.is_empty():
@@ -315,7 +343,21 @@ static func _sample_fill(
 
 	## 第一档：带阵型标签
 	var best := _rejection_search(
-		pool, target_e, n_min, n_max, center, base_band, formation, true, cfg, rng, max_ranged
+		pool,
+		target_e,
+		n_min,
+		n_max,
+		center,
+		base_band,
+		formation,
+		true,
+		cfg,
+		rng,
+		max_ranged,
+		t2_cap,
+		t3_cap,
+		t2_base,
+		t3_base,
 	)
 	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
 		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
@@ -324,7 +366,21 @@ static func _sample_fill(
 	best = _better_of(
 		best,
 		_rejection_search(
-			pool, target_e, n_min, n_max, center, base_band, formation, false, cfg, rng, max_ranged
+			pool,
+			target_e,
+			n_min,
+			n_max,
+			center,
+			base_band,
+			formation,
+			false,
+			cfg,
+			rng,
+			max_ranged,
+			t2_cap,
+			t3_cap,
+			t2_base,
+			t3_base,
 		),
 		target_e,
 		cfg,
@@ -337,7 +393,21 @@ static func _sample_fill(
 	best = _better_of(
 		best,
 		_rejection_search(
-			pool, target_e, n_min, n_max, center, wide_band, formation, false, cfg, rng, max_ranged
+			pool,
+			target_e,
+			n_min,
+			n_max,
+			center,
+			wide_band,
+			formation,
+			false,
+			cfg,
+			rng,
+			max_ranged,
+			t2_cap,
+			t3_cap,
+			t2_base,
+			t3_base,
 		),
 		target_e,
 		cfg,
@@ -347,14 +417,22 @@ static func _sample_fill(
 
 	## 最近解 + 仅替换爬山（不改人数）
 	if best.is_empty() or best.size() != n:
-		best = _random_composition(pool, center, rng, max_ranged, cfg)
-	best = _hill_climb(best, pool, target_e, cfg, rng, true, max_ranged)
+		best = _random_composition(
+			pool, center, rng, max_ranged, cfg, t2_cap, t3_cap, t2_base, t3_base
+		)
+	best = _hill_climb(
+		best, pool, target_e, cfg, rng, true, max_ranged, t2_cap, t3_cap, t2_base, t3_base
+	)
 	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
 		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
 
 	## 保底：按 U 贪心填满人数
 	return _enforce_max_ranged(
-		_greedy_fill(pool, target_e, n, cfg, true), pool, max_ranged, target_e, cfg
+		_greedy_fill(pool, target_e, n, cfg, true, t2_cap, t3_cap, t2_base, t3_base),
+		pool,
+		max_ranged,
+		target_e,
+		cfg,
 	)
 
 
@@ -370,6 +448,10 @@ static func _rejection_search(
 	cfg: SpawnBudgetConfig,
 	rng: RandomNumberGenerator,
 	max_ranged: int = -1,
+	t2_cap: int = 9999,
+	t3_cap: int = 9999,
+	t2_base: int = 0,
+	t3_base: int = 0,
 ) -> Array[UnitData]:
 	var best: Array[UnitData] = []
 	var best_err := INF
@@ -379,10 +461,14 @@ static func _rejection_search(
 	var prefer_upper := cfg != null and cfg.prefer_upper_band
 	for _i in attempts:
 		var n := _roll_n(center, n_min, n_max, rng)
-		var comp := _random_composition(pool, n, rng, max_ranged, cfg)
+		var comp := _random_composition(
+			pool, n, rng, max_ranged, cfg, t2_cap, t3_cap, t2_base, t3_base
+		)
 		if require_formation and not _matches_formation(comp, formation):
 			continue
 		if max_ranged >= 0 and _count_ranged(comp) > max_ranged:
+			continue
+		if not EnemyTierIntro.fill_respects_caps(comp, t2_cap, t3_cap, t2_base, t3_base):
 			continue
 		var power := _power(comp, cfg)
 		var err := absf(power - target_e)
@@ -412,6 +498,10 @@ static func _random_composition(
 	rng: RandomNumberGenerator,
 	max_ranged: int = -1,
 	cfg: SpawnBudgetConfig = null,
+	t2_cap: int = 9999,
+	t3_cap: int = 9999,
+	t2_base: int = 0,
+	t3_base: int = 0,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or n <= 0:
@@ -419,7 +509,10 @@ static func _random_composition(
 	var selected_ids: Dictionary = {}
 	if max_ranged < 0:
 		for _i in n:
-			var picked := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+			var pick_pool := EnemyTierIntro.filter_pool_for_add(
+				pool, result, t2_cap, t3_cap, t2_base, t3_base
+			)
+			var picked := _pick_unit_soft_dedup(pick_pool, selected_ids, cfg, rng)
 			if picked == null:
 				break
 			result.append(picked)
@@ -440,7 +533,10 @@ static func _random_composition(
 		else:
 			ranged_n = rng.randi_range(0, upper)
 	for _r in ranged_n:
-		var ranged_pick := _pick_unit_soft_dedup(ranged_pool, selected_ids, cfg, rng)
+		var ranged_pick_pool := EnemyTierIntro.filter_pool_for_add(
+			ranged_pool, result, t2_cap, t3_cap, t2_base, t3_base
+		)
+		var ranged_pick := _pick_unit_soft_dedup(ranged_pick_pool, selected_ids, cfg, rng)
 		if ranged_pick == null:
 			break
 		result.append(ranged_pick)
@@ -448,20 +544,29 @@ static func _random_composition(
 	var melee_needed := n - result.size()
 	for _m in melee_needed:
 		if not melee_pool.is_empty():
-			var melee_pick := _pick_unit_soft_dedup(melee_pool, selected_ids, cfg, rng)
+			var melee_pick_pool := EnemyTierIntro.filter_pool_for_add(
+				melee_pool, result, t2_cap, t3_cap, t2_base, t3_base
+			)
+			var melee_pick := _pick_unit_soft_dedup(melee_pick_pool, selected_ids, cfg, rng)
 			if melee_pick == null:
 				break
 			result.append(melee_pick)
 			_note_selected_id(selected_ids, melee_pick)
 		elif not ranged_pool.is_empty() and result.size() < maxi(1, max_ranged):
 			## 近战池空且尚可再塞远程时补远程；否则重复已有远程以凑人数（再由 enforce 裁）。
-			var ranged_fill := _pick_unit_soft_dedup(ranged_pool, selected_ids, cfg, rng)
+			var ranged_fill_pool := EnemyTierIntro.filter_pool_for_add(
+				ranged_pool, result, t2_cap, t3_cap, t2_base, t3_base
+			)
+			var ranged_fill := _pick_unit_soft_dedup(ranged_fill_pool, selected_ids, cfg, rng)
 			if ranged_fill == null:
 				break
 			result.append(ranged_fill)
 			_note_selected_id(selected_ids, ranged_fill)
 		elif not pool.is_empty():
-			var any_pick := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+			var any_pick_pool := EnemyTierIntro.filter_pool_for_add(
+				pool, result, t2_cap, t3_cap, t2_base, t3_base
+			)
+			var any_pick := _pick_unit_soft_dedup(any_pick_pool, selected_ids, cfg, rng)
 			if any_pick == null:
 				break
 			result.append(any_pick)
@@ -538,6 +643,51 @@ static func _count_ranged(units: Array[UnitData]) -> int:
 		if UnitPowerScore.is_ranged(u):
 			n += 1
 	return n
+
+
+## 远程替换后可能破坏品阶帽；在 fill 之后对整表再压一次（固定位前缀不替换）。
+static func _enforce_tier_caps(
+	units: Array[UnitData],
+	fixed_prefix: int,
+	pool: Array[UnitData],
+	t2_cap: int,
+	t3_cap: int,
+	target_e: float,
+	cfg: SpawnBudgetConfig,
+) -> Array[UnitData]:
+	if units.is_empty() or pool.is_empty():
+		return units
+	var result: Array[UnitData] = units.duplicate()
+	for overflow_tier in [3, 2]:
+		var cap := t3_cap if overflow_tier == 3 else t2_cap
+		while EnemyTierIntro.count_units_tier(result, overflow_tier) > cap:
+			var swapped := false
+			for i in range(result.size() - 1, maxi(0, fixed_prefix) - 1, -1):
+				var u: UnitData = result[i]
+				if u == null or maxi(1, u.tier) != overflow_tier:
+					continue
+				var lower: Array[UnitData] = []
+				for cand in pool:
+					if cand != null and maxi(1, cand.tier) < overflow_tier:
+						if EnemyTierIntro.can_add_unit(
+							cand,
+							_without_index(result, i),
+							t2_cap,
+							t3_cap,
+							0,
+							0,
+						):
+							lower.append(cand)
+				if lower.is_empty():
+					result.remove_at(i)
+					swapped = true
+					break
+				result[i] = _pick_closest_unit(lower, target_e, cfg)
+				swapped = true
+				break
+			if not swapped:
+				break
+	return result
 
 
 ## 超限远程替换为池中近战（按贴近 target_e）；无近战可换则丢掉多余远程。
@@ -720,6 +870,10 @@ static func _hill_climb(
 	rng: RandomNumberGenerator,
 	lock_count: bool = false,
 	max_ranged: int = -1,
+	t2_cap: int = 9999,
+	t3_cap: int = 9999,
+	t2_base: int = 0,
+	t3_base: int = 0,
 ) -> Array[UnitData]:
 	if seed_units.is_empty() or pool.is_empty():
 		return seed_units
@@ -732,7 +886,11 @@ static func _hill_climb(
 	for _i in swaps:
 		var idx := rng.randi_range(0, current.size() - 1)
 		var selected_ids := _selected_ids_excluding(current, idx)
-		var replacement := _pick_unit_soft_dedup(pool, selected_ids, cfg, rng)
+		var comp_no_slot := _without_index(current, idx)
+		var pick_pool := EnemyTierIntro.filter_pool_for_add(
+			pool, comp_no_slot, t2_cap, t3_cap, t2_base, t3_base
+		)
+		var replacement := _pick_unit_soft_dedup(pick_pool, selected_ids, cfg, rng)
 		if replacement == null:
 			continue
 		var trial: Array[UnitData] = current.duplicate()
@@ -743,10 +901,15 @@ static func _hill_climb(
 				trial.remove_at(rng.randi_range(0, trial.size() - 1))
 			elif rng.randf() < 0.25:
 				var append_ids := _selected_ids_excluding(trial, -1)
-				var append_u := _pick_unit_soft_dedup(pool, append_ids, cfg, rng)
+				var append_pool := EnemyTierIntro.filter_pool_for_add(
+					pool, trial, t2_cap, t3_cap, t2_base, t3_base
+				)
+				var append_u := _pick_unit_soft_dedup(append_pool, append_ids, cfg, rng)
 				if append_u != null:
 					trial.append(append_u)
 		if max_ranged >= 0 and _count_ranged(trial) > max_ranged:
+			continue
+		if not EnemyTierIntro.fill_respects_caps(trial, t2_cap, t3_cap, t2_base, t3_base):
 			continue
 		var power := _power(trial, cfg)
 		var err := absf(power - target_e)
@@ -765,6 +928,10 @@ static func _greedy_fill(
 	remain_seats: int,
 	cfg: SpawnBudgetConfig,
 	exact_count: bool = false,
+	t2_cap: int = 9999,
+	t3_cap: int = 9999,
+	t2_base: int = 0,
+	t3_base: int = 0,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or remain_seats <= 0:
@@ -790,6 +957,10 @@ static func _greedy_fill(
 			for cand in sorted_pool:
 				var cand_id := _unit_id(cand)
 				if require_unused and int(selected_ids.get(cand_id, 0)) > 0:
+					continue
+				if not EnemyTierIntro.can_add_unit(
+					cand, result, t2_cap, t3_cap, t2_base, t3_base
+				):
 					continue
 				var trial := power + _unit_u(cand, cfg)
 				var err := absf(trial - target_e)

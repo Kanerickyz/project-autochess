@@ -49,6 +49,7 @@ static func run_all() -> bool:
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
+	_check("wardrum_turn_start_nearby_atk_star2", _test_wardrum_turn_start_nearby_atk_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
@@ -875,6 +876,44 @@ static func _test_turn_start_nearby_hp_radius_1() -> bool:
 	return true
 
 
+## 鼓手 2★：自己回合开始周围一格其他友方攻击 +6（merge_value_mult=3）。
+static func _test_wardrum_turn_start_nearby_atk_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/wardrum.tres")
+	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_atk_small":
+		push_error("wardrum_atk: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("wardrum_atk: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 511)
+	var drum := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	drum.unit.level = 2
+	drum.unit.stats.steps_per_turn = 0
+	var near := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 20.5),
+	)
+	sim.begin_combat()
+	var self_atk_before := drum.unit.get_effective_attack()
+	var near_atk_before := near.unit.get_effective_attack()
+	var payload := CombatEventPayload.new()
+	payload.source = drum.unit
+	payload.target = drum.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects()
+	if drum.unit.get_effective_attack() != self_atk_before:
+		push_error("wardrum_atk: owner must not buff self")
+		return false
+	if near.unit.get_effective_attack() != near_atk_before + 6:
+		push_error(
+			"wardrum_atk 2★: near atk=%d expected %d"
+			% [near.unit.get_effective_attack(), near_atk_before + 6]
+		)
+		return false
+	return true
+
+
 static func _test_death_spawn_pack() -> bool:
 	var data := _load_unit("res://resources/units/realtime/goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "death_spawn_pack":
@@ -1090,7 +1129,7 @@ static func _test_ally_death_spawn_weak() -> bool:
 	return true
 
 
-## 召魂 2★+：每次友方角色死亡生成 3 只 2/2 随从。
+## 召魂 2★（三合一）：友方角色死亡生成 1 只 6/6 随从（merge_value_mult=3）。
 static func _test_ally_death_spawn_merged_triple() -> bool:
 	var data := _load_unit("res://resources/units/realtime/soulcaller.tres")
 	if data == null:
@@ -1134,20 +1173,20 @@ static func _test_ally_death_spawn_merged_triple() -> bool:
 			continue
 		if rt.unit.id != "token_weak":
 			continue
-		if rt.get_stats().attack != 2 or rt.get_stats().max_hp != 2:
+		if rt.get_stats().attack != 6 or rt.get_stats().max_hp != 6:
 			push_error(
-				"merged_spawn: token stats %d/%d expected 2/2"
+				"merged_spawn: token stats %d/%d expected 6/6"
 				% [rt.get_stats().attack, rt.get_stats().max_hp]
 			)
 			return false
 		tokens.append(rt)
-	if tokens.size() != 3:
+	if tokens.size() != 1:
 		push_error(
-			"merged_spawn: expected 3 token_weak, got %d (summons=%d)"
+			"merged_spawn: expected 1 token_weak 6/6, got %d (summons=%d)"
 			% [tokens.size(), caller.unit.combat_summons_spawned]
 		)
 		return false
-	if caller.unit.combat_summons_spawned != 3:
+	if caller.unit.combat_summons_spawned != 1:
 		push_error("merged_spawn: summons_spawned=%d" % caller.unit.combat_summons_spawned)
 		return false
 	return true

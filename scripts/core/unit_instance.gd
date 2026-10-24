@@ -246,18 +246,18 @@ func get_armor_block() -> int:
 	return maxi(0, armor_block)
 
 
-## 护甲抵消后的最终扣血；≤0 表示全额挡住（不算受伤）。
-## 抵消量会消耗护甲；耗尽后回写队伍（装备保留，下回合 / 新遭遇回满）。
+## 护甲抵消后的最终扣血；≤0 表示本次未扣血（不算受伤）。
+## 有剩余护甲时本次伤害不扣血（含伤害大于护甲：护甲归零、溢出也不扣血）；仅消耗护甲。
+## 耗尽后回写队伍（装备保留，下一场战斗节点开战回满）。
 func mitigate_incoming_damage(amount: int) -> int:
 	if amount <= 0:
 		return 0
 	var block := get_armor_block()
 	if block <= 0:
 		return amount
-	var absorbed := mini(amount, block)
-	armor_block = maxi(0, block - absorbed)
+	armor_block = maxi(0, block - amount)
 	_sync_armor_to_deck_entry()
-	return maxi(0, amount - absorbed)
+	return 0
 
 
 func _sync_armor_to_deck_entry() -> void:
