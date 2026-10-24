@@ -68,6 +68,14 @@ func get_entries() -> Array[DeckEntry]:
 	return _entries.duplicate()
 
 
+## 离开战斗节点：全队装备护甲回满（装备保留；地图/招募 UI 与下场准备一致）。
+func refill_all_equipment_armor() -> void:
+	for entry in _entries:
+		if entry == null:
+			continue
+		entry.refill_equipment_armor()
+
+
 func get_entry(entry_id: int) -> DeckEntry:
 	for entry in _entries:
 		if entry.entry_id == entry_id:
