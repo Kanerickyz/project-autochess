@@ -242,7 +242,7 @@
 | 旗手 | 以身作则 | `combat_start_buff_nearby_allies_mid` | 开场·惠攻 | 开战时周围一格友方攻击 +4（三合一后 +12） |
 | 圣骸 | 甲胄遗赠 | `death_buff_nearby_def_mid` | 退场·惠防 | 死后周围一格临时承伤感 |
 | 号手 | 亡者之志 | `ally_death_nearby_atk_small` | 小队·鼓舞 | 友亡时周围一格加攻 |
-| 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始周围一格小幅加攻 |
+| 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始周围一格其他友方 +2 攻（三合一后 +6） |
 | 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始周围一格友方生命上限与当前各 +2（三合一后 +8） |
 | 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方随从被召唤时自加血 +2（三合一后 +6） |
 | 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2 |

@@ -49,6 +49,7 @@ static func run_all() -> bool:
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
+	_check("wardrum_turn_start_nearby_atk_star2", _test_wardrum_turn_start_nearby_atk_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
@@ -866,6 +867,44 @@ static func _test_turn_start_nearby_hp_radius_1() -> bool:
 		push_error(
 			"nearby_hp_radius: far max_hp=%d expected unchanged %d (2 cells)"
 			% [far.unit.get_effective_max_hp(), far_max_before]
+		)
+		return false
+	return true
+
+
+## 鼓手 2★：自己回合开始周围一格其他友方攻击 +6（merge_value_mult=3）。
+static func _test_wardrum_turn_start_nearby_atk_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/wardrum.tres")
+	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_atk_small":
+		push_error("wardrum_atk: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("wardrum_atk: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 511)
+	var drum := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	drum.unit.level = 2
+	drum.unit.stats.steps_per_turn = 0
+	var near := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 20.5),
+	)
+	sim.begin_combat()
+	var self_atk_before := drum.unit.get_effective_attack()
+	var near_atk_before := near.unit.get_effective_attack()
+	var payload := CombatEventPayload.new()
+	payload.source = drum.unit
+	payload.target = drum.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects()
+	if drum.unit.get_effective_attack() != self_atk_before:
+		push_error("wardrum_atk: owner must not buff self")
+		return false
+	if near.unit.get_effective_attack() != near_atk_before + 6:
+		push_error(
+			"wardrum_atk 2★: near atk=%d expected %d"
+			% [near.unit.get_effective_attack(), near_atk_before + 6]
 		)
 		return false
 	return true
