@@ -258,7 +258,7 @@
 | 影刺 | 影袭落刃 | `turn_start_strike_weakest` | 刺杀·斩后 | 自己回合开始瞬移至最低血敌人旁；1★ 刺 **2** / 三合一后 **7**（单向技能伤，不走普攻 ×6） |
 | 狂战士 | 血怒再袭 | `kill_grant_actor_turn_refresh` | 收割·连动 | 击杀重置本动（再步+再攻）；不触发回合开始技能；**每场无限次** |
 | 吞噬 | 左右吞噬 | `turn_start_devour_lr_allies` | 献祭·吞纳 | 自己回合开始消灭左右邻格友方并吞其全部攻与生命上限；2★ 排除首领；吞取值不 ×6 |
-| 血僧 | 禅心固本 | `combat_start_permanent_self_atk_hp_1` | 生命·开场 | 开战永久对自身 +1/+1（三合一后 +3/+3；`merge_value_mult=3`） |
+| 血僧 | 禅心固本 | `combat_start_permanent_self_atk_hp_1` | 生命·开场 | 开战永久对自身 +1/+1（三合一后 +6/+6） |
 | 命卫 | 饮命回春 | `kill_heal_self_mid` | 生命·收割 | 击杀时自身恢复 8 生命 |
 | 铁心 | 铁心蓄势 | `combat_start_self_max_hp_mid` | 生命·开场 | 开战时自身生命上限 +12（三合一后 +36；`merge_value_mult=3`） |
 | 愈修 | 痛彻回春 | `hurt_heal_self_small` | 生命·自愈 | 受伤时自身恢复 4 生命（T2 **7/2**，花 3） |

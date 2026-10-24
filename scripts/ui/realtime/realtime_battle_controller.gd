@@ -1162,6 +1162,8 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 	_sim = RealtimeCombatSim.new(_bus)
 	_sim.configure(_board_size, last_seed)
 	_sim.set_economy(_economy)
+	if _deck_state != null:
+		_sim.set_deck_state(_deck_state)
 	_sim.splash_triggered.connect(_arena.add_splash_fx)
 	_sim.unit_died.connect(_on_unit_died)
 	_sim.combat_finished.connect(_on_combat_finished)
