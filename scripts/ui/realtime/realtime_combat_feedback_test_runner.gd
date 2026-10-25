@@ -254,19 +254,28 @@ func _test_rider_enemy_death_feedback() -> void:
 	_expect(battle.try_start_combat(), "rider: start combat")
 	await process_frame
 	var arena := battle.get_arena()
+	var sim := battle.get_sim()
 	arena.clear_fx()
+	battle._timestop_queue.clear()
+	if sim.get_effect_resolver() != null:
+		sim.get_effect_resolver().clear_pending()
+	sim.release_presentation()
 	var before := arena.get_feedback_count()
 	var enemy_rt: RtUnit = null
-	for item in battle.get_sim().get_units():
+	for item in sim.get_units():
 		var rt := item as RtUnit
 		if rt != null and not rt.is_player() and rt.is_alive():
 			enemy_rt = rt
 			break
 	_expect(enemy_rt != null, "rider: have enemy to kill")
 	if enemy_rt != null:
-		battle.get_sim()._pipeline.apply_damage(null, enemy_rt, 999)
-		battle.get_sim()._drain_effects()
-	await process_frame
+		## defer 时停：入队后须播完介绍/结果拍才有 ON_EFFECT_RESOLVED 反馈。
+		sim._pipeline.apply_damage(null, enemy_rt, 999)
+	battle.time_scale = 8.0
+	var guard := 0
+	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
+		await process_frame
+		guard += 1
 	_expect(arena.get_feedback_count() > before, "rider: enemy-death effect yields feedback")
 	var has_stat := false
 	for fb in arena.get_feedback_entries():
@@ -379,7 +388,8 @@ func _test_timestop_queue_blocks_sim() -> void:
 		guard += 1
 	_expect(not battle.is_timestop_blocking(), "timestop: queue drains")
 	_expect(not sim.has_pending_effects(), "timestop: effects resolved after card")
-	_expect(target.current_hp == hp_before + 5, "timestop: heal applied after card")
+	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
+	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied after card")
 	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
 	_expect(not sim.presentation_hold, "timestop: presentation hold released")
 
@@ -432,15 +442,14 @@ func _test_tape_next_skips_stuck_timestop() -> void:
 	_expect(sim.has_pending_effects(), "tape-skip: still pending during card")
 	_expect(target.current_hp == hp_before, "tape-skip: not healed during card")
 
+	## 同步强制收拍；随后关掉 step_once，避免本帧把整场打完干扰血量断言。
 	battle._on_tape_next_pressed()
-	await process_frame
 	_expect(not sim.has_pending_effects(), "tape-skip: next resolves pending")
-	_expect(target.current_hp == hp_before + 3, "tape-skip: heal applied after next")
-	## 若还有下一张卡会再阻塞；本用例只有一批，应收拍或仅短结果拍。
-	var guard := 0
-	while battle.is_timestop_blocking() and guard < 30:
-		await process_frame
-		guard += 1
+	var heal_cap := mini(hp_before + 3, target.get_effective_max_hp())
+	_expect(target.current_hp == heal_cap, "tape-skip: heal applied after next")
+	battle._tape_step_once = false
+	battle._tape_paused = true
+	await process_frame
 	_expect(not battle.is_timestop_blocking(), "tape-skip: timestop cleared after next")
 	_expect(not sim.presentation_hold, "tape-skip: hold released")
 
