@@ -11,14 +11,13 @@ value = 1
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
-trigger = &"OnDeath"
-target_selector = 23
-exclude_owner = true
+trigger = &"OnEnemyDeath"
+target_selector = 4
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]
 script = ExtResource("1_ab")
-id = "death_damage_random_any_1"
-display_name = "死亡时 对随机存活角色造成1伤害"
+id = "enemy_death_damage_random_enemy_1"
+display_name = "敌方死亡时 对随机敌人造成1伤害"
 merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

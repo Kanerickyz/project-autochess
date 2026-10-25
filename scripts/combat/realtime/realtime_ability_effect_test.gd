@@ -35,6 +35,8 @@ static func run_all() -> bool:
 	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
 	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
 	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
+	_check("scatter_hex_enemy_death_damage", _test_scatter_hex_enemy_death_damage())
+	_check("scatter_hex_enemy_death_damage_star2", _test_scatter_hex_enemy_death_damage_star2())
 	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
 	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
@@ -210,6 +212,68 @@ static func _test_enemy_death_self_atk_hp_small() -> bool:
 		return false
 	if after_hp != base_hp + 1:
 		push_error("rider: max_hp %d -> %d, expected +1" % [base_hp, after_hp])
+		return false
+	return true
+
+
+## 散咒：敌亡 → 对随机存活敌人造成 1（2★ 为 3）。
+static func _scatter_hex_enemy_death_dealt(level: int) -> int:
+	var data := _load_unit("res://resources/units/realtime/scatter_hex.tres")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_damage_random_enemy_1":
+		push_error("scatter_hex: ability mount")
+		return -1
+	if data.ability.merge_value_mult != 3:
+		push_error("scatter_hex: merge_value_mult expected 3")
+		return -1
+	var sim := _new_sim()
+	sim.configure(ARENA, 4300 + level)
+	var caster := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	caster.unit.level = level
+	var fodder := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 5, {"id": "fodder", "steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(9.5, 8.5),
+	)
+	var target := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"id": "target", "steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(8.5, 8.5),
+	)
+	## 友方死亡不应触发。
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 5, {"id": "ally_fodder", "steps_per_turn": 0}),
+		Vector2(8.5, 24.5),
+	)
+	sim.begin_combat()
+	var hp_before := target.unit.current_hp
+	if not sim._pipeline.apply_damage(null, ally, 999):
+		push_error("scatter_hex: failed to kill ally")
+		return -1
+	sim._drain_effects()
+	if target.unit.current_hp != hp_before:
+		push_error("scatter_hex: ally death should not damage enemy")
+		return -1
+	if not sim._pipeline.apply_damage(null, fodder, 999):
+		push_error("scatter_hex: failed to kill enemy fodder")
+		return -1
+	sim._drain_effects()
+	return hp_before - target.unit.current_hp
+
+
+static func _test_scatter_hex_enemy_death_damage() -> bool:
+	var dealt := _scatter_hex_enemy_death_dealt(1)
+	if dealt != 1:
+		push_error("scatter_hex: dealt %d, expected 1" % dealt)
+		return false
+	return true
+
+
+static func _test_scatter_hex_enemy_death_damage_star2() -> bool:
+	var dealt := _scatter_hex_enemy_death_dealt(2)
+	if dealt != 3:
+		push_error("scatter_hex star2: dealt %d, expected 3" % dealt)
 		return false
 	return true
 

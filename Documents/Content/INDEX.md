@@ -18,7 +18,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（四十三人 · 含退场伤散咒/葬焰；§6 与技能 1:1；realtime 资源已写） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（四十三人 · 含散咒/葬焰；§6 与技能 1:1；realtime 资源已写） |
 
 | [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含吞噬左右吞纳；挂载见角色库 §6） |
