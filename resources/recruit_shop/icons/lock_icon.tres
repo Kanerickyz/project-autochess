@@ -1,0 +1,7 @@
+[gd_resource type="AtlasTexture" format=3 uid="uid://c3lockiconuid"]
+
+[ext_resource type="Texture2D" uid="uid://cbec6pw3otnag" path="res://assets/sprites/paper_cutout/shop/recruit_items.png" id="1_sheet"]
+
+[resource]
+atlas = ExtResource("1_sheet")
+region = Rect2(512, 0, 256, 256)
