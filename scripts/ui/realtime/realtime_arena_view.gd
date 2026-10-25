@@ -16,6 +16,8 @@ signal recruit_sell(entry_id: int)
 signal recruit_candidate_lock(candidate_index: int)
 ## 招募：上区成员拖到空座或另一成员座位换座。
 signal recruit_team_seat_drop(entry_id: int, target_seat: int)
+## 招募：点上区空座（备战选中后上阵用）。
+signal recruit_empty_seat_pressed(seat_index: int)
 ## 招募道具行：点击道具槽。
 signal recruit_item_pressed(item_slot: int)
 ## 招募道具行：药水拖到上区队伍成员。
@@ -30,6 +32,10 @@ signal map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int)
 signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
 signal prepare_team_seat_drop(entry_id: int, target_seat: int)
+## 准备：拖已入座角色松手未落座（控制器判断是否在备战行上）。
+signal prepare_team_bench_drop(entry_id: int)
+## 招募：拖上区成员松手未落座/未出售（控制器判断是否在备战行上）。
+signal recruit_team_bench_drop(entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -221,6 +227,7 @@ var _enchant_team_pan_active: bool = false
 var _enchant_team_pan_last_y: float = 0.0
 var _enchant_forge_press: bool = false
 var _recruit_team_press_id: int = -1
+var _recruit_empty_seat_press: int = -1
 var _party_speech_bubble: PartySpeechBubble
 ## 产金反馈金币层（TextureRect + Tween；clear_fx 时清空）。
 var _gold_coin_layer: Control
@@ -327,6 +334,7 @@ func _notification(what: int) -> void:
 		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
 		_recruit_team_press_id = -1
+		_recruit_empty_seat_press = -1
 		_map_shop_offer_drag_index = -1
 		_map_shop_offer_press_index = -1
 		_map_shop_team_drag_id = -1
@@ -910,7 +918,16 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_team_press_id = entry_id
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
+				_recruit_empty_seat_press = -1
 				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
+				accept_event()
+				return
+			var empty_press := _find_recruit_team_seat_at(cell)
+			if empty_press >= 0:
+				_recruit_empty_seat_press = empty_press
+				_recruit_team_press_id = -1
+				_recruit_press_index = -1
+				_recruit_item_press_index = -1
 				accept_event()
 			return
 		## 松开
@@ -918,6 +935,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			_recruit_press_index = -1
 			_recruit_item_press_index = -1
 			_recruit_team_press_id = -1
+			_recruit_empty_seat_press = -1
 			_end_press()
 			accept_event()
 			return
@@ -938,14 +956,23 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		if _recruit_press_index >= 0:
 			var pressed := _recruit_press_index
 			_recruit_press_index = -1
+			_recruit_empty_seat_press = -1
 			recruit_candidate_pressed.emit(pressed)
 			accept_event()
 		elif _recruit_item_press_index >= 0:
 			var item_pressed := _recruit_item_press_index
 			_recruit_item_press_index = -1
+			_recruit_empty_seat_press = -1
 			recruit_item_pressed.emit(item_pressed)
 			accept_event()
+		elif _recruit_empty_seat_press >= 0:
+			var empty_seat := _recruit_empty_seat_press
+			_recruit_empty_seat_press = -1
+			if empty_seat == _find_recruit_team_seat_at(cell) and _find_recruit_team_entry_at(cell) < 0:
+				recruit_empty_seat_pressed.emit(empty_seat)
+			accept_event()
 		_recruit_team_press_id = -1
+		_recruit_empty_seat_press = -1
 
 
 func _gui_input_map_shop(event: InputEvent) -> void:
@@ -1997,19 +2024,19 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
 	var seat_i := _find_recruit_team_seat_at(cell)
-	if _candidate_needs_replace(index):
-		if replace_id < 0:
-			queue_redraw()
-			return
+	## 拖到已占座：始终替换（旧人不退金）；不要求总拥有已满。
+	if replace_id >= 0:
 		recruit_drop.emit(index, replace_id, -1)
-	else:
-		## 空席：指定空座优先；拖到非座位格则首空座（seat=-1）。
-		## 满员可三合一时走此分支，直接买入。
-		if replace_id >= 0:
-			seat_i = -1
-		elif seat_i < 0 and recruit_team_slots != null:
-			seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
-		recruit_drop.emit(index, -1, seat_i)
+		queue_redraw()
+		return
+	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先备战）。
+	if seat_i < 0 and recruit_team_slots != null:
+		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+		if seat_i >= 0:
+			var sc := recruit_team_slots.get_cell(seat_i)
+			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
+				seat_i = -1
+	recruit_drop.emit(index, -1, seat_i)
 	queue_redraw()
 
 
@@ -2066,6 +2093,9 @@ func _finish_recruit_team_drag(cell: Vector2i) -> void:
 				seat_i = -1
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
+	else:
+		## 未落座/未出售：可能拖到 Dock 备战行。
+		recruit_team_bench_drop.emit(entry_id)
 	queue_redraw()
 
 
@@ -2193,7 +2223,37 @@ func _finish_prepare_team_drag(cell: Vector2i) -> void:
 				seat_i = -1
 	if seat_i >= 0:
 		prepare_team_seat_drop.emit(entry_id, seat_i)
+	else:
+		## 未落座：可能拖到 Dock 备战行（由控制器判定）。
+		prepare_team_bench_drop.emit(entry_id)
 	queue_redraw()
+
+
+## 控制器在备战行上松开时取走进行中的准备拖拽（避免释放落在 Dock 时 Arena 收不到）。
+func take_active_prepare_team_drag() -> int:
+	var entry_id := _prepare_team_drag_id
+	if entry_id < 0:
+		return -1
+	_prepare_team_drag_id = -1
+	_prepare_team_press_id = -1
+	_drag_active = false
+	_finish_drag_visual(NO_CELL)
+	queue_redraw()
+	return entry_id
+
+
+## 控制器在备战行上松开时取走进行中的招募队伍拖拽。
+func take_active_recruit_team_drag() -> int:
+	var entry_id := _recruit_team_drag_id
+	if entry_id < 0:
+		return -1
+	_recruit_team_drag_id = -1
+	_recruit_team_press_id = -1
+	_drag_active = false
+	recruit_sell_preview_gold = 0
+	_finish_drag_visual(NO_CELL)
+	queue_redraw()
+	return entry_id
 
 
 func _draw_prepare_team_seat_hint(px: float) -> void:
@@ -2379,16 +2439,16 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			return
 		var replace_id := _find_recruit_team_entry_at(cell)
 		var seat_i := _find_recruit_team_seat_at(cell)
-		if _candidate_needs_replace(index):
-			if replace_id < 0:
-				return
+		if replace_id >= 0:
 			recruit_drop.emit(index, replace_id, -1)
-		else:
-			if replace_id >= 0:
-				seat_i = -1
-			elif seat_i < 0 and recruit_team_slots != null:
-				seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
-			recruit_drop.emit(index, -1, seat_i)
+			return
+		if seat_i < 0 and recruit_team_slots != null:
+			seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
+			if seat_i >= 0:
+				var sc := recruit_team_slots.get_cell(seat_i)
+				if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
+					seat_i = -1
+		recruit_drop.emit(index, -1, seat_i)
 		return
 	card_dropped.emit(int(dict[DRAG_KEY]), local_to_tile(at_position))
 
@@ -2452,6 +2512,7 @@ func clear_recruit_mode() -> void:
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_recruit_empty_seat_press = -1
 	clear_party_bark()
 	_clear_drag_visual()
 	queue_redraw()
