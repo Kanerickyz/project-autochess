@@ -614,12 +614,9 @@ func sync_combat_motion_now() -> void:
 	_motion.sync_units(sim.get_units(), sim.get_current_actor())
 
 
-## 死亡残影：闪白后侧倒、缩小淡出（纯表现，单位已从模拟移除）。
-func play_unit_death(rt: RtUnit) -> void:
-	if rt == null:
-		return
-	var half := _resolve_visual_half(rt.get_visual_half_height(), rt.get_radius(), 1.6)
-	_motion.play_death(rt, _rt_unit_id(rt), half)
+## 死亡立刻离场，不生成侧倒残影。
+func play_unit_death(_rt: RtUnit) -> void:
+	return
 
 
 func _feedback_duration_for_scale(scale: float) -> float:
@@ -3162,6 +3159,8 @@ func _draw_units(px: float) -> void:
 		var is_actor := actor != null and rt == actor
 		if started and actor != null and not is_actor:
 			alpha = 0.72
+		if started and not rt.is_alive():
+			continue
 		if started and rt.is_deploying():
 			alpha = mini(alpha, 0.55)
 		if now - rt.last_attack_time < ATTACK_FLASH_SECONDS:

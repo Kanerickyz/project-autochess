@@ -2,7 +2,7 @@ class_name RealtimeUnitMotion
 extends Node
 ## Run 战场单位程序动画（纯表现）：只产出绘制用偏移 / 旋转 / 缩放 / 闪白与镜头震动，
 ## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别蓄力、出手、受击，
-## 死亡由控制器转发 unit_died 后生成残影单独播放。
+## 死亡由控制器清场；角色立刻离场，不播侧倒残影。
 
 ## 一格步进：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
 const WALK_TILT := 0.16

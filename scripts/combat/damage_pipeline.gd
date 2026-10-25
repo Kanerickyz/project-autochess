@@ -52,8 +52,10 @@ func apply_damage(
 	payload.amount = final_amount
 	payload.target_hp_before = hp_before
 
-	_bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
-	_bus.emit_event(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, payload)
+	## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
+	if target.is_alive():
+		_bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
+		_bus.emit_event(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, payload)
 	_bus.emit_event(CombatEvents.ON_DEAL_DAMAGE, payload)
 
 
