@@ -264,8 +264,8 @@
 | 愈修 | 痛彻回春 | `hurt_heal_self_small` | 生命·自愈 | 受伤时自身恢复 4 生命（T2 **7/2**，花 3） |
 | 疗刃 | 收刀济友 | `kill_heal_random_ally_2` | 收割·输血 | 自己击杀时随机友方恢复 2 生命（三合一后 6；含自己） |
 | 余震 | 震波余刃 | `kill_damage_random_enemy_1` | 收割·点残 | 自己击杀时对随机敌人造成 1 伤害（三合一后 3） |
-| 咒刃 | 咒刃点锋 | `combat_start_buff_random_ally_atk_2` | 开场·惠攻 | 开战时随机友方攻击 +2（三合一后 +6；含自己） |
-| 盾祷 | 盾祷厚泽 | `combat_start_buff_random_ally_hp_2` | 开场·加厚 | 开战时随机友方生命上限与当前各 +2（三合一后 +6；含自己） |
+| 咒刃 | 咒刃点锋 | `combat_start_nearby_ally_atk_1` | 开场·惠攻 | 开战时周围一格其他友方攻击 +1（三合一后 +3） |
+| 盾祷 | 盾祷厚泽 | `combat_start_nearby_ally_hp_1` | 开场·加厚 | 开战时周围一格其他友方生命上限与当前各 +1（三合一后 +3） |
 | 饷吏 | 发饷入袋 | `combat_start_grant_gold_2` | 经济·稳饷 | 开战时 +2 金（三合一后 +6；`merge_value_mult=3`；仅玩家友方） |
 | 殓金 | 殓金入袋 | `ally_death_grant_gold_1` | 经济·殓金 | 友方死亡时 +1 金（三合一后 +3；`merge_value_mult=3`；仅玩家友方） |
 | 帑卫 | 钱袋加身 | `combat_start_buff_from_gold_half` | 经济·读金 | 开战时攻/血各 +⌊当前金/2⌋（不扣金；读金不加升星倍率；仅玩家友方） |

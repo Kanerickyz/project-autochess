@@ -5,10 +5,9 @@ const DECK_PATH := "res://resources/deck/realtime_starter_deck.tres"
 const LEVEL_PATH := "res://resources/levels/board_act1.tres"
 const ECONOMY_PATH := "res://resources/economy/default_economy.tres"
 const ENCOUNTER_PATH := "res://resources/encounters/realtime/rt_combat_01.tres"
+## 仅测开战自 Buff；咒刃/盾祷改为周围其他友方，由 realtime_ability_effect_test 覆盖。
 const UNITS := [
 	["iron_heart", "res://resources/units/realtime/iron_heart.tres", 12, "max_hp"],
-	["edge_hex", "res://resources/units/realtime/edge_hex.tres", 2, "attack"],
-	["shield_boon", "res://resources/units/realtime/shield_boon.tres", 2, "max_hp"],
 ]
 
 
