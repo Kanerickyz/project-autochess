@@ -17,8 +17,11 @@ Red variants recolor only the cobalt cloth so both teams keep identical silhouet
 
 units_sheet_h.jpg is a 4×3 neutral-gray grid (256px cells) for the twelve
 units that used the DEV placeholder. `python3 tools/process_paper_cutout_art.py sheet-h`
-writes only those stickers. Output height matches the other unit stickers (320px)
-so the battlefield, which scales by texture aspect, keeps the same body size.
+writes only those stickers. Canvas height matches the other unit stickers (320px).
+The figure itself is drawn at CONTENT_SCALE and narrow stickers are padded out to
+MIN_ASPECT, because the battlefield sizes a sprite by its texture aspect and a
+narrow sticker would otherwise stand taller than the other infantry. Feet stay
+on the bottom edge of the canvas.
 """
 from __future__ import annotations
 
@@ -159,9 +162,13 @@ SHEET_H_NAMES = [
 	"coffer_ward", "blood_wage", "scatter_hex", "funeral_pyre",
 ]
 SHEET_H_CELL = 256
-## Match existing stickers: opaque content 316px inside a 2px pad → height 320.
+## Canvas height matches existing stickers. The figure is slightly smaller inside
+## that canvas so these twelve read the same size as the other infantry.
 STICKER_HEIGHT = 320
 STICKER_PAD = 2
+CONTENT_SCALE = 0.88
+## tex width / height. Below this, the battlefield width cap stretches the sprite taller.
+MIN_ASPECT = 1.0
 
 
 def key_out_neutral(rgb: np.ndarray) -> np.ndarray:
@@ -193,14 +200,19 @@ def key_out_neutral(rgb: np.ndarray) -> np.ndarray:
 
 
 def _fit_sticker_height(im: Image.Image) -> Image.Image:
-	"""Tight crop, then scale so every sticker is STICKER_HEIGHT tall (same as the other units)."""
+	"""Fit one sticker: feet on the bottom, figure at CONTENT_SCALE, canvas at least square."""
 	tight = crop_to_alpha(im, pad=0)
-	inner = STICKER_HEIGHT - STICKER_PAD * 2
-	if tight.height != inner:
-		w = max(1, round(tight.width * inner / tight.height))
-		tight = tight.resize((w, inner), Image.Resampling.LANCZOS)
-	canvas = Image.new("RGBA", (tight.width + STICKER_PAD * 2, STICKER_HEIGHT), (0, 0, 0, 0))
-	canvas.paste(tight, (STICKER_PAD, STICKER_PAD), tight)
+	full_h = STICKER_HEIGHT - STICKER_PAD * 2
+	full_w = max(1, round(tight.width * full_h / max(1, tight.height)))
+	scaled_h = max(1, round(full_h * CONTENT_SCALE))
+	scaled_w = max(1, round(full_w * CONTENT_SCALE))
+	sprite = tight.resize((scaled_w, scaled_h), Image.Resampling.LANCZOS)
+	canvas_h = STICKER_HEIGHT
+	canvas_w = max(full_w + STICKER_PAD * 2, round(canvas_h * MIN_ASPECT))
+	canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+	x = (canvas_w - scaled_w) // 2
+	y = canvas_h - STICKER_PAD - scaled_h
+	canvas.paste(sprite, (x, y), sprite)
 	return canvas
 
 
