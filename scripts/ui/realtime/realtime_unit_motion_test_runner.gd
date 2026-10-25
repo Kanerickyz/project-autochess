@@ -28,6 +28,7 @@ func _run() -> void:
 	await _test_long_press_info()
 	await _test_prepare_seat_drag_swap()
 	await _test_prepare_bench_drag_deploy()
+	await _test_prepare_bench_tap_auto_deploy()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
@@ -381,6 +382,50 @@ func _test_prepare_bench_drag_deploy() -> void:
 	_press(arena, bench_center, false)
 	_expect(bench_drops == [mover_id], "seat drag to bench emits prepare_team_bench_drop")
 	_expect(slots.find_slot_by_entry(mover_id) < 0, "seat cleared after bench drop")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_prepare_bench_tap_auto_deploy() -> void:
+	## 准备：点备战有空席则自动上阵；已入座目标再点自动上阵失败。
+	var battle := _make_battle(29)
+	await process_frame
+	var arena := _arena(battle)
+	_expect(arena != null, "arena for bench tap deploy")
+	if arena == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var slots := battle.get_slot_board()
+	var bench_board := battle.get_bench_slot_board()
+	if bench_board.occupied_count() < 1 and slots.occupied_count() >= 2:
+		var seed_id := slots.get_entry(_occupied_slot_indices(slots, 1)[0]).entry_id
+		_expect(battle.try_move_seat_to_bench(seed_id), "seed bench for tap deploy")
+		bench_board = battle.get_bench_slot_board()
+	_expect(bench_board.occupied_count() >= 1, "need bench unit for tap deploy")
+	if bench_board.occupied_count() < 1:
+		battle.queue_free()
+		await process_frame
+		return
+	var mover: DeckEntry = null
+	for i in bench_board.slot_count:
+		var e := bench_board.get_entry(i)
+		if e != null:
+			mover = e
+			break
+	_expect(mover != null, "bench mover present")
+	if mover == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var mover_id := mover.entry_id
+	var seated_before := slots.occupied_count()
+	_expect(battle.try_auto_deploy_bench(mover_id), "tap-equivalent auto deploy succeeds with empty seat")
+	slots = battle.get_slot_board()
+	_expect(slots.find_slot_by_entry(mover_id) >= 0, "auto deploy seats the bench unit")
+	_expect(slots.occupied_count() == seated_before + 1, "seated count +1 after auto deploy")
+	## 已入座不可再 auto_deploy；经 _on_bench_pressed 路径由选中/提示兜底。
+	_expect(not battle.try_auto_deploy_bench(mover_id), "auto deploy rejects already-seated entry")
 	battle.queue_free()
 	await process_frame
 
