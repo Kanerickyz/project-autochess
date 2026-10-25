@@ -80,12 +80,16 @@ const STAT_GOLD_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_gold.p
 const FX_GOLD_COIN_TEX := preload("res://assets/sprites/paper_cutout/ui/fx_gold_coin.png")
 const GOLD_COIN_PAPER_SCALE := 0.25
 const GOLD_COIN_MAX_BURST := 5
-## 掉落落地：抛出 → 落地点弹跳 → 久留 → 淡出。
+## 掉落落地：抛出 → 落地弹动 → 随机左右滑移 → 久留 → 淡出（不旋转）。
 const GOLD_COIN_THROW_SEC := 0.18
 const GOLD_COIN_FALL_SEC := 0.32
-const GOLD_COIN_BOUNCE_SEC := 0.16
+const GOLD_COIN_BOUNCE_SEC := 0.22
+const GOLD_COIN_SLIDE_SEC := 0.28
 const GOLD_COIN_LINGER_SEC := 2.2
 const GOLD_COIN_FADE_SEC := 0.65
+## 落地后左右滑移距离（相对格子边长）。
+const GOLD_COIN_SLIDE_TILE_MIN := 0.18
+const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸。
@@ -599,7 +603,8 @@ func add_feedback_popup(
 	_trim_feedback_for_unit(unit_id)
 
 
-## 产金技能：在单位旁弹出金币纸片（边长 = 典型角色纸片高度 × 1/4），Tween 弹起再上浮淡出。
+## 产金技能：在单位旁弹出金币纸片（边长 = 典型角色纸片高度 × 1/4）。
+## Tween：抛出 → 落地压扁 → 弹起回正 → 随机左右滑移 → 久留淡出；全程不旋转。
 func spawn_gold_coin_burst(center_tile: Vector2, amount: int) -> void:
 	if FX_GOLD_COIN_TEX == null or amount <= 0:
 		return
@@ -631,45 +636,48 @@ func spawn_gold_coin_burst(center_tile: Vector2, amount: int) -> void:
 			lerpf(start_pos.x, land_pos.x, 0.35),
 			minf(start_pos.y, land_pos.y) - randf_range(0.22, 0.42) * px,
 		)
-		var bounce_pos := land_pos + Vector2(
-			randf_range(-0.04, 0.04) * px,
-			-randf_range(0.06, 0.12) * px,
-		)
-		var spin := randf_range(-TAU * 0.85, TAU * 0.85)
+		var bounce_height := randf_range(0.10, 0.18) * px
+		var bounce_apex := land_pos + Vector2(0.0, -bounce_height)
+		var slide_dir := -1.0 if randf() < 0.5 else 1.0
+		var slide_dist := randf_range(GOLD_COIN_SLIDE_TILE_MIN, GOLD_COIN_SLIDE_TILE_MAX) * px
+		var settle_pos := land_pos + Vector2(slide_dir * slide_dist, 0.0)
 		coin.position = start_pos
 		coin.scale = Vector2(0.55, 0.55)
-		coin.rotation = randf_range(-0.4, 0.4)
+		coin.rotation = 0.0
 		coin.modulate = Color(1, 1, 1, 1)
 		layer.add_child(coin)
 		var tw := create_tween()
 		tw.set_speed_scale(speed)
-		## 抛起：放大 + 上弧。
+		## 抛起：放大 + 上弧（不转）。
 		tw.set_parallel(true)
 		tw.tween_property(coin, "position", apex_pos, GOLD_COIN_THROW_SEC) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_property(coin, "scale", Vector2(1.08, 1.08), GOLD_COIN_THROW_SEC) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(coin, "rotation", coin.rotation + spin * 0.45, GOLD_COIN_THROW_SEC) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		tw.set_parallel(false)
-		## 落地：加速下落 + 轻微压扁。
+		## 落地：加速下落 + 压扁。
 		tw.set_parallel(true)
 		tw.tween_property(coin, "position", land_pos, GOLD_COIN_FALL_SEC) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.tween_property(coin, "scale", Vector2(1.12, 0.82), GOLD_COIN_FALL_SEC) \
+		tw.tween_property(coin, "scale", Vector2(1.18, 0.72), GOLD_COIN_FALL_SEC) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tw.tween_property(coin, "rotation", coin.rotation + spin, GOLD_COIN_FALL_SEC) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tw.set_parallel(false)
-		## 小弹跳回正，停在地上。
+		## 弹动：弹起回正 → 再落回地面（Tween 弹感）。
 		tw.set_parallel(true)
-		tw.tween_property(coin, "position", bounce_pos, GOLD_COIN_BOUNCE_SEC * 0.55) \
+		tw.tween_property(coin, "position", bounce_apex, GOLD_COIN_BOUNCE_SEC * 0.45) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(coin, "scale", Vector2(0.92, 1.12), GOLD_COIN_BOUNCE_SEC * 0.45) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.set_parallel(false)
+		tw.set_parallel(true)
+		tw.tween_property(coin, "position", land_pos, GOLD_COIN_BOUNCE_SEC * 0.55) \
+			.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 		tw.tween_property(coin, "scale", Vector2.ONE, GOLD_COIN_BOUNCE_SEC * 0.55) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.set_parallel(false)
-		tw.tween_property(coin, "position", land_pos, GOLD_COIN_BOUNCE_SEC * 0.45) \
-			.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		## 落地弹动后随机左右滑移。
+		tw.tween_property(coin, "position", settle_pos, GOLD_COIN_SLIDE_SEC) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		## 久留后淡出。
 		tw.tween_interval(GOLD_COIN_LINGER_SEC)
 		tw.tween_property(coin, "modulate:a", 0.0, GOLD_COIN_FADE_SEC) \
