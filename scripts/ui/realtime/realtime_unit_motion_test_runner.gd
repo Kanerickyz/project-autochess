@@ -27,6 +27,7 @@ func _run() -> void:
 	await _test_strike_action_tween_lifecycle()
 	await _test_long_press_info()
 	await _test_prepare_seat_drag_swap()
+	await _test_prepare_bench_drag_deploy()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
@@ -295,6 +296,90 @@ func _test_prepare_seat_drag_swap() -> void:
 	_expect(slots.get_entry(from_seat) == null, "source seat empty after prepare drag")
 	_expect(battle._selected_entry_id < 0, "prepare drag clears selection")
 
+	battle.queue_free()
+	await process_frame
+
+
+func _test_prepare_bench_drag_deploy() -> void:
+	## 准备：拖备战纸片到空座位上阵；再拖回备战格下阵。
+	var battle := _make_battle(19)
+	await process_frame
+	var arena := _arena(battle)
+	_expect(arena != null and arena.bench_visible and arena.bench_interactive, "bench visible in prepare")
+	if arena == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var bench_board := battle.get_bench_slot_board()
+	_expect(bench_board != null and bench_board.slot_count == DeckState.BENCH_CAPACITY, "bench board 5 slots")
+	var slots := battle.get_slot_board()
+	if bench_board.occupied_count() < 1 and slots.occupied_count() >= 2:
+		var seed_id := slots.get_entry(_occupied_slot_indices(slots, 1)[0]).entry_id
+		_expect(battle.try_move_seat_to_bench(seed_id), "seed: seat to bench for drag test")
+		bench_board = battle.get_bench_slot_board()
+	_expect(bench_board.occupied_count() >= 1, "need bench occupant for drag deploy")
+	if bench_board.occupied_count() < 1:
+		battle.queue_free()
+		await process_frame
+		return
+	var bench_i := -1
+	var mover: DeckEntry = null
+	for i in bench_board.slot_count:
+		var e := bench_board.get_entry(i)
+		if e != null:
+			bench_i = i
+			mover = e
+			break
+	var empty_seat := -1
+	for i in slots.slot_count:
+		if slots.is_empty(i):
+			empty_seat = i
+			break
+	_expect(empty_seat >= 0 and mover != null, "need empty seat + bench mover")
+	if empty_seat < 0 or mover == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var mover_id := mover.entry_id
+	var from_center := arena.bench_slot_center_local(bench_i)
+	var to_center := _slot_center(arena, slots, empty_seat)
+	var seat_drops: Array = []
+	arena.prepare_team_seat_drop.connect(func(id: int, seat: int) -> void: seat_drops.append([id, seat]))
+	_press(arena, from_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = from_center + Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	move.relative = Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	arena._gui_input(move)
+	_expect(arena._prepare_team_drag_id == mover_id, "bench drag starts after slop")
+	_hover_to(arena, to_center)
+	_press(arena, to_center, false)
+	_expect(seat_drops == [[mover_id, empty_seat]], "bench drag emits prepare_team_seat_drop")
+	_expect(slots.get_entry(empty_seat) != null and slots.get_entry(empty_seat).entry_id == mover_id, "bench deploy seated")
+	## 再拖回备战空格。
+	bench_board = battle.get_bench_slot_board()
+	var empty_bench_i := -1
+	for i in bench_board.slot_count:
+		if bench_board.is_empty(i):
+			empty_bench_i = i
+			break
+	_expect(empty_bench_i >= 0, "need empty bench slot after deploy")
+	if empty_bench_i < 0:
+		battle.queue_free()
+		await process_frame
+		return
+	var bench_drops: Array = []
+	arena.prepare_team_bench_drop.connect(func(id: int) -> void: bench_drops.append(id))
+	var seat_center := _slot_center(arena, slots, empty_seat)
+	_press(arena, seat_center, true)
+	var move2 := InputEventMouseMotion.new()
+	move2.position = seat_center + Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	move2.relative = Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	arena._gui_input(move2)
+	var bench_center := arena.bench_slot_center_local(empty_bench_i)
+	_hover_to(arena, bench_center)
+	_press(arena, bench_center, false)
+	_expect(bench_drops == [mover_id], "seat drag to bench emits prepare_team_bench_drop")
+	_expect(slots.find_slot_by_entry(mover_id) < 0, "seat cleared after bench drop")
 	battle.queue_free()
 	await process_frame
 

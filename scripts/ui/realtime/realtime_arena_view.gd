@@ -32,10 +32,14 @@ signal map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int)
 signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
 signal prepare_team_seat_drop(entry_id: int, target_seat: int)
-## 准备：拖已入座角色松手未落座（控制器判断是否在备战行上）。
+## 准备：拖已入座角色松手落在备战格。
 signal prepare_team_bench_drop(entry_id: int)
-## 招募：拖上区成员松手未落座/未出售（控制器判断是否在备战行上）。
+## 招募：拖上区/备战成员松手落在备战格（或未落座时由控制器兼容）。
 signal recruit_team_bench_drop(entry_id: int)
+## 点备战已占格（选中 / 药水等）。
+signal bench_pressed(entry_id: int)
+## 点备战空格（接收已选入座角色下阵）。
+signal bench_empty_pressed(slot_index: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -144,6 +148,15 @@ var ghost_unit_id: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
+## 备战区：棋盘底边下方虚拟一行 5 格（PrepareSlotBoard + 纸片绘制）。
+var bench_slots: PrepareSlotBoard
+## 准备/战斗/招募显示备战行；附魔/商店/目录关闭。
+var bench_visible: bool = false
+## 准备/招募可拖；战斗只读（长按信息仍可）。
+var bench_interactive: bool = false
+## 备战行与棋盘底边的空隙（逻辑格）。
+const BENCH_GAP_TILES := 0.25
+const BENCH_ROW_TILES := 1.0
 ## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
 var presentation_time_scale: float = 1.0
 ## 胜后半场退出/招募进入：上半场 / 下半场像素位移（由控制器 Tween）。
@@ -239,6 +252,9 @@ var _map_shop_team_press_id: int = -1
 ## 准备阶段座位拖换：按住已入座角色拖到目标座。
 var _prepare_team_drag_id: int = -1
 var _prepare_team_press_id: int = -1
+## 备战格按下（可与准备/招募拖共用 drag id）。
+var _bench_press_id: int = -1
+var _bench_empty_press: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
@@ -341,6 +357,8 @@ func _notification(what: int) -> void:
 		_map_shop_team_press_id = -1
 		_prepare_team_drag_id = -1
 		_prepare_team_press_id = -1
+		_bench_press_id = -1
+		_bench_empty_press = -1
 		_finish_drag_visual(_hover_cell)
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
@@ -350,16 +368,23 @@ func _notification(what: int) -> void:
 # --- 公开接口 ---
 
 
+func _bench_layout_tiles() -> float:
+	if not bench_visible:
+		return 0.0
+	return BENCH_GAP_TILES + BENCH_ROW_TILES
+
+
 func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
+	var content_rows := float(board_size.y) + _bench_layout_tiles()
 	## 纯角色目录：铺满控件，不留背景树带边距（与角色库体量一致）。
 	if catalog_active and catalog_plain_backdrop:
-		return maxf(1.0, minf(size.x / float(board_size.x), size.y / float(board_size.y)))
+		return maxf(1.0, minf(size.x / float(board_size.x), size.y / content_rows))
 	var bg := _get_background_rect()
 	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
 	var avail_x := maxf(1.0, size.x - gutter * 2.0)
-	return maxf(1.0, minf(avail_x / board_size.x, size.y / board_size.y))
+	return maxf(1.0, minf(avail_x / board_size.x, size.y / content_rows))
 
 
 ## 列/行变少时放大角色表现（碰撞仍以逻辑格为准）；再收 20% 避免邻格剪影互盖。
@@ -384,7 +409,21 @@ func _get_background_rect() -> Rect2:
 func get_board_rect() -> Rect2:
 	var px := get_cell_px()
 	var board_px := Vector2(board_size) * px
-	return Rect2((size - board_px) * 0.5, board_px)
+	var bench_h := _bench_layout_tiles() * px
+	var total := Vector2(board_px.x, board_px.y + bench_h)
+	var origin := (size - total) * 0.5
+	## 棋盘在内容区顶部；备战行画在 board 底边下方。
+	return Rect2(origin, board_px)
+
+
+## 备战格中心本地坐标（含 gap；虚拟 tile y = board_size.y）。
+func bench_slot_center_local(slot_index: int) -> Vector2:
+	if bench_slots == null or slot_index < 0 or slot_index >= bench_slots.cells.size():
+		return Vector2.ZERO
+	var cell := bench_slots.cells[slot_index]
+	var px := get_cell_px()
+	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
+	return get_board_rect().position + Vector2(float(cell.x) + 0.5, float(board_size.y)) * px + Vector2(0.0, gap + px * 0.5)
 
 
 func local_to_tile(local_pos: Vector2) -> Vector2:
@@ -394,6 +433,47 @@ func local_to_tile(local_pos: Vector2) -> Vector2:
 
 func tile_to_local(tile_pos: Vector2) -> Vector2:
 	return get_board_rect().position + tile_pos * get_cell_px()
+
+
+func find_bench_slot_at_local(local_pos: Vector2) -> int:
+	if not bench_visible or bench_slots == null:
+		return -1
+	var px := get_cell_px()
+	var best := -1
+	var best_d := INF
+	for i in bench_slots.cells.size():
+		var center := bench_slot_center_local(i)
+		var hit := Rect2(center.x - px * 0.5, center.y - px * 0.5, px, px)
+		if not hit.has_point(local_pos):
+			continue
+		var d := local_pos.distance_squared_to(center)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+func find_bench_slot_at_cell(cell: Vector2i) -> int:
+	if not bench_visible or bench_slots == null or cell == NO_CELL:
+		return -1
+	return bench_slots.find_slot_at_cell(cell)
+
+
+func find_bench_entry_at_local(local_pos: Vector2) -> int:
+	var slot_i := find_bench_slot_at_local(local_pos)
+	if slot_i < 0 or bench_slots == null:
+		return -1
+	var entry := bench_slots.get_entry(slot_i)
+	if entry == null:
+		return -1
+	return entry.entry_id
+
+
+func is_pointer_over_bench(local_pos: Vector2 = Vector2.INF) -> bool:
+	var pos := local_pos
+	if pos == Vector2.INF:
+		pos = get_local_mouse_position()
+	return find_bench_slot_at_local(pos) >= 0
 
 
 ## 招募上区队伍成员纸片中心（本地坐标，含半场 slide）；找不到返回零向量且 ok=false。
@@ -821,7 +901,7 @@ func _gui_input(event: InputEvent) -> void:
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
-	## catalog_active 走与战斗相同的长按信息卡路径；准备阶段额外支持拖座位换位。
+	## catalog_active 走与战斗相同的长按信息卡路径；准备阶段额外支持拖座位/备战。
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
@@ -830,14 +910,15 @@ func _gui_input(event: InputEvent) -> void:
 			_set_drag_pointer(motion.position)
 			accept_event()
 		elif (
-			_can_prepare_seat_drag()
-			and _prepare_team_press_id >= 0
+			_can_drag_prepare_or_bench()
+			and (_prepare_team_press_id >= 0 or _bench_press_id >= 0)
 			and _prepare_team_drag_id < 0
 			and not _info_shown
 		):
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				var drag_id := _prepare_team_press_id if _prepare_team_press_id >= 0 else _bench_press_id
 				_cancel_press()
-				_begin_prepare_team_drag(_prepare_team_press_id, motion.position)
+				_begin_prepare_team_drag(drag_id, motion.position)
 				accept_event()
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -846,7 +927,27 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.pressed:
 			var info := inspect_at(mb.position)
 			_prepare_team_press_id = -1
-			if not info.is_empty():
+			_bench_press_id = -1
+			_bench_empty_press = -1
+			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
+			var bench_slot := find_bench_slot_at_local(mb.position) if bench_visible else -1
+			if bench_entry >= 0:
+				## 战斗只读：仍可长按信息；准备/招募可拖与点选。
+				_bench_press_id = bench_entry if bench_interactive else -1
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
+				)
+				_begin_press(mb.position, info, bench_tap)
+			elif (
+				bench_interactive
+				and bench_slot >= 0
+				and bench_slots != null
+				and bench_slots.is_empty(bench_slot)
+			):
+				_bench_empty_press = bench_slot
+				accept_event()
+				return
+			elif not info.is_empty():
 				## 按在单位上：点按动作推迟到松手，按住则改为看信息；移超 slop 则拖换座。
 				if _can_prepare_seat_drag():
 					var press_cell := tile_to_cell(local_to_tile(mb.position))
@@ -860,10 +961,18 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			var release_cell := tile_to_cell(local_to_tile(mb.position))
 			if _prepare_team_drag_id >= 0:
-				_finish_prepare_team_drag(release_cell)
+				_finish_prepare_team_drag(release_cell, mb.position)
+				accept_event()
+				return
+			if _bench_empty_press >= 0:
+				var empty_i := _bench_empty_press
+				_bench_empty_press = -1
+				if empty_i == find_bench_slot_at_local(mb.position):
+					bench_empty_pressed.emit(empty_i)
 				accept_event()
 				return
 			_prepare_team_press_id = -1
+			_bench_press_id = -1
 			if _end_press():
 				accept_event()
 
@@ -884,10 +993,15 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_recruit_item_drag(_recruit_item_press_index, motion.position)
-		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
+		elif (
+			(_recruit_team_press_id >= 0 or (_bench_press_id >= 0 and bench_interactive))
+			and _recruit_team_drag_id < 0
+			and not _info_shown
+		):
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				var drag_id := _recruit_team_press_id if _recruit_team_press_id >= 0 else _bench_press_id
 				_cancel_press()
-				_begin_recruit_team_drag(_recruit_team_press_id, motion.position)
+				_begin_recruit_team_drag(drag_id, motion.position)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -895,8 +1009,38 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		if mb.button_index != MOUSE_BUTTON_LEFT:
 			return
 		var tile := local_to_tile(mb.position)
-		var cell := tile_to_cell(tile)
+		## 招募候选/出售/锁定可用棋盘外虚拟格；勿用 tile_to_cell 钳死。
+		var cell := Vector2i(floori(tile.x), floori(tile.y))
+		var board_cell := tile_to_cell(tile)
 		if mb.pressed:
+			_bench_press_id = -1
+			_bench_empty_press = -1
+			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
+			var bench_slot := find_bench_slot_at_local(mb.position) if bench_visible else -1
+			if bench_entry >= 0:
+				_bench_press_id = bench_entry if bench_interactive else -1
+				_recruit_team_press_id = -1
+				_recruit_press_index = -1
+				_recruit_item_press_index = -1
+				_recruit_empty_seat_press = -1
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
+				)
+				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
+				accept_event()
+				return
+			if (
+				bench_interactive
+				and bench_slot >= 0
+				and bench_slots != null
+				and bench_slots.is_empty(bench_slot)
+			):
+				_bench_empty_press = bench_slot
+				_recruit_team_press_id = -1
+				_recruit_press_index = -1
+				_recruit_item_press_index = -1
+				accept_event()
+				return
 			var cand := _find_recruit_candidate_at(cell)
 			if cand >= 0:
 				_recruit_press_index = cand
@@ -913,7 +1057,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_begin_press(mb.position, {}, Callable())
 				accept_event()
 				return
-			var entry_id := _find_recruit_team_entry_at(cell)
+			var entry_id := _find_recruit_team_entry_at(board_cell)
 			if entry_id >= 0:
 				_recruit_team_press_id = entry_id
 				_recruit_press_index = -1
@@ -922,7 +1066,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 				return
-			var empty_press := _find_recruit_team_seat_at(cell)
+			var empty_press := _find_recruit_team_seat_at(board_cell)
 			if empty_press >= 0:
 				_recruit_empty_seat_press = empty_press
 				_recruit_team_press_id = -1
@@ -936,13 +1080,15 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			_recruit_item_press_index = -1
 			_recruit_team_press_id = -1
 			_recruit_empty_seat_press = -1
+			_bench_press_id = -1
+			_bench_empty_press = -1
 			_end_press()
 			accept_event()
 			return
 		if _end_press():
 			accept_event()
 		if _recruit_team_drag_id >= 0:
-			_finish_recruit_team_drag(cell)
+			_finish_recruit_team_drag(cell, mb.position)
 			accept_event()
 			return
 		if _recruit_drag_index >= 0:
@@ -951,6 +1097,13 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			return
 		if _recruit_item_drag_index >= 0:
 			_finish_recruit_item_drag(cell)
+			accept_event()
+			return
+		if _bench_empty_press >= 0:
+			var empty_bench := _bench_empty_press
+			_bench_empty_press = -1
+			if empty_bench == find_bench_slot_at_local(mb.position):
+				bench_empty_pressed.emit(empty_bench)
 			accept_event()
 			return
 		if _recruit_press_index >= 0:
@@ -968,11 +1121,12 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		elif _recruit_empty_seat_press >= 0:
 			var empty_seat := _recruit_empty_seat_press
 			_recruit_empty_seat_press = -1
-			if empty_seat == _find_recruit_team_seat_at(cell) and _find_recruit_team_entry_at(cell) < 0:
+			if empty_seat == _find_recruit_team_seat_at(board_cell) and _find_recruit_team_entry_at(board_cell) < 0:
 				recruit_empty_seat_pressed.emit(empty_seat)
 			accept_event()
 		_recruit_team_press_id = -1
 		_recruit_empty_seat_press = -1
+		_bench_press_id = -1
 
 
 func _gui_input_map_shop(event: InputEvent) -> void:
@@ -1746,6 +1900,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 						bool(cand.get("affordable", true)),
 					)
 				)
+		_append_bench_inspectables(out)
 		return out
 	if sim != null and sim.has_started():
 		for item in sim.get_units():
@@ -1756,6 +1911,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 			out.append(_info_from_instance(
 				rt.unit, rt.is_player(), rt.get_effective_attack(), rt.get_current_hp(), tile_to_local(rt.position) + off
 			))
+		_append_bench_inspectables(out)
 		return out
 	if prepare_slots != null:
 		var team_off := _prepare_slots_inspect_offset(ally_off)
@@ -1774,7 +1930,22 @@ func _collect_inspectables() -> Array[Dictionary]:
 			unit, false, int(preview.get("attack", 0)), int(preview.get("hp", 0)),
 			tile_to_local(preview["position"]) + enemy_off,
 		))
+	_append_bench_inspectables(out)
 	return out
+
+
+func _append_bench_inspectables(out: Array[Dictionary]) -> void:
+	if not bench_visible or bench_slots == null:
+		return
+	for i in bench_slots.cells.size():
+		var entry := bench_slots.get_entry(i)
+		if entry == null:
+			continue
+		out.append(_info_from_entry(
+			entry,
+			bench_slot_center_local(i),
+			"bench:%d" % entry.entry_id,
+		))
 
 
 func _prepare_slots_inspect_offset(ally_off: Vector2) -> Vector2:
@@ -2041,18 +2212,14 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 
 
 func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
-	if entry_id < 0 or recruit_team_slots == null:
+	if entry_id < 0:
 		return
-	var entry: DeckEntry = null
-	for i in recruit_team_slots.slot_count:
-		var e := recruit_team_slots.get_entry(i)
-		if e != null and e.entry_id == entry_id:
-			entry = e
-			break
+	var entry := _find_deck_entry_on_board_or_bench(entry_id)
 	if entry == null:
 		return
 	_recruit_team_drag_id = entry_id
 	_recruit_team_press_id = -1
+	_bench_press_id = -1
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
 	_drag_active = true
@@ -2069,10 +2236,11 @@ func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO)
 	queue_redraw()
 
 
-func _finish_recruit_team_drag(cell: Vector2i) -> void:
+func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.ZERO) -> void:
 	var entry_id := _recruit_team_drag_id
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_bench_press_id = -1
 	_drag_active = false
 	recruit_sell_preview_gold = 0
 	_finish_drag_visual(cell)
@@ -2093,8 +2261,7 @@ func _finish_recruit_team_drag(cell: Vector2i) -> void:
 				seat_i = -1
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
-	else:
-		## 未落座/未出售：可能拖到 Dock 备战行。
+	elif is_pointer_over_bench(release_local if release_local != Vector2.ZERO else get_local_mouse_position()):
 		recruit_team_bench_drop.emit(entry_id)
 	queue_redraw()
 
@@ -2161,6 +2328,35 @@ func _can_prepare_seat_drag() -> bool:
 	)
 
 
+func _can_drag_prepare_or_bench() -> bool:
+	if catalog_active or map_shop_active or enchant_active:
+		return false
+	if recruit_active:
+		return bench_interactive
+	return _can_prepare_seat_drag() or (bench_visible and bench_interactive)
+
+
+func _find_deck_entry_on_board_or_bench(entry_id: int) -> DeckEntry:
+	if entry_id < 0:
+		return null
+	if prepare_slots != null:
+		for i in prepare_slots.slot_count:
+			var e := prepare_slots.get_entry(i)
+			if e != null and e.entry_id == entry_id:
+				return e
+	if recruit_team_slots != null:
+		for i in recruit_team_slots.slot_count:
+			var re := recruit_team_slots.get_entry(i)
+			if re != null and re.entry_id == entry_id:
+				return re
+	if bench_slots != null:
+		for i in bench_slots.slot_count:
+			var be := bench_slots.get_entry(i)
+			if be != null and be.entry_id == entry_id:
+				return be
+	return null
+
+
 func _find_prepare_team_entry_at(cell: Vector2i) -> int:
 	if prepare_slots == null or cell == NO_CELL:
 		return -1
@@ -2180,18 +2376,14 @@ func _find_prepare_team_seat_at(cell: Vector2i) -> int:
 
 
 func _begin_prepare_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
-	if entry_id < 0 or prepare_slots == null or not _can_prepare_seat_drag():
+	if entry_id < 0 or not _can_drag_prepare_or_bench():
 		return
-	var entry: DeckEntry = null
-	for i in prepare_slots.slot_count:
-		var e := prepare_slots.get_entry(i)
-		if e != null and e.entry_id == entry_id:
-			entry = e
-			break
+	var entry := _find_deck_entry_on_board_or_bench(entry_id)
 	if entry == null:
 		return
 	_prepare_team_drag_id = entry_id
 	_prepare_team_press_id = -1
+	_bench_press_id = -1
 	_drag_active = true
 	var stats := entry.unit.stats if entry.unit != null else null
 	_drag_radius = stats.body_radius if stats != null else 0.7
@@ -2205,10 +2397,11 @@ func _begin_prepare_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO)
 	queue_redraw()
 
 
-func _finish_prepare_team_drag(cell: Vector2i) -> void:
+func _finish_prepare_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.ZERO) -> void:
 	var entry_id := _prepare_team_drag_id
 	_prepare_team_drag_id = -1
 	_prepare_team_press_id = -1
+	_bench_press_id = -1
 	_drag_active = false
 	_finish_drag_visual(cell)
 	if entry_id < 0:
@@ -2223,32 +2416,33 @@ func _finish_prepare_team_drag(cell: Vector2i) -> void:
 				seat_i = -1
 	if seat_i >= 0:
 		prepare_team_seat_drop.emit(entry_id, seat_i)
-	else:
-		## 未落座：可能拖到 Dock 备战行（由控制器判定）。
+	elif is_pointer_over_bench(release_local if release_local != Vector2.ZERO else get_local_mouse_position()):
 		prepare_team_bench_drop.emit(entry_id)
 	queue_redraw()
 
 
-## 控制器在备战行上松开时取走进行中的准备拖拽（避免释放落在 Dock 时 Arena 收不到）。
+## 兼容旧 Dock 接管路径；备战已迁入 Arena 后一般不再需要。
 func take_active_prepare_team_drag() -> int:
 	var entry_id := _prepare_team_drag_id
 	if entry_id < 0:
 		return -1
 	_prepare_team_drag_id = -1
 	_prepare_team_press_id = -1
+	_bench_press_id = -1
 	_drag_active = false
 	_finish_drag_visual(NO_CELL)
 	queue_redraw()
 	return entry_id
 
 
-## 控制器在备战行上松开时取走进行中的招募队伍拖拽。
+## 兼容旧 Dock 接管路径；备战已迁入 Arena 后一般不再需要。
 func take_active_recruit_team_drag() -> int:
 	var entry_id := _recruit_team_drag_id
 	if entry_id < 0:
 		return -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_bench_press_id = -1
 	_drag_active = false
 	recruit_sell_preview_gold = 0
 	_finish_drag_visual(NO_CELL)
@@ -2704,6 +2898,8 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
+	## 备战行：友方半场下方；准备/战斗/招募皆画；拖源降透明。
+	_draw_bench_row(px)
 	_draw_fx(px)
 	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
@@ -3391,6 +3587,58 @@ func _draw_prepare_slots(px: float) -> void:
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
+
+
+func _draw_bench_row(px: float) -> void:
+	if not bench_visible or bench_slots == null or bench_slots.cells.is_empty():
+		return
+	if catalog_active or map_shop_active or enchant_active:
+		return
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.32), 9, 13)
+	## 空格淡底 + 已占纸片/攻血；拖源降透明。
+	for i in bench_slots.cells.size():
+		var center := bench_slot_center_local(i)
+		var cell_rect := Rect2(center - Vector2(px, px) * 0.5, Vector2(px, px))
+		var entry: DeckEntry = bench_slots.get_entry(i)
+		if entry == null:
+			draw_rect(cell_rect, Color(PLAYER_COLOR, 0.10))
+			draw_rect(cell_rect, Color(0.85, 0.90, 1.0, 0.22), false, 1.0)
+			continue
+		var dragging := (
+			entry.entry_id == _prepare_team_drag_id or entry.entry_id == _recruit_team_drag_id
+		)
+		var alpha := DRAG_SOURCE_ALPHA if dragging else (0.78 if not bench_interactive else 0.9)
+		var stats := entry.unit.stats if entry.unit != null else null
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		## 用本地中心换算成虚拟 tile，复用 _draw_body / 徽章口径。
+		var center_tile := local_to_tile(center)
+		_draw_body(
+			center_tile,
+			radius,
+			vwx,
+			vhy,
+			PLAYER_COLOR,
+			alpha,
+			entry.get_display_name(),
+			px,
+			true,
+			Vector2.ZERO,
+			true,
+			entry.get_unit_id(),
+			null,
+			Vector2.ZERO,
+			1.0,
+			_idle_seed_for(entry.get_unit_id(), 100 + i),
+		)
+		var atk := DeckUpgradeService.get_display_attack(entry)
+		var hp := DeckUpgradeService.get_display_max_hp(entry)
+		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+	## 小标签：备战
+	var label_pos := bench_slot_center_local(0) + Vector2(-px * 0.45, -px * 0.62)
+	draw_string(font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.75))
 
 
 func _draw_units(px: float) -> void:

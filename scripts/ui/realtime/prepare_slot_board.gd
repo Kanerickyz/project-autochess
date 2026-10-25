@@ -71,6 +71,25 @@ func configure(_p_slot_count: int, board_size: Vector2i) -> void:
 	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
 
 
+## 备战区：棋盘底边下方虚拟一行（y = board_size.y），与列数对齐居中。
+func configure_bench_row(board_size: Vector2i, capacity: int = 5) -> void:
+	configure_custom_cells(build_bench_cells(board_size, capacity))
+
+
+static func build_bench_cells(board_size: Vector2i, capacity: int = 5) -> Array[Vector2i]:
+	var n := maxi(1, capacity)
+	var cols := maxi(1, board_size.x)
+	var start_x := (cols - n) / 2
+	start_x = clampi(start_x, 0, maxi(0, cols - 1))
+	var y := maxi(0, board_size.y)
+	var result: Array[Vector2i] = []
+	for i in n:
+		var x := start_x + i
+		x = clampi(x, 0, maxi(0, cols - 1))
+		result.append(Vector2i(x, y))
+	return result
+
+
 static func build_grid_cells(
 	board_size: Vector2i,
 	rows: int,
