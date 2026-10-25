@@ -158,7 +158,7 @@ flowchart TD
 | 招募出售 | 按角色原价退金（1★ 原价；三合一升星每档 ×3）；细则见招募篇 |
 
 胜后招募半场含角色 5 槽与道具行，见 [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md)。  
-敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英按队伍强度定目标；普通关人数与层绑定（第 F 层 F～F＋1），精英跟队伍人数；Boss 不吃真队、不跟人数。
+敌方配兵见 [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md)：普通/精英抽面孔与人数后，**攻血面板跟队均缩放**（主加压；弱队有层向保底；精英更高一档）；普通关人数与层绑定（第 F 层 F～F＋1），精英跟队伍人数；Boss 不吃真队、不跟人数、不做面板跟队。
 
 ```
 LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE

@@ -1340,6 +1340,17 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
+	## 星级模板之后：面板跟队缩放（主加压）；Boss 节点内跳过。
+	var panel_units: Array = []
+	for spawn in result:
+		panel_units.append(spawn.get("unit"))
+	EnemyPanelMatcher.apply_to_units(
+		panel_units,
+		team_snap,
+		_floor_index,
+		_node_type,
+		budget_cfg,
+	)
 	return result
 
 

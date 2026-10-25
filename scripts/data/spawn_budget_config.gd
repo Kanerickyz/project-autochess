@@ -77,6 +77,22 @@ enum FormationTag {
 ## 精英：以该概率选 N＋2，否则＝N。
 @export_range(0.0, 1.0, 0.01) var elite_plus_two_chance: float = 0.5
 
+@export_group("Panel Match")
+## 名单锁死后按队均展示攻/血缩放本场敌方面板（主加压）；Boss 节点跳过。
+@export var panel_match_enabled: bool = true
+## 普通：面板锚＝队均 × 本倍率（再与层下限取 max）。
+@export_range(0.1, 3.0, 0.05) var panel_mult_combat: float = 1.0
+## 精英：更高一档面板倍率。
+@export_range(0.1, 3.0, 0.05) var panel_mult_elite: float = 1.25
+## 层向面板攻击下限表；空则用 default_panel_atk_floor × (1+growth)^(F−1)。
+@export var floor_panel_atk_min: Array[float] = []
+## 层向面板生命下限表；空则用 default_panel_hp_floor × (1+growth)^(F−1)。
+@export var floor_panel_hp_min: Array[float] = []
+@export_range(1.0, 100.0, 0.5) var default_panel_atk_floor: float = 3.0
+@export_range(1.0, 200.0, 0.5) var default_panel_hp_floor: float = 5.0
+## 无表时层向面板下限随层缓增。
+@export_range(0.0, 0.5, 0.01) var panel_floor_growth: float = 0.08
+
 
 ## 普通关：第 F 层人数闭区间 [F, F＋1]（F≥1；floor_index≤0 按第 1 层）。
 static func combat_enemy_count_bounds(floor_index: int) -> Vector2i:
@@ -133,6 +149,12 @@ static func make_code_defaults() -> SpawnBudgetConfig:
 		mids.append(48.0 * pow(1.12, float(floor_i)))
 	config.floor_mid_power = mids
 	config.formation_tags = ["frontline", "skirmish", "backline"]
+	config.panel_match_enabled = true
+	config.panel_mult_combat = 1.0
+	config.panel_mult_elite = 1.25
+	config.default_panel_atk_floor = 3.0
+	config.default_panel_hp_floor = 5.0
+	config.panel_floor_growth = 0.08
 	return config
 
 
@@ -144,6 +166,36 @@ func get_kappa(node_type: MapNodeType.Type) -> float:
 			return maxf(0.01, kappa_boss)
 		_:
 			return maxf(0.01, kappa_combat)
+
+
+func get_panel_mult(node_type: MapNodeType.Type) -> float:
+	if node_type == MapNodeType.Type.ELITE:
+		return maxf(0.01, panel_mult_elite)
+	return maxf(0.01, panel_mult_combat)
+
+
+func get_panel_atk_floor(floor_index: int) -> float:
+	var floor_i := maxi(0, floor_index)
+	var from_table := _read_floor_table(floor_panel_atk_min, floor_i)
+	if from_table > 0.0:
+		return from_table
+	var floor_f := maxi(1, floor_index)
+	return maxf(
+		1.0,
+		default_panel_atk_floor * pow(1.0 + maxf(0.0, panel_floor_growth), float(maxi(0, floor_f - 1))),
+	)
+
+
+func get_panel_hp_floor(floor_index: int) -> float:
+	var floor_i := maxi(0, floor_index)
+	var from_table := _read_floor_table(floor_panel_hp_min, floor_i)
+	if from_table > 0.0:
+		return from_table
+	var floor_f := maxi(1, floor_index)
+	return maxf(
+		1.0,
+		default_panel_hp_floor * pow(1.0 + maxf(0.0, panel_floor_growth), float(maxi(0, floor_f - 1))),
+	)
 
 
 func get_band(node_type: MapNodeType.Type) -> float:
