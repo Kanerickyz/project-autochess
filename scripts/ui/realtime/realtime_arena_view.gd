@@ -243,29 +243,11 @@ var _inspect_finger := Vector2.ZERO
 var _auto_info_until_clock: float = -1.0
 const SKILL_INFO_SECONDS := 1.35
 
-## 座位铺满半场时不描格线；仅极淡底色，避免棋盘像表格。
-const SLOT_EMPTY := Color(0.95, 0.88, 0.45, 0.08)
-const SLOT_OCCUPIED := Color(0.35, 0.65, 1.0, 0.18)
-const SLOT_BORDER := Color(1.0, 0.95, 0.55, 0.0)
-const ENEMY_SLOT_EMPTY := Color(0.95, 0.40, 0.36, 0.06)
-const ENEMY_SLOT_OCCUPIED := Color(0.90, 0.30, 0.28, 0.14)
-const ENEMY_SLOT_BORDER := Color(0.95, 0.60, 0.55, 0.0)
-const RECRUIT_TEAM_EMPTY := Color(0.45, 0.70, 0.95, 0.22)
-const RECRUIT_TEAM_FILL := Color(0.30, 0.55, 0.95, 0.42)
-const RECRUIT_TEAM_BORDER := Color(0.75, 0.90, 1.0, 0.95)
+## 战场与商店不再铺半透明格和线框。角色库仍用卡牌底板；出售/锁定只在拖到格子上时加高亮。
 const RECRUIT_CAND_EMPTY := Color(0.95, 0.78, 0.35, 0.28)
-const RECRUIT_CAND_FILL := Color(0.95, 0.70, 0.25, 0.48)
 const RECRUIT_CAND_BORDER := Color(1.0, 0.92, 0.45, 0.95)
-const RECRUIT_ITEM_EMPTY := Color(0.55, 0.85, 0.70, 0.28)
-const RECRUIT_ITEM_FILL := Color(0.35, 0.78, 0.60, 0.48)
-const RECRUIT_ITEM_BORDER := Color(0.70, 0.95, 0.85, 0.95)
-const RECRUIT_SELECT := Color(1.0, 0.95, 0.35, 0.55)
-const RECRUIT_SELL_EMPTY := Color(0.55, 0.35, 0.55, 0.28)
 const RECRUIT_SELL_HOT := Color(0.85, 0.35, 0.75, 0.45)
-const RECRUIT_SELL_BORDER := Color(0.95, 0.70, 0.95, 0.95)
-const RECRUIT_LOCK_EMPTY := Color(0.55, 0.50, 0.25, 0.28)
 const RECRUIT_LOCK_HOT := Color(0.95, 0.80, 0.30, 0.45)
-const RECRUIT_LOCK_BORDER := Color(1.0, 0.88, 0.40, 0.95)
 
 
 func _ready() -> void:
@@ -2351,7 +2333,6 @@ func _draw() -> void:
 			else:
 				_draw_recruit_team_seat_hint(px)
 	else:
-		_draw_enemy_slots(px)
 		_draw_prepare_slots(px)
 
 		## 敌方预览按 y 轴排序：靠下压上，避免剪影互盖错层。
@@ -2426,12 +2407,9 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 		if cell == NO_CELL:
 			continue
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
-		draw_rect(cell_rect, RECRUIT_CAND_BORDER, false, 2.0)
 		var label: String = item.get("label", "")
 		var entry: DeckEntry = item.get("entry", null)
 		if entry != null and entry.unit != null:
-			draw_rect(cell_rect, RECRUIT_CAND_FILL)
 			var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 			_draw_body(
 				center_tile,
@@ -2481,7 +2459,6 @@ func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_of
 
 
 func _draw_map_shop_offers(px: float, off: Vector2) -> void:
-	var rect := get_board_rect()
 	var indices: Array[int] = []
 	for i in map_shop_offers.size():
 		indices.append(i)
@@ -2503,13 +2480,6 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 		if cell == NO_CELL:
 			continue
 		var item: Variant = dict.get("item")
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_ITEM_FILL if item != null else RECRUIT_ITEM_EMPTY)
-		var border := RECRUIT_ITEM_BORDER
-		if i == _map_shop_offer_drag_index:
-			draw_rect(cell_rect, RECRUIT_SELECT)
-			border = Color(1.0, 0.95, 0.4, 1.0)
-		draw_rect(cell_rect, border, false, 2.0)
 		if item == null:
 			continue
 		var alpha := 0.4 if i == _map_shop_offer_drag_index else 1.0
@@ -2687,18 +2657,9 @@ func _draw_recruit_team_seat_hint(px: float) -> void:
 func _draw_recruit_team(px: float, off: Vector2) -> void:
 	if recruit_team_slots == null or recruit_team_slots.cells.is_empty():
 		return
-	var rect := get_board_rect()
 	var occupied_indices: Array[int] = []
 	for i in recruit_team_slots.cells.size():
-		var cell: Vector2i = recruit_team_slots.cells[i]
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_TEAM_FILL if entry != null else RECRUIT_TEAM_EMPTY)
-		var border := RECRUIT_TEAM_BORDER
-		if entry != null and entry.entry_id == recruit_selected_replace_id:
-			draw_rect(cell_rect, RECRUIT_SELECT)
-			border = Color(1.0, 0.95, 0.4, 1.0)
-		draw_rect(cell_rect, border, false, 2.0)
 		if entry != null:
 			occupied_indices.append(i)
 	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
@@ -2869,7 +2830,6 @@ func _draw_merge_fx(px: float, off: Vector2) -> void:
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
-	var rect := get_board_rect()
 	var ordered := recruit_candidates.duplicate()
 	if _info_shown and not ordered.is_empty():
 		var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
@@ -2898,16 +2858,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			continue
 		var index := int(info.get("index", -1))
 		var unit: UnitData = info.get("unit") as UnitData
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_CAND_FILL if unit != null else RECRUIT_CAND_EMPTY)
 		var locked := bool(info.get("locked", false))
-		var border := RECRUIT_CAND_BORDER
-		if locked:
-			border = Color(0.95, 0.75, 0.25, 1.0)
-		if index == recruit_selected_candidate or index == _recruit_drag_index:
-			draw_rect(cell_rect, RECRUIT_SELECT)
-			border = Color(1.0, 0.95, 0.4, 1.0)
-		draw_rect(cell_rect, border, false, 2.0 if not locked else 3.0)
 		if unit == null:
 			continue
 		## 拖拽中的候选人在原位半透明；跟手剪影由 _draw_drag_follower 画。
@@ -2960,7 +2911,6 @@ func _draw_recruit_lock_tag(center: Vector2, px: float) -> void:
 
 
 func _draw_recruit_items(px: float, off: Vector2) -> void:
-	var rect := get_board_rect()
 	for info in recruit_items:
 		if not (info is Dictionary):
 			continue
@@ -2969,13 +2919,8 @@ func _draw_recruit_items(px: float, off: Vector2) -> void:
 			continue
 		var index := int(info.get("index", -1))
 		var item: PrepareItemData = info.get("item") as PrepareItemData
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
 		if item == null:
-			draw_rect(cell_rect, RECRUIT_ITEM_EMPTY)
-			draw_rect(cell_rect, RECRUIT_ITEM_BORDER, false, 2.0)
 			continue
-		if index == recruit_pending_item_slot or index == _recruit_item_drag_index:
-			draw_rect(cell_rect, Color(RECRUIT_SELECT.r, RECRUIT_SELECT.g, RECRUIT_SELECT.b, 0.28))
 		var alpha := 0.4 if index == _recruit_item_drag_index else 1.0
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 		_draw_recruit_prop(
@@ -3062,55 +3007,21 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	)
 
 
-func _draw_enemy_slots(px: float) -> void:
-	if enemy_slots == null or enemy_slots.cells.is_empty():
-		return
-	var occupied := _enemy_preview_seat_set()
-	var rect := get_board_rect()
-	var off := Vector2(0.0, enemy_half_slide_y)
-	for i in enemy_slots.cells.size():
-		var cell: Vector2i = enemy_slots.cells[i]
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		var filled := occupied.has(i)
-		## 不描边；空座几乎不可见，避免铺满半场时像格子纸。
-		if filled:
-			draw_rect(cell_rect, ENEMY_SLOT_OCCUPIED)
-		elif ENEMY_SLOT_EMPTY.a > 0.0:
-			draw_rect(cell_rect, ENEMY_SLOT_EMPTY)
-
-
-func _enemy_preview_seat_set() -> Dictionary:
-	var occupied: Dictionary = {}
-	for preview in enemy_previews:
-		if preview is Dictionary and (preview as Dictionary).has("seat_index"):
-			var seat_i := int(preview["seat_index"])
-			if seat_i >= 0:
-				occupied[seat_i] = true
-	return occupied
-
-
 func _draw_prepare_slots(px: float) -> void:
 	if prepare_slots == null or prepare_slots.cells.is_empty():
 		return
-	var rect := get_board_rect()
+	## 开战后代打单位由模拟绘制；准备阶段只画占座角色，不再铺底色和线框。
+	if sim != null and sim.has_started():
+		return
 	var scroll_y := 0.0
 	if enchant_active and enchant_team_scroll_enabled:
 		scroll_y = enchant_team_scroll_rows * px
 	var off := Vector2(0.0, ally_half_slide_y - scroll_y)
-	## 先画底色，再按 y 排序画角色（靠下压上）。
 	var occupied_indices: Array[int] = []
 	for i in prepare_slots.cells.size():
-		var cell: Vector2i = prepare_slots.cells[i]
 		var entry: DeckEntry = prepare_slots.get_entry(i)
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		## 不描边；空座极淡，占座仅轻晕，避免显性格线。
 		if entry != null:
-			draw_rect(cell_rect, SLOT_OCCUPIED)
 			occupied_indices.append(i)
-		elif SLOT_EMPTY.a > 0.0:
-			draw_rect(cell_rect, SLOT_EMPTY)
-	if sim != null and sim.has_started():
-		return
 	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
 		var ca := prepare_slots.cells[a]
 		var cb := prepare_slots.cells[b]
