@@ -2,7 +2,7 @@ class_name RealtimeUnitMotion
 extends Node
 ## Run 战场单位程序动画（纯表现）：只产出绘制用偏移 / 旋转 / 缩放 / 闪白与镜头震动，
 ## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别蓄力、出手、受击，
-## 死亡由控制器转发 unit_died 后生成残影单独播放。
+## 死亡由控制器生成残影：侧倒淡出结束后移除，不再绘制。
 
 ## 一格步进：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
 const WALK_TILT := 0.16
@@ -135,7 +135,7 @@ func force_home_all() -> void:
 		_reset_pose_visual(tracked.pose)
 	for corpse in _corpses:
 		_kill_all(corpse.pose)
-		_reset_pose_visual(corpse.pose)
+	_corpses.clear()
 
 
 func _reset_pose_visual(pose: Pose) -> void:
@@ -391,7 +391,10 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(pose, "alpha", 0.0, DEATH_SECONDS * 0.4)
 	tween.parallel().tween_property(pose, "shadow_mul", 0.4, DEATH_SECONDS * 0.4)
-	tween.tween_callback(func() -> void: corpse.done = true)
+	tween.tween_callback(func() -> void:
+		corpse.done = true
+		corpse.pose.alpha = 0.0
+	)
 
 
 func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
@@ -671,8 +674,10 @@ func _prune_corpses() -> void:
 		return
 	var keep: Array[Corpse] = []
 	for corpse in _corpses:
-		if not corpse.done:
-			keep.append(corpse)
+		if corpse.done or corpse.pose.alpha <= 0.02:
+			_kill_all(corpse.pose)
+			continue
+		keep.append(corpse)
 	_corpses = keep
 
 

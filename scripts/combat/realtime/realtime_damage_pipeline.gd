@@ -68,8 +68,10 @@ func resolve_hit(
 			continue
 		var hp_before := tgt.unit.current_hp
 		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - final_amount)
-		_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
-		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
+		## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
+		if tgt.unit.is_alive():
+			_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
+			_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
 		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
@@ -153,8 +155,10 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 		return false
 	var hp_before := target.unit.current_hp
 	target.unit.current_hp = maxi(0, target.unit.current_hp - final_amount)
-	_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
+	## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
+	if target.unit.is_alive():
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
+		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
 	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, final_amount, hp_before)
 	if target.unit.is_alive():
 		return false

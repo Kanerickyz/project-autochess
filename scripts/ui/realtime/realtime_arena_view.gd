@@ -614,7 +614,7 @@ func sync_combat_motion_now() -> void:
 	_motion.sync_units(sim.get_units(), sim.get_current_actor())
 
 
-## 死亡残影：闪白后侧倒、缩小淡出（纯表现，单位已从模拟移除）。
+## 死亡：侧倒淡出。淡出结束由运动层移除，不再绘制。
 func play_unit_death(rt: RtUnit) -> void:
 	if rt == null:
 		return
@@ -3162,6 +3162,9 @@ func _draw_units(px: float) -> void:
 		var is_actor := actor != null and rt == actor
 		if started and actor != null and not is_actor:
 			alpha = 0.72
+		## 已死单位只走残影；本体不再绘制，避免淡出后仍留在场上。
+		if not rt.is_alive():
+			continue
 		if started and rt.is_deploying():
 			alpha = mini(alpha, 0.55)
 		if now - rt.last_attack_time < ATTACK_FLASH_SECONDS:
@@ -3209,6 +3212,8 @@ func _draw_units(px: float) -> void:
 
 func _draw_corpses(px: float) -> void:
 	for corpse in _motion.get_corpses():
+		if corpse.done or corpse.pose.alpha <= 0.02:
+			continue
 		var tex: Texture2D = _art.get_texture(corpse.unit_id, corpse.is_player) if _art != null else null
 		if tex == null:
 			continue
