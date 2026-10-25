@@ -62,6 +62,7 @@ static func run_all() -> bool:
 	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
 	_check("blood_acolyte_combat_start_permanent", _test_blood_acolyte_combat_start_permanent())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
+	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
 	_check("deal_damage_extra_2_star2", _test_deal_damage_extra_2_star2())
 	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
@@ -1451,6 +1452,9 @@ static func _test_ally_hurt_heal_target() -> bool:
 	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
 		push_error("ally_hurt_heal: crossbow ability not mounted")
 		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("ally_hurt_heal: merge_value_mult expected 3")
+		return false
 	var specs: Array = data.ability.effect_specs
 	if specs.is_empty() or specs[0] == null:
 		push_error("ally_hurt_heal: missing effect spec")
@@ -1474,6 +1478,34 @@ static func _test_ally_hurt_heal_target() -> bool:
 	if ally.unit.current_hp != hp_mid - 2 + 2:
 		push_error(
 			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
+			% [ally.unit.current_hp, hp_mid]
+		)
+		return false
+	return true
+
+
+## 弩手 2★：友伤疗 6（merge_value_mult=3）。
+static func _test_ally_hurt_heal_target_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
+		push_error("ally_hurt_heal star2: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 45)
+	var xbow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
+	xbow.unit.level = 2
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(9.5, 20.5),
+	)
+	ally.unit.current_hp = 12
+	sim.begin_combat()
+	var hp_mid := ally.unit.current_hp
+	sim._pipeline.apply_damage(null, ally, 6)
+	sim._drain_effects()
+	if ally.unit.current_hp != hp_mid - 6 + 6:
+		push_error(
+			"ally_hurt_heal star2: ally hp after hurt+heal=%d, expected %d"
 			% [ally.unit.current_hp, hp_mid]
 		)
 		return false

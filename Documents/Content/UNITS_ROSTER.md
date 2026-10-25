@@ -245,7 +245,7 @@
 | 鼓手 | 前锋鸣鼓 | `turn_start_nearby_atk_small` | 节奏 | 自己回合开始周围一格其他友方 +2 攻（三合一后 +6） |
 | 药师 | 固脉一剂 | `turn_start_nearby_hp_small` | 医疗·加厚 | 自己回合开始周围一格友方生命上限与当前各 +2（三合一后 +8） |
 | 奥术 | 召唤回响 | `friend_summon_minion_self_hp_small` | 召唤·回响 | 友方随从被召唤时自加血 +2（三合一后 +6） |
-| 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2 |
+| 弩手 | 弦上包扎 | `ally_hurt_heal_target_small` | 掩护·回血 | 友伤时若该友未满血则疗 2（三合一后 6；`merge_value_mult=3`） |
 
 | 猎手 | 削峰一击 | `deal_vs_higher_hp_extra` | 斩峰 | 目标当前生命高于自己时额外伤 |
 | 巨锤 | 邻座崩裂 | `deal_damage_adj_splash_small` | 破阵 | 出手对目标周围一格小幅捎带伤 |
