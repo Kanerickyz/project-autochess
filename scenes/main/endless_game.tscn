@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://endlessgame01"]
+
+[ext_resource type="Script" path="res://scripts/core/run/run_game_controller.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://mapscreen001" path="res://scenes/ui/map/map_screen.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://runendoverlay" path="res://scenes/ui/run/run_end_overlay.tscn" id="6"]
+[ext_resource type="PackedScene" uid="uid://runstatsoverlay" path="res://scenes/ui/run/run_stats_overlay.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/placeholder/placeholder_node_screen.tscn" id="8"]
+[ext_resource type="Resource" uid="uid://endlessmap001" path="res://resources/runs/endless_map.tres" id="9_map"]
+
+[node name="EndlessGame" type="Node"]
+script = ExtResource("1")
+map_config_override = ExtResource("9_map")
+
+[node name="BattleLayer" type="CanvasLayer" parent="."]
+
+[node name="BattleRoot" type="Control" parent="BattleLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="MapScreen" parent="UI" instance=ExtResource("2")]
+unique_name_in_owner = true
+
+[node name="PlaceholderNodeScreen" parent="UI" instance=ExtResource("8")]
+unique_name_in_owner = true
+
+[node name="RunEndOverlay" parent="UI" instance=ExtResource("6")]
+unique_name_in_owner = true
+
+[node name="RunStatsOverlay" parent="UI" instance=ExtResource("7")]
+unique_name_in_owner = true

@@ -12,6 +12,8 @@ enum Mode { HIDDEN, RESULT_INTRO, CHOICES }
 
 var _mode: Mode = Mode.HIDDEN
 var _victory: bool = false
+var _reached_floor: int = 0
+var _endless: bool = false
 
 
 func _ready() -> void:
@@ -21,12 +23,18 @@ func _ready() -> void:
 
 
 ## 结局宣告：仅「继续」，随后进入远征统计。
-func show_result_intro(victory: bool) -> void:
+## reached_floor / endless：无尽败局展示「到达第 N 层」。
+func show_result_intro(victory: bool, reached_floor: int = 0, endless: bool = false) -> void:
 	_victory = victory
+	_reached_floor = maxi(0, reached_floor)
+	_endless = endless
 	_mode = Mode.RESULT_INTRO
 	if victory:
 		_title.text = "远征完成！"
 		_subtitle.text = "你击败了 Boss"
+	elif _endless and _reached_floor > 0:
+		_title.text = "无尽挑战结束"
+		_subtitle.text = "到达第 %d 层" % _reached_floor
 	else:
 		_title.text = "远征失败"
 		_subtitle.text = "本局已结束"
@@ -37,12 +45,18 @@ func show_result_intro(victory: bool) -> void:
 
 
 ## 统计看完后：再来一局 / 返回主菜单。
-func show_choices(victory: bool) -> void:
+func show_choices(victory: bool, reached_floor: int = 0, endless: bool = false) -> void:
 	_victory = victory
+	_reached_floor = maxi(0, reached_floor)
+	_endless = endless
 	_mode = Mode.CHOICES
 	if victory:
 		_title.text = "远征完成！"
 		_subtitle.text = "可再来一局，或返回主菜单"
+		_primary_button.text = "再来一局"
+	elif _endless and _reached_floor > 0:
+		_title.text = "无尽挑战结束"
+		_subtitle.text = "到达第 %d 层 · 可再来一局或返回主菜单" % _reached_floor
 		_primary_button.text = "再来一局"
 	else:
 		_title.text = "远征失败"

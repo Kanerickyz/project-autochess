@@ -6,6 +6,10 @@ const DEFAULT_RUN_MAP := preload("res://resources/runs/act1_map.tres")
 const DEFAULT_DECK_CONFIG := preload("res://resources/deck/realtime_starter_deck.tres")
 const DEFAULT_ECONOMY := preload("res://resources/economy/default_economy.tres")
 const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit_config.tres")
+## 无尽招募品阶软顶：避免进度比卡死，但实际层号可超过。
+const ENDLESS_RECRUIT_SOFT_FLOOR_COUNT := 30
+
+@export var map_config_override: RunMapConfig
 
 @onready var _battle_root: Control = %BattleRoot
 @onready var _map_screen: MapScreen = %MapScreen
@@ -54,7 +58,8 @@ func _ready() -> void:
 	_battle.enchant_finished.connect(_on_enchant_finished)
 	_battle.map_shop_finished.connect(_on_map_shop_finished)
 
-	run_controller.configure(DEFAULT_RUN_MAP, _rng.randi())
+	var map_cfg: RunMapConfig = map_config_override if map_config_override != null else DEFAULT_RUN_MAP
+	run_controller.configure(map_cfg, _rng.randi())
 	run_controller.phase_changed.connect(_on_run_phase_changed)
 	run_controller.map_updated.connect(_on_map_updated)
 
@@ -64,6 +69,10 @@ func _ready() -> void:
 	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
 	await _start_new_run()
+
+
+func _is_endless() -> bool:
+	return run_controller != null and run_controller.is_endless()
 
 
 func _start_new_run() -> void:
@@ -77,7 +86,12 @@ func _start_new_run() -> void:
 	_recruit_session.clear_taken_copies()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	if run_controller.map_config != null:
-		_battle.set_map_floor_count(run_controller.map_config.floor_count)
+		_battle.set_map_floor_count(_recruit_map_floor_count())
+		_battle.set_forward_tier_unlock(_is_endless())
+		if run_controller.map_config.spawn_budget_override != null:
+			_battle.set_spawn_budget_config(run_controller.map_config.spawn_budget_override)
+		else:
+			_battle.set_spawn_budget_config(null)
 	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
 	_suppress_map_show = true
@@ -130,6 +144,9 @@ func _on_map_node_selected(node_id: int) -> void:
 		_battle_root.visible = true
 		if _battle != null:
 			_battle.set_world_backdrop_mode(false)
+			## 无尽软顶随当前战斗层放开，避免品阶/抽阵仍按开局 30 卡死观感。
+			if _is_endless():
+				_battle.set_map_floor_count(maxi(ENDLESS_RECRUIT_SOFT_FLOOR_COUNT, node.get_floor()))
 		var floor_index := node.get_floor()
 		_battle.start_encounter(
 			encounter,
@@ -205,6 +222,7 @@ func _open_opening_recruit() -> void:
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = true
 	## 开局：第 1 层尺 → 仅 T1。
+	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
@@ -286,6 +304,7 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = false
+	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(
 		_recruit_progress_ratio(),
 		_recruit_map_floor(),
@@ -301,7 +320,7 @@ func _recruit_progress_ratio() -> float:
 	return clampf(float(depth) / float(floors), 0.0, 1.0)
 
 
-## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层；T3 自倒数 6 层）。
+## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层；T3 自倒数 6 层 / 无尽单向）。
 func _recruit_map_floor() -> int:
 	if _battle != null:
 		return maxi(1, _battle.get_floor_index())
@@ -309,6 +328,10 @@ func _recruit_map_floor() -> int:
 
 
 func _recruit_map_floor_count() -> int:
+	## 无尽：软顶 max(30, currentF)，品阶靠 forward_tier_unlock 随 F 放开。
+	if _is_endless():
+		var current_f := _recruit_map_floor()
+		return maxi(ENDLESS_RECRUIT_SOFT_FLOOR_COUNT, current_f)
 	if run_controller != null and run_controller.map_config != null:
 		return maxi(1, run_controller.map_config.floor_count)
 	if _battle != null:
@@ -352,14 +375,21 @@ func _on_map_updated() -> void:
 ## 结局宣告「继续」→ 远征统计；统计「继续」→ 再来一局/回主菜单。
 func _on_run_stats_continue() -> void:
 	_run_stats_overlay.hide_overlay()
-	_run_end_overlay.show_choices(_pending_end_victory)
+	var reached := 0
+	var endless := false
+	if _pending_end_snapshot != null:
+		reached = _pending_end_snapshot.reached_floor
+		endless = _pending_end_snapshot.endless_mode
+	_run_end_overlay.show_choices(_pending_end_victory, reached, endless)
 
 
 func _present_run_end_result(snapshot: RunStatsSnapshot) -> void:
 	_pending_end_snapshot = snapshot
 	_pending_end_victory = snapshot != null and snapshot.victory
 	_run_stats_overlay.hide_overlay()
-	_run_end_overlay.show_result_intro(_pending_end_victory)
+	var reached := snapshot.reached_floor if snapshot != null else 0
+	var endless := snapshot.endless_mode if snapshot != null else false
+	_run_end_overlay.show_result_intro(_pending_end_victory, reached, endless)
 
 
 func _present_run_end_stats(snapshot: RunStatsSnapshot) -> void:
@@ -375,6 +405,18 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 	snap.shop_visits = rs.shop_visit_count
 	snap.combat_seconds = rs.total_combat_seconds
 	snap.gold = run_economy.gold
+	snap.endless_mode = _is_endless()
+	## 败局：优先用正打着的战斗层；否则用已胜场+1；通关不记层深成绩。
+	if not victory:
+		var pending := run_controller.get_pending_node()
+		if pending != null and MapNodeType.is_combat(pending.get_effective_type()):
+			snap.reached_floor = maxi(1, pending.get_floor())
+		elif _battle != null and _battle.get_floor_index() > 0:
+			snap.reached_floor = _battle.get_floor_index()
+		else:
+			snap.reached_floor = maxi(1, rs.completed_encounter_count + 1)
+	else:
+		snap.reached_floor = 0
 	snap.roster.assign(deck_state.get_entries())
 	## 拷贝账本：历程数字已是值拷贝；战斗合计也须与活账本脱钩（再开局 reset 不影响已展示快照）。
 	snap.ledger = (

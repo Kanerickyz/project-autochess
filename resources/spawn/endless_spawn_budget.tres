@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="SpawnBudgetConfig" format=3]
+
+[ext_resource type="Script" uid="uid://ylqf0o7zv961t" path="res://scripts/data/spawn_budget_config.gd" id="1_cfg"]
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="2_unit"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_skeleton.tres" id="u_skel"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_spear_goblin.tres" id="u_spear"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_archer.tres" id="u_archer"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_goblin.tres" id="u_goblin"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_barbarian.tres" id="u_barb"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_knight.tres" id="u_knight"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_musketeer.tres" id="u_musk"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_rider.tres" id="u_rider"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_valkyrie.tres" id="u_valk"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mini_pekka.tres" id="u_pekka"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_spike_shield.tres" id="u_spike"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_rune_plate.tres" id="u_rune"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_banner.tres" id="u_banner"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_relic_aegis.tres" id="u_relic"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_dirge_horn.tres" id="u_dirge"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_wardrum.tres" id="u_drum"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_crossbow.tres" id="u_xbow"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_hunter.tres" id="u_hunt"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_maul.tres" id="u_maul"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_gravewright.tres" id="u_grave"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_soulcaller.tres" id="u_soul"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_echo_spear.tres" id="u_echo"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mirror_warden.tres" id="u_mirror"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_horsebow.tres" id="u_hbow"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_blood_acolyte.tres" id="u_blood"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_vita_keeper.tres" id="u_vita"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_iron_heart.tres" id="u_iron"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_mend_friar.tres" id="u_mend"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_apothecary.tres" id="u_apoth"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_arcane.tres" id="u_arcane"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_shinobi.tres" id="u_shinobi"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_berserker.tres" id="u_berserker"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_devour.tres" id="u_devour"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_blade_mender.tres" id="u_blade_mender"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_aftershock.tres" id="u_aftershock"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_edge_hex.tres" id="u_edge_hex"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_shield_boon.tres" id="u_shield_boon"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_paymaster.tres" id="u_paymaster"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_wergild.tres" id="u_wergild"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_coffer_ward.tres" id="u_coffer"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_blood_wage.tres" id="u_bloodwage"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_scatter_hex.tres" id="u_scatter"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_funeral_pyre.tres" id="u_pyre"]
+
+[resource]
+script = ExtResource("1_cfg")
+enabled = true
+enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker"), ExtResource("u_devour"), ExtResource("u_blade_mender"), ExtResource("u_aftershock"), ExtResource("u_edge_hex"), ExtResource("u_shield_boon"), ExtResource("u_paymaster"), ExtResource("u_wergild"), ExtResource("u_coffer"), ExtResource("u_bloodwage"), ExtResource("u_scatter"), ExtResource("u_pyre")])
+floor_mid_power = Array[float]([0.0, 40.0, 54.0, 68.0, 76.0, 84.0, 90.0, 96.0, 102.0, 106.0, 110.0, 112.0, 114.0, 118.0])
+floor_e_min = Array[float]([21.4, 24.0, 32.1, 38.9, 42.6, 43.2, 45.5, 48.8, 52.0, 54.5, 56.5, 63.8, 65.0, 67.5])
+floor_e_max = Array[float]([65.1, 72.3, 100.2, 129.0, 147.1, 145.5, 158.4, 171.3, 184.4, 193.9, 203.3, 237.4, 243.8, 254.4])
+default_p_mid = 48.0
+p_mid_floor_growth = 0.14
+kappa_combat = 1.0
+kappa_elite = 1.1
+kappa_boss = 1.9
+floor_threat_growth = 0.10
+band_combat = 0.35
+band_elite = 0.40
+band_boss = 0.12
+band_widen_step = 0.1
+prefer_upper_band = false
+panel_match_enabled = true
+panel_mult_combat = 1.0
+panel_mult_elite = 1.25
+default_panel_atk_floor = 3.0
+default_panel_hp_floor = 5.0
+panel_floor_growth = 0.12
+formation_tags = Array[String](["frontline", "skirmish", "backline"])
+formation_weight_frontline = 2.0
+formation_weight_skirmish = 2.0
+formation_weight_backline = 1.0
+skill_alpha_no_ability = 0.85
+skill_alpha_default = 1.0
+rejection_attempts = 64
+hill_climb_swaps = 32
+n_min = 1
+same_id_soft_dedup_weight = 0.05
+combat_plus_one_chance = 0.0
+elite_plus_two_chance = 0.4

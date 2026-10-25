@@ -176,7 +176,9 @@ func get_panel_mult(node_type: MapNodeType.Type) -> float:
 
 func get_panel_atk_floor(floor_index: int) -> float:
 	var floor_i := maxi(0, floor_index)
-	var from_table := _read_floor_table(floor_panel_atk_min, floor_i)
+	var from_table := _read_floor_table_extrapolated(
+		floor_panel_atk_min, floor_i, default_panel_atk_floor, panel_floor_growth
+	)
 	if from_table > 0.0:
 		return from_table
 	var floor_f := maxi(1, floor_index)
@@ -188,7 +190,9 @@ func get_panel_atk_floor(floor_index: int) -> float:
 
 func get_panel_hp_floor(floor_index: int) -> float:
 	var floor_i := maxi(0, floor_index)
-	var from_table := _read_floor_table(floor_panel_hp_min, floor_i)
+	var from_table := _read_floor_table_extrapolated(
+		floor_panel_hp_min, floor_i, default_panel_hp_floor, panel_floor_growth
+	)
 	if from_table > 0.0:
 		return from_table
 	var floor_f := maxi(1, floor_index)
@@ -208,21 +212,28 @@ func get_band(node_type: MapNodeType.Type) -> float:
 			return maxf(0.01, band_combat)
 
 
-## 层护栏参照中线（非主目标）。表内 0 视为未配置该层。
+## 层护栏参照中线（非主目标）。表内 0 视为未配置该层；表外层用 p_mid_floor_growth 外推，避免高 F 难度平台。
 func get_p_mid(floor_index: int) -> float:
 	var floor_i := maxi(0, floor_index)
-	if floor_mid_power.size() > 0:
-		var idx := mini(floor_i, floor_mid_power.size() - 1)
-		var value := float(floor_mid_power[idx])
+	if floor_mid_power.is_empty():
+		return maxf(1.0, default_p_mid * pow(1.0 + maxf(0.0, p_mid_floor_growth), float(floor_i)))
+	if floor_i < floor_mid_power.size():
+		var value := float(floor_mid_power[floor_i])
 		if value > 0.0:
 			return value
 		return maxf(1.0, default_p_mid)
-	return maxf(1.0, default_p_mid * pow(1.0 + maxf(0.0, p_mid_floor_growth), float(floor_i)))
+	var last := _last_positive_table_value(floor_mid_power)
+	if last <= 0.0:
+		last = maxf(1.0, default_p_mid)
+	var beyond := floor_i - (floor_mid_power.size() - 1)
+	return maxf(1.0, last * pow(1.0 + maxf(0.0, p_mid_floor_growth), float(maxi(0, beyond))))
 
 
 func get_floor_e_min(floor_index: int) -> float:
 	var floor_i := maxi(0, floor_index)
-	var from_table := _read_floor_table(floor_e_min, floor_i)
+	var from_table := _read_floor_table_extrapolated(
+		floor_e_min, floor_i, 0.0, p_mid_floor_growth
+	)
 	if from_table > 0.0:
 		return from_table
 	## 占位：0.5×旧层中线（balance 未写 floor_e_min 时）。
@@ -231,7 +242,9 @@ func get_floor_e_min(floor_index: int) -> float:
 
 func get_floor_e_max(floor_index: int) -> float:
 	var floor_i := maxi(0, floor_index)
-	var from_table := _read_floor_table(floor_e_max, floor_i)
+	var from_table := _read_floor_table_extrapolated(
+		floor_e_max, floor_i, 0.0, p_mid_floor_growth
+	)
 	if from_table > 0.0:
 		return maxf(get_floor_e_min(floor_i), from_table)
 	## 占位：1.5×旧层中线（balance 未写 floor_e_max 时）。
@@ -315,5 +328,40 @@ func formation_weight_for_name(tag_name: String) -> float:
 func _read_floor_table(table: Array[float], floor_i: int) -> float:
 	if table.is_empty():
 		return 0.0
-	var idx := mini(floor_i, table.size() - 1)
-	return float(table[idx])
+	if floor_i < table.size():
+		return float(table[floor_i])
+	## 表外：返回末格（兼容旧调用）；加压路径请用 _read_floor_table_extrapolated。
+	return float(table[table.size() - 1])
+
+
+## 表内直接取值；表外以末个正值 × (1+growth)^beyond 外推。fallback_base≤0 时仅在表空返回 0。
+func _read_floor_table_extrapolated(
+	table: Array[float],
+	floor_i: int,
+	fallback_base: float,
+	growth: float,
+) -> float:
+	if table.is_empty():
+		if fallback_base <= 0.0:
+			return 0.0
+		return maxf(
+			1.0,
+			fallback_base * pow(1.0 + maxf(0.0, growth), float(maxi(0, floor_i))),
+		)
+	if floor_i < table.size():
+		return float(table[floor_i])
+	var last := _last_positive_table_value(table)
+	if last <= 0.0:
+		if fallback_base <= 0.0:
+			return 0.0
+		last = fallback_base
+	var beyond := floor_i - (table.size() - 1)
+	return maxf(0.0, last * pow(1.0 + maxf(0.0, growth), float(maxi(0, beyond))))
+
+
+func _last_positive_table_value(table: Array[float]) -> float:
+	for i in range(table.size() - 1, -1, -1):
+		var v := float(table[i])
+		if v > 0.0:
+			return v
+	return 0.0

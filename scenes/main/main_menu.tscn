@@ -80,6 +80,13 @@ layout_mode = 2
 size_flags_horizontal = 4
 text = "开始游戏"
 
+[node name="EndlessButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(328, 82)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "无尽"
+
 [node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(328, 82)
