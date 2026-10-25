@@ -116,9 +116,35 @@ func _test_mapper_and_arena_direct() -> void:
 	if spawn_pops.size() >= 1:
 		_expect(spawn_pops[0]["kind"] == RealtimeEffectFeedback.KIND_LABEL, "mapper: spawn kind=label")
 
+	var gold_action := EffectAction.new()
+	gold_action.action_type = EffectAction.Type.GRANT_GOLD
+	gold_action.value = 2
+	var gold_payload := CombatEventPayload.new()
+	gold_payload.effect_owner = unit
+	gold_payload.source = unit
+	gold_payload.target = unit
+	gold_payload.effect_action = gold_action
+	gold_payload.effect_entries = [{"action": gold_action, "target": unit}]
+	var gold_pops := RealtimeEffectFeedback.build_popups(gold_payload)
+	_expect(gold_pops.size() == 1, "mapper: GRANT_GOLD yields popup")
+	if gold_pops.size() >= 1:
+		_expect(gold_pops[0]["kind"] == RealtimeEffectFeedback.KIND_GOLD, "mapper: kind=gold")
+		_expect(int(gold_pops[0]["amount"]) == 2, "mapper: gold amount 2")
+		_expect(String(gold_pops[0]["text"]).find("金") >= 0, "mapper: gold text has 金")
+
 	var arena := RealtimeArenaView.new()
 	arena.board_size = Vector2i(5, 8)
+	arena.size = Vector2(393, 700)
 	root.add_child(arena)
+	arena.spawn_gold_coin_burst(Vector2(2.5, 10.5), 2)
+	_expect(arena.get_gold_coin_fx_count() == 2, "arena: gold burst spawns 2 coins")
+	_expect(
+		is_equal_approx(
+			arena._typical_paper_height_px(arena.get_cell_px()) * RealtimeArenaView.GOLD_COIN_PAPER_SCALE,
+			arena._typical_paper_height_px(arena.get_cell_px()) * 0.25,
+		),
+		"arena: gold coin scale is 1/4 paper height",
+	)
 	arena.add_feedback_popup(
 		RealtimeEffectFeedback.KIND_STAT,
 		"+50攻",
