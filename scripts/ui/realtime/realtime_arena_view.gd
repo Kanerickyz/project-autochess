@@ -1060,7 +1060,15 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_item_press_index = item_i
 				_recruit_press_index = -1
 				_recruit_team_press_id = -1
-				_begin_press(mb.position, {}, Callable())
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+				return
+			## 锁定 / 卖出：长按看介绍；短按无操作（拖入才生效）。
+			if _is_recruit_lock_cell(cell) or _is_recruit_sell_cell(cell):
+				_recruit_item_press_index = -1
+				_recruit_press_index = -1
+				_recruit_team_press_id = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(board_cell)
@@ -1906,6 +1914,32 @@ func _collect_inspectables() -> Array[Dictionary]:
 						bool(cand.get("affordable", true)),
 					)
 				)
+		for oi in recruit_items.size():
+			var item_info := _info_from_recruit_item_index(oi, ally_off)
+			if not item_info.is_empty():
+				out.append(item_info)
+		var lock_info := _info_from_recruit_action_cell(
+			recruit_lock_cell,
+			ally_off,
+			"recruit_lock",
+			"锁定",
+			"操作",
+			RECRUIT_TEX_LOCK,
+			"把候选人拖到此处切换锁定。\n已锁定角色刷新时保留，完成/跳过后下一场招募仍在同槽；新 Run 与开局招募清空。\n空槽不可锁；长按只看介绍。",
+		)
+		if not lock_info.is_empty():
+			out.append(lock_info)
+		var sell_info := _info_from_recruit_action_cell(
+			recruit_sell_cell,
+			ally_off,
+			"recruit_sell",
+			"卖出",
+			"操作",
+			RECRUIT_TEX_SELL,
+			"把上区或备战成员拖到此处出售，获得正常退金并腾位。\n长按只看介绍，不会卖出；拖超过阈值后松手才成交，可拖回取消。",
+		)
+		if not sell_info.is_empty():
+			out.append(sell_info)
 		_append_bench_inspectables(out)
 		return out
 	if sim != null and sim.has_started():
@@ -2036,6 +2070,87 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
+	}
+
+
+## 招募半场道具：与地图商店同用 RealtimeUnitInfoCard（is_item）。
+func _info_from_recruit_item_index(index: int, half_off: Vector2) -> Dictionary:
+	if index < 0 or index >= recruit_items.size():
+		return {}
+	var dict: Variant = recruit_items[index]
+	if not (dict is Dictionary):
+		return {}
+	var offer := dict as Dictionary
+	var item: PrepareItemData = offer.get("item") as PrepareItemData
+	if item == null:
+		return {}
+	var cell: Vector2i = offer.get("cell", NO_CELL)
+	if cell == NO_CELL:
+		return {}
+	var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+	var bonus := maxi(1, item.bonus_value)
+	var kind_label := "道具"
+	var skills := ""
+	match item.item_type:
+		PrepareItemData.ItemType.HP_POTION:
+			kind_label = "消耗品"
+			skills = (
+				"永久 +%s%d 生命上限。\n拖到上区队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
+				% [UnitInfoText.STAT_ICON_HP, bonus]
+			)
+		PrepareItemData.ItemType.ATK_POTION:
+			kind_label = "消耗品"
+			skills = (
+				"永久 +%s%d 攻击。\n拖到上区队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
+				% [UnitInfoText.STAT_ICON_ATK, bonus]
+			)
+		PrepareItemData.ItemType.BANNER:
+			kind_label = "道具"
+			skills = "上场席位上限 +1（最高 10）；不扩备战格数。\n点击购买，即时扣金；已满 10 席时本行不出旗帜。价格随本局成功购买次数升高。"
+		_:
+			skills = "招募道具。"
+	return {
+		"inspect_key": "recruit_item:%d" % index,
+		"center": center,
+		"name": item.get_display_name(),
+		"side_player": true,
+		"tier": 0,
+		"is_item": true,
+		"kind_label": kind_label,
+		"cost": int(offer.get("cost", item.cost)),
+		"attack": 0,
+		"hp": 0,
+		"skills": skills,
+		"texture": _recruit_prop_texture(item.id),
+	}
+
+
+## 招募锁定 / 卖出落点：同信息卡，无价格。
+func _info_from_recruit_action_cell(
+	cell: Vector2i,
+	half_off: Vector2,
+	inspect_key: String,
+	display_name: String,
+	kind_label: String,
+	texture: Texture2D,
+	skills: String,
+) -> Dictionary:
+	if cell == NO_CELL:
+		return {}
+	var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+	return {
+		"inspect_key": inspect_key,
+		"center": center,
+		"name": display_name,
+		"side_player": true,
+		"tier": 0,
+		"is_item": true,
+		"kind_label": kind_label,
+		"cost": 0,
+		"attack": 0,
+		"hp": 0,
+		"skills": skills,
+		"texture": texture,
 	}
 
 
@@ -2297,6 +2412,8 @@ func _find_recruit_item_at(cell: Vector2i) -> int:
 		return -1
 	for info in recruit_items:
 		if not (info is Dictionary):
+			continue
+		if info.get("item") == null:
 			continue
 		var c: Vector2i = info.get("cell", NO_CELL)
 		if c == cell:

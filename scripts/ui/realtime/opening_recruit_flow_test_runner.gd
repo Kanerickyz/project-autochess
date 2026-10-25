@@ -139,6 +139,45 @@ func _test_opening_enter_recruit_ui() -> void:
 	_expect(arena.recruit_sell_cell != arena.recruit_lock_cell, "sell/lock not overlapping")
 	_expect(arena.recruit_sell_cell.y != expected_cand_y + 2, "sell not on cand_y+2")
 
+	## 道具 / 锁定 / 卖出均可长按 inspect（同 is_item 信息卡路径）。
+	if not arena.recruit_items.is_empty():
+		var offer0: Dictionary = arena.recruit_items[0]
+		var offer_cell: Vector2i = offer0.get("cell", Vector2i(-1, -1))
+		if offer0.get("item") != null and offer_cell.x >= 0:
+			var offer_center := (
+				arena.tile_to_local(Vector2(offer_cell) + Vector2(0.5, 0.5))
+				+ Vector2(0.0, arena.ally_half_slide_y)
+			)
+			var offer_info := arena.inspect_at(offer_center)
+			_expect(
+				not offer_info.is_empty() and bool(offer_info.get("is_item", false)),
+				"recruit item inspectable as item",
+			)
+	if arena.recruit_lock_cell.x >= 0:
+		var lock_center := (
+			arena.tile_to_local(Vector2(arena.recruit_lock_cell) + Vector2(0.5, 0.5))
+			+ Vector2(0.0, arena.ally_half_slide_y)
+		)
+		var lock_info := arena.inspect_at(lock_center)
+		_expect(
+			not lock_info.is_empty()
+			and bool(lock_info.get("is_item", false))
+			and String(lock_info.get("inspect_key", "")) == "recruit_lock",
+			"recruit lock inspectable",
+		)
+	if arena.recruit_sell_cell.x >= 0:
+		var sell_center := (
+			arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
+			+ Vector2(0.0, arena.ally_half_slide_y)
+		)
+		var sell_info := arena.inspect_at(sell_center)
+		_expect(
+			not sell_info.is_empty()
+			and bool(sell_info.get("is_item", false))
+			and String(sell_info.get("inspect_key", "")) == "recruit_sell",
+			"recruit sell inspectable",
+		)
+
 	## 上半场队伍块：敌半场区域；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
 	var team_max_y := -1
