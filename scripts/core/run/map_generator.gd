@@ -5,7 +5,8 @@ extends RefCounted
 const _WEIGHT_MYSTERY := 0.10
 const _WEIGHT_ELITE := 0.08
 const _WEIGHT_SHOP := 0.05
-const _WEIGHT_EVENT := 0.10
+## 事件节点略稀于商店，避免幕内事件过密。
+const _WEIGHT_EVENT := 0.04
 const _WEIGHT_ENCHANT := 0.08
 
 ## 邻接/兄弟约束：这些类型不可与已连接父节点或同父兄弟相同。
