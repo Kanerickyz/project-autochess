@@ -8,6 +8,7 @@ const KIND_DAMAGE := &"damage"
 const KIND_HEAL := &"heal"
 const KIND_STAT := &"stat"
 const KIND_LABEL := &"label"
+const KIND_GOLD := &"gold"
 
 ## 高频触发：结果数字为主、短提示从简；仍须入队时停（控制器处理）。
 const HIGH_FREQ_TRIGGERS := {
@@ -155,6 +156,22 @@ static func _map_action(
 				"is_player": is_player,
 				"unit_id": unit_id,
 				"merge_key": "%d|label|devour" % unit_id,
+				"show_tip": false,
+				"tip": "",
+			}
+		EffectAction.Type.GRANT_GOLD:
+			## 产金：结果数字 + 战场金币纸片（高频受伤产金也要有可读反馈）。
+			var gold := _scaled_value(owner, action.value)
+			if gold <= 0:
+				return {}
+			return {
+				"kind": KIND_GOLD,
+				"text": "+%d金" % gold,
+				"amount": gold,
+				"target": anchor,
+				"is_player": is_player,
+				"unit_id": unit_id,
+				"merge_key": "%d|gold" % unit_id,
 				"show_tip": false,
 				"tip": "",
 			}

@@ -76,6 +76,12 @@ const CALLOUT_SECONDS := 0.45
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
 const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
 const STAT_GOLD_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_gold.png")
+## 技能产金反馈：金币纸片（显示边长 = 典型角色纸片高度的 1/4）。
+const FX_GOLD_COIN_TEX := preload("res://assets/sprites/paper_cutout/ui/fx_gold_coin.png")
+const GOLD_COIN_PAPER_SCALE := 0.25
+const GOLD_COIN_MAX_BURST := 5
+const GOLD_COIN_POP_SEC := 0.22
+const GOLD_COIN_FLOAT_SEC := 0.55
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸。
@@ -208,6 +214,8 @@ var _enchant_team_pan_last_y: float = 0.0
 var _enchant_forge_press: bool = false
 var _recruit_team_press_id: int = -1
 var _party_speech_bubble: PartySpeechBubble
+## 产金反馈金币层（TextureRect + Tween；clear_fx 时清空）。
+var _gold_coin_layer: Control
 ## 地图商店货架拖拽：map_shop_offers 数组下标。
 var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
@@ -531,7 +539,7 @@ func add_skill_callout(center: Vector2, text: String = "", is_player: bool = tru
 	})
 
 
-## 技能因果反馈：kind=damage/heal/stat/label；同单位短窗可合并。
+## 技能因果反馈：kind=damage/heal/stat/label/gold；同单位短窗可合并。
 func add_feedback_popup(
 	kind: StringName,
 	text: String,
@@ -555,8 +563,12 @@ func add_feedback_popup(
 				continue
 			if _fx_clock - float(fb["t0"]) > FEEDBACK_MERGE_WINDOW:
 				continue
-			if kind == RealtimeEffectFeedback.KIND_DAMAGE or kind == RealtimeEffectFeedback.KIND_HEAL \
-					or kind == RealtimeEffectFeedback.KIND_STAT:
+			if (
+				kind == RealtimeEffectFeedback.KIND_DAMAGE
+				or kind == RealtimeEffectFeedback.KIND_HEAL
+				or kind == RealtimeEffectFeedback.KIND_STAT
+				or kind == RealtimeEffectFeedback.KIND_GOLD
+			):
 				var merged_amount := int(fb["amount"]) + amount
 				fb["amount"] = merged_amount
 				fb["text"] = _format_merged_feedback_text(kind, merged_amount, text)
@@ -583,6 +595,81 @@ func add_feedback_popup(
 	_trim_feedback_for_unit(unit_id)
 
 
+## 产金技能：在单位旁弹出金币纸片（边长 = 典型角色纸片高度 × 1/4），Tween 弹起再上浮淡出。
+func spawn_gold_coin_burst(center_tile: Vector2, amount: int) -> void:
+	if FX_GOLD_COIN_TEX == null or amount <= 0:
+		return
+	var layer := _ensure_gold_coin_layer()
+	var count := clampi(amount, 1, GOLD_COIN_MAX_BURST)
+	var px := get_cell_px()
+	var coin_px := _typical_paper_height_px(px) * GOLD_COIN_PAPER_SCALE
+	var origin := tile_to_local(center_tile)
+	var speed := maxf(0.25, presentation_time_scale)
+	for i in count:
+		var coin := TextureRect.new()
+		coin.texture = FX_GOLD_COIN_TEX
+		coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		coin.size = Vector2(coin_px, coin_px)
+		coin.pivot_offset = coin.size * 0.5
+		var scatter := Vector2(
+			randf_range(-0.32, 0.32) * px + float(i - count / 2.0) * px * 0.08,
+			randf_range(-0.12, 0.22) * px,
+		)
+		coin.position = origin - coin.pivot_offset + scatter
+		coin.scale = Vector2(0.18, 0.18)
+		coin.rotation = randf_range(-0.25, 0.25)
+		coin.modulate = Color(1, 1, 1, 1)
+		layer.add_child(coin)
+		var end_pos := coin.position + Vector2(
+			randf_range(-0.22, 0.22) * px,
+			-randf_range(0.85, 1.25) * px,
+		)
+		var tw := create_tween()
+		tw.set_speed_scale(speed)
+		## 弹起：放大过冲 + 转正。
+		tw.set_parallel(true)
+		tw.tween_property(coin, "scale", Vector2(1.18, 1.18), GOLD_COIN_POP_SEC * 0.55) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(coin, "rotation", 0.0, GOLD_COIN_POP_SEC) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.set_parallel(false)
+		tw.tween_property(coin, "scale", Vector2.ONE, GOLD_COIN_POP_SEC * 0.45) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		## 上浮淡出。
+		tw.set_parallel(true)
+		tw.tween_property(coin, "position", end_pos, GOLD_COIN_FLOAT_SEC) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(coin, "modulate:a", 0.0, GOLD_COIN_FLOAT_SEC) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.set_parallel(false)
+		tw.tween_callback(coin.queue_free)
+
+
+func get_gold_coin_fx_count() -> int:
+	if _gold_coin_layer == null or not is_instance_valid(_gold_coin_layer):
+		return 0
+	return _gold_coin_layer.get_child_count()
+
+
+func _ensure_gold_coin_layer() -> Control:
+	if _gold_coin_layer != null and is_instance_valid(_gold_coin_layer):
+		return _gold_coin_layer
+	_gold_coin_layer = Control.new()
+	_gold_coin_layer.name = "GoldCoinFxLayer"
+	_gold_coin_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gold_coin_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_gold_coin_layer)
+	return _gold_coin_layer
+
+
+## 典型单格角色纸片绘制高度（与 `_draw_unit_sprite` 同口径），供金币缩放对齐。
+func _typical_paper_height_px(px: float) -> float:
+	var half := _resolve_visual_half(0.0, 0.7, 1.6) * px
+	return clampf(half * SPRITE_HEIGHT_MUL, px * 1.05, px * 1.9)
+
+
 func get_feedback_count() -> int:
 	return _feedback.size()
 
@@ -596,7 +683,16 @@ func clear_fx() -> void:
 	_feedback.clear()
 	_motion.clear()
 	clear_merge_fx()
+	_clear_gold_coin_fx()
 	_cancel_press()
+
+
+func _clear_gold_coin_fx() -> void:
+	if _gold_coin_layer == null or not is_instance_valid(_gold_coin_layer):
+		_gold_coin_layer = null
+		return
+	for child in _gold_coin_layer.get_children():
+		child.queue_free()
 
 
 ## 出击 / 回位 action tween 是否仍在播（供控制器门控下一动；不含 idle/flash/残影）。
@@ -631,6 +727,8 @@ func _format_merged_feedback_text(kind: StringName, amount: int, fallback: Strin
 			return "-%d" % amount
 		RealtimeEffectFeedback.KIND_HEAL:
 			return "+%d" % amount if amount > 0 else "%d" % amount
+		RealtimeEffectFeedback.KIND_GOLD:
+			return "+%d金" % amount
 		RealtimeEffectFeedback.KIND_STAT:
 			## 保留原后缀（攻/生命/暴）；跳过符号与数字。
 			var suffix := ""
@@ -3662,6 +3760,8 @@ func _feedback_color(kind: StringName, is_player: bool) -> Color:
 			return Color(0.40, 0.95, 0.55)
 		RealtimeEffectFeedback.KIND_STAT:
 			return Color(1.0, 0.88, 0.35)
+		RealtimeEffectFeedback.KIND_GOLD:
+			return Color(1.0, 0.84, 0.28) if is_player else Color(1.0, 0.78, 0.35)
 		_:
 			return Color(0.88, 0.94, 1.0)
 

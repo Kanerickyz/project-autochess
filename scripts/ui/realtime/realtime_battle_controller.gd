@@ -2961,16 +2961,19 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 		var tip := ""
 		if bool(pop.get("show_tip", false)):
 			tip = String(pop.get("tip", ""))
+		var amount := int(pop.get("amount", 0))
 		_arena.add_feedback_popup(
 			pop["kind"],
 			String(pop["text"]),
 			center,
 			bool(pop.get("is_player", true)),
 			int(pop.get("unit_id", -1)),
-			int(pop.get("amount", 0)),
+			amount,
 			String(pop.get("merge_key", "")),
 			tip,
 		)
+		if pop["kind"] == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
+			_arena.spawn_gold_coin_burst(center, amount)
 	if with_callout:
 		if not saw_center:
 			callout_center = _resolve_feedback_center(null, payload)
