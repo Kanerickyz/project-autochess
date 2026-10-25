@@ -19,6 +19,7 @@ const TRIGGER_LABELS := {
 
 	CombatEvents.ON_DEAL_DAMAGE: "造成伤害时",
 	CombatEvents.ON_KILL: "击杀时",
+	CombatEvents.ON_FRIEND_KILL: "友方击杀时",
 	CombatEvents.ON_DEATH: "死亡时",
 	CombatEvents.ON_ATTACK_HIT: "受击前",
 	CombatEvents.ON_MOVE: "移动时",

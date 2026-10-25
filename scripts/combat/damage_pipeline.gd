@@ -70,6 +70,7 @@ func apply_damage(
 		_bus.emit_event(CombatEvents.ON_ENEMY_DEATH, payload)
 		if source != null:
 			_bus.emit_event(CombatEvents.ON_KILL, payload)
+			_bus.emit_event(CombatEvents.ON_FRIEND_KILL, payload)
 
 
 func apply_rolled_damage(

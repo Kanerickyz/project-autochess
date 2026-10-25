@@ -18,6 +18,7 @@ const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_ATTACK_HIT,
 	CombatEvents.ON_DEAL_DAMAGE,
 	CombatEvents.ON_KILL,
+	CombatEvents.ON_FRIEND_KILL,
 	CombatEvents.ON_DEATH,
 	CombatEvents.ON_MOVE,
 	ShopEvents.ON_BUY,
