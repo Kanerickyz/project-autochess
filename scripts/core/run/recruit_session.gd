@@ -3,11 +3,14 @@ extends RefCounted
 ## 招募阶段逻辑：进门快照、抽候选人、招募/替换、刷新、重置、跳过/完成。
 ## 不拥有 UI；只改 DeckState（队伍 As-Is）与 RunEconomy 金币。
 ## 候选人默认 5 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
+## 每个可招募角色本局 9 份：招募成功才扣除，拿光后不再出现。
 
 signal session_changed
 signal session_finished(kept_changes: bool)
 
 const CANDIDATE_COUNT := 5
+## 每个可招募角色在本局卡池中的份数。拿光后不再抽到。
+const COPIES_PER_CHARACTER := 9
 
 var config: RecruitConfig
 var deck: DeckState
@@ -36,6 +39,9 @@ var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
 ## 本 Run 已播过的队伍羁绊台词 id；招募重置不清除。
 var played_party_bark_ids: PackedStringArray = PackedStringArray()
+## 本局已招募拿走的份数（unit id → 次数）。出售 / 替换离队不退回。
+var _taken_copies: Dictionary = {}
+var _snapshot_taken_copies: Dictionary = {}
 
 
 func configure(
@@ -70,7 +76,6 @@ func begin(
 		clear_persisted_locks()
 	candidates.clear()
 	_roll_candidates()
-	_apply_persisted_locks()
 	_capture_snapshot()
 	is_active = true
 	session_changed.emit()
@@ -85,6 +90,17 @@ func clear_persisted_locks() -> void:
 ## 新 Run：清空队伍台词已播标记（与进门快照/重置无关）。
 func clear_party_bark_flags() -> void:
 	played_party_bark_ids = PackedStringArray()
+
+
+## 新 Run：卡池份数重新装满。
+func clear_taken_copies() -> void:
+	_taken_copies.clear()
+	_snapshot_taken_copies.clear()
+
+
+## 该角色本局还没被拿走的份数（货架上未买的仍算在内）。
+func get_copies_remaining(unit_id: String) -> int:
+	return maxi(0, COPIES_PER_CHARACTER - _copies_taken(unit_id))
 
 
 func get_candidates() -> Array[UnitData]:
@@ -251,6 +267,7 @@ func try_recruit(
 			economy.grant(cost)
 			result["reason"] = "add_failed"
 			return result
+		_note_copy_taken(unit)
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
 		result["ok"] = true
@@ -275,6 +292,7 @@ func try_recruit(
 		economy.grant(cost)
 		result["reason"] = "replace_failed"
 		return result
+	_note_copy_taken(unit)
 	candidates[candidate_index] = null
 	_set_candidate_locked(candidate_index, false)
 	result["ok"] = true
@@ -393,6 +411,7 @@ func _capture_snapshot() -> void:
 		_snapshot_next_entry_id = int(roster.get("next_entry_id", 0))
 	_snapshot_candidates = candidates.duplicate()
 	_snapshot_locked = candidate_locked.duplicate()
+	_snapshot_taken_copies = _taken_copies.duplicate()
 
 
 func _restore_snapshot() -> void:
@@ -409,6 +428,7 @@ func _restore_snapshot() -> void:
 		})
 	candidates = _snapshot_candidates.duplicate()
 	candidate_locked = _snapshot_locked.duplicate()
+	_taken_copies = _snapshot_taken_copies.duplicate()
 	_ensure_lock_slots()
 
 
@@ -416,10 +436,17 @@ func _roll_candidates() -> void:
 	var count := get_candidate_slot_count()
 	candidates.clear()
 	candidate_locked.clear()
-	var preferred := get_preferred_tier()
 	for _i in count:
-		candidates.append(_pick_one(preferred))
+		candidates.append(null)
 		candidate_locked.append(false)
+	## 先放回跨场锁定，再抽空槽，避免锁定份数与新抽份数加起来超过库存。
+	_apply_persisted_locks()
+	var preferred := get_preferred_tier()
+	for i in count:
+		if candidate_locked[i] and candidates[i] != null:
+			continue
+		candidates[i] = _pick_one(preferred)
+		candidate_locked[i] = false
 
 
 ## 离开招募时写入跨场锁定；下一场 begin 时套回锁定槽。
@@ -451,11 +478,11 @@ func _apply_persisted_locks() -> void:
 		var unit: UnitData = _persisted_candidates[i] if i < _persisted_candidates.size() else null
 		if unit == null:
 			continue
-		## 锁定单位须仍在当前解锁池内（含最低品阶），否则改抽并解锁。
+		## 锁定单位须仍在当前解锁池内（含最低品阶），且还有库存；否则留给随后的空槽重抽。
 		var min_tier := get_min_tier()
 		if unit.tier > preferred or unit.tier < min_tier:
-			candidates[i] = _pick_one(preferred)
-			candidate_locked[i] = false
+			continue
+		if _copies_remaining_for_roll(unit) <= 0:
 			continue
 		candidates[i] = unit
 		candidate_locked[i] = true
@@ -469,6 +496,12 @@ func _roll_unlocked_candidates() -> void:
 	while candidates.size() < count:
 		candidates.append(null)
 		candidate_locked.append(false)
+	## 先把未锁定槽退回卡池，再重抽，这样同一刷新不会把即将换掉的份数再占一次。
+	for i in count:
+		if candidate_locked[i] and candidates[i] != null:
+			continue
+		candidates[i] = null
+		candidate_locked[i] = false
 	for i in count:
 		if candidate_locked[i] and candidates[i] != null:
 			continue
@@ -496,16 +529,60 @@ func _pick_one(preferred_tier: int) -> UnitData:
 	if pool.is_empty():
 		return null
 	## 解锁到 T 时：把 [min, T] 并入可抽池（倒数 6 层起 min=2，不再出 T1）。
+	## 已拿走的份数，加上当前货架上还没买的，不能超过每角色 9 份。
 	var min_tier := get_min_tier()
+	var tier_matched: Array[UnitData] = []
 	var unlocked: Array[UnitData] = []
 	for unit in pool:
 		if unit == null:
 			continue
-		if unit.tier >= min_tier and unit.tier <= preferred_tier:
+		if unit.tier < min_tier or unit.tier > preferred_tier:
+			continue
+		tier_matched.append(unit)
+		if _copies_remaining_for_roll(unit) > 0:
 			unlocked.append(unit)
-	if unlocked.is_empty():
-		return pool[_rng.randi_range(0, pool.size() - 1)]
-	return unlocked[_rng.randi_range(0, unlocked.size() - 1)]
+	if not unlocked.is_empty():
+		return unlocked[_rng.randi_range(0, unlocked.size() - 1)]
+	if not tier_matched.is_empty():
+		return null
+	var fallback: Array[UnitData] = []
+	for unit in pool:
+		if unit == null:
+			continue
+		if _copies_remaining_for_roll(unit) > 0:
+			fallback.append(unit)
+	if fallback.is_empty():
+		return null
+	return fallback[_rng.randi_range(0, fallback.size() - 1)]
+
+
+func _copies_taken(unit_id: String) -> int:
+	return int(_taken_copies.get(unit_id, 0))
+
+
+func _copies_on_shelf(unit_id: String) -> int:
+	if unit_id.is_empty():
+		return 0
+	var count := 0
+	for unit in candidates:
+		if unit != null and unit.id == unit_id:
+			count += 1
+	return count
+
+
+## 还能再摆上货架的份数。无名单位不设库存上限。
+func _copies_remaining_for_roll(unit: UnitData) -> int:
+	if unit == null:
+		return 0
+	if unit.id.is_empty():
+		return COPIES_PER_CHARACTER
+	return COPIES_PER_CHARACTER - _copies_taken(unit.id) - _copies_on_shelf(unit.id)
+
+
+func _note_copy_taken(unit: UnitData) -> void:
+	if unit == null or unit.id.is_empty():
+		return
+	_taken_copies[unit.id] = _copies_taken(unit.id) + 1
 
 
 func _player_pool() -> Array[UnitData]:
