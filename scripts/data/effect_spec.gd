@@ -58,6 +58,7 @@ enum Condition {
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
 const TRIGGER_NAMES: PackedStringArray = [
 	"OnCombatStart",
+	"OnCombatEnd",
 	"OnFriendSummoned",
 	"OnSummoned",
 	"OnFriendDeath",

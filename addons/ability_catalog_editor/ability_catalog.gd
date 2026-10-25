@@ -15,6 +15,7 @@ const SHOP_TRIGGERS: Array[StringName] = [
 
 const COMBAT_TRIGGERS: Array[StringName] = [
 	CombatEvents.ON_COMBAT_START,
+	CombatEvents.ON_COMBAT_END,
 	CombatEvents.ON_FRIEND_SUMMONED,
 	CombatEvents.ON_FRIEND_DEATH,
 	CombatEvents.ON_ROUND_START,

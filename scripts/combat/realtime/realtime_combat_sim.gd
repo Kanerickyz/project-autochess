@@ -130,7 +130,7 @@ func set_economy(economy: RunEconomy) -> void:
 		_effect_resolver.set_economy(economy)
 
 
-## 注入本局牌库，供开战永久属性等写入 DeckEntry.bonus_*。
+## 注入本局牌库，供永久属性等写入 DeckEntry.bonus_*。
 func set_deck_state(deck_state: DeckState) -> void:
 	if _effect_resolver != null:
 		_effect_resolver.set_deck_state(deck_state)
@@ -1245,8 +1245,15 @@ func _find_push_dest(
 
 
 func _finish(won: bool) -> void:
+	if _finished:
+		return
+	## 先标结束，避免「战斗结束」技能结算再次走进胜负。
 	_finished = true
 	_player_won = won
+	## 只把当时仍存活的单位留在效果格上，再发战斗结束。
+	_sync_effect_grid_from_rt_positions()
+	_bus_emit(CombatEvents.ON_COMBAT_END, CombatEventPayload.new())
+	_drain_effects(true)
 	_projectiles.clear()
 	_break_reference_cycles()
 	combat_finished.emit(won)

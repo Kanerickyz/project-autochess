@@ -12,6 +12,7 @@ const SKIP_TYPES := {
 	CombatEvents.ON_ENEMY_DEATH: true,
 	CombatEvents.ON_MOVE: true,
 	CombatEvents.ON_COMBAT_START: true,
+	CombatEvents.ON_COMBAT_END: true,
 	CombatEvents.ON_SUMMONED: true,
 	CombatEvents.ON_FRIEND_SUMMONED: true,
 	CombatEvents.ON_LEVEL_UP: true,
