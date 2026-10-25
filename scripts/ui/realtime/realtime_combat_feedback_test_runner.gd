@@ -215,7 +215,7 @@ func _test_effect_resolved_feedback_on_arena() -> void:
 
 
 func _test_rider_enemy_death_feedback() -> void:
-	## 骑手入座开战；击杀一名敌人后应飘 +攻（敌亡叠层）。
+	## 狼骑兵入座开战；击杀一名敌人后应飘 +攻（敌亡叠层）。
 	var battle := _make_battle(777)
 	await process_frame
 	var seated := false
