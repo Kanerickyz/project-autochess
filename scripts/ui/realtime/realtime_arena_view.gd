@@ -51,8 +51,8 @@ const SPRITE_MAX_WIDTH_CELLS := 1.35
 ## 多格足迹（如 Boss 2×2）允许更宽。
 const SPRITE_MAX_WIDTH_CELLS_FOOTPRINT := 2.2
 ## 招募道具图集 3×2、每格 256、间距与偏移都是 0。墨线大约落在 y=31..225。
-## 角色导出图几乎铺满画布；同一套高度上限会让留白格显小，按内容高度补到和角色剪影接近。
-const RECRUIT_PROP_SPRITE_SCALE := 256.0 / 194.0
+## 1 = 跟角色同一绘制框。格内留白会让道具比紧裁角色略小一圈。
+const RECRUIT_PROP_SPRITE_SCALE := 1.0
 const RECRUIT_PROP_CONTENT_BOTTOM := 225.0 / 256.0
 const RECRUIT_TEX_HP := preload("res://resources/recruit_shop/icons/hp_potion_icon.tres")
 const RECRUIT_TEX_ATK := preload("res://resources/recruit_shop/icons/atk_potion_icon.tres")
@@ -3310,7 +3310,7 @@ func _draw_recruit_prop(
 ) -> void:
 	if tex == null:
 		return
-	## 半径跟普通角色一样，贴图放大在 _draw_unit_sprite 里按道具格留白补。
+	## 半径跟普通角色一样；道具不再额外放大。
 	_draw_body(
 		center_tile,
 		0.7,
@@ -3363,7 +3363,7 @@ func _draw_unit_sprite(
 		var shrink := max_w / w
 		w = max_w
 		h *= shrink
-	## 道具图集留白比紧裁的角色图多；先跟角色走到同一上限，再按墨线高度放大。
+	## 道具用角色同一绘制框，不再按留白额外放大。
 	var content_bottom := 1.0
 	if _is_recruit_prop_tex(tex):
 		w *= RECRUIT_PROP_SPRITE_SCALE
