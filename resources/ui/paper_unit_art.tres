@@ -73,8 +73,30 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_blue.png" id="b_berserker"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_red.png" id="r_berserker"]
-[ext_resource type="Texture2D" uid="uid://bg3btpfjsxd01" path="res://assets/sprites/placeholders/character_dev.png" id="b_character_dev"]
-[ext_resource type="Texture2D" uid="uid://cdevenemyred01" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="r_character_dev"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shinobi_blue.png" id="b_shinobi"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_devour_blue.png" id="b_devour"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blade_mender_blue.png" id="b_blade_mender"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_aftershock_blue.png" id="b_aftershock"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_edge_hex_blue.png" id="b_edge_hex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_boon_blue.png" id="b_shield_boon"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_paymaster_blue.png" id="b_paymaster"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wergild_blue.png" id="b_wergild"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_coffer_ward_blue.png" id="b_coffer_ward"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_wage_blue.png" id="b_blood_wage"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_scatter_hex_blue.png" id="b_scatter_hex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_blue.png" id="b_funeral_pyre"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shinobi_red.png" id="r_shinobi"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_devour_red.png" id="r_devour"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blade_mender_red.png" id="r_blade_mender"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_aftershock_red.png" id="r_aftershock"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_edge_hex_red.png" id="r_edge_hex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_boon_red.png" id="r_shield_boon"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_paymaster_red.png" id="r_paymaster"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wergild_red.png" id="r_wergild"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_coffer_ward_red.png" id="r_coffer_ward"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_wage_red.png" id="r_blood_wage"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_scatter_hex_red.png" id="r_scatter_hex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_red.png" id="r_funeral_pyre"]
 
 
 [resource]
@@ -140,26 +162,26 @@ archetype_by_unit_id = {
 }
 default_archetype = &"spear"
 player_textures = {
-&"aftershock": ExtResource("b_character_dev"),
+&"aftershock": ExtResource("b_aftershock"),
 &"apothecary": ExtResource("b_apothecary"),
 &"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
-&"blade_mender": ExtResource("b_character_dev"),
+&"blade_mender": ExtResource("b_blade_mender"),
 &"axe": ExtResource("b_axe"),
 &"banner": ExtResource("b_banner"),
 &"berserker": ExtResource("b_berserker"),
 
 &"blood_acolyte": ExtResource("b_blood_acolyte"),
-&"blood_wage": ExtResource("b_character_dev"),
-&"funeral_pyre": ExtResource("b_character_dev"),
-&"scatter_hex": ExtResource("b_character_dev"),
+&"blood_wage": ExtResource("b_blood_wage"),
+&"funeral_pyre": ExtResource("b_funeral_pyre"),
+&"scatter_hex": ExtResource("b_scatter_hex"),
 &"boss_minion_t4": ExtResource("b_captain"),
 &"boss_minion_t5": ExtResource("b_valkyrie"),
 &"captain": ExtResource("b_captain"),
-&"coffer_ward": ExtResource("b_character_dev"),
+&"coffer_ward": ExtResource("b_coffer_ward"),
 &"crossbow": ExtResource("b_crossbow"),
-&"devour": ExtResource("b_character_dev"),
-&"edge_hex": ExtResource("b_character_dev"),
+&"devour": ExtResource("b_devour"),
+&"edge_hex": ExtResource("b_edge_hex"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
 &"echo_spear": ExtResource("b_echo_spear"),
 &"fused_enchant": ExtResource("b_fused_enchant"),
@@ -173,14 +195,14 @@ player_textures = {
 &"mend_friar": ExtResource("b_mend_friar"),
 &"mirror_warden": ExtResource("b_mirror_warden"),
 &"musket": ExtResource("b_musket"),
-&"paymaster": ExtResource("b_character_dev"),
+&"paymaster": ExtResource("b_paymaster"),
 &"ram": ExtResource("b_ram"),
 &"relic_aegis": ExtResource("b_relic_aegis"),
 &"rider": ExtResource("b_rider"),
 &"rune_plate": ExtResource("b_rune_plate"),
 &"shield": ExtResource("b_shield"),
-&"shield_boon": ExtResource("b_character_dev"),
-&"shinobi": ExtResource("b_character_dev"),
+&"shield_boon": ExtResource("b_shield_boon"),
+&"shinobi": ExtResource("b_shinobi"),
 &"skeleton": ExtResource("b_skeleton"),
 &"slime": ExtResource("b_slime"),
 &"soulcaller": ExtResource("b_soulcaller"),
@@ -190,29 +212,29 @@ player_textures = {
 &"valkyrie": ExtResource("b_valkyrie"),
 &"vita_keeper": ExtResource("b_vita_keeper"),
 &"wardrum": ExtResource("b_wardrum"),
-&"wergild": ExtResource("b_character_dev")
+&"wergild": ExtResource("b_wergild")
 }
 enemy_textures = {
-&"aftershock": ExtResource("r_character_dev"),
+&"aftershock": ExtResource("r_aftershock"),
 &"apothecary": ExtResource("r_apothecary"),
 &"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),
-&"blade_mender": ExtResource("r_character_dev"),
+&"blade_mender": ExtResource("r_blade_mender"),
 &"axe": ExtResource("r_axe"),
 &"banner": ExtResource("r_banner"),
 &"berserker": ExtResource("r_berserker"),
 
 &"blood_acolyte": ExtResource("r_blood_acolyte"),
-&"blood_wage": ExtResource("r_character_dev"),
-&"funeral_pyre": ExtResource("r_character_dev"),
-&"scatter_hex": ExtResource("r_character_dev"),
+&"blood_wage": ExtResource("r_blood_wage"),
+&"funeral_pyre": ExtResource("r_funeral_pyre"),
+&"scatter_hex": ExtResource("r_scatter_hex"),
 &"boss_minion_t4": ExtResource("r_captain"),
 &"boss_minion_t5": ExtResource("r_valkyrie"),
 &"captain": ExtResource("r_captain"),
-&"coffer_ward": ExtResource("r_character_dev"),
+&"coffer_ward": ExtResource("r_coffer_ward"),
 &"crossbow": ExtResource("r_crossbow"),
-&"devour": ExtResource("r_character_dev"),
-&"edge_hex": ExtResource("r_character_dev"),
+&"devour": ExtResource("r_devour"),
+&"edge_hex": ExtResource("r_edge_hex"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
 &"echo_spear": ExtResource("r_echo_spear"),
 &"fused_enchant": ExtResource("r_fused_enchant"),
@@ -226,14 +248,14 @@ enemy_textures = {
 &"mend_friar": ExtResource("r_mend_friar"),
 &"mirror_warden": ExtResource("r_mirror_warden"),
 &"musket": ExtResource("r_musket"),
-&"paymaster": ExtResource("r_character_dev"),
+&"paymaster": ExtResource("r_paymaster"),
 &"ram": ExtResource("r_ram"),
 &"relic_aegis": ExtResource("r_relic_aegis"),
 &"rider": ExtResource("r_rider"),
 &"rune_plate": ExtResource("r_rune_plate"),
 &"shield": ExtResource("r_shield"),
-&"shield_boon": ExtResource("r_character_dev"),
-&"shinobi": ExtResource("r_character_dev"),
+&"shield_boon": ExtResource("r_shield_boon"),
+&"shinobi": ExtResource("r_shinobi"),
 &"skeleton": ExtResource("r_skeleton"),
 &"slime": ExtResource("r_slime"),
 &"soulcaller": ExtResource("r_soulcaller"),
@@ -243,5 +265,5 @@ enemy_textures = {
 &"valkyrie": ExtResource("r_valkyrie"),
 &"vita_keeper": ExtResource("r_vita_keeper"),
 &"wardrum": ExtResource("r_wardrum"),
-&"wergild": ExtResource("r_character_dev")
+&"wergild": ExtResource("r_wergild")
 }

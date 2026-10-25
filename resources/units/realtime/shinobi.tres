@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
 [ext_resource type="Resource" path="res://resources/abilities/turn_start_strike_weakest.tres" id="3_ability"]
-[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="icon_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shinobi_blue.png" id="icon_tex"]
 
 [sub_resource type="Resource" id="UnitStats_shinobi"]
 script = ExtResource("2_stats")
@@ -15,8 +15,6 @@ attack_windup = 0.4
 attack_reach = 0.6
 sight_range = 5.5
 body_radius = 0.35
-visual_half_width = 0.85
-visual_half_height = 1.1
 mass = 1.1
 projectile_speed = 0.0
 splash_radius = 0.0
