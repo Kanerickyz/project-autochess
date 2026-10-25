@@ -71,17 +71,20 @@ func configure(_p_slot_count: int, board_size: Vector2i) -> void:
 	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
 
 
-## 备战区：棋盘底边下方虚拟一行（y = board_size.y），与列数对齐居中。
-func configure_bench_row(board_size: Vector2i, capacity: int = 5) -> void:
-	configure_custom_cells(build_bench_cells(board_size, capacity))
+## 备战区一行：默认棋盘底边下方（y = board_size.y）；招募可传 midline 夹在队伍与招募半场之间。
+func configure_bench_row(board_size: Vector2i, capacity: int = 5, row_y: int = -1) -> void:
+	configure_custom_cells(build_bench_cells(board_size, capacity, row_y))
 
 
-static func build_bench_cells(board_size: Vector2i, capacity: int = 5) -> Array[Vector2i]:
+## row_y < 0：棋盘外虚拟行（y = board_size.y）；否则落在指定逻辑行（如招募中缝 midline）。
+static func build_bench_cells(
+	board_size: Vector2i, capacity: int = 5, row_y: int = -1
+) -> Array[Vector2i]:
 	var n := maxi(1, capacity)
 	var cols := maxi(1, board_size.x)
 	var start_x := (cols - n) / 2
 	start_x = clampi(start_x, 0, maxi(0, cols - 1))
-	var y := maxi(0, board_size.y)
+	var y := row_y if row_y >= 0 else maxi(0, board_size.y)
 	var result: Array[Vector2i] = []
 	for i in n:
 		var x := start_x + i
