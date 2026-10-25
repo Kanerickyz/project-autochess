@@ -14,10 +14,16 @@ Output:
   assets/sprites/paper_cutout/ui/stat_{attack,hp}.png
 
 Red variants recolor only the cobalt cloth so both teams keep identical silhouettes.
+
+units_sheet_h.jpg is a 4×3 neutral-gray grid (256px cells) for the twelve
+units that used the DEV placeholder. `python3 tools/process_paper_cutout_art.py sheet-h`
+writes only those stickers. Output height matches the other unit stickers (320px)
+so the battlefield, which scales by texture aspect, keeps the same body size.
 """
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -146,6 +152,73 @@ def cut_badges(path: Path) -> None:
 		print(f"stat_{name}: {piece.size}")
 
 
+## 4×3, row-major, one sticker per 256 cell. Neutral backdrop (not magenta).
+SHEET_H_NAMES = [
+	"shinobi", "devour", "blade_mender", "aftershock",
+	"edge_hex", "shield_boon", "paymaster", "wergild",
+	"coffer_ward", "blood_wage", "scatter_hex", "funeral_pyre",
+]
+SHEET_H_CELL = 256
+## Match existing stickers: opaque content 316px inside a 2px pad → height 320.
+STICKER_HEIGHT = 320
+STICKER_PAD = 2
+
+
+def key_out_neutral(rgb: np.ndarray) -> np.ndarray:
+	"""Drop a flat light backdrop sampled from the corner. Keep the cream sticker edge."""
+	bg = np.median(rgb[:12, :12], axis=(0, 1)).astype(np.int32)
+	diff = np.max(np.abs(rgb.astype(np.int32) - bg.reshape(1, 1, 3)), axis=-1)
+	rough = diff <= 18
+	labels, count = ndimage.label(rough)
+	edge = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
+	outside = np.isin(labels, edge[edge > 0])
+	ref = np.median(rgb[outside], axis=0).astype(np.int32)
+	edge_ids = set(int(v) for v in edge.tolist())
+	for idx in range(1, count + 1):
+		if idx in edge_ids:
+			continue
+		region = labels == idx
+		if int(region.sum()) > 8000:
+			continue
+		median = np.median(rgb[region], axis=0).astype(np.int32)
+		if np.abs(median - ref).max() <= 14:
+			outside |= region
+	sat = rgb.astype(np.int32)
+	sat = sat.max(axis=-1) - sat.min(axis=-1)
+	fringe = (diff <= 36) & ndimage.binary_dilation(outside, iterations=2) & (sat < 28)
+	backdrop = outside | fringe
+	keep = Image.fromarray(np.where(backdrop, 0, 255).astype(np.uint8), mode="L")
+	keep = keep.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.55))
+	return np.array(keep)
+
+
+def _fit_sticker_height(im: Image.Image) -> Image.Image:
+	"""Tight crop, then scale so every sticker is STICKER_HEIGHT tall (same as the other units)."""
+	tight = crop_to_alpha(im, pad=0)
+	inner = STICKER_HEIGHT - STICKER_PAD * 2
+	if tight.height != inner:
+		w = max(1, round(tight.width * inner / tight.height))
+		tight = tight.resize((w, inner), Image.Resampling.LANCZOS)
+	canvas = Image.new("RGBA", (tight.width + STICKER_PAD * 2, STICKER_HEIGHT), (0, 0, 0, 0))
+	canvas.paste(tight, (STICKER_PAD, STICKER_PAD), tight)
+	return canvas
+
+
+def cut_neutral_grid(path: Path, names: list[str], cell: int) -> None:
+	sheet = Image.open(path).convert("RGB")
+	rgb = np.array(sheet)
+	alpha = key_out_neutral(rgb)
+	full = Image.fromarray(np.dstack([rgb, alpha]), mode="RGBA")
+	cols = sheet.width // cell
+	for i, name in enumerate(names):
+		x = (i % cols) * cell
+		y = (i // cols) * cell
+		piece = _fit_sticker_height(full.crop((x, y, x + cell, y + cell)))
+		piece.save(UNITS / f"unit_{name}_blue.png")
+		to_red_team(piece).save(UNITS / f"unit_{name}_red.png")
+		print(f"unit_{name}: {piece.size}")
+
+
 def main() -> None:
 	ENV.mkdir(parents=True, exist_ok=True)
 	UNITS.mkdir(parents=True, exist_ok=True)
@@ -157,4 +230,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-	main()
+	if len(sys.argv) > 1 and sys.argv[1] == "sheet-h":
+		UNITS.mkdir(parents=True, exist_ok=True)
+		cut_neutral_grid(SRC / "units_sheet_h.jpg", SHEET_H_NAMES, SHEET_H_CELL)
+	else:
+		main()

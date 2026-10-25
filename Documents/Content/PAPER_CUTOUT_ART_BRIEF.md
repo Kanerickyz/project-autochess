@@ -223,8 +223,18 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `goblin` | 火纹长袍 + 提炭火吊炉 | goblin 余烬 |
 | `gravewright` | 驼背老人 + 铁锹 + 提灯 | gravewright 掘墓 |
 | `soulcaller` | 黑面兜帽 + 骷髅杖 + 鬼火 | soulcaller 召魂 |
-| `devour` | **DEV 占位** `character_dev.png`（终稿前） | devour 吞噬 |
-| `shinobi` | **DEV 占位** `character_dev.png`（终稿前） | shinobi 影刺 |
+| `shinobi` | 蓝兜帽蒙面 + 双匕首 | shinobi 影刺 |
+| `devour` | 绿皮巨口肚兜 + 剁刀 | devour 吞噬 |
+| `blade_mender` | 白兜帽十字袍 + 直剑 | blade_mender 疗刃 |
+| `aftershock` | 桶盔 + 狼牙肩毛 + 圆锤 | aftershock 余震 |
+| `edge_hex` | 紫尖帽咒袍 + 弯刀符纸 | edge_hex 咒刃 |
+| `shield_boon` | 太阳塔盾 + 铁盔 | shield_boon 盾祷 |
+| `paymaster` | 蓝羽帽 + 钱袋账册 | paymaster 饷吏 |
+| `wergild` | 鸟嘴兜帽 + 天平 | wergild 殓金 |
+| `coffer_ward` | 板甲 + 宝箱 + 链锤 | coffer_ward 帑卫 |
+| `blood_wage` | 额带绷带 + 短刀钱袋 | blood_wage 血饷 |
+| `scatter_hex` | 骷髅兜帽 + 紫宝珠 | scatter_hex 散咒 |
+| `funeral_pyre` | 背负柴捆火把 + 炭盆 | funeral_pyre 葬焰 |
 
 召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
