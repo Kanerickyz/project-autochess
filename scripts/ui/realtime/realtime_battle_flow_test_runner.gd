@@ -179,6 +179,29 @@ func _test_battle_controller_rules() -> void:
 		battle.get_slot_board().occupied_count() == deck.get_seated_count(),
 		"controller: prepare occupied matches seated only (no auto-fill from bench)"
 	)
+	## Arena 备战：半场下方虚拟行 + hit-test；Dock 行恒隐藏。
+	var arena_bench := battle.get_arena()
+	_expect(arena_bench != null, "controller: arena present for bench UI")
+	if arena_bench != null:
+		_expect(arena_bench.bench_visible, "controller: prepare shows arena bench")
+		_expect(arena_bench.bench_interactive, "controller: prepare bench interactive")
+		_expect(arena_bench.bench_slots != null and arena_bench.bench_slots.slot_count == DeckState.BENCH_CAPACITY, "controller: arena bench 5 slots")
+		var dock_bench := battle.find_child("BenchRow", true, false) as Control
+		_expect(dock_bench == null or not dock_bench.visible, "controller: dock BenchRow hidden")
+		if arena_bench.bench_slots != null and arena_bench.bench_slots.slot_count > 0:
+			var b0 := arena_bench.bench_slot_center_local(0)
+			var hit_i := arena_bench.find_bench_slot_at_local(b0)
+			_expect(hit_i == 0, "controller: bench hit-test maps center to slot 0")
+			_expect(arena_bench.bench_slots.get_cell(0).y == battle.get_board_size().y, "controller: bench cells below board")
+			if arena_bench.bench_slots.occupied_count() >= 1:
+				var occupied_i := -1
+				for bi in arena_bench.bench_slots.slot_count:
+					if arena_bench.bench_slots.get_entry(bi) != null:
+						occupied_i = bi
+						break
+				if occupied_i >= 0:
+					var info := arena_bench.inspect_at(arena_bench.bench_slot_center_local(occupied_i))
+					_expect(not info.is_empty(), "controller: bench paper is inspectable")
 	_expect(not battle.try_refresh_hand(), "controller: refresh still disabled")
 
 	## 上场人数上限：持久入座不超过 deploy_cap；空座仍多

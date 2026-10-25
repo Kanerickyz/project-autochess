@@ -10,6 +10,7 @@ static func run_all() -> bool:
 	ok = _check("recruit_matches_ally_row_order", _test_recruit_matches_ally_row_order()) and ok
 	ok = _check("recruit_front_not_enemy_front", _test_recruit_front_not_enemy_front()) and ok
 	ok = _check("fills_half_field", _test_fills_half_field()) and ok
+	ok = _check("bench_row_below_board", _test_bench_row_below_board()) and ok
 	if ok:
 		print("PrepareSlotBoardTest: all passed")
 	else:
@@ -79,3 +80,18 @@ static func _test_fills_half_field() -> bool:
 			return false
 		seen["%d,%d" % [cell.x, cell.y]] = true
 	return seen.size() == 20
+
+
+static func _test_bench_row_below_board() -> bool:
+	var board := PrepareSlotBoard.new()
+	board.configure_bench_row(Vector2i(5, 8), 5)
+	if board.slot_count != 5 or board.cells.size() != 5:
+		return false
+	var xs: Dictionary = {}
+	for cell in board.cells:
+		if cell.y != 8:
+			return false
+		if cell.x < 0 or cell.x >= 5:
+			return false
+		xs[cell.x] = true
+	return xs.size() == 5 and board.find_slot_at_cell(Vector2i(2, 8)) == 2
