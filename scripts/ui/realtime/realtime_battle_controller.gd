@@ -2766,8 +2766,9 @@ func _on_continue_pressed() -> void:
 
 
 func _on_unit_died(rt: RtUnit) -> void:
-	## 角色死亡立刻离场，不留侧倒残影。
+	## 侧倒淡出；淡出后运动层移除残影，不再留在场上。
 	_arena.add_death_fx(rt.position, maxf(rt.get_visual_half_width(), rt.get_visual_half_height()), rt.is_player())
+	_arena.play_unit_death(rt)
 
 
 func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> void:

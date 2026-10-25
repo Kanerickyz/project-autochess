@@ -614,9 +614,12 @@ func sync_combat_motion_now() -> void:
 	_motion.sync_units(sim.get_units(), sim.get_current_actor())
 
 
-## 死亡立刻离场，不生成侧倒残影。
-func play_unit_death(_rt: RtUnit) -> void:
-	return
+## 死亡：侧倒淡出。淡出结束由运动层移除，不再绘制。
+func play_unit_death(rt: RtUnit) -> void:
+	if rt == null:
+		return
+	var half := _resolve_visual_half(rt.get_visual_half_height(), rt.get_radius(), 1.6)
+	_motion.play_death(rt, _rt_unit_id(rt), half)
 
 
 func _feedback_duration_for_scale(scale: float) -> float:
@@ -3159,7 +3162,8 @@ func _draw_units(px: float) -> void:
 		var is_actor := actor != null and rt == actor
 		if started and actor != null and not is_actor:
 			alpha = 0.72
-		if started and not rt.is_alive():
+		## 已死单位只走残影；本体不再绘制，避免淡出后仍留在场上。
+		if not rt.is_alive():
 			continue
 		if started and rt.is_deploying():
 			alpha = mini(alpha, 0.55)
@@ -3208,6 +3212,8 @@ func _draw_units(px: float) -> void:
 
 func _draw_corpses(px: float) -> void:
 	for corpse in _motion.get_corpses():
+		if corpse.done or corpse.pose.alpha <= 0.02:
+			continue
 		var tex: Texture2D = _art.get_texture(corpse.unit_id, corpse.is_player) if _art != null else null
 		if tex == null:
 			continue

@@ -667,6 +667,7 @@ func _test_combat_motion() -> void:
 	var saw_shake := false
 	var saw_walk := false
 	var saw_death := false
+	var saw_corpse := false
 	var saw_lunge := false
 	var saw_clash_flash := false
 	var saw_idle := false
@@ -710,6 +711,7 @@ func _test_combat_motion() -> void:
 			saw_walk = saw_walk or (walk.get("offset", Vector2.ZERO) as Vector2).y < -0.02
 			saw_walk = saw_walk or float(walk.get("shadow_mul", 1.0)) > 1.08
 		saw_shake = saw_shake or motion.shake_strength > 0.5
+		saw_corpse = saw_corpse or not motion.get_corpses().is_empty()
 		if (
 			saw_offset and saw_flash and saw_shake and saw_walk and saw_death
 			and saw_lunge and saw_clash_flash and saw_idle and saw_actor_not_idle
@@ -721,7 +723,11 @@ func _test_combat_motion() -> void:
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
 	_expect(saw_death, "a unit dies during the encounter")
-	_expect(motion.get_corpses().is_empty(), "death removes the sprite immediately")
+	_expect(saw_corpse, "death plays a falling corpse")
+	var fade_deadline := Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < fade_deadline and not motion.get_corpses().is_empty():
+		await process_frame
+	_expect(motion.get_corpses().is_empty(), "faded corpse is removed and not drawn again")
 	## 回合制下近战接触帧可能极短；有轴向冲撞则严格通过，否则回退到通用 offset/flash。
 	_expect(saw_lunge or saw_offset, "melee attacker lunges toward its target")
 	_expect(saw_clash_flash or (saw_flash and saw_offset), "melee target flashes white on impact")
