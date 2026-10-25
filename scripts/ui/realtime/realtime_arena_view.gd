@@ -148,13 +148,13 @@ var ghost_unit_id: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
-## 备战区：棋盘底边下方虚拟一行 5 格（PrepareSlotBoard + 纸片绘制）。
+## 备战区：准备/战斗在棋盘底边下方；招募时在 midline 中缝（队伍与招募半场之间）。
 var bench_slots: PrepareSlotBoard
 ## 准备/战斗/招募显示备战行；附魔/商店/目录关闭。
 var bench_visible: bool = false
 ## 准备/招募可拖；战斗只读（长按信息仍可）。
 var bench_interactive: bool = false
-## 备战行与棋盘底边的空隙（逻辑格）。
+## 备战行与棋盘底边的空隙（逻辑格；仅棋盘外备战）。
 const BENCH_GAP_TILES := 0.25
 const BENCH_ROW_TILES := 1.0
 ## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
@@ -371,6 +371,9 @@ func _notification(what: int) -> void:
 func _bench_layout_tiles() -> float:
 	if not bench_visible:
 		return 0.0
+	## 招募备战在棋盘内中缝，不另占棋盘外高度。
+	if recruit_active:
+		return 0.0
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
 
 
@@ -412,16 +415,19 @@ func get_board_rect() -> Rect2:
 	var bench_h := _bench_layout_tiles() * px
 	var total := Vector2(board_px.x, board_px.y + bench_h)
 	var origin := (size - total) * 0.5
-	## 棋盘在内容区顶部；备战行画在 board 底边下方。
+	## 棋盘在内容区顶部；准备/战斗备战行画在 board 底边下方。
 	return Rect2(origin, board_px)
 
 
-## 备战格中心本地坐标（含 gap；虚拟 tile y = board_size.y）。
+## 备战格中心本地坐标。招募：逻辑格中心（midline）；准备/战斗：棋盘外虚拟行。
 func bench_slot_center_local(slot_index: int) -> Vector2:
 	if bench_slots == null or slot_index < 0 or slot_index >= bench_slots.cells.size():
 		return Vector2.ZERO
 	var cell := bench_slots.cells[slot_index]
 	var px := get_cell_px()
+	## 棋盘内备战（招募中缝）：与座位同口径的格心。
+	if cell.y < board_size.y:
+		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5))
 	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
 	return get_board_rect().position + Vector2(float(cell.x) + 0.5, float(board_size.y)) * px + Vector2(0.0, gap + px * 0.5)
 
@@ -2898,7 +2904,7 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
-	## 备战行：友方半场下方；准备/战斗/招募皆画；拖源降透明。
+	## 备战行：准备/战斗在友方半场下方；招募夹在队伍与招募半场中缝；拖源降透明。
 	_draw_bench_row(px)
 	_draw_fx(px)
 	_draw_feedback(px)

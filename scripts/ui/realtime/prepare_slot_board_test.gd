@@ -94,4 +94,13 @@ static func _test_bench_row_below_board() -> bool:
 		if cell.x < 0 or cell.x >= 5:
 			return false
 		xs[cell.x] = true
-	return xs.size() == 5 and board.find_slot_at_cell(Vector2i(2, 8)) == 2
+	if not (xs.size() == 5 and board.find_slot_at_cell(Vector2i(2, 8)) == 2):
+		return false
+	## 招募中缝：显式 row_y = midline。
+	var mid := BoardHalf.midline_row(8)
+	var seam := PrepareSlotBoard.new()
+	seam.configure_bench_row(Vector2i(5, 8), 5, mid)
+	for cell in seam.cells:
+		if cell.y != mid:
+			return false
+	return seam.find_slot_at_cell(Vector2i(2, mid)) == 2
