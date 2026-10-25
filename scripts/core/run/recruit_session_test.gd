@@ -28,6 +28,7 @@ static func run_all() -> bool:
 	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	passed = _test_unlocked_tier_merges_into_pool() and passed
 	passed = _test_full_roster_buy_completes_triple() and passed
+	passed = _test_nine_copies_leave_the_pool() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -869,5 +870,208 @@ static func _test_fused_enchant_survives_recruit_reset() -> bool:
 	var ab := after.get_main_ability()
 	if ab == null or ab.id != ability_id:
 		push_error("RecruitSessionTest: reset should keep fused runtime ability")
+		return false
+	return true
+
+
+static func _make_custom_session(
+	deck: DeckState,
+	economy: RunEconomy,
+	pool: Array[UnitData],
+	candidate_count: int,
+	seed: int,
+) -> RecruitSession:
+	var config := RecruitConfig.new()
+	config.refresh_cost = 1
+	config.default_unit_cost = 2
+	config.candidate_count = candidate_count
+	config.unit_pool = pool
+	var session := RecruitSession.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	session.configure(config, deck, economy, rng)
+	session.begin(0.0)
+	return session
+
+
+static func _count_candidate(session: RecruitSession, unit_id: String) -> int:
+	var count := 0
+	for unit in session.get_candidates():
+		if unit != null and unit.id == unit_id:
+			count += 1
+	return count
+
+
+static func _buy_unit(session: RecruitSession, deck: DeckState, unit_id: String, times: int) -> bool:
+	var bought := 0
+	var guard := 0
+	while bought < times and guard < 120:
+		guard += 1
+		if deck.size() >= session.get_seat_cap():
+			var sold: Dictionary = session.try_sell(deck.get_entries()[0].entry_id)
+			if not bool(sold.get("ok", false)):
+				push_error("RecruitSessionTest: sell while taking %s failed" % unit_id)
+				return false
+		var idx := -1
+		for i in session.get_candidate_slot_count():
+			var unit := session.get_candidate(i)
+			if unit != null and unit.id == unit_id:
+				idx = i
+				break
+		if idx < 0:
+			if not session.try_refresh():
+				push_error(
+					"RecruitSessionTest: refresh while taking %s failed at %d/%d"
+					% [unit_id, bought, times]
+				)
+				return false
+			continue
+		var result: Dictionary = session.try_recruit(idx)
+		if not bool(result.get("ok", false)):
+			push_error(
+				"RecruitSessionTest: taking %s failed: %s" % [unit_id, result.get("reason", "")]
+			)
+			return false
+		bought += 1
+	if bought != times:
+		push_error("RecruitSessionTest: took %d %s, wanted %d" % [bought, unit_id, times])
+		return false
+	return true
+
+
+static func _test_nine_copies_leave_the_pool() -> bool:
+	var archer_only: Array[UnitData] = []
+	archer_only.append(ARCHER)
+	var deck := _make_deck([], 5)
+	var session := _make_custom_session(deck, _make_economy(80), archer_only, 5, 3)
+	if session.get_copies_remaining(ARCHER.id) != 9:
+		push_error("RecruitSessionTest: fresh pool should have 9 archer copies")
+		return false
+	if _count_candidate(session, ARCHER.id) != 5:
+		push_error("RecruitSessionTest: 9 copies should fill 5 slots with the same character")
+		return false
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh without a buy failed")
+		return false
+	if session.get_copies_remaining(ARCHER.id) != 9 or _count_candidate(session, ARCHER.id) != 5:
+		push_error("RecruitSessionTest: unbought refresh must not consume copies")
+		return false
+
+	var buy: Dictionary = session.try_recruit(0)
+	if not bool(buy.get("ok", false)):
+		push_error("RecruitSessionTest: copy-stock buy failed")
+		return false
+	if session.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: a recruit should take one copy")
+		return false
+	var bought_entry := buy["entry"] as DeckEntry
+	var sold: Dictionary = session.try_sell(bought_entry.entry_id)
+	if not bool(sold.get("ok", false)):
+		push_error("RecruitSessionTest: sell after recruit failed")
+		return false
+	if session.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: selling must not return a copy to the pool")
+		return false
+	session.reset()
+	if session.get_copies_remaining(ARCHER.id) != 9 or deck.size() != 0:
+		push_error("RecruitSessionTest: reset should return copies taken this visit")
+		return false
+
+	if not _buy_unit(session, deck, ARCHER.id, 8):
+		return false
+	if session.get_copies_remaining(ARCHER.id) != 1:
+		push_error("RecruitSessionTest: eight recruits should leave 1 copy")
+		return false
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh with 1 copy left failed")
+		return false
+	if _count_candidate(session, ARCHER.id) != 1:
+		push_error(
+			"RecruitSessionTest: shelf should show exactly the last copy, got %d"
+			% _count_candidate(session, ARCHER.id)
+		)
+		return false
+	var lock_index := -1
+	for i in session.get_candidate_slot_count():
+		var shown := session.get_candidate(i)
+		if shown != null and shown.id == ARCHER.id:
+			lock_index = i
+			break
+	if lock_index < 0 or not session.toggle_candidate_lock(lock_index):
+		push_error("RecruitSessionTest: could not lock the last copy")
+		return false
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh with locked last copy failed")
+		return false
+	var locked := session.get_candidate(lock_index)
+	if (
+		_count_candidate(session, ARCHER.id) != 1
+		or locked == null
+		or locked.id != ARCHER.id
+		or not session.is_candidate_locked(lock_index)
+	):
+		push_error("RecruitSessionTest: locked last copy must stay the only one shown")
+		return false
+
+	if not _buy_unit(session, deck, ARCHER.id, 1):
+		return false
+	if session.get_copies_remaining(ARCHER.id) != 0:
+		push_error("RecruitSessionTest: ninth recruit should empty the character")
+		return false
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh after the pool is empty failed")
+		return false
+	if _count_candidate(session, ARCHER.id) != 0:
+		push_error("RecruitSessionTest: exhausted character must not be rolled")
+		return false
+	session.finish()
+	session.begin(0.0)
+	if session.get_copies_remaining(ARCHER.id) != 0 or _count_candidate(session, ARCHER.id) != 0:
+		push_error("RecruitSessionTest: taken copies must stay gone on the next visit")
+		return false
+	session.clear_taken_copies()
+	session.begin(0.0)
+	if session.get_copies_remaining(ARCHER.id) != 9 or _count_candidate(session, ARCHER.id) != 5:
+		push_error("RecruitSessionTest: a new run should refill 9 copies")
+		return false
+
+	var both: Array[UnitData] = []
+	both.append(ARCHER)
+	both.append(KNIGHT)
+	var deck_both := _make_deck([], 5)
+	var session_both := _make_custom_session(deck_both, _make_economy(120), both, 5, 11)
+	if not _buy_unit(session_both, deck_both, ARCHER.id, 9):
+		return false
+	session_both.finish()
+	session_both.begin(0.0)
+	if session_both.get_copies_remaining(KNIGHT.id) != 9:
+		push_error("RecruitSessionTest: another character should keep its own 9 copies")
+		return false
+	if _count_candidate(session_both, ARCHER.id) != 0 or _count_candidate(session_both, KNIGHT.id) != 5:
+		push_error("RecruitSessionTest: only the exhausted character should disappear")
+		return false
+
+	var deck_replace := _make_deck([KNIGHT], 1)
+	var session_replace := _make_custom_session(
+		deck_replace, _make_economy(20), archer_only, 1, 4
+	)
+	var replace_id := deck_replace.get_entries()[0].entry_id
+	var replaced: Dictionary = session_replace.try_recruit(0, replace_id)
+	if not bool(replaced.get("ok", false)):
+		push_error("RecruitSessionTest: replace should take a copy, got %s" % replaced.get("reason", ""))
+		return false
+	if session_replace.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: replace must consume one copy")
+		return false
+
+	var deck_skip := _make_deck([], 5)
+	var session_skip := _make_custom_session(deck_skip, _make_economy(20), archer_only, 1, 2)
+	var skipped_buy: Dictionary = session_skip.try_recruit(0)
+	if not bool(skipped_buy.get("ok", false)) or session_skip.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: skip fixture should take one copy")
+		return false
+	session_skip.skip()
+	if session_skip.get_copies_remaining(ARCHER.id) != 9 or deck_skip.size() != 0:
+		push_error("RecruitSessionTest: skip should return the copy taken this visit")
 		return false
 	return true

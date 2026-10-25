@@ -74,6 +74,7 @@ func _start_new_run() -> void:
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
+	_recruit_session.clear_taken_copies()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(run_controller.map_config.floor_count)
