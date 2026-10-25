@@ -50,6 +50,15 @@ const SPRITE_HEIGHT_MUL := 2.5
 const SPRITE_MAX_WIDTH_CELLS := 1.35
 ## 多格足迹（如 Boss 2×2）允许更宽。
 const SPRITE_MAX_WIDTH_CELLS_FOOTPRINT := 2.2
+## 招募道具图集 3×2、每格 256、间距与偏移都是 0。墨线大约落在 y=31..225。
+## 角色导出图几乎铺满画布；同一套高度上限会让留白格显小，按内容高度补到和角色剪影接近。
+const RECRUIT_PROP_SPRITE_SCALE := 256.0 / 194.0
+const RECRUIT_PROP_CONTENT_BOTTOM := 225.0 / 256.0
+const RECRUIT_TEX_HP := preload("res://resources/recruit_shop/icons/hp_potion_icon.tres")
+const RECRUIT_TEX_ATK := preload("res://resources/recruit_shop/icons/atk_potion_icon.tres")
+const RECRUIT_TEX_LOCK := preload("res://resources/recruit_shop/icons/lock_icon.tres")
+const RECRUIT_TEX_SELL := preload("res://resources/recruit_shop/icons/sell_icon.tres")
+const RECRUIT_TEX_BANNER := preload("res://resources/recruit_shop/icons/banner_icon.tres")
 const ATTACK_FLASH_SECONDS := 0.12
 const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
@@ -1782,12 +1791,12 @@ func _begin_recruit_item_drag(index: int, from_local: Vector2 = Vector2.ZERO) ->
 	_recruit_team_press_id = -1
 	recruit_pending_item_slot = index
 	_drag_active = true
-	_drag_radius = 0.55
+	_drag_radius = 0.7
 	_drag_visual_half_width = 0.0
 	_drag_visual_half_height = 0.0
 	_drag_label = String(info.get("label", item.get_display_name()))
 	_drag_unit_id = ""
-	_drag_texture = null
+	_drag_texture = _recruit_prop_texture(item.id)
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -2581,19 +2590,20 @@ func _draw_recruit_sell_slot(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
 	var cell_rect := Rect2(rect.position + Vector2(recruit_sell_cell) * px + off, Vector2(px, px))
 	var hot := _recruit_team_drag_id >= 0 and _hover_cell == recruit_sell_cell
-	draw_rect(cell_rect, RECRUIT_SELL_HOT if hot else RECRUIT_SELL_EMPTY)
-	draw_rect(cell_rect, RECRUIT_SELL_BORDER, false, 2.0)
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.4), 10, 16)
-	var label := "出售"
+	if hot:
+		draw_rect(cell_rect, RECRUIT_SELL_HOT)
+	var center_tile := Vector2(recruit_sell_cell) + Vector2(0.5, 0.5)
+	_draw_recruit_prop(center_tile, RECRUIT_TEX_SELL, 1.0, px, off, _idle_seed_for("recruit_sell", 0))
 	if hot and recruit_sell_preview_gold > 0:
-		label = "+%d金" % recruit_sell_preview_gold
-	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var pos := cell_rect.position + Vector2(
-		(cell_rect.size.x - text_size.x) * 0.5,
-		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
-	)
-	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.92, 1.0, 0.95))
+		var font := get_theme_default_font()
+		var font_size := clampi(int(px * 0.36), 10, 16)
+		var label := "+%d金" % recruit_sell_preview_gold
+		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var pos := cell_rect.position + Vector2(
+			(cell_rect.size.x - text_size.x) * 0.5,
+			cell_rect.size.y - px * 0.06,
+		)
+		draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.92, 0.45, 0.98))
 
 
 func _draw_recruit_lock_slot(px: float, off: Vector2) -> void:
@@ -2602,21 +2612,25 @@ func _draw_recruit_lock_slot(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
 	var cell_rect := Rect2(rect.position + Vector2(recruit_lock_cell) * px + off, Vector2(px, px))
 	var hot := _recruit_drag_index >= 0 and _hover_cell == recruit_lock_cell
-	draw_rect(cell_rect, RECRUIT_LOCK_HOT if hot else RECRUIT_LOCK_EMPTY)
-	draw_rect(cell_rect, RECRUIT_LOCK_BORDER, false, 2.0)
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.4), 10, 16)
+	if hot:
+		draw_rect(cell_rect, RECRUIT_LOCK_HOT)
+	var center_tile := Vector2(recruit_lock_cell) + Vector2(0.5, 0.5)
+	_draw_recruit_prop(center_tile, RECRUIT_TEX_LOCK, 1.0, px, off, _idle_seed_for("recruit_lock", 1))
+	if not hot:
+		return
 	var label := "锁定"
-	if hot and _recruit_drag_index >= 0 and _recruit_drag_index < recruit_candidates.size():
+	if _recruit_drag_index >= 0 and _recruit_drag_index < recruit_candidates.size():
 		var info: Dictionary = recruit_candidates[_recruit_drag_index]
 		if bool(info.get("locked", false)):
 			label = "解锁"
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.36), 10, 16)
 	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var pos := cell_rect.position + Vector2(
 		(cell_rect.size.x - text_size.x) * 0.5,
-		(cell_rect.size.y + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5,
+		cell_rect.size.y - px * 0.06,
 	)
-	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.95))
+	draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.98))
 
 
 func _draw_recruit_team_sell_hint(px: float) -> void:
@@ -2947,7 +2961,6 @@ func _draw_recruit_lock_tag(center: Vector2, px: float) -> void:
 
 func _draw_recruit_items(px: float, off: Vector2) -> void:
 	var rect := get_board_rect()
-	var font := get_theme_default_font()
 	for info in recruit_items:
 		if not (info is Dictionary):
 			continue
@@ -2957,34 +2970,25 @@ func _draw_recruit_items(px: float, off: Vector2) -> void:
 		var index := int(info.get("index", -1))
 		var item: PrepareItemData = info.get("item") as PrepareItemData
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px + off, Vector2(px, px))
-		draw_rect(cell_rect, RECRUIT_ITEM_FILL if item != null else RECRUIT_ITEM_EMPTY)
-		var border := RECRUIT_ITEM_BORDER
-		if index == recruit_pending_item_slot or index == _recruit_item_drag_index:
-			draw_rect(cell_rect, RECRUIT_SELECT)
-			border = Color(1.0, 0.95, 0.4, 1.0)
-		draw_rect(cell_rect, border, false, 2.0)
 		if item == null:
+			draw_rect(cell_rect, RECRUIT_ITEM_EMPTY)
+			draw_rect(cell_rect, RECRUIT_ITEM_BORDER, false, 2.0)
 			continue
-		var label := String(info.get("label", item.get_display_name()))
-		var font_size := clampi(int(px * 0.28), 8, 12)
-		var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-		var text_pos := cell_rect.position + Vector2(
-			(cell_rect.size.x - text_size.x) * 0.5,
-			cell_rect.size.y * 0.42,
-		)
+		if index == recruit_pending_item_slot or index == _recruit_item_drag_index:
+			draw_rect(cell_rect, Color(RECRUIT_SELECT.r, RECRUIT_SELECT.g, RECRUIT_SELECT.b, 0.28))
 		var alpha := 0.4 if index == _recruit_item_drag_index else 1.0
-		draw_string(
-			font,
-			text_pos,
-			label,
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			font_size,
-			Color(0.95, 1.0, 0.95, alpha),
+		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		_draw_recruit_prop(
+			center_tile,
+			_recruit_prop_texture(item.id),
+			alpha,
+			px,
+			off,
+			_idle_seed_for(item.id, index),
 		)
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
-		_draw_recruit_cost_tag(tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off, cost, affordable, px)
+		_draw_recruit_cost_tag(tile_to_local(center_tile) + off, cost, affordable, px)
 
 
 func _draw_recruit_item_drop_hint(px: float, mid: int) -> void:
@@ -3274,6 +3278,60 @@ func _draw_body(
 	draw_string(font, baseline, glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, alpha))
 
 
+func _recruit_prop_texture(item_id: String) -> Texture2D:
+	match item_id:
+		"hp_potion":
+			return RECRUIT_TEX_HP
+		"atk_potion":
+			return RECRUIT_TEX_ATK
+		"banner":
+			return RECRUIT_TEX_BANNER
+		_:
+			return null
+
+
+func _is_recruit_prop_tex(tex: Texture2D) -> bool:
+	return (
+		tex == RECRUIT_TEX_HP
+		or tex == RECRUIT_TEX_ATK
+		or tex == RECRUIT_TEX_LOCK
+		or tex == RECRUIT_TEX_SELL
+		or tex == RECRUIT_TEX_BANNER
+	)
+
+
+func _draw_recruit_prop(
+	center_tile: Vector2,
+	tex: Texture2D,
+	alpha: float,
+	px: float,
+	off: Vector2,
+	idle_seed: int,
+) -> void:
+	if tex == null:
+		return
+	## 半径跟普通角色一样，贴图放大在 _draw_unit_sprite 里按道具格留白补。
+	_draw_body(
+		center_tile,
+		0.7,
+		0.0,
+		0.0,
+		PLAYER_COLOR,
+		alpha,
+		"",
+		px,
+		true,
+		off,
+		true,
+		"",
+		null,
+		Vector2.ZERO,
+		1.0,
+		idle_seed,
+		tex,
+	)
+
+
 ## 贴图脚底：单格落在格心略下方；多格足迹则把整张贴图垂向居中于足迹中心。
 ## pose / walk 为纯表现动画：以脚底为轴旋转缩放，偏移以格为单位。
 ## walk：Dictionary{offset,rotation,scale,shadow_mul}（小丑牌步进）；兼容旧 Vector2(tilt, hop)。
@@ -3305,6 +3363,12 @@ func _draw_unit_sprite(
 		var shrink := max_w / w
 		w = max_w
 		h *= shrink
+	## 道具图集留白比紧裁的角色图多；先跟角色走到同一上限，再按墨线高度放大。
+	var content_bottom := 1.0
+	if _is_recruit_prop_tex(tex):
+		w *= RECRUIT_PROP_SPRITE_SCALE
+		h *= RECRUIT_PROP_SPRITE_SCALE
+		content_bottom = RECRUIT_PROP_CONTENT_BOTTOM
 	## 2×2：贴图中心对齐足迹几何中心；1×1：脚底略低于格心。
 	var feet := (
 		center + Vector2(0.0, h * 0.5)
@@ -3359,7 +3423,9 @@ func _draw_unit_sprite(
 		Color(SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, a), clampf(flash, 0.0, 1.0)
 	)
 	draw_set_transform(_frame_shake + feet + offset, rot, scl)
-	draw_texture_rect(tex, Rect2(-w * 0.5, -h, w, h), false, modulate_color)
+	## 道具墨线底边对齐角色脚底；角色图 content_bottom=1，不挪。
+	var foot_shift := h * (1.0 - content_bottom)
+	draw_texture_rect(tex, Rect2(-w * 0.5, -h + foot_shift, w, h), false, modulate_color)
 	draw_set_transform(_frame_shake)
 
 
