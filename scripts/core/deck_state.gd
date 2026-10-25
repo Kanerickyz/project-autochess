@@ -770,7 +770,8 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	return entry
 
 
-## prefer_bench：点买优先入备战；备战满且上场未满 → 首空座；指定 preferred_seat 则落该空座。
+## prefer_bench=true：优先备战；备战满且上场未满 → 首空座。
+## prefer_bench=false（招募点买默认）：优先首空座；上场满 → 备战。指定 preferred_seat 则落该空座。
 ## 注意：调用时 entry 可能已在 _entries 且 seat_index=-1，备战计数含自身。
 func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool = false) -> void:
 	if entry == null:
