@@ -46,6 +46,7 @@ static func run_all() -> bool:
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
 	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
+	_check("first_hurt_harden_star2", _test_first_hurt_harden_star2())
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
