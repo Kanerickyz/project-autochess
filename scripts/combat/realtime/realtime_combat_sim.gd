@@ -403,8 +403,14 @@ func advance_fixed_step() -> void:
 	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
 	_tick_all_deploying()
 
+	## 待结算技能（含回合开始吞噬等）未排空前：不开启下一动、不迈步出手。
+	## 否则 defer 时同一步会「先攻再吃两边」。
 	if not _actor_turn_active:
+		if has_pending_effects():
+			return
 		_begin_next_actor_turn()
+	if has_pending_effects():
+		return
 
 	if _actor_turn_active and _current_actor != null:
 		_advance_current_actor()
