@@ -1713,58 +1713,86 @@ static func _test_combat_start_iron_heart() -> bool:
 
 static func _test_combat_start_edge_hex() -> bool:
 	var data := _load_unit("res://resources/units/realtime/edge_hex.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_buff_random_ally_atk_2":
+	if data == null or data.ability == null or data.ability.id != "combat_start_nearby_ally_atk_1":
 		push_error("edge_hex: ability mount")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("edge_hex: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 502)
-	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
-	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "ally", "attack": 3}),
+	var edge := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var nearby := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "near", "attack": 3}),
 		Vector2(3.5, 6.5),
 	)
-	var ally_atk0 := ally.unit.get_effective_attack()
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "far", "attack": 3}),
+		Vector2(2.5, 8.5),
+	)
+	var near0 := nearby.unit.get_effective_attack()
+	var far0 := far.unit.get_effective_attack()
+	var edge0 := edge.unit.get_effective_attack()
 	sim.begin_combat()
-	var edge_rt := sim.get_units()[0] as RtUnit
-	var edge_atk := edge_rt.unit.get_effective_attack()
-	var ally_atk := ally.unit.get_effective_attack()
-	if edge_atk != data.stats.attack + 2 and ally_atk != ally_atk0 + 2:
+	if nearby.unit.get_effective_attack() != near0 + 1:
 		push_error(
-			"edge_hex: expected +2 atk on owner or ally (edge=%d ally=%d)"
-			% [edge_atk, ally_atk]
+			"edge_hex: nearby atk %d -> %d expected +1"
+			% [near0, nearby.unit.get_effective_attack()]
 		)
+		return false
+	if far.unit.get_effective_attack() != far0:
+		push_error("edge_hex: far ally buffed unexpectedly")
+		return false
+	if edge.unit.get_effective_attack() != edge0:
+		push_error("edge_hex: owner should not self-buff")
 		return false
 	return true
 
 
 static func _test_combat_start_shield_boon() -> bool:
 	var data := _load_unit("res://resources/units/realtime/shield_boon.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_buff_random_ally_hp_2":
+	if data == null or data.ability == null or data.ability.id != "combat_start_nearby_ally_hp_1":
 		push_error("shield_boon: ability mount")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("shield_boon: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 503)
-	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
-	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "ally", "max_hp": 5}),
+	var owner := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var nearby := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "near", "max_hp": 5}),
 		Vector2(3.5, 6.5),
 	)
-	var hp0 := ally.unit.get_effective_max_hp()
-	var cur0 := ally.unit.current_hp
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "far", "max_hp": 5}),
+		Vector2(2.5, 8.5),
+	)
+	var near_hp0 := nearby.unit.get_effective_max_hp()
+	var near_cur0 := nearby.unit.current_hp
+	var far_hp0 := far.unit.get_effective_max_hp()
+	var owner_hp0 := owner.unit.get_effective_max_hp()
 	sim.begin_combat()
-	var hp1 := ally.unit.get_effective_max_hp()
-	var cur1 := ally.unit.current_hp
-	var buffed := hp1 == hp0 + 2 and cur1 == cur0 + 2
-	if not buffed:
-		var owner_rt := sim.get_units()[0] as RtUnit
-		var self_hp := owner_rt.unit.get_effective_max_hp()
-		var self_cur := owner_rt.unit.current_hp
-		if self_hp != data.stats.max_hp + 2 or self_cur != data.stats.max_hp + 2:
-			push_error(
-				"shield_boon: no +2 hp (ally %d->%d cur %d->%d self %d/%d)"
-				% [hp0, hp1, cur0, cur1, self_hp, self_cur]
-			)
-			return false
+	if (
+		nearby.unit.get_effective_max_hp() != near_hp0 + 1
+		or nearby.unit.current_hp != near_cur0 + 1
+	):
+		push_error(
+			"shield_boon: nearby hp %d/%d -> %d/%d expected +1/+1"
+			% [
+				near_hp0,
+				near_cur0,
+				nearby.unit.get_effective_max_hp(),
+				nearby.unit.current_hp,
+			]
+		)
+		return false
+	if far.unit.get_effective_max_hp() != far_hp0:
+		push_error("shield_boon: far ally buffed unexpectedly")
+		return false
+	if owner.unit.get_effective_max_hp() != owner_hp0:
+		push_error("shield_boon: owner should not self-buff")
+		return false
 	return true
 
 

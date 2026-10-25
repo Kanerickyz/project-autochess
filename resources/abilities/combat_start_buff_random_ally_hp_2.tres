@@ -7,17 +7,18 @@
 [sub_resource type="Resource" id="Resource_act"]
 script = ExtResource("3_act")
 stat_name = &"max_hp"
-value = 2
+value = 1
 
 [sub_resource type="Resource" id="Resource_spec"]
 script = ExtResource("2_spec")
 trigger = &"OnCombatStart"
-target_selector = 2
+target_selector = 18
+exclude_owner = true
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]
 script = ExtResource("1_ab")
-id = "combat_start_buff_random_ally_hp_2"
-display_name = "开战时 随机友方生命上限与当前各+2"
+id = "combat_start_nearby_ally_hp_1"
+display_name = "开战时 周围一格其他友方生命上限与当前各+1"
 merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
