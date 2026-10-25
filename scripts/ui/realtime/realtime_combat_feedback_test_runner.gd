@@ -138,13 +138,15 @@ func _test_mapper_and_arena_direct() -> void:
 	root.add_child(arena)
 	arena.spawn_gold_coin_burst(Vector2(2.5, 10.5), 2)
 	_expect(arena.get_gold_coin_fx_count() == 2, "arena: gold burst spawns 2 coins")
-	_expect(
-		is_equal_approx(
-			arena._typical_paper_height_px(arena.get_cell_px()) * RealtimeArenaView.GOLD_COIN_PAPER_SCALE,
-			arena._typical_paper_height_px(arena.get_cell_px()) * 0.25,
-		),
-		"arena: gold coin scale is 1/4 paper height",
-	)
+	var expected_coin := arena._typical_paper_height_px(arena.get_cell_px()) * RealtimeArenaView.GOLD_COIN_PAPER_SCALE
+	var first_coin := arena._gold_coin_layer.get_child(0) as TextureRect if arena._gold_coin_layer != null else null
+	_expect(first_coin != null, "arena: gold coin node is TextureRect")
+	if first_coin != null:
+		_expect(
+			is_equal_approx(first_coin.size.x, expected_coin)
+			and is_equal_approx(first_coin.size.y, expected_coin),
+			"arena: gold coin size is 1/4 character paper height",
+		)
 	arena.add_feedback_popup(
 		RealtimeEffectFeedback.KIND_STAT,
 		"+50攻",
