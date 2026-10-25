@@ -9,9 +9,9 @@ const MAX_SEATS_HARD := 10
 
 ## 返回书写顺序（前排→后排，同行中心向外）的字典数组：
 ## { "unit_data": UnitData, "seat_index": int, "power_u": float }
-## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略。
-
-## floor_count：地图普通层数；Boss 前最后三层可刷 2★（见 is_pre_boss_star2_floor）。
+## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略强度。
+## 普通/精英敌方 2★ 只数＝快照里展示为 2★ 的成员数（3★ 不计）。
+## floor_count：地图普通层数；品阶解锁用，不决定敌方星级。
 static func roll(
 	wave: WaveData,
 	config: SpawnBudgetConfig,
@@ -167,39 +167,25 @@ static func roll(
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
 
 	var seated := _seat_units(all_units, cols, seat_count, cfg)
-	_assign_pre_boss_star2_levels(
-		seated,
-		floor_index,
-		floor_count,
-		node_type,
-		rng,
-		cfg,
-	)
+	_assign_enemy_star2_from_player(seated, node_type, rng, cfg, team_entries)
 	return seated
 
 
-## Boss 前最后三层（floor_count-2 … floor_count）的普通/精英可出 2★。
-static func is_pre_boss_star2_floor(floor_index: int, floor_count: int) -> bool:
-	var fc := maxi(1, floor_count)
-	return floor_index >= fc - 2 and floor_index <= fc
-
-
-static func _assign_pre_boss_star2_levels(
+## 普通/精英：敌方 2★ 只数＝玩家队内展示为 2★ 的人数（不超过可升星座位）。
+## 3★ 不计。Boss 节点不升星。只标 2★ 模板，不做敌方队伍内三合一。
+static func _assign_enemy_star2_from_player(
 	seated: Array,
-	floor_index: int,
-	floor_count: int,
 	node_type: MapNodeType.Type,
 	rng: RandomNumberGenerator,
 	cfg: SpawnBudgetConfig,
+	team_entries: Array,
 ) -> void:
-	if node_type == MapNodeType.Type.BOSS:
+	if node_type == MapNodeType.Type.BOSS or seated.is_empty():
 		return
-	if not is_pre_boss_star2_floor(floor_index, floor_count):
+	var want := _count_player_star2(team_entries)
+	if want <= 0:
 		return
-	if seated.is_empty() or rng == null:
-		return
-	## 约半数升 2★，至少 1 只（有人时）。
-	var promoted := 0
+	var eligible: Array = []
 	for item in seated:
 		if typeof(item) != TYPE_DICTIONARY:
 			continue
@@ -207,24 +193,30 @@ static func _assign_pre_boss_star2_levels(
 		if ud != null and ud.is_boss_leader:
 			item["level"] = 1
 			continue
-		var make_star2 := rng.randf() < 0.5
-		item["level"] = 2 if make_star2 else 1
-		if make_star2:
-			promoted += 1
-			## 强度分按 2★ 身体重算，便于日志/调试。
-			if cfg != null and ud != null:
-				item["power_u"] = _unit_u(ud, cfg) * 3.0
-	if promoted == 0:
-		for item2 in seated:
-			if typeof(item2) != TYPE_DICTIONARY:
-				continue
-			var ud2: UnitData = item2.get("unit_data") as UnitData
-			if ud2 != null and ud2.is_boss_leader:
-				continue
-			item2["level"] = 2
-			if cfg != null and ud2 != null:
-				item2["power_u"] = _unit_u(ud2, cfg) * 3.0
-			break
+		eligible.append(item)
+	if eligible.is_empty():
+		return
+	want = mini(want, eligible.size())
+	if rng != null:
+		for i in want:
+			var j := rng.randi_range(i, eligible.size() - 1)
+			var tmp: Variant = eligible[i]
+			eligible[i] = eligible[j]
+			eligible[j] = tmp
+	for k in want:
+		var picked: Dictionary = eligible[k]
+		picked["level"] = 2
+		var picked_ud: UnitData = picked.get("unit_data") as UnitData
+		if cfg != null and picked_ud != null:
+			picked["power_u"] = _unit_u(picked_ud, cfg) * 3.0
+
+
+static func _count_player_star2(team_entries: Array) -> int:
+	var n := 0
+	for entry in team_entries:
+		if entry is DeckEntry and (entry as DeckEntry).get_star_display_level() == 2:
+			n += 1
+	return n
 
 
 static func _player_roster_count(team_entries: Array) -> int:
