@@ -596,6 +596,20 @@ func try_move_bench_to_seat(entry_id: int, target_seat: int) -> bool:
 	return true
 
 
+## 点备战：有空上场席则自动落到首个空座；否则失败。
+func try_auto_deploy_bench(entry_id: int) -> bool:
+	if _deck_state == null:
+		return false
+	if not _is_bench_entry(entry_id):
+		return false
+	if not _deck_state.can_seat_more():
+		return false
+	var empty := _deck_state.find_first_empty_seat()
+	if empty < 0:
+		return false
+	return try_move_bench_to_seat(entry_id, empty)
+
+
 ## 已入座 → 备战（准备/招募）；备战满失败。战斗观战不可用。
 func try_move_seat_to_bench(entry_id: int) -> bool:
 	if _deck_state == null:
@@ -676,7 +690,7 @@ func _on_prepare_team_bench_drop(entry_id: int) -> void:
 	_show_hint("备战已满")
 
 
-## 点备战已占格：选中以便点空座上阵；招募药水可点备战结算。
+## 点备战已占格：有空位则自动上阵；上场满则选中（可再拖/点空座）；招募药水可点备战结算。
 func _on_bench_pressed(entry_id: int) -> void:
 	if entry_id < 0:
 		return
@@ -686,10 +700,23 @@ func _on_bench_pressed(entry_id: int) -> void:
 		if _recruit_pending_item_slot >= 0:
 			_try_apply_recruit_potion(_recruit_pending_item_slot, entry_id)
 			return
+		## 已选入座 → 点备战下阵（与准备一致）。
+		if _selected_entry_id >= 0 and _is_seated_entry(_selected_entry_id):
+			if try_move_seat_to_bench(_selected_entry_id):
+				if _recruit_hint != null:
+					_recruit_hint.text = "已移入备战"
+				return
+			if _recruit_hint != null:
+				_recruit_hint.text = "备战已满"
+			return
+		if try_auto_deploy_bench(entry_id):
+			if _recruit_hint != null:
+				_recruit_hint.text = "已上阵"
+			return
 		_set_selected(-1 if _selected_entry_id == entry_id else entry_id)
 		_refresh_bench_row()
 		if _recruit_hint != null:
-			_recruit_hint.text = "已选备战：点上区空座位上阵"
+			_recruit_hint.text = "上场已满：可拖到空座或先腾位"
 		return
 	if _phase != Phase.PREPARE:
 		return
@@ -700,9 +727,12 @@ func _on_bench_pressed(entry_id: int) -> void:
 			return
 		_show_hint("备战已满")
 		return
+	if try_auto_deploy_bench(entry_id):
+		_show_hint("已上阵")
+		return
 	_set_selected(-1 if _selected_entry_id == entry_id else entry_id)
 	_refresh_bench_row()
-	_show_hint("已选备战：点空座位上阵")
+	_show_hint("上场已满：可拖到空座或先腾位")
 
 
 ## 点备战空格：接收已选入座角色下阵。
@@ -2582,7 +2612,7 @@ func _refresh_recruit_hud() -> void:
 		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
-			_recruit_hint.text = "点买优先上场；可拖上区空座；座位可拖回备战；备战可点选后点空座上阵"
+			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
@@ -3529,11 +3559,11 @@ func _refresh_hud() -> void:
 	match _phase:
 		Phase.PREPARE:
 			if _selected_entry_id >= 0 and _is_bench_entry(_selected_entry_id):
-				_phase_label.text = "已选备战：点空座位上阵"
+				_phase_label.text = "上场已满：拖到空座或先腾位"
 			elif _selected_entry_id >= 0 and _is_seated_entry(_selected_entry_id):
 				_phase_label.text = "拖换座，或点备战格下阵"
 			else:
-				_phase_label.text = "准备·换座 / 备战上下阵"
+				_phase_label.text = "准备·换座 / 点备战上阵 / 拖备战"
 		Phase.COMBAT:
 			_phase_label.text = _combat_phase_status_text()
 		Phase.RESULT:
