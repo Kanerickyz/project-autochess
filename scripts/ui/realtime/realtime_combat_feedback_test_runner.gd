@@ -147,6 +147,7 @@ func _test_mapper_and_arena_direct() -> void:
 			and is_equal_approx(first_coin.size.y, expected_coin),
 			"arena: gold coin size is 1/4 character paper height",
 		)
+		_expect(is_zero_approx(first_coin.rotation), "arena: gold coin starts without rotation")
 	arena.add_feedback_popup(
 		RealtimeEffectFeedback.KIND_STAT,
 		"+50攻",
