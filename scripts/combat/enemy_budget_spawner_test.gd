@@ -9,6 +9,7 @@ static func run_all() -> bool:
 	ok = _check("skill_alpha_defaults", _test_skill_alpha_defaults()) and ok
 	ok = _check("splash_body_mult", _test_splash_body_mult()) and ok
 	ok = _check("entry_star_body_power", _test_entry_star_body_power()) and ok
+	ok = _check("enemy_star2_matches_player", _test_enemy_star2_matches_player()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
@@ -143,6 +144,96 @@ static func _test_splash_body_mult() -> bool:
 	var u_plain := UnitPowerScore.compute_u(plain)
 	var u_splash := UnitPowerScore.compute_u(splash)
 	return is_equal_approx(u_splash / u_plain, 1.05)
+
+
+static func _count_level(seated: Array, level: int) -> int:
+	var n := 0
+	for item in seated:
+		if int(item.get("level", 1)) == level:
+			n += 1
+	return n
+
+
+static func _roll_fixed(
+	units: Array[UnitData],
+	team: Array,
+	floor_index: int,
+	node_type: MapNodeType.Type,
+	seed: int,
+) -> Array:
+	var cfg := _make_config(units)
+	var wave := _make_wave(units.size(), units)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	return EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, floor_index, node_type, 2, 5, rng, team, 15
+	)
+
+
+static func _test_enemy_star2_matches_player() -> bool:
+	var fodder: Array[UnitData] = []
+	for i in 4:
+		fodder.append(_make_unit("fodder_%d" % i, 10, 2, 1.0, 1))
+	var ally := _make_unit("ally", 10, 2, 1.0, 1)
+	var team: Array = [
+		_make_entry(ally, 0, 0, 2),
+		_make_entry(ally, 0, 0, 2),
+		_make_entry(ally, 0, 0, 1),
+		_make_entry(ally, 0, 0, 3),
+	]
+	## 全层都按二星人数，不看是否临近 Boss；3★ 不计。
+	## 第 1 层目标人数 ≤ 固定 4 人，名单不会再被填充。
+	var early := _roll_fixed(fodder, team, 1, MapNodeType.Type.COMBAT, 11)
+	if early.size() != 4 or _count_level(early, 2) != 2 or _count_level(early, 1) != 2:
+		return false
+	if _count_level(early, 3) != 0:
+		return false
+	## 深层会按层加人，但 2★ 仍只有玩家的 2 只，不再半数保底。
+	var late := _roll_fixed(fodder, team, 15, MapNodeType.Type.COMBAT, 11)
+	if late.size() < 4 or _count_level(late, 2) != 2 or _count_level(late, 3) != 0:
+		return false
+	var again := _roll_fixed(fodder, team, 3, MapNodeType.Type.ELITE, 11)
+	var first := _roll_fixed(fodder, team, 3, MapNodeType.Type.ELITE, 11)
+	var seats_a: Array[int] = []
+	var seats_b: Array[int] = []
+	for item in first:
+		if int(item.get("level", 1)) == 2:
+			seats_a.append(int(item.get("seat_index", -1)))
+	for item2 in again:
+		if int(item2.get("level", 1)) == 2:
+			seats_b.append(int(item2.get("seat_index", -1)))
+	seats_a.sort()
+	seats_b.sort()
+	if seats_a != seats_b or seats_a.size() != 2:
+		return false
+	var p1 := 0.0
+	var p2 := 0.0
+	for item3 in first:
+		if int(item3.get("level", 1)) == 2:
+			p2 = float(item3.get("power_u", 0.0))
+		else:
+			p1 = float(item3.get("power_u", 0.0))
+	if p1 <= 0.0 or not is_equal_approx(p2, p1 * 3.0):
+		return false
+	## 没有 2★（含仅 3★）时，临近 Boss 也不再保底升星。
+	var no_star2: Array = [_make_entry(ally, 0, 0, 1), _make_entry(ally, 0, 0, 3)]
+	var plain := _roll_fixed(fodder, no_star2, 15, MapNodeType.Type.COMBAT, 4)
+	if _count_level(plain, 2) != 0:
+		return false
+	## 想要的二星多于座位时，可升星的全升，不超过座位数。
+	var many: Array = []
+	for _i in 8:
+		many.append(_make_entry(ally, 0, 0, 2))
+	var capped := _roll_fixed(fodder, many, 2, MapNodeType.Type.COMBAT, 5)
+	if capped.size() != 4 or _count_level(capped, 2) != 4:
+		return false
+	## Boss 节点不升星，首领与跟班都保持 1★。
+	var boss := _make_unit("boss", 40, 8, 1.5, 3)
+	boss.is_boss_leader = true
+	var minion := _make_unit("minion", 10, 2, 1.0, 1)
+	var boss_units: Array[UnitData] = [boss, minion]
+	var boss_seated := _roll_fixed(boss_units, team, 16, MapNodeType.Type.BOSS, 9)
+	return _count_level(boss_seated, 2) == 0 and boss_seated.size() == 2
 
 
 static func _test_entry_star_body_power() -> bool:

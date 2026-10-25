@@ -37,7 +37,7 @@ var _encounter: EncounterData
 var _tier_index: int = 0
 ## 层预算抽阵上下文（Run 传入；测试可省略并按 encounter 旗标推断）。
 var _floor_index: int = 0
-## 地图普通层数（Boss 层 = floor_count+1）；用于 Boss 前最后三层敌方 2★。
+## 地图普通层数（Boss 层 = floor_count+1）；品阶解锁用。敌方 2★ 只数跟玩家二星人数。
 var _map_floor_count: int = 15
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 
