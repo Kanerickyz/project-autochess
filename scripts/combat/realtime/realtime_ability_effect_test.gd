@@ -35,8 +35,8 @@ static func run_all() -> bool:
 	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
 	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
 	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
-	_check("scatter_hex_enemy_death_damage", _test_scatter_hex_enemy_death_damage())
-	_check("scatter_hex_enemy_death_damage_star2", _test_scatter_hex_enemy_death_damage_star2())
+	_check("scatter_hex_friend_kill_damage", _test_scatter_hex_friend_kill_damage())
+	_check("scatter_hex_friend_kill_damage_star2", _test_scatter_hex_friend_kill_damage_star2())
 	_check("arcane_friend_summon_nearby_hp", _test_arcane_friend_summon_nearby_hp())
 	_check("arcane_friend_summon_nearby_hp_star2", _test_arcane_friend_summon_nearby_hp_star2())
 	_check("valkyrie_friend_summon_nearby_atk", _test_valkyrie_friend_summon_nearby_atk())
@@ -222,10 +222,10 @@ static func _test_enemy_death_self_atk_hp_small() -> bool:
 	return true
 
 
-## 散咒：敌亡 → 对随机存活敌人造成 1（2★ 为 3）。
-static func _scatter_hex_enemy_death_dealt(level: int) -> int:
+## 散咒：其他友方击杀 → 对随机存活敌人造成 1（2★ 为 3）。自己的击杀、无来源死亡不触发。
+static func _scatter_hex_friend_kill_dealt(level: int) -> int:
 	var data := _load_unit("res://resources/units/realtime/scatter_hex.tres")
-	if data == null or data.ability == null or data.ability.id != "enemy_death_damage_random_enemy_1":
+	if data == null or data.ability == null or data.ability.id != "friend_kill_damage_random_enemy_1":
 		push_error("scatter_hex: ability mount")
 		return -1
 	if data.ability.merge_value_mult != 3:
@@ -247,37 +247,64 @@ static func _scatter_hex_enemy_death_dealt(level: int) -> int:
 		),
 		Vector2(8.5, 8.5),
 	)
-	## 友方死亡不应触发。
 	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 5, {"id": "ally_fodder", "steps_per_turn": 0}),
+		_dummy(UnitInstance.Team.PLAYER, 30, {"id": "ally_killer", "attack": 1, "steps_per_turn": 0}),
 		Vector2(8.5, 24.5),
+	)
+	var ally_fodder := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 5, {"id": "ally_fodder", "steps_per_turn": 0}),
+		Vector2(7.5, 24.5),
+	)
+	var sourceless := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 5, {"id": "sourceless", "steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 8.5),
+	)
+	var fodder2 := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 5, {"id": "fodder2", "steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(11.5, 8.5),
 	)
 	sim.begin_combat()
 	var hp_before := target.unit.current_hp
-	if not sim._pipeline.apply_damage(null, ally, 999):
+	if not sim._pipeline.apply_damage(null, ally_fodder, 999):
 		push_error("scatter_hex: failed to kill ally")
 		return -1
 	sim._drain_effects()
 	if target.unit.current_hp != hp_before:
 		push_error("scatter_hex: ally death should not damage enemy")
 		return -1
-	if not sim._pipeline.apply_damage(null, fodder, 999):
-		push_error("scatter_hex: failed to kill enemy fodder")
+	## 无击杀者的敌方死亡不触发。
+	if not sim._pipeline.apply_damage(null, sourceless, 999):
+		push_error("scatter_hex: failed to kill sourceless enemy")
+		return -1
+	sim._drain_effects()
+	if target.unit.current_hp != hp_before:
+		push_error("scatter_hex: sourceless death should not damage enemy")
+		return -1
+	## 持有者自己的击杀不触发。
+	if not sim._pipeline.apply_damage(caster.unit, fodder, 999):
+		push_error("scatter_hex: failed to self-kill fodder")
+		return -1
+	sim._drain_effects()
+	if target.unit.current_hp != hp_before:
+		push_error("scatter_hex: own kill should not damage enemy")
+		return -1
+	if not sim._pipeline.apply_damage(ally.unit, fodder2, 999):
+		push_error("scatter_hex: failed ally kill")
 		return -1
 	sim._drain_effects()
 	return hp_before - target.unit.current_hp
 
 
-static func _test_scatter_hex_enemy_death_damage() -> bool:
-	var dealt := _scatter_hex_enemy_death_dealt(1)
+static func _test_scatter_hex_friend_kill_damage() -> bool:
+	var dealt := _scatter_hex_friend_kill_dealt(1)
 	if dealt != 1:
 		push_error("scatter_hex: dealt %d, expected 1" % dealt)
 		return false
 	return true
 
 
-static func _test_scatter_hex_enemy_death_damage_star2() -> bool:
-	var dealt := _scatter_hex_enemy_death_dealt(2)
+static func _test_scatter_hex_friend_kill_damage_star2() -> bool:
+	var dealt := _scatter_hex_friend_kill_dealt(2)
 	if dealt != 3:
 		push_error("scatter_hex star2: dealt %d, expected 3" % dealt)
 		return false

@@ -17,6 +17,8 @@ const ON_HEAL_APPLIED := &"OnHealApplied"
 
 const ON_DEAL_DAMAGE := &"OnDealDamage"
 const ON_KILL := &"OnKill"
+## 其他友方造成击杀时（小队范围）；payload.source = 击杀者。不含持有者自己的击杀。
+const ON_FRIEND_KILL := &"OnFriendKill"
 const ON_DEATH := &"OnDeath"
 const ON_ATTACK_HIT := &"OnAttackHit"
 const ON_LINE_ATTACK := &"OnLineAttack"

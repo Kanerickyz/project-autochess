@@ -190,6 +190,12 @@ func _owner_qualifies_for_event(
 			return payload.target == owner
 		CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL:
 			return payload.source == owner
+		CombatEvents.ON_FRIEND_KILL:
+			return (
+				payload.source != null
+				and payload.source != owner
+				and payload.source.team == owner.team
+			)
 		CombatEvents.ON_MOVE:
 			return payload.source == owner
 		CombatEvents.ON_COMBAT_START:
