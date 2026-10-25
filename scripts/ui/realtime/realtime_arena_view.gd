@@ -2321,7 +2321,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		recruit_drop.emit(index, replace_id, -1)
 		queue_redraw()
 		return
-	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先备战）。
+	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先上场）。
 	if seat_i < 0 and recruit_team_slots != null:
 		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:

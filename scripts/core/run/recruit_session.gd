@@ -231,7 +231,7 @@ func needs_replace_for_candidate(candidate_index: int) -> bool:
 	return true
 
 
-## 点买（seat_index<0 且无 replace）：备战未满→备战；备战满且上场未满→首空座；都满→失败。
+## 点买（seat_index<0 且无 replace）：上场未满→首空座；上场满且备战未满→备战；都满→失败。
 ## 拖到空座：seat_index≥0 落到该座。
 ## 拖到已占座：replace_entry_id≥0，旧人不退金、继承座位（不要求总拥有已满）。
 ## 例外：总拥有满但可三合一时允许短暂溢出买入。
@@ -287,18 +287,16 @@ func try_recruit(
 		result["reason"] = "roster_full"
 		return result
 
-	## 指定空座（拖上区）；占用则回退为点买优先备战。
+	## 指定空座（拖上区）；占用则回退为点买优先上场（满则备战）。
 	var preferred := seat_index
-	var prefer_bench := preferred < 0
+	## 点买与回退路径一律 prefer_bench=false：先空座，席位满再进备战。
+	var prefer_bench := false
 	if preferred >= 0:
 		if not deck.is_seat_free(preferred):
 			preferred = -1
-			prefer_bench = true
 		elif not deck.can_seat_more() and not merge_overflow:
 			result["reason"] = "seat_cap_full"
 			return result
-		else:
-			prefer_bench = false
 
 	if not economy.spend(cost):
 		result["reason"] = "no_gold"

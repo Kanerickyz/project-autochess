@@ -2571,7 +2571,7 @@ func _refresh_recruit_hud() -> void:
 		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
-			_recruit_hint.text = "点买优先备战；可拖上区空座；座位可拖回备战；备战可点选后点空座上阵"
+			_recruit_hint.text = "点买优先上场；可拖上区空座；座位可拖回备战；备战可点选后点空座上阵"
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
@@ -2666,7 +2666,7 @@ func _on_recruit_candidate_pressed(candidate_index: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
 	_recruit_selected_candidate = candidate_index
-	## 点买：优先备战 / 满备战后首空座；都满则失败（替换仅拖到已占座）。
+	## 点买：优先上场空座 / 上场满则备战；都满则失败（替换仅拖到已占座）。
 	_try_recruit(candidate_index, -1)
 
 

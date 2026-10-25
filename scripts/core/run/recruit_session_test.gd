@@ -28,7 +28,7 @@ static func run_all() -> bool:
 	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	passed = _test_unlocked_tier_merges_into_pool() and passed
 	passed = _test_full_roster_buy_completes_triple() and passed
-	passed = _test_bench_prefer_then_first_empty_seat() and passed
+	passed = _test_seat_prefer_then_bench() and passed
 	passed = _test_seat_to_bench_and_full_fails() and passed
 	passed = _test_nine_copies_leave_the_pool() and passed
 	if passed:
@@ -628,25 +628,26 @@ static func _test_persistent_seats_recruit_replace_sell_swap_merge() -> bool:
 		push_error("RecruitSessionTest: recruit click-buy failed")
 		return false
 	var e1 := buy1["entry"] as DeckEntry
-	## 点买优先备战：seat_index=-1。
-	if e1 == null or e1.seat_index != -1:
-		push_error("RecruitSessionTest: click-buy should land on bench, got seat %d" % (e1.seat_index if e1 else -99))
+	## 点买优先上场：落到首个空座（非 seat 3）。
+	if e1 == null or e1.seat_index < 0:
+		push_error("RecruitSessionTest: click-buy should land on a seat, got %d" % (e1.seat_index if e1 else -99))
 		return false
-	if deck.get_bench_count() != 1:
-		push_error("RecruitSessionTest: bench count should be 1 after click-buy")
-		return false
-
-	## 备战 → 空座 0
-	if not session.try_swap_seat(e1.entry_id, 0):
-		push_error("RecruitSessionTest: bench to empty seat failed")
-		return false
-	e1 = deck.get_entry(e1.entry_id)
-	if e1 == null or e1.seat_index != 0:
-		push_error("RecruitSessionTest: bench deploy should land on seat 0")
+	if e1.seat_index == 3:
+		push_error("RecruitSessionTest: click-buy should not take occupied seat 3")
 		return false
 	if deck.get_bench_count() != 0:
-		push_error("RecruitSessionTest: bench should be empty after deploy")
+		push_error("RecruitSessionTest: bench should stay empty while seats available")
 		return false
+
+	## 若未在 0，换到 0 以便后续互换断言。
+	if e1.seat_index != 0:
+		if not session.try_swap_seat(e1.entry_id, 0):
+			push_error("RecruitSessionTest: move knight to seat 0 failed")
+			return false
+		e1 = deck.get_entry(e1.entry_id)
+		if e1 == null or e1.seat_index != 0:
+			push_error("RecruitSessionTest: knight should be on seat 0")
+			return false
 
 	## 互换：弓箭手(3) ↔ 骑士(0)
 	var archer_id := e0.entry_id
@@ -806,49 +807,76 @@ static func _test_unlocked_tier_merges_into_pool() -> bool:
 	return true
 
 
-static func _test_bench_prefer_then_first_empty_seat() -> bool:
-	## 点买优先备战；备战满且上场未满 → 首空座；拖指定空座；出售备战腾位。
+static func _test_seat_prefer_then_bench() -> bool:
+	## 点买优先上场空座；上场满且备战未满 → 备战；拖指定空座；出售备战腾位。
 	var deck := _make_deck([], 5)
-	var economy := _make_economy(50)
+	var economy := _make_economy(80)
 	var session := _make_session(deck, economy, 88, 0.0)
-	## 互异单位填满备战 5，避免三合一。
-	var fillers: Array[UnitData] = [ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE]
-	for unit in fillers:
+	## 互异单位点买填满上场 5。
+	var seat_fillers: Array[UnitData] = [ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE]
+	for unit in seat_fillers:
 		session.candidates = [unit, MINI_PEKKA, MINI_PEKKA]
 		var buy := session.try_recruit(0)
 		if not buy.get("ok", false):
-			push_error("RecruitSessionTest: bench prefer buy failed for %s" % unit.id)
+			push_error("RecruitSessionTest: seat prefer buy failed for %s" % unit.id)
 			return false
 		var e := buy["entry"] as DeckEntry
-		if e == null or e.seat_index != -1:
-			push_error("RecruitSessionTest: click-buy should stay on bench for %s" % unit.id)
+		if e == null or e.seat_index < 0:
+			push_error("RecruitSessionTest: click-buy should seat %s" % unit.id)
 			return false
-	if deck.get_bench_count() != 5 or deck.get_seated_count() != 0:
+	if deck.get_seated_count() != 5 or deck.get_bench_count() != 0:
 		push_error(
-			"RecruitSessionTest: expect bench=5 seated=0, got bench=%d seated=%d"
-			% [deck.get_bench_count(), deck.get_seated_count()]
+			"RecruitSessionTest: expect seated=5 bench=0, got seated=%d bench=%d"
+			% [deck.get_seated_count(), deck.get_bench_count()]
 		)
 		return false
-	## 备战满 → 点买落到首空座。
+	## 上场满 → 点买落到备战。
 	session.candidates = [MINI_PEKKA, ARCHER, KNIGHT]
-	var buy_seat := session.try_recruit(0)
-	if not buy_seat.get("ok", false):
-		push_error("RecruitSessionTest: bench-full click-buy should seat: %s" % buy_seat.get("reason"))
+	var buy_bench := session.try_recruit(0)
+	if not buy_bench.get("ok", false):
+		push_error("RecruitSessionTest: seat-full click-buy should bench: %s" % buy_bench.get("reason"))
 		return false
-	var seated := buy_seat["entry"] as DeckEntry
-	if seated == null or seated.seat_index < 0:
-		push_error("RecruitSessionTest: bench-full buy should land on a seat")
+	var benched := buy_bench["entry"] as DeckEntry
+	if benched == null or benched.seat_index != -1:
+		push_error("RecruitSessionTest: seat-full buy should land on bench")
 		return false
-	if deck.get_seated_count() != 1 or deck.get_bench_count() != 5:
-		push_error("RecruitSessionTest: after overflow-to-seat seated=1 bench=5 expected")
+	if deck.get_seated_count() != 5 or deck.get_bench_count() != 1:
+		push_error("RecruitSessionTest: after overflow-to-bench seated=5 bench=1 expected")
 		return false
-	## 拖到指定空座
+	## 再填备战至满（最多 2 同名，避免三合一）：第二份互异单位。
+	var more_bench: Array[UnitData] = [ARCHER, KNIGHT, BARBARIAN, MUSKETEER]
+	for unit in more_bench:
+		session.candidates = [unit, VALKYRIE, VALKYRIE]
+		var buy2 := session.try_recruit(0)
+		if not buy2.get("ok", false):
+			push_error("RecruitSessionTest: fill bench buy failed for %s" % unit.id)
+			return false
+		var e2 := buy2["entry"] as DeckEntry
+		if e2 == null or e2.seat_index != -1:
+			push_error("RecruitSessionTest: overflow buy should stay on bench for %s" % unit.id)
+			return false
+	if deck.get_bench_count() != DeckState.BENCH_CAPACITY:
+		push_error("RecruitSessionTest: expect bench full, got %d" % deck.get_bench_count())
+		return false
+	## 出售一名上场腾空座，再拖候选人到指定空座。
+	var seated0: DeckEntry = null
+	for ent in deck.get_entries():
+		if ent != null and ent.seat_index >= 0:
+			seated0 = ent
+			break
+	if seated0 == null:
+		push_error("RecruitSessionTest: need seated unit to free a seat")
+		return false
+	var sold_seat := session.try_sell(seated0.entry_id)
+	if not sold_seat.get("ok", false):
+		push_error("RecruitSessionTest: sell seated to free a seat failed")
+		return false
 	var target_empty := deck.find_first_empty_seat()
 	if target_empty < 0:
 		push_error("RecruitSessionTest: need empty seat for drag-seat fixture")
 		return false
 	session.candidates = [MINI_PEKKA, ARCHER, KNIGHT]
-	## 已有 1 迷你，再买不三合。
+	## 备战已有 1 迷你，再买不三合。
 	var drag := session.try_recruit(0, -1, target_empty)
 	if not drag.get("ok", false):
 		push_error("RecruitSessionTest: drag to empty seat failed: %s" % drag.get("reason"))
@@ -867,6 +895,18 @@ static func _test_bench_prefer_then_first_empty_seat() -> bool:
 		push_error("RecruitSessionTest: sell should free a bench slot")
 		return false
 	## 备战 → 空座；禁止与已入座互换（应失败）。
+	## 先腾一个空座：把一名上场挪到备战（备战已腾一格）。
+	var to_bench: DeckEntry = null
+	for ent2 in deck.get_entries():
+		if ent2 != null and ent2.seat_index >= 0 and ent2.entry_id != dragged.entry_id:
+			to_bench = ent2
+			break
+	if to_bench == null:
+		push_error("RecruitSessionTest: need another seated unit for deploy fixture")
+		return false
+	if not session.try_move_to_bench(to_bench.entry_id):
+		push_error("RecruitSessionTest: seat to bench should succeed before deploy fixture")
+		return false
 	var bench_id := deck.get_bench_entries()[0].entry_id
 	var empty2 := deck.find_first_empty_seat()
 	if empty2 < 0:
@@ -878,7 +918,7 @@ static func _test_bench_prefer_then_first_empty_seat() -> bool:
 	if deck.get_entry(bench_id) == null or deck.get_entry(bench_id).seat_index != empty2:
 		push_error("RecruitSessionTest: bench deploy seat mismatch")
 		return false
-	var occupied := seated.seat_index
+	var occupied := dragged.seat_index
 	var still_bench := deck.get_bench_entries()
 	if not still_bench.is_empty():
 		if session.try_swap_seat(still_bench[0].entry_id, occupied):
@@ -896,29 +936,19 @@ static func _test_bench_prefer_then_first_empty_seat() -> bool:
 
 static func _test_seat_to_bench_and_full_fails() -> bool:
 	## 座位→备战允许；备战满则失败。
-	var deck := _make_deck([ARCHER, KNIGHT], 5)
-	var session := _make_session(deck, _make_economy(30), 91, 0.0)
-	var archer := deck.get_entries()[0]
-	if archer == null or archer.seat_index < 0:
-		push_error("RecruitSessionTest: seat-to-bench fixture needs seated archer")
-		return false
-	if not session.try_move_to_bench(archer.entry_id):
-		push_error("RecruitSessionTest: seat to bench should allow")
-		return false
-	if archer.seat_index >= 0:
-		push_error("RecruitSessionTest: archer should be on bench")
-		return false
-	## 再填满备战：4 个互异单位点买（已有 archer 在备战 → 共 5）。
-	var fillers: Array[UnitData] = [BARBARIAN, MUSKETEER, VALKYRIE, MINI_PEKKA]
+	var deck := _make_deck([ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE], 5)
+	var session := _make_session(deck, _make_economy(40), 91, 0.0)
+	## 上场已满：点买落入备战，填满 5 格（每名最多 2 份）。
+	var fillers: Array[UnitData] = [MINI_PEKKA, MINI_PEKKA, ARCHER, KNIGHT, BARBARIAN]
 	for unit in fillers:
-		session.candidates = [unit, KNIGHT, KNIGHT]
+		session.candidates = [unit, MUSKETEER, VALKYRIE]
 		var buy := session.try_recruit(0)
 		if not buy.get("ok", false):
 			push_error("RecruitSessionTest: fill bench buy failed for %s" % unit.id)
 			return false
 		var e := buy["entry"] as DeckEntry
 		if e == null or e.seat_index != -1:
-			push_error("RecruitSessionTest: filler should land on bench")
+			push_error("RecruitSessionTest: seat-full filler should land on bench")
 			return false
 	if deck.get_bench_count() != DeckState.BENCH_CAPACITY:
 		push_error("RecruitSessionTest: bench should be full, got %d" % deck.get_bench_count())
@@ -939,6 +969,14 @@ static func _test_seat_to_bench_and_full_fails() -> bool:
 		return false
 	if deck.try_move_seat_to_bench(seated_id):
 		push_error("RecruitSessionTest: DeckState.try_move_seat_to_bench must fail when full")
+		return false
+	## 另验：备战未满时座位→备战仍允许。
+	var sold_bench := session.try_sell(deck.get_bench_entries()[0].entry_id)
+	if not sold_bench.get("ok", false):
+		push_error("RecruitSessionTest: sell one bench to free slot failed")
+		return false
+	if not session.try_move_to_bench(seated_id):
+		push_error("RecruitSessionTest: seat to bench should allow when bench has room")
 		return false
 	return true
 
