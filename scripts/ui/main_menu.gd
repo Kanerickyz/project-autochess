@@ -1,6 +1,7 @@
 extends Control
 
 const GAME_SCENE_PATH := "res://scenes/main/run_game.tscn"
+const ENDLESS_SCENE_PATH := "res://scenes/main/endless_game.tscn"
 const CODEX_SCENE_PATH := "res://scenes/ui/codex/unit_codex_screen.tscn"
 const COMBAT_SANDBOX_PATH := "res://scenes/main/combat_sandbox.tscn"
 const ENCHANT_SANDBOX_PATH := "res://scenes/main/enchant_sandbox.tscn"
@@ -22,6 +23,7 @@ const BUTTON_TARGET_WIDTH := 328.0
 
 @onready var _title_logo: TextureRect = $SafeMargin/MainVBox/TitleRow/TitleLogo
 @onready var _start_button: Button = %StartButton
+@onready var _endless_button: Button = %EndlessButton
 @onready var _codex_button: Button = %CodexButton
 @onready var _combat_sandbox_button: Button = %CombatSandboxButton
 @onready var _enchant_sandbox_button: Button = %EnchantSandboxButton
@@ -37,6 +39,7 @@ func _ready() -> void:
 		get_viewport().size_changed.connect(_on_viewport_resized)
 	_apply_menu_button_styles()
 	_start_button.pressed.connect(_on_start_pressed)
+	_endless_button.pressed.connect(_on_endless_pressed)
 	_codex_button.pressed.connect(_on_codex_pressed)
 	_combat_sandbox_button.pressed.connect(_on_combat_sandbox_pressed)
 	_enchant_sandbox_button.pressed.connect(_on_enchant_sandbox_pressed)
@@ -77,6 +80,7 @@ func _menu_button_pixel_size() -> Vector2:
 func _apply_menu_button_styles() -> void:
 	var buttons: Array[Button] = [
 		_start_button,
+		_endless_button,
 		_codex_button,
 		_combat_sandbox_button,
 		_enchant_sandbox_button,
@@ -126,6 +130,10 @@ func _refresh_version_label() -> void:
 
 func _on_start_pressed() -> void:
 	get_tree().change_scene_to_file(GAME_SCENE_PATH)
+
+
+func _on_endless_pressed() -> void:
+	get_tree().change_scene_to_file(ENDLESS_SCENE_PATH)
 
 
 func _on_codex_pressed() -> void:

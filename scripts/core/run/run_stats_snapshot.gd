@@ -6,6 +6,10 @@ var encounters_won: int = 0
 var shop_visits: int = 0
 var combat_seconds: float = 0.0
 var gold: int = 0
+## 无尽败局：到达的地图战斗层号 N（死在第 N 层记 N）；主爬塔通关可为 0。
+var reached_floor: int = 0
+## 本局是否无尽模式（文案/统计用）。
+var endless_mode: bool = false
 ## 结束时仍在队伍中的成员（展示用）。
 var roster: Array[DeckEntry] = []
 var ledger: RunStatLedger = RunStatLedger.new()

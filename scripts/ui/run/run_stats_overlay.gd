@@ -68,7 +68,12 @@ func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 		return
 	_last_snapshot = snapshot
 	_title.text = "远征统计"
-	_subtitle.text = "远征完成" if snapshot.victory else "远征失败"
+	if snapshot.victory:
+		_subtitle.text = "远征完成"
+	elif snapshot.endless_mode and snapshot.reached_floor > 0:
+		_subtitle.text = "到达第 %d 层" % snapshot.reached_floor
+	else:
+		_subtitle.text = "远征失败"
 	_fill_metric_grid(_journey_grid, _journey_rows(snapshot))
 	_fill_metric_grid(_combat_grid, _combat_rows(snapshot))
 	if _roster_hint != null:
@@ -96,12 +101,16 @@ func hide_overlay() -> void:
 
 
 static func _journey_rows(snapshot: RunStatsSnapshot) -> Array:
-	return [
+	var rows: Array = []
+	if snapshot.endless_mode and snapshot.reached_floor > 0:
+		rows.append(["到达层数", "第 %d 层" % snapshot.reached_floor])
+	rows.append_array([
 		["战斗胜利", "%d 场" % snapshot.encounters_won],
 		["造访商店", "%d 次" % snapshot.shop_visits],
 		["战斗用时", _format_duration(snapshot.combat_seconds)],
 		["剩余金币", "%d" % snapshot.gold],
-	]
+	])
+	return rows
 
 
 static func _combat_rows(snapshot: RunStatsSnapshot) -> Array:

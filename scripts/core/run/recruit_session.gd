@@ -26,6 +26,8 @@ var progress_ratio: float = 0.0
 var map_floor: int = 0
 ## 本幕普通层数；与 map_floor 一起算倒数 6 层档。
 var map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT
+## 无尽：品阶随 F 单向放开，不用「倒数层」假设。
+var forward_tier_unlock: bool = false
 ## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
 
@@ -179,7 +181,7 @@ func is_roster_full() -> bool:
 func get_preferred_tier() -> int:
 	## 主路径：按地图层解锁（T2 自第 4 层；T3 自倒数 6 层）。无层号时回退旧进度三段。
 	if map_floor > 0:
-		return TierUnlock.get_max_unlocked_tier(map_floor, map_floor_count)
+		return TierUnlock.get_max_unlocked_tier(map_floor, map_floor_count, forward_tier_unlock)
 	if progress_ratio < 1.0 / 3.0:
 		return 1
 	if progress_ratio < 2.0 / 3.0:
@@ -189,7 +191,7 @@ func get_preferred_tier() -> int:
 
 func get_min_tier() -> int:
 	if map_floor > 0:
-		return TierUnlock.get_min_unlocked_tier(map_floor, map_floor_count)
+		return TierUnlock.get_min_unlocked_tier(map_floor, map_floor_count, forward_tier_unlock)
 	## 进度三段回退：后段踢出 T1，与倒数档一致。
 	if progress_ratio >= 2.0 / 3.0:
 		return 2

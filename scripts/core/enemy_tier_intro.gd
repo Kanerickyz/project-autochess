@@ -4,7 +4,9 @@ extends RefCounted
 ## 敌方 T2/T3 缓释只数帽（ENEMY_SPAWN_BUDGET §6.2）。层表 + 有队时 ∩ 玩家同档人数+1。
 
 
-static func tier3_first_floor(floor_count: int) -> int:
+static func tier3_first_floor(floor_count: int, forward_only: bool = false) -> int:
+	if forward_only:
+		return TierUnlock.FORWARD_T3_FROM_FLOOR
 	var total := maxi(1, floor_count)
 	return total - (TierUnlock.LATE_BAND_FLOORS - 1)
 
@@ -40,6 +42,7 @@ static func compute_effective_caps(
 	node_type: MapNodeType.Type,
 	team_entries: Array,
 	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_only: bool = false,
 ) -> Vector2i:
 	## x = t2_cap, y = t3_cap
 	var n := maxi(0, enemy_n)
@@ -48,7 +51,7 @@ static func compute_effective_caps(
 		return Vector2i(0, 0)
 
 	var f2 := TierUnlock.T2_FROM_FLOOR
-	var f3 := tier3_first_floor(floor_count)
+	var f3 := tier3_first_floor(floor_count, forward_only)
 	var t2_layer := _t2_layer(f, n, f2, f3)
 	var t3_layer := _t3_layer(f, n, f3)
 

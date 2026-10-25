@@ -39,6 +39,8 @@ var _tier_index: int = 0
 var _floor_index: int = 0
 ## 地图普通层数（Boss 层 = floor_count+1）；品阶解锁用。敌方 2★ 只数跟玩家二星人数。
 var _map_floor_count: int = 15
+## 无尽：品阶随 F 单向解锁（不用倒数层）。
+var _forward_tier_unlock: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 
 
@@ -52,6 +54,14 @@ func get_map_floor_count() -> int:
 
 func set_map_floor_count(count: int) -> void:
 	_map_floor_count = maxi(1, count)
+
+
+func set_forward_tier_unlock(enabled: bool) -> void:
+	_forward_tier_unlock = enabled
+
+
+func get_forward_tier_unlock() -> bool:
+	return _forward_tier_unlock
 
 
 var _spawn_budget_config: SpawnBudgetConfig = null
@@ -1481,6 +1491,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		rng,
 		team_snap,
 		_map_floor_count,
+		_forward_tier_unlock,
 	)
 	var result: Array = []
 	for item in seated:
@@ -3296,7 +3307,9 @@ func _maybe_show_tier_unlock_toast() -> void:
 	if _floor_index <= 0:
 		return
 	_ensure_tier_unlock_toast()
-	var max_tier := TierUnlock.get_max_unlocked_tier(_floor_index, _map_floor_count)
+	var max_tier := TierUnlock.get_max_unlocked_tier(
+		_floor_index, _map_floor_count, _forward_tier_unlock
+	)
 	if max_tier <= _announced_max_tier:
 		return
 	_announced_max_tier = max_tier
@@ -3487,7 +3500,11 @@ func _refresh_hud() -> void:
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
 		return
-	_encounter_label.text = _encounter.display_name if _encounter != null else "实时战斗"
+	var encounter_name := _encounter.display_name if _encounter != null else "实时战斗"
+	if _floor_index > 0:
+		_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+	else:
+		_encounter_label.text = encounter_name
 	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()

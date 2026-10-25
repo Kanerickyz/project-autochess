@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="RunMapConfig" format=3 uid="uid://endlessmap001"]
+
+[ext_resource type="Script" uid="uid://3te0818ncx6s" path="res://scripts/data/run_map_config.gd" id="1"]
+[ext_resource type="Resource" uid="uid://boardact1map" path="res://resources/levels/board_act1.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_01.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_02.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_03.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_04.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_05.tres" id="7"]
+[ext_resource type="Script" uid="uid://ddpugoydied62" path="res://scripts/data/encounter_data.gd" id="15_enc"]
+[ext_resource type="Resource" path="res://resources/spawn/endless_spawn_budget.tres" id="16_spawn"]
+
+[resource]
+script = ExtResource("1")
+act_display_name = "无尽"
+floor_count = 30
+min_nodes_per_floor = 1
+max_nodes_per_floor = 1
+column_count = 7
+path_count = 1
+shop_min_floor = 4
+board_defaults = ExtResource("2")
+combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
+endless_mode = true
+pure_combat_floors = 3
+shop_every_n_combats = 3
+endless_chunk_combats = 12
+endless_append_threshold = 4
+spawn_budget_override = ExtResource("16_spawn")

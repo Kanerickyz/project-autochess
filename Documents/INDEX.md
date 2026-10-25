@@ -25,6 +25,7 @@
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
 | [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
+| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、无通关/精英/Boss、稀疏商店、成绩＝地图层深） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |

@@ -24,6 +24,7 @@ static func roll(
 	rng: RandomNumberGenerator,
 	team_entries: Array = [],
 	floor_count: int = 15,
+	forward_tier_unlock: bool = false,
 ) -> Array:
 	if wave == null:
 		return []
@@ -36,7 +37,7 @@ static func roll(
 	var cols := maxi(1, seat_cols)
 
 	var pool := _resolve_pool(
-		cfg, fallback_pool, tier_index, floor_index, team_entries, floor_count
+		cfg, fallback_pool, tier_index, floor_index, team_entries, floor_count, forward_tier_unlock
 	)
 	if pool.is_empty():
 		push_warning(
@@ -104,7 +105,7 @@ static func roll(
 		max_ranged = resolve_max_ranged(target_total, first_floor)
 		var fill_n := clampi(target_total - fixed_units.size(), 0, remain_seats)
 		var tier_caps := EnemyTierIntro.compute_effective_caps(
-			floor_index, target_total, node_type, team_entries, floor_count
+			floor_index, target_total, node_type, team_entries, floor_count, forward_tier_unlock
 		)
 		var t2_base := EnemyTierIntro.count_units_tier(fixed_units, 2)
 		var t3_base := EnemyTierIntro.count_units_tier(fixed_units, 3)
@@ -151,7 +152,7 @@ static func roll(
 			all_units = _enforce_max_ranged(all_units, pool, max_ranged, target_e, cfg)
 		if node_type != MapNodeType.Type.BOSS:
 			var caps_post := EnemyTierIntro.compute_effective_caps(
-				floor_index, all_units.size(), node_type, team_entries, floor_count
+				floor_index, all_units.size(), node_type, team_entries, floor_count, forward_tier_unlock
 			)
 			all_units = _enforce_tier_caps(
 				all_units,
@@ -247,6 +248,7 @@ static func _resolve_pool(
 	floor_index: int,
 	team_entries: Array = [],
 	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> Array[UnitData]:
 	var source: Array[UnitData] = []
 	if cfg != null and not cfg.enemy_pool.is_empty():
@@ -258,7 +260,9 @@ static func _resolve_pool(
 	## 品阶硬过滤：地图层解锁 ∩ 玩家现有队伍最高品阶（有队伍时）。
 	## 层号优先；层未知时回退遭遇序代理（tier_index+1）。
 	var progress_key := floor_index if floor_index > 0 else tier_index + 1
-	var progress_tier := TierUnlock.get_max_unlocked_tier(progress_key, floor_count)
+	var progress_tier := TierUnlock.get_max_unlocked_tier(
+		progress_key, floor_count, forward_tier_unlock
+	)
 	var max_tier := progress_tier
 	var player_max := _player_roster_max_tier(team_entries)
 	if player_max > 0:
