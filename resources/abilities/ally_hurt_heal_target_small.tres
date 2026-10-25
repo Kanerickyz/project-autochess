@@ -21,4 +21,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 script = ExtResource("1_ab")
 id = "ally_hurt_heal_target_small"
 display_name = "弦上包扎"
+merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
