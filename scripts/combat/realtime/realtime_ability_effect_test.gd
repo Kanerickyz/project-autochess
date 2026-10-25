@@ -51,7 +51,8 @@ static func run_all() -> bool:
 	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
 	_check("first_hurt_harden_star2", _test_first_hurt_harden_star2())
-	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
+	_check("hunter_friend_summoned_buff", _test_hunter_friend_summoned_buff())
+	_check("hunter_friend_summoned_buff_star2", _test_hunter_friend_summoned_buff_star2())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
 	_check("wardrum_turn_start_nearby_atk_star2", _test_wardrum_turn_start_nearby_atk_star2())
@@ -991,38 +992,61 @@ static func _test_first_hurt_harden_star2() -> bool:
 	return true
 
 
-static func _test_deal_vs_higher_hp_extra() -> bool:
+## 猎手：友方战斗随从被召唤时，该随从 +1/+1；普通入座不触发。
+static func _test_hunter_friend_summoned_buff() -> bool:
 	var data := _load_unit("res://resources/units/realtime/hunter.tres")
-	if data == null or data.ability == null or data.ability.id != "deal_vs_higher_hp_extra":
-		push_error("vs_higher: hunter ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "friend_summoned_buff_atk_hp_1":
+		push_error("hunter: friend_summoned_buff_atk_hp_1 not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("hunter: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 29)
-	var hunter := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	hunter.unit.stats.attack_windup = 0.0
-	hunter.unit.stats.attack_interval = 0.3
-	hunter.unit.stats.steps_per_turn = 0
-	hunter.unit.stats.attack_reach = 2.0
-	## 目标当前生命高于猎人 → 条件成立；远处木桩避免清场。
-	var fat := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "sight_range": 0.0, "body_radius": 0.3}),
-		Vector2(9.5, 20.0),
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	var roster := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "roster_ally", "attack": 3, "max_hp": 5}),
+		Vector2(9.5, 22.5),
 	)
-	sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
-		Vector2(2.5, 4.5),
+	if roster.unit.get_effective_attack() != 3 or roster.unit.get_effective_max_hp() != 5:
+		push_error("hunter: roster ally should not be buffed on seat")
+		return false
+	var minion := _dummy(
+		UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1}
 	)
-	var hp_before := fat.unit.current_hp
-	var base_atk := hunter.unit.get_effective_attack()
-	var guard := 0
-	while fat.unit.current_hp > hp_before - (base_atk + 2) and guard < 300:
-		sim.advance_fixed_step()
-		guard += 1
-	var dealt := hp_before - fat.unit.current_hp
-	## 普攻 + 削峰额外（资源 value=2）；至少应超过裸攻。
-	if dealt < base_atk + 2:
+	minion.is_combat_summon = true
+	sim.add_unit(minion, Vector2(4.5, 10.5))
+	if minion.get_effective_attack() != 2 or minion.get_effective_max_hp() != 2:
 		push_error(
-			"vs_higher: dealt %d, expected >= atk(%d)+extra(2)" % [dealt, base_atk]
+			"hunter: summon atk/hp %d/%d expected 2/2"
+			% [minion.get_effective_attack(), minion.get_effective_max_hp()]
+		)
+		return false
+	if minion.current_hp != 2:
+		push_error("hunter: summon current_hp %d expected 2 (sync with max)" % minion.current_hp)
+		return false
+	return true
+
+
+## 猎手 2★：被召唤随从 +3/+3。
+static func _test_hunter_friend_summoned_buff_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/hunter.tres")
+	if data == null or data.ability == null:
+		push_error("hunter 2★: missing ability")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 30)
+	var hunter := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	hunter.unit.level = 2
+	var minion := _dummy(
+		UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1}
+	)
+	minion.is_combat_summon = true
+	sim.add_unit(minion, Vector2(4.5, 10.5))
+	if minion.get_effective_attack() != 4 or minion.get_effective_max_hp() != 4:
+		push_error(
+			"hunter 2★: summon atk/hp %d/%d expected 4/4"
+			% [minion.get_effective_attack(), minion.get_effective_max_hp()]
 		)
 		return false
 	return true
