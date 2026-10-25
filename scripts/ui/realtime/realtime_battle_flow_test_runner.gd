@@ -167,10 +167,18 @@ func _test_battle_controller_rules() -> void:
 	await process_frame
 	_expect(battle.find_child("RealtimeCombatEventBus", false, false) == null, "controller: bus freed after continue")
 
-	# 再次进入：持久占位仍自动入座；刷新仍禁用
+	# 再次进入：已入座持久回填；备战不自动塞座；刷新仍禁用
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: second encounter PREPARE")
 	_expect(battle.get_slot_board().occupied_count() >= 1, "controller: second prepare auto-seated")
+	_expect(deck.get_bench_count() == deck.size() - deck.get_seated_count(), "controller: bench = unseated members")
+	## clear_seat 后的成员应仍在备战，不被准备阶段自动填座。
+	var bench_before := deck.get_bench_count()
+	_expect(bench_before >= 1, "controller: some members remain on bench after earlier clear")
+	_expect(
+		battle.get_slot_board().occupied_count() == deck.get_seated_count(),
+		"controller: prepare occupied matches seated only (no auto-fill from bench)"
+	)
 	_expect(not battle.try_refresh_hand(), "controller: refresh still disabled")
 
 	## 上场人数上限：持久入座不超过 deploy_cap；空座仍多
@@ -181,7 +189,7 @@ func _test_battle_controller_rules() -> void:
 	_expect(not slots_cap.is_full(), "controller: seats not full when at/under deploy_cap")
 	_expect(slots_cap.can_assign_more(cap) == (slots_cap.occupied_count() < cap), "controller: can_assign_more matches occupancy")
 
-	## 换座
+	## 换座（无手牌时从备战上阵凑满 ≥2 入座）
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 	var slots_ord := battle.get_slot_board()
 	while slots_ord.occupied_count() < 2 and not battle.get_hand().is_empty():
@@ -194,6 +202,20 @@ func _test_battle_controller_rules() -> void:
 		if empty_i < 0:
 			break
 		battle.try_assign_to_slot(hand_e.entry_id, slots_ord.get_cell(empty_i))
+	while slots_ord.occupied_count() < 2:
+		var bench := deck.get_bench_entries()
+		if bench.is_empty():
+			break
+		var empty_b := -1
+		for i in slots_ord.slot_count:
+			if slots_ord.is_empty(i):
+				empty_b = i
+				break
+		if empty_b < 0:
+			break
+		if not battle.try_move_bench_to_seat(bench[0].entry_id, empty_b):
+			break
+		slots_ord = battle.get_slot_board()
 	_expect(slots_ord.occupied_count() >= 2, "seat-order: need >=2 seated")
 	if slots_ord.occupied_count() >= 2:
 		var occ := slots_ord.get_occupied_indices_by_seat_order()
@@ -204,6 +226,52 @@ func _test_battle_controller_rules() -> void:
 		_expect(battle.try_swap_prepare_seats(from_i, to_i), "seat-order: swap A and B")
 		_expect(slots_ord.get_entry(to_i) != null and slots_ord.get_entry(to_i).entry_id == id_a, "seat-order: A moved to B seat")
 		_expect(slots_ord.get_entry(from_i) != null and slots_ord.get_entry(from_i).entry_id == id_b, "seat-order: B moved to A seat")
+		## 座位 → 备战：未满时可下阵；备战满则失败。
+		var seat_to_bench_id := id_a
+		var bench_before_move := deck.get_bench_count()
+		if bench_before_move < DeckState.BENCH_CAPACITY:
+			_expect(battle.try_move_seat_to_bench(seat_to_bench_id), "seat-order: seat to bench ok when not full")
+			_expect(deck.get_entry(seat_to_bench_id) != null and deck.get_entry(seat_to_bench_id).seat_index < 0, "seat-order: moved unit on bench")
+			_expect(battle.get_slot_board().find_slot_by_entry(seat_to_bench_id) < 0, "seat-order: seat cleared after bench")
+			## 再上阵，保证仍可开战。
+			var empty_back := -1
+			var slots_back := battle.get_slot_board()
+			for i in slots_back.slot_count:
+				if slots_back.is_empty(i):
+					empty_back = i
+					break
+			_expect(empty_back >= 0, "seat-order: empty seat to redeploy")
+			_expect(battle.try_move_bench_to_seat(seat_to_bench_id, empty_back), "seat-order: redeploy from bench")
+		## 若备战已满：再试下阵应失败。
+		while deck.get_bench_count() < DeckState.BENCH_CAPACITY and deck.get_seated_count() > 1:
+			var move_id := -1
+			for e in deck.get_entries():
+				if e != null and e.seat_index >= 0:
+					move_id = e.entry_id
+					break
+			if move_id < 0:
+				break
+			if not battle.try_move_seat_to_bench(move_id):
+				break
+		if deck.get_bench_count() >= DeckState.BENCH_CAPACITY and deck.get_seated_count() >= 1:
+			var full_block_id := -1
+			for e2 in deck.get_entries():
+				if e2 != null and e2.seat_index >= 0:
+					full_block_id = e2.entry_id
+					break
+			_expect(full_block_id >= 0, "seat-order: need seated when bench full")
+			_expect(not battle.try_move_seat_to_bench(full_block_id), "seat-order: seat to bench fails when full")
+		## 保证至少 1 入座可开战。
+		if battle.get_slot_board().occupied_count() < 1:
+			var b0 := deck.get_bench_entries()
+			var e0 := -1
+			for i in battle.get_slot_board().slot_count:
+				if battle.get_slot_board().is_empty(i):
+					e0 = i
+					break
+			_expect(not b0.is_empty() and e0 >= 0, "seat-order: can redeploy for combat")
+			if not b0.is_empty() and e0 >= 0:
+				battle.try_move_bench_to_seat(b0[0].entry_id, e0)
 		_expect(battle.try_start_combat(), "seat-order: start combat")
 		var sim_ord := battle.get_sim()
 		_expect(sim_ord != null and sim_ord.has_started(), "seat-order: sim started")

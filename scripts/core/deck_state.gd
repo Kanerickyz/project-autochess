@@ -7,6 +7,8 @@ signal triple_merged(product: DeckEntry, consumed_seats: Array)
 
 ## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 4×5=20）。
 const SEAT_CAP_HARD_MAX := 10
+## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
+const BENCH_CAPACITY := 5
 
 var _config: DeckConfig
 var _level_config: LevelConfig
@@ -87,12 +89,57 @@ func size() -> int:
 	return _entries.size()
 
 
+## 已入座人数（seat_index ≥ 0）；≤ 上场席位上限。
+func get_seated_count() -> int:
+	var n := 0
+	for entry in _entries:
+		if entry != null and entry.seat_index >= 0:
+			n += 1
+	return n
+
+
+## 备战区人数（seat_index < 0）；≤ BENCH_CAPACITY。
+func get_bench_count() -> int:
+	return get_bench_entries().size()
+
+
+## 未入座成员（备战），按 entry_id 升序便于 UI 稳定占格。
+func get_bench_entries() -> Array[DeckEntry]:
+	var out: Array[DeckEntry] = []
+	for entry in _entries:
+		if entry != null and entry.seat_index < 0:
+			out.append(entry)
+	out.sort_custom(func(a: DeckEntry, b: DeckEntry) -> bool:
+		return a.entry_id < b.entry_id
+	)
+	return out
+
+
+func get_bench_capacity() -> int:
+	return BENCH_CAPACITY
+
+
+## 总拥有上限口径：上场席位上限 + 备战 5。
+func get_ownership_max() -> int:
+	return get_max_size() + BENCH_CAPACITY
+
+
+func can_seat_more() -> bool:
+	return get_seated_count() < get_max_size()
+
+
+func can_bench_more() -> bool:
+	return get_bench_count() < BENCH_CAPACITY
+
+
+## 无法再加人：已入座满且备战满。
 func is_full() -> bool:
-	return _entries.size() >= get_max_size()
+	return not can_add()
 
 
+## 仍可拥有新人：上场未满或备战未满。
 func can_add() -> bool:
-	return not is_full()
+	return can_seat_more() or can_bench_more()
 
 
 func get_max_size() -> int:
@@ -235,16 +282,17 @@ func add_entry(
 	unit_data: UnitData,
 	shop_bonus_max_hp: int = 0,
 	preferred_seat: int = -1,
+	prefer_bench: bool = false,
 ) -> DeckEntry:
 	if unit_data == null:
 		return null
-	## 满员但买入可立刻三合一时，允许短暂超出席位上限。
+	## 拥有已满但买入可立刻三合一时，允许短暂超出总拥有上限。
 	if not can_add() and not would_complete_triple_on_add(unit_data, 1):
 		return null
 	var entry := _create_entry(unit_data)
 	entry.bonus_max_hp += shop_bonus_max_hp
 	_entries.append(entry)
-	_place_new_entry(entry, preferred_seat)
+	_place_new_entry(entry, preferred_seat, prefer_bench)
 	var survivor := _resolve_after_auto_merge(entry)
 	deck_changed.emit()
 	return survivor
@@ -330,6 +378,7 @@ func is_seat_free(seat_index: int) -> bool:
 
 
 ## 将成员放到指定空座（或保持原座）；成功刷新落座时间。目标被他人占用时失败。
+## 备战→座位：须未达上场席位上限。座位→备战请用 try_move_seat_to_bench。
 func assign_seat(entry_id: int, seat_index: int) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
@@ -340,6 +389,9 @@ func assign_seat(entry_id: int, seat_index: int) -> bool:
 		_set_seat(entry, seat_index, true)
 		deck_changed.emit()
 		return true
+	var from_bench := entry.seat_index < 0
+	if from_bench and not can_seat_more():
+		return false
 	var occupant := get_entry_at_seat(seat_index)
 	if occupant != null and occupant.entry_id != entry_id:
 		return false
@@ -349,6 +401,7 @@ func assign_seat(entry_id: int, seat_index: int) -> bool:
 
 
 ## 换座：目标空则移入；目标有人则互换。双方（或移动者）刷新落座时间。
+## 备战仅可落入空座（不可与已入座互换）；座位→备战走 try_move_seat_to_bench。
 func swap_seats(entry_id: int, target_seat: int) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
@@ -361,36 +414,51 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 		return true
 	var other := get_entry_at_seat(target_seat)
 	var from_seat := entry.seat_index
+	## 备战 → 仅空座；禁止备战拖到已占座（避免对方被挤回备战）。
+	if from_seat < 0:
+		if other != null:
+			return false
+		if not can_seat_more():
+			return false
+		_set_seat(entry, target_seat, true)
+		deck_changed.emit()
+		return true
 	if other == null:
 		_set_seat(entry, target_seat, true)
 		deck_changed.emit()
 		return true
-	## 先清标记再写入，避免短暂双占干扰空座查找。
+	## 已入座 ↔ 已入座：互换；禁止任一方落到备战。
 	entry.seat_index = -1
 	other.seat_index = -1
 	_set_seat(entry, target_seat, true)
-	if from_seat >= 0:
-		_set_seat(other, from_seat, true)
-	else:
-		var empty := find_first_empty_seat()
-		if empty >= 0:
-			_set_seat(other, empty, true)
-		else:
-			other.seat_assign_seq = 0
+	_set_seat(other, from_seat, true)
 	deck_changed.emit()
 	return true
 
 
+## 已入座 → 备战。备战满（5）返回 false。已在备战视为成功。
+func try_move_seat_to_bench(entry_id: int) -> bool:
+	var entry := get_entry(entry_id)
+	if entry == null:
+		return false
+	if entry.seat_index < 0:
+		return true
+	if not can_bench_more():
+		return false
+	entry.seat_index = -1
+	entry.seat_assign_seq = 0
+	deck_changed.emit()
+	return true
+
+
+## 卸座入备战（出售前/遗留收回）；备战满时失败。
 func clear_seat(entry_id: int) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
 		return false
 	if entry.seat_index < 0:
 		return true
-	entry.seat_index = -1
-	entry.seat_assign_seq = 0
-	deck_changed.emit()
-	return true
+	return try_move_seat_to_bench(entry_id)
 
 
 func get_entry_at_seat(seat_index: int) -> DeckEntry:
@@ -702,14 +770,34 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	return entry
 
 
-func _place_new_entry(entry: DeckEntry, preferred_seat: int) -> void:
+## prefer_bench：点买优先入备战；备战满且上场未满 → 首空座；指定 preferred_seat 则落该空座。
+## 注意：调用时 entry 可能已在 _entries 且 seat_index=-1，备战计数含自身。
+func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool = false) -> void:
 	if entry == null:
 		return
+	## 显式空座（拖到上区）：优先落指定座。
+	if preferred_seat >= 0 and preferred_seat < get_slot_count() and is_seat_free(preferred_seat):
+		if can_seat_more():
+			_set_seat(entry, preferred_seat, true)
+			return
+	if prefer_bench:
+		## 已 append 时自身占一格备战，故用 <= CAP 判断「仍算合法备战」。
+		if get_bench_count() <= BENCH_CAPACITY:
+			## seat_index 保持 -1 = 备战。
+			return
+		if can_seat_more():
+			var empty := find_first_empty_seat()
+			if empty >= 0:
+				_set_seat(entry, empty, true)
+		return
+	## 开局 / 非备战路径：尽量入座，席位满再进备战。
 	var seat := preferred_seat
 	if seat < 0 or seat >= get_slot_count() or not is_seat_free(seat):
 		seat = find_first_empty_seat()
-	if seat >= 0:
+	if seat >= 0 and can_seat_more():
 		_set_seat(entry, seat, true)
+		return
+	## 上场已满：留在备战（调用方应已用 can_add 保证有空）。
 
 
 func _set_seat(entry: DeckEntry, seat_index: int, refresh_seq: bool) -> void:

@@ -169,10 +169,11 @@ func get_seat_cap() -> int:
 	return mini(deck_cap, seat_grid)
 
 
+## 总拥有已满：已入座达上场席位上限且备战满（点买无法再招，除非可三合一溢出）。
 func is_roster_full() -> bool:
 	if deck == null:
 		return true
-	return deck.size() >= get_seat_cap()
+	return not deck.can_add()
 
 
 func get_preferred_tier() -> int:
@@ -208,6 +209,7 @@ func can_refresh() -> bool:
 	return economy.can_afford(get_refresh_cost())
 
 
+## 总拥有已满时点买不可用；替换仅通过拖到已占座（见 try_recruit replace_entry_id）。
 func needs_replace() -> bool:
 	return is_roster_full()
 
@@ -219,6 +221,7 @@ func can_recruit_via_merge(unit: UnitData) -> bool:
 	return deck.would_complete_triple_on_add(unit, 1)
 
 
+## 点买不强制选替换；总拥有满且不可三合一时为 true（UI 提示拖替换/先出售）。
 func needs_replace_for_candidate(candidate_index: int) -> bool:
 	if not is_roster_full():
 		return false
@@ -228,9 +231,10 @@ func needs_replace_for_candidate(candidate_index: int) -> bool:
 	return true
 
 
-## 空席：replace_entry_id 忽略；seat_index≥0 落到指定空座，否则首空座。
-## 满员：必须指定被替换成员；新人继承其座位。
-## 例外：已有同 id 同星 2 只时，满员也可买入并自动三合一。
+## 点买（seat_index<0 且无 replace）：备战未满→备战；备战满且上场未满→首空座；都满→失败。
+## 拖到空座：seat_index≥0 落到该座。
+## 拖到已占座：replace_entry_id≥0，旧人不退金、继承座位（不要求总拥有已满）。
+## 例外：总拥有满但可三合一时允许短暂溢出买入。
 func try_recruit(
 	candidate_index: int,
 	replace_entry_id: int = -1,
@@ -254,52 +258,63 @@ func try_recruit(
 		result["reason"] = "no_gold"
 		return result
 
-	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
-	if not is_roster_full() or merge_overflow:
+	## 拖到已占座：随时可替换（旧人不退金）。
+	if replace_entry_id >= 0:
+		if deck.get_entry(replace_entry_id) == null:
+			result["reason"] = "bad_replace"
+			return result
 		if not economy.spend(cost):
 			result["reason"] = "no_gold"
 			return result
-		var preferred := seat_index
-		if preferred >= 0 and not deck.is_seat_free(preferred):
-			preferred = -1
-		var entry := deck.add_entry(unit, 0, preferred)
-		if entry == null:
+		var replaced := deck.replace_entry(replace_entry_id, unit)
+		if replaced == null:
 			economy.grant(cost)
-			result["reason"] = "add_failed"
+			result["reason"] = "replace_failed"
 			return result
 		_note_copy_taken(unit)
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
 		result["ok"] = true
-		result["reason"] = "merged" if merge_overflow else "added"
-		result["entry"] = entry
-		result["seat_index"] = entry.seat_index
+		result["reason"] = "replaced"
+		result["entry"] = replaced
+		result["replaced"] = true
+		result["seat_index"] = replaced.seat_index
 		session_changed.emit()
 		return result
 
-	## 满员替换：旧人不退金；继承被替者座位。
-	if replace_entry_id < 0:
-		result["reason"] = "need_replace"
+	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
+	if is_roster_full() and not merge_overflow:
+		result["reason"] = "roster_full"
 		return result
-	if deck.get_entry(replace_entry_id) == null:
-		result["reason"] = "bad_replace"
-		return result
+
+	## 指定空座（拖上区）；占用则回退为点买优先备战。
+	var preferred := seat_index
+	var prefer_bench := preferred < 0
+	if preferred >= 0:
+		if not deck.is_seat_free(preferred):
+			preferred = -1
+			prefer_bench = true
+		elif not deck.can_seat_more() and not merge_overflow:
+			result["reason"] = "seat_cap_full"
+			return result
+		else:
+			prefer_bench = false
+
 	if not economy.spend(cost):
 		result["reason"] = "no_gold"
 		return result
-	var replaced := deck.replace_entry(replace_entry_id, unit)
-	if replaced == null:
+	var entry := deck.add_entry(unit, 0, preferred, prefer_bench)
+	if entry == null:
 		economy.grant(cost)
-		result["reason"] = "replace_failed"
+		result["reason"] = "add_failed"
 		return result
 	_note_copy_taken(unit)
 	candidates[candidate_index] = null
 	_set_candidate_locked(candidate_index, false)
 	result["ok"] = true
-	result["reason"] = "replaced"
-	result["entry"] = replaced
-	result["replaced"] = true
-	result["seat_index"] = replaced.seat_index
+	result["reason"] = "merged" if merge_overflow else "added"
+	result["entry"] = entry
+	result["seat_index"] = entry.seat_index
 	session_changed.emit()
 	return result
 
@@ -311,6 +326,18 @@ func try_swap_seat(entry_id: int, target_seat: int) -> bool:
 	if deck.get_entry(entry_id) == null:
 		return false
 	if not deck.swap_seats(entry_id, target_seat):
+		return false
+	session_changed.emit()
+	return true
+
+
+## 招募：已入座 → 备战；备战满失败。
+func try_move_to_bench(entry_id: int) -> bool:
+	if not is_active or deck == null:
+		return false
+	if deck.get_entry(entry_id) == null:
+		return false
+	if not deck.try_move_seat_to_bench(entry_id):
 		return false
 	session_changed.emit()
 	return true
