@@ -79,6 +79,7 @@ static func run_all() -> bool:
 	_check("devour_lr_absorb_and_kill", _test_devour_lr_absorb_and_kill())
 	_check("devour_star2_skips_boss", _test_devour_star2_skips_boss())
 	_check("devour_rt_defer_kills_left_right", _test_devour_rt_defer_kills_left_right())
+	_check("devour_rt_pending_before_attack", _test_devour_rt_pending_before_attack())
 	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
 	_check("combat_start_iron_heart", _test_combat_start_iron_heart())
 	_check("combat_start_edge_hex", _test_combat_start_edge_hex())
@@ -2096,6 +2097,69 @@ static func _test_devour_rt_defer_kills_left_right() -> bool:
 			"devour_rt: atk=%d expected 11"
 			% devourer.unit.get_effective_attack()
 		)
+		return false
+	return true
+
+
+## defer 时回合开始吞噬入队后，同一步不得先出手；邻格须等结算后才被吃。
+static func _test_devour_rt_pending_before_attack() -> bool:
+	var data := _load_unit("res://resources/units/realtime/devour.tres")
+	if data == null or data.ability == null:
+		push_error("devour_order: missing devour")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 78)
+	sim.defer_effect_resolve = true
+	var devourer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var left := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 5, {"id": "fodder_l", "attack": 2, "steps_per_turn": 0}),
+		Vector2(8.5, 20.5),
+	)
+	var right := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 6, {"id": "fodder_r", "attack": 3, "steps_per_turn": 0}),
+		Vector2(10.5, 20.5),
+	)
+	var enemy := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			50,
+			{"steps_per_turn": 0, "sight_range": 0.0, "body_radius": 0.3},
+		),
+		Vector2(9.5, 19.5),
+	)
+	devourer.unit.stats.steps_per_turn = 0
+	devourer.unit.stats.attack_windup = 0.0
+	devourer.unit.stats.attack_reach = 2.0
+	sim.begin_combat()
+	var guard := 0
+	while not sim.has_pending_effects() and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	if not sim.has_pending_effects():
+		push_error("devour_order: expected pending OnRoundStart")
+		return false
+	## 入队当下不得已出手、左右须仍存活。
+	if sim._actor_has_attacked:
+		push_error("devour_order: must not attack before turn-start devour resolves")
+		return false
+	if not left.is_alive() or not right.is_alive():
+		push_error("devour_order: L/R must still be alive while pending")
+		return false
+	var enemy_hp := enemy.unit.current_hp
+	## 再推进多步：有 pending 时应卡住，仍不攻不吃。
+	for _i in 8:
+		sim.advance_fixed_step()
+	if sim._actor_has_attacked or enemy.unit.current_hp != enemy_hp:
+		push_error("devour_order: pending must block further attack")
+		return false
+	if not left.is_alive() or not right.is_alive():
+		push_error("devour_order: L/R must stay alive until resolve")
+		return false
+	while sim.has_pending_effects():
+		sim.resolve_next_pending_effect()
+	sim._remove_dead()
+	if left.is_alive() or right.is_alive():
+		push_error("devour_order: L/R should die after resolve")
 		return false
 	return true
 
