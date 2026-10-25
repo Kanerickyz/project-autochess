@@ -2372,18 +2372,22 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 		recruit_sell.emit(entry_id)
 		queue_redraw()
 		return
-	## 拖到上区空座或另一座位：换座（写回由控制器处理）；勿与出售冲突。
+	var release_pos := release_local if release_local != Vector2.ZERO else get_local_mouse_position()
+	## 精确命中座位（换座 / 备战上阵）；中缝备战须优先于「最近空座」吸附，
+	## 否则松手在 midline 备战会被上区后排空座抢走。
 	var seat_i := _find_recruit_team_seat_at(cell)
-	if seat_i < 0 and recruit_team_slots != null:
+	if seat_i >= 0:
+		recruit_team_seat_drop.emit(entry_id, seat_i)
+	elif is_pointer_over_bench(release_pos):
+		recruit_team_bench_drop.emit(entry_id)
+	elif recruit_team_slots != null:
 		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
 			var sc := recruit_team_slots.get_cell(seat_i)
 			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
 				seat_i = -1
-	if seat_i >= 0:
-		recruit_team_seat_drop.emit(entry_id, seat_i)
-	elif is_pointer_over_bench(release_local if release_local != Vector2.ZERO else get_local_mouse_position()):
-		recruit_team_bench_drop.emit(entry_id)
+		if seat_i >= 0:
+			recruit_team_seat_drop.emit(entry_id, seat_i)
 	queue_redraw()
 
 
@@ -2530,17 +2534,21 @@ func _finish_prepare_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if entry_id < 0:
 		queue_redraw()
 		return
+	var release_pos := release_local if release_local != Vector2.ZERO else get_local_mouse_position()
+	## 精确座位优先；备战命中次之；最近空座吸附垫底（与招募同序）。
 	var seat_i := _find_prepare_team_seat_at(cell)
-	if seat_i < 0 and prepare_slots != null:
+	if seat_i >= 0:
+		prepare_team_seat_drop.emit(entry_id, seat_i)
+	elif is_pointer_over_bench(release_pos):
+		prepare_team_bench_drop.emit(entry_id)
+	elif prepare_slots != null:
 		seat_i = prepare_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
 			var sc := prepare_slots.get_cell(seat_i)
 			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
 				seat_i = -1
-	if seat_i >= 0:
-		prepare_team_seat_drop.emit(entry_id, seat_i)
-	elif is_pointer_over_bench(release_local if release_local != Vector2.ZERO else get_local_mouse_position()):
-		prepare_team_bench_drop.emit(entry_id)
+		if seat_i >= 0:
+			prepare_team_seat_drop.emit(entry_id, seat_i)
 	queue_redraw()
 
 

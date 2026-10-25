@@ -31,6 +31,7 @@ func _run() -> void:
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
+	await _test_recruit_team_bench_drag()
 	await _test_recruit_lock_drag()
 	await _test_hand_card_long_press()
 	await _test_combat_motion()
@@ -564,6 +565,52 @@ func _test_recruit_team_sell_drag() -> void:
 	_expect(seat_drops == [[7, empty_seat]], "drag team to empty seat emits recruit_team_seat_drop")
 	_expect(sold.is_empty(), "seat drop does not emit recruit_sell")
 
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _test_recruit_team_bench_drag() -> void:
+	## 招募：上区拖到中缝备战应发 bench_drop，不被最近空座吸附抢走。
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 8)
+	root.add_child(arena)
+	await process_frame
+	var unit := load(UNIT_PATHS[0]) as UnitData
+	var entry := DeckEntry.new()
+	entry.entry_id = 11
+	entry.unit = unit
+	entry.level = 1
+	var team := PrepareSlotBoard.new()
+	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	team.try_assign(0, entry)
+	var mid_y := BoardHalf.midline_row(8)
+	var bench := PrepareSlotBoard.new()
+	bench.configure_bench_row(Vector2i(5, 8), DeckState.BENCH_CAPACITY, mid_y)
+	arena.recruit_active = true
+	arena.recruit_team_slots = team
+	arena.bench_visible = true
+	arena.bench_interactive = true
+	arena.bench_slots = bench
+	arena.recruit_sell_cell = Vector2i(4, mid_y + 2)
+	arena.recruit_lock_cell = Vector2i(0, mid_y + 2)
+	var bench_drops: Array[int] = []
+	var seat_drops: Array = []
+	arena.recruit_team_bench_drop.connect(func(id: int) -> void: bench_drops.append(id))
+	arena.recruit_team_seat_drop.connect(func(id: int, seat: int) -> void: seat_drops.append([id, seat]))
+	var team_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
+	var bench_center := arena.bench_slot_center_local(0)
+	_expect(arena.find_bench_slot_at_local(bench_center) == 0, "bench center hit-tests slot 0")
+	_press(arena, team_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = team_center + Vector2(0, RealtimeArenaView.LONG_PRESS_SLOP_PX + 8.0)
+	move.relative = Vector2(0, RealtimeArenaView.LONG_PRESS_SLOP_PX + 8.0)
+	arena._gui_input(move)
+	_hover_to(arena, bench_center)
+	_press(arena, bench_center, false)
+	_expect(bench_drops == [11], "drag team to recruit bench emits recruit_team_bench_drop")
+	_expect(seat_drops.is_empty(), "bench drop must not emit nearest-seat snap")
 	arena.clear_recruit_mode()
 	arena.queue_free()
 	await process_frame
