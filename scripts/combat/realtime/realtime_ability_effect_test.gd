@@ -9,7 +9,7 @@ const MOUNT_TABLE := {
 	"rider": "enemy_death_self_atk_hp_small",
 	"mini_pekka": "kill_gain_atk_mid",
 	"musketeer": "deal_damage_extra_2",
-	"valkyrie": "deal_damage_gain_atk_small",
+	"valkyrie": "friend_summon_nearby_ally_atk_1",
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
@@ -37,8 +37,10 @@ static func run_all() -> bool:
 	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
 	_check("scatter_hex_enemy_death_damage", _test_scatter_hex_enemy_death_damage())
 	_check("scatter_hex_enemy_death_damage_star2", _test_scatter_hex_enemy_death_damage_star2())
-	_check("arcane_friend_summon_minion_self_hp", _test_arcane_friend_summon_minion_self_hp())
-	_check("arcane_friend_summon_minion_self_hp_star2", _test_arcane_friend_summon_minion_self_hp_star2())
+	_check("arcane_friend_summon_nearby_hp", _test_arcane_friend_summon_nearby_hp())
+	_check("arcane_friend_summon_nearby_hp_star2", _test_arcane_friend_summon_nearby_hp_star2())
+	_check("valkyrie_friend_summon_nearby_atk", _test_valkyrie_friend_summon_nearby_atk())
+	_check("valkyrie_friend_summon_nearby_atk_star2", _test_valkyrie_friend_summon_nearby_atk_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
 	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
@@ -282,53 +284,146 @@ static func _test_scatter_hex_enemy_death_damage_star2() -> bool:
 	return true
 
 
-## 奥术：仅友方战斗随从上场时自身 max_hp+当前 +2；普通友方入座不触发。
-static func _test_arcane_friend_summon_minion_self_hp() -> bool:
-	var data := _load_unit("res://resources/units/realtime/arcane.tres")
-	if data == null or data.ability == null or data.ability.id != "friend_summon_minion_self_hp_small":
-		push_error("arcane: ability not mounted")
-		return false
-	var bus := CombatEventBus.new()
-	var sim := _new_sim(bus)
-	sim.configure(ARENA, 91)
-	var mage := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
-	var base_max := mage.unit.get_effective_max_hp()
-	var base_hp := mage.unit.current_hp
-	## 普通友方入座：不应触发。
-	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(10.5, 22.5))
-	if mage.unit.get_effective_max_hp() != base_max:
-		push_error("arcane: roster ally spawn should not buff")
-		return false
-	## 战斗随从上场：应 +2 上限与当前。
+## 持有者周围一格其他友方；战斗随从才触发。返回 holder/near/far/beside。
+static func _setup_summon_nearby(unit_path: String, level: int, seed: int) -> Dictionary:
+	var data := _load_unit(unit_path)
+	if data == null or data.ability == null:
+		return {}
+	var sim := _new_sim()
+	sim.configure(ARENA, seed)
+	var holder := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
+	holder.unit.level = level
+	var near := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "near_ally", "attack": 3}),
+		Vector2(9.5, 22.5),
+	)
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "far_ally", "attack": 3}),
+		Vector2(12.5, 22.5),
+	)
+	var beside := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "beside_summon", "attack": 3}),
+		Vector2(5.5, 10.5),
+	)
+	return {
+		"data": data,
+		"sim": sim,
+		"holder": holder,
+		"near": near,
+		"far": far,
+		"beside": beside,
+	}
+
+
+static func _spawn_combat_minion(sim: RealtimeCombatSim) -> void:
 	var minion := _dummy(UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1})
 	minion.is_combat_summon = true
-	sim.add_unit(minion, Vector2(9.5, 20.5))
-	var after_max := mage.unit.get_effective_max_hp()
-	var after_hp := mage.unit.current_hp
-	if after_max != base_max + 2:
-		push_error("arcane: max_hp %d -> %d, expected +2" % [base_max, after_max])
+	sim.add_unit(minion, Vector2(4.5, 10.5))
+
+
+## 奥术：友方战斗随从被召唤时，持有者周围一格其他友方生命上限 +1（当前同步）。
+static func _test_arcane_friend_summon_nearby_hp() -> bool:
+	var built := _setup_summon_nearby("res://resources/units/realtime/arcane.tres", 1, 91)
+	if built.is_empty():
+		push_error("arcane: setup failed")
 		return false
-	if after_hp != base_hp + 2:
-		push_error("arcane: current_hp %d -> %d, expected +2" % [base_hp, after_hp])
+	var data: UnitData = built["data"]
+	if data.ability.id != "friend_summon_nearby_ally_hp_1" or data.ability.merge_value_mult != 3:
+		push_error("arcane: ability not mounted")
+		return false
+	var sim: RealtimeCombatSim = built["sim"]
+	var holder: RtUnit = built["holder"]
+	var near: RtUnit = built["near"]
+	var far: RtUnit = built["far"]
+	var beside: RtUnit = built["beside"]
+	var holder_max := holder.unit.get_effective_max_hp()
+	var near_max := near.unit.get_effective_max_hp()
+	var near_hp := near.unit.current_hp
+	var far_max := far.unit.get_effective_max_hp()
+	var beside_max := beside.unit.get_effective_max_hp()
+	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(8.5, 21.5))
+	if near.unit.get_effective_max_hp() != near_max:
+		push_error("arcane: roster ally should not buff")
+		return false
+	_spawn_combat_minion(sim)
+	if holder.unit.get_effective_max_hp() != holder_max:
+		push_error("arcane: holder should not gain max_hp")
+		return false
+	if near.unit.get_effective_max_hp() != near_max + 1 or near.unit.current_hp != near_hp + 1:
+		push_error(
+			"arcane: near hp %d/%d expected +1"
+			% [near.unit.current_hp, near.unit.get_effective_max_hp()]
+		)
+		return false
+	if far.unit.get_effective_max_hp() != far_max or beside.unit.get_effective_max_hp() != beside_max:
+		push_error("arcane: far or summon-adjacent ally should stay unchanged")
 		return false
 	return true
 
 
-static func _test_arcane_friend_summon_minion_self_hp_star2() -> bool:
-	var data := _load_unit("res://resources/units/realtime/arcane.tres")
-	var bus := CombatEventBus.new()
-	var sim := _new_sim(bus)
-	sim.configure(ARENA, 92)
-	var mage := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
-	mage.unit.level = 2
-	var base_max := mage.unit.get_effective_max_hp()
-	var minion := _dummy(UnitInstance.Team.PLAYER, 1, {"id": "token_ember", "max_hp": 1, "attack": 1})
-	minion.is_combat_summon = true
-	sim.add_unit(minion, Vector2(9.5, 20.5))
-	if mage.unit.get_effective_max_hp() != base_max + 6:
+static func _test_arcane_friend_summon_nearby_hp_star2() -> bool:
+	var built := _setup_summon_nearby("res://resources/units/realtime/arcane.tres", 2, 92)
+	if built.is_empty():
+		return false
+	var near: RtUnit = built["near"]
+	var near_max := near.unit.get_effective_max_hp()
+	_spawn_combat_minion(built["sim"])
+	if near.unit.get_effective_max_hp() != near_max + 3:
 		push_error(
-			"arcane 2★: max_hp %d -> %d, expected +6"
-			% [base_max, mage.unit.get_effective_max_hp()]
+			"arcane 2★: max_hp %d -> %d, expected +3"
+			% [near_max, near.unit.get_effective_max_hp()]
+		)
+		return false
+	return true
+
+
+## 链枷：友方战斗随从被召唤时，持有者周围一格其他友方攻击 +1。
+static func _test_valkyrie_friend_summon_nearby_atk() -> bool:
+	var built := _setup_summon_nearby("res://resources/units/realtime/valkyrie.tres", 1, 93)
+	if built.is_empty():
+		push_error("valkyrie: setup failed")
+		return false
+	var data: UnitData = built["data"]
+	if data.ability.id != "friend_summon_nearby_ally_atk_1" or data.ability.merge_value_mult != 3:
+		push_error("valkyrie: ability not mounted")
+		return false
+	var sim: RealtimeCombatSim = built["sim"]
+	var holder: RtUnit = built["holder"]
+	var near: RtUnit = built["near"]
+	var far: RtUnit = built["far"]
+	var beside: RtUnit = built["beside"]
+	var holder_atk := holder.unit.get_effective_attack()
+	var near_atk := near.unit.get_effective_attack()
+	var far_atk := far.unit.get_effective_attack()
+	var beside_atk := beside.unit.get_effective_attack()
+	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(8.5, 21.5))
+	if near.unit.get_effective_attack() != near_atk:
+		push_error("valkyrie: roster ally should not buff")
+		return false
+	_spawn_combat_minion(sim)
+	if holder.unit.get_effective_attack() != holder_atk:
+		push_error("valkyrie: holder should not gain attack")
+		return false
+	if near.unit.get_effective_attack() != near_atk + 1:
+		push_error("valkyrie: near atk %d -> %d, expected +1" % [near_atk, near.unit.get_effective_attack()])
+		return false
+	if far.unit.get_effective_attack() != far_atk or beside.unit.get_effective_attack() != beside_atk:
+		push_error("valkyrie: far or summon-adjacent ally should stay unchanged")
+		return false
+	return true
+
+
+static func _test_valkyrie_friend_summon_nearby_atk_star2() -> bool:
+	var built := _setup_summon_nearby("res://resources/units/realtime/valkyrie.tres", 2, 94)
+	if built.is_empty():
+		return false
+	var near: RtUnit = built["near"]
+	var near_atk := near.unit.get_effective_attack()
+	_spawn_combat_minion(built["sim"])
+	if near.unit.get_effective_attack() != near_atk + 3:
+		push_error(
+			"valkyrie 2★: atk %d -> %d, expected +3"
+			% [near_atk, near.unit.get_effective_attack()]
 		)
 		return false
 	return true
@@ -579,9 +674,9 @@ static func _test_hurt_gain_atk_on_damage() -> bool:
 
 
 static func _test_deal_damage_gain_atk() -> bool:
-	var data := _load_unit("res://resources/units/realtime/valkyrie.tres")
+	var data := _load_unit("res://resources/units/realtime/boss_minion_t5.tres")
 	if data == null or data.ability == null or data.ability.id != "deal_damage_gain_atk_small":
-		push_error("deal: valkyrie ability not mounted")
+		push_error("deal: boss minion ability not mounted")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 11)
