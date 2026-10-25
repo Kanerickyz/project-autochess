@@ -48,6 +48,7 @@ static func run_all() -> bool:
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
 	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
+	_check("first_hurt_harden_star2", _test_first_hurt_harden_star2())
 	_check("deal_vs_higher_hp_extra", _test_deal_vs_higher_hp_extra())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
@@ -756,6 +757,9 @@ static func _test_first_hurt_harden_once() -> bool:
 	if data == null or data.ability == null or data.ability.id != "first_hurt_harden":
 		push_error("first_hurt: rune_plate ability not mounted")
 		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("first_hurt: merge_value_mult expected 3")
+		return false
 	var bus := CombatEventBus.new()
 	var sim := _new_sim(bus)
 	sim.configure(ARENA, 23)
@@ -800,6 +804,62 @@ static func _test_first_hurt_harden_once() -> bool:
 	if after_max != base_max + 1:
 		push_error(
 			"first_hurt: max_hp %d -> %d, expected +1 once (max_triggers=1)"
+			% [base_max, after_max]
+		)
+		return false
+	return true
+
+
+static func _test_first_hurt_harden_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/rune_plate.tres")
+	if data == null or data.ability == null or data.ability.id != "first_hurt_harden":
+		push_error("first_hurt star2: ability mount")
+		return false
+	var bus := CombatEventBus.new()
+	var sim := _new_sim(bus)
+	sim.configure(ARENA, 24)
+	var rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	rt.unit.level = 2
+	rt.unit.stats.max_hp = 20
+	rt.unit.current_hp = 20
+	sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.ENEMY,
+			{
+				"attack": 1,
+				"max_hp": 100000,
+				"steps_per_turn": 0,
+				"attack_windup": 0.0,
+				"attack_interval": 0.2,
+				"attack_reach": 2.0,
+				"sight_range": 10.0,
+			},
+		),
+		Vector2(9.5, 21.5),
+	)
+	var base_max := rt.unit.get_effective_max_hp()
+	var plate_hits: Array[int] = [0]
+	var plate_id := rt.unit.instance_id
+	bus.combat_event.connect(
+		func(event_type: StringName, payload: CombatEventPayload) -> void:
+			if (
+				event_type == CombatEvents.ON_DAMAGE_TAKEN
+				and payload.target != null
+				and payload.target.instance_id == plate_id
+			):
+				plate_hits[0] += 1
+	)
+	var guard := 0
+	while plate_hits[0] < 1 and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	if plate_hits[0] < 1:
+		push_error("first_hurt star2: expected a hit")
+		return false
+	var after_max := rt.unit.get_effective_max_hp()
+	if after_max != base_max + 3:
+		push_error(
+			"first_hurt star2: max_hp %d -> %d, expected +3"
 			% [base_max, after_max]
 		)
 		return false
