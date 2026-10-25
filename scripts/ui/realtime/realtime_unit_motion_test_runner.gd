@@ -26,6 +26,7 @@ func _run() -> void:
 	await _test_windup_cancel_soft_home()
 	await _test_strike_action_tween_lifecycle()
 	await _test_long_press_info()
+	await _test_prepare_seat_drag_swap()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
 	await _test_recruit_team_sell_drag()
@@ -242,6 +243,58 @@ func _test_long_press_info() -> void:
 			break
 	_expect(not enemy_info.is_empty(), "enemy preview is inspectable")
 	_expect(not bool(enemy_info.get("side_player", true)), "enemy preview reports enemy side")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_prepare_seat_drag_swap() -> void:
+	## 准备阶段：拖已入座角色到空座，应换座并写回 DeckEntry.seat_index。
+	var battle := _make_battle(17)
+	await process_frame
+	var arena := _arena(battle)
+	_expect(arena != null, "arena for prepare drag swap")
+	if arena == null:
+		battle.queue_free()
+		return
+	var slots := battle.get_slot_board()
+	var occupied := _occupied_slot_indices(slots, 1)
+	_expect(not occupied.is_empty(), "need seated unit for prepare drag")
+	if occupied.is_empty():
+		battle.queue_free()
+		return
+	var from_seat: int = occupied[0]
+	var mover := slots.get_entry(from_seat)
+	_expect(mover != null, "mover entry present")
+	var to_seat := -1
+	for i in slots.slot_count:
+		if i != from_seat and slots.is_empty(i):
+			to_seat = i
+			break
+	_expect(to_seat >= 0, "need empty seat for prepare drag")
+	if to_seat < 0 or mover == null:
+		battle.queue_free()
+		return
+	var mover_id := mover.entry_id
+	var from_center := _slot_center(arena, slots, from_seat)
+	var to_center := _slot_center(arena, slots, to_seat)
+	var seat_drops: Array = []
+	arena.prepare_team_seat_drop.connect(func(id: int, seat: int) -> void: seat_drops.append([id, seat]))
+
+	_press(arena, from_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = from_center + Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	move.relative = Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	arena._gui_input(move)
+	_expect(arena._prepare_team_drag_id == mover_id, "prepare drag starts after slop")
+	_hover_to(arena, to_center)
+	_press(arena, to_center, false)
+	_expect(seat_drops == [[mover_id, to_seat]], "prepare drag emits prepare_team_seat_drop")
+	var moved := slots.get_entry(to_seat)
+	_expect(moved != null and moved.entry_id == mover_id, "prepare drag moved unit on board")
+	_expect(moved != null and moved.seat_index == to_seat, "prepare drag writes seat_index back")
+	_expect(slots.get_entry(from_seat) == null, "source seat empty after prepare drag")
+	_expect(battle._selected_entry_id < 0, "prepare drag clears selection")
+
 	battle.queue_free()
 	await process_frame
 
