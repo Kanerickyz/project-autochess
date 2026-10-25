@@ -10,6 +10,10 @@ static func run_all() -> bool:
 	ok = _check("splash_body_mult", _test_splash_body_mult()) and ok
 	ok = _check("entry_star_body_power", _test_entry_star_body_power()) and ok
 	ok = _check("enemy_star2_matches_player", _test_enemy_star2_matches_player()) and ok
+	ok = _check("panel_match_follows_team_avg", _test_panel_match_follows_team_avg()) and ok
+	ok = _check("panel_match_floor_guard", _test_panel_match_floor_guard()) and ok
+	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
+	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
@@ -114,6 +118,86 @@ static func _make_wave(spawn_count: int, fixed: Array[UnitData] = []) -> WaveDat
 		entry.count = 1
 		wave.fixed_entries.append(entry)
 	return wave
+
+
+static func _test_panel_match_follows_team_avg() -> bool:
+	## 肥队：敌方面板均值应贴近队均（普通倍率 1.0）。
+	var ally := _make_unit("ally", 20, 8, 1.0, 1)
+	var team: Array = [_make_entry(ally, 10, 4), _make_entry(ally, 10, 4)]
+	## 同底模，避免取整后均值漂移。
+	var enemy_a := UnitInstance.from_unit_data(_make_unit("e1", 10, 4, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY)
+	var enemy_b := UnitInstance.from_unit_data(_make_unit("e2", 10, 4, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY)
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.panel_match_enabled = true
+	cfg.panel_mult_combat = 1.0
+	cfg.default_panel_atk_floor = 1.0
+	cfg.default_panel_hp_floor = 1.0
+	cfg.panel_floor_growth = 0.0
+	var ok := EnemyPanelMatcher.apply_to_units(
+		[enemy_a, enemy_b], team, 1, MapNodeType.Type.COMBAT, cfg
+	)
+	if not ok:
+		return false
+	## 队均展示 12 攻 / 30 血；底模 4/10 → ×3。
+	return (
+		enemy_a.stats.attack == 12
+		and enemy_b.stats.attack == 12
+		and enemy_a.stats.max_hp == 30
+		and enemy_b.stats.max_hp == 30
+	)
+
+
+static func _test_panel_match_floor_guard() -> bool:
+	## 空队深层：锚点走层向保底，不因队均为 0 而塌成 1。
+	var enemy := UnitInstance.from_unit_data(
+		_make_unit("e", 4, 2, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.panel_match_enabled = true
+	cfg.default_panel_atk_floor = 3.0
+	cfg.default_panel_hp_floor = 5.0
+	cfg.panel_floor_growth = 0.0
+	EnemyPanelMatcher.apply_to_units([enemy], [], 5, MapNodeType.Type.COMBAT, cfg)
+	return enemy.stats.attack >= 3 and enemy.stats.max_hp >= 5
+
+
+static func _test_panel_match_elite_higher() -> bool:
+	var ally := _make_unit("ally", 10, 4, 1.0, 1)
+	var team: Array = [_make_entry(ally)]
+	var combat_e := UnitInstance.from_unit_data(
+		_make_unit("c", 10, 4, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	var elite_e := UnitInstance.from_unit_data(
+		_make_unit("e", 10, 4, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.panel_mult_combat = 1.0
+	cfg.panel_mult_elite = 1.25
+	cfg.default_panel_atk_floor = 1.0
+	cfg.default_panel_hp_floor = 1.0
+	cfg.panel_floor_growth = 0.0
+	EnemyPanelMatcher.apply_to_units([combat_e], team, 1, MapNodeType.Type.COMBAT, cfg)
+	EnemyPanelMatcher.apply_to_units([elite_e], team, 1, MapNodeType.Type.ELITE, cfg)
+	return elite_e.stats.attack > combat_e.stats.attack and elite_e.stats.max_hp > combat_e.stats.max_hp
+
+
+static func _test_panel_match_skips_boss() -> bool:
+	var ally := _make_unit("ally", 40, 20, 1.0, 1)
+	var team: Array = [_make_entry(ally)]
+	var boss := UnitInstance.from_unit_data(
+		_make_unit("boss", 10, 4, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	var before_atk := boss.stats.attack
+	var before_hp := boss.stats.max_hp
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	var applied := EnemyPanelMatcher.apply_to_units(
+		[boss], team, 3, MapNodeType.Type.BOSS, cfg
+	)
+	return (
+		not applied
+		and boss.stats.attack == before_atk
+		and boss.stats.max_hp == before_hp
+	)
 
 
 static func _test_unit_power_formula() -> bool:
