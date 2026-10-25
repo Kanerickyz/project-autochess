@@ -9,7 +9,7 @@ const MOUNT_TABLE := {
 	"rider": "enemy_death_self_atk_hp_small",
 	"mini_pekka": "kill_gain_atk_mid",
 	"musketeer": "deal_damage_extra_2",
-	"valkyrie": "friend_summon_nearby_ally_atk_1",
+	"valkyrie": "friend_summon_nearby_ally_atk_hp_1",
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "ally_deploy_self_atk_small",
 	"goblin": "death_spawn_pack",
@@ -39,8 +39,8 @@ static func run_all() -> bool:
 	_check("scatter_hex_friend_kill_damage_star2", _test_scatter_hex_friend_kill_damage_star2())
 	_check("arcane_friend_summon_nearby_hp", _test_arcane_friend_summon_nearby_hp())
 	_check("arcane_friend_summon_nearby_hp_star2", _test_arcane_friend_summon_nearby_hp_star2())
-	_check("valkyrie_friend_summon_nearby_atk", _test_valkyrie_friend_summon_nearby_atk())
-	_check("valkyrie_friend_summon_nearby_atk_star2", _test_valkyrie_friend_summon_nearby_atk_star2())
+	_check("valkyrie_friend_summon_nearby_atk_hp", _test_valkyrie_friend_summon_nearby_atk_hp())
+	_check("valkyrie_friend_summon_nearby_atk_hp_star2", _test_valkyrie_friend_summon_nearby_atk_hp_star2())
 	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
 	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
@@ -405,14 +405,14 @@ static func _test_arcane_friend_summon_nearby_hp_star2() -> bool:
 	return true
 
 
-## 链枷：友方战斗随从被召唤时，持有者周围一格其他友方攻击 +1。
-static func _test_valkyrie_friend_summon_nearby_atk() -> bool:
+## 链枷：友方战斗随从被召唤时，持有者周围一格其他友方 +1/+1。
+static func _test_valkyrie_friend_summon_nearby_atk_hp() -> bool:
 	var built := _setup_summon_nearby("res://resources/units/realtime/valkyrie.tres", 1, 93)
 	if built.is_empty():
 		push_error("valkyrie: setup failed")
 		return false
 	var data: UnitData = built["data"]
-	if data.ability.id != "friend_summon_nearby_ally_atk_1" or data.ability.merge_value_mult != 3:
+	if data.ability.id != "friend_summon_nearby_ally_atk_hp_1" or data.ability.merge_value_mult != 3:
 		push_error("valkyrie: ability not mounted")
 		return false
 	var sim: RealtimeCombatSim = built["sim"]
@@ -421,37 +421,63 @@ static func _test_valkyrie_friend_summon_nearby_atk() -> bool:
 	var far: RtUnit = built["far"]
 	var beside: RtUnit = built["beside"]
 	var holder_atk := holder.unit.get_effective_attack()
+	var holder_max := holder.unit.get_effective_max_hp()
 	var near_atk := near.unit.get_effective_attack()
+	var near_max := near.unit.get_effective_max_hp()
+	var near_hp := near.unit.current_hp
 	var far_atk := far.unit.get_effective_attack()
+	var far_max := far.unit.get_effective_max_hp()
 	var beside_atk := beside.unit.get_effective_attack()
+	var beside_max := beside.unit.get_effective_max_hp()
 	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(8.5, 21.5))
-	if near.unit.get_effective_attack() != near_atk:
+	if near.unit.get_effective_attack() != near_atk or near.unit.get_effective_max_hp() != near_max:
 		push_error("valkyrie: roster ally should not buff")
 		return false
 	_spawn_combat_minion(sim)
-	if holder.unit.get_effective_attack() != holder_atk:
-		push_error("valkyrie: holder should not gain attack")
+	if (
+		holder.unit.get_effective_attack() != holder_atk
+		or holder.unit.get_effective_max_hp() != holder_max
+	):
+		push_error("valkyrie: holder should not gain atk/hp")
 		return false
 	if near.unit.get_effective_attack() != near_atk + 1:
 		push_error("valkyrie: near atk %d -> %d, expected +1" % [near_atk, near.unit.get_effective_attack()])
 		return false
-	if far.unit.get_effective_attack() != far_atk or beside.unit.get_effective_attack() != beside_atk:
+	if near.unit.get_effective_max_hp() != near_max + 1 or near.unit.current_hp != near_hp + 1:
+		push_error(
+			"valkyrie: near hp %d/%d expected +1"
+			% [near.unit.current_hp, near.unit.get_effective_max_hp()]
+		)
+		return false
+	if (
+		far.unit.get_effective_attack() != far_atk
+		or far.unit.get_effective_max_hp() != far_max
+		or beside.unit.get_effective_attack() != beside_atk
+		or beside.unit.get_effective_max_hp() != beside_max
+	):
 		push_error("valkyrie: far or summon-adjacent ally should stay unchanged")
 		return false
 	return true
 
 
-static func _test_valkyrie_friend_summon_nearby_atk_star2() -> bool:
+static func _test_valkyrie_friend_summon_nearby_atk_hp_star2() -> bool:
 	var built := _setup_summon_nearby("res://resources/units/realtime/valkyrie.tres", 2, 94)
 	if built.is_empty():
 		return false
 	var near: RtUnit = built["near"]
 	var near_atk := near.unit.get_effective_attack()
+	var near_max := near.unit.get_effective_max_hp()
 	_spawn_combat_minion(built["sim"])
 	if near.unit.get_effective_attack() != near_atk + 3:
 		push_error(
 			"valkyrie 2★: atk %d -> %d, expected +3"
 			% [near_atk, near.unit.get_effective_attack()]
+		)
+		return false
+	if near.unit.get_effective_max_hp() != near_max + 3:
+		push_error(
+			"valkyrie 2★: max_hp %d -> %d, expected +3"
+			% [near_max, near.unit.get_effective_max_hp()]
 		)
 		return false
 	return true
