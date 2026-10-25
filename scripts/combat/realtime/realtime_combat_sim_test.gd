@@ -37,6 +37,7 @@ static func run_all() -> bool:
 	ok = _check("boss_footprint_occupies_four_cells", _test_boss_footprint_occupies_four_cells()) and ok
 	ok = _check("boss_summon_respects_cap", _test_boss_summon_respects_cap()) and ok
 	ok = _check("boss_summon_lifetime_total_cap", _test_boss_summon_lifetime_total_cap()) and ok
+	ok = _check("giant_knight_summon_caps", _test_giant_knight_summon_caps()) and ok
 	ok = _check("boss_summon_zero_caps_uncapped", _test_boss_summon_zero_caps_uncapped()) and ok
 	ok = _check("boss_summon_respects_cooldown", _test_boss_summon_respects_cooldown()) and ok
 	ok = _check("boss_decapitation_beats_mutual_wipe", _test_boss_decapitation_beats_mutual_wipe()) and ok
@@ -1175,6 +1176,21 @@ static func _test_boss_summon_respects_cap() -> bool:
 		if n2 > 3:
 			push_error("summon_cap: drifted above 3 (%d)" % n2)
 			return false
+	return true
+
+
+## 第一只：场上同时最多 5，整场累计最多生成 9。
+static func _test_giant_knight_summon_caps() -> bool:
+	var data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
+	if data == null:
+		push_error("giant_knight: missing")
+		return false
+	if data.summon_max_alive != 5:
+		push_error("giant_knight: summon_max_alive %d, expected 5" % data.summon_max_alive)
+		return false
+	if data.summon_max_total != 9:
+		push_error("giant_knight: summon_max_total %d, expected 9" % data.summon_max_total)
+		return false
 	return true
 
 
