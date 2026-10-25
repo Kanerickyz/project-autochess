@@ -100,7 +100,7 @@ func resolve_hit(
 		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2)
 		_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2)
 		if src2 != null:
-			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2)
+			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2, true)
 		killed.append(tgt2)
 	return killed
 
@@ -179,6 +179,7 @@ func _emit(
 	target: UnitInstance,
 	amount: int,
 	target_hp_before: int = -1,
+	from_attack: bool = false,
 ) -> void:
 	if _bus == null:
 		return
@@ -187,4 +188,5 @@ func _emit(
 	payload.target = target
 	payload.amount = amount
 	payload.target_hp_before = target_hp_before
+	payload.from_attack = from_attack
 	_bus.emit_event(event_type, payload)

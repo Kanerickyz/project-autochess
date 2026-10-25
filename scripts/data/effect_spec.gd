@@ -53,6 +53,8 @@ enum Condition {
 	EVENT_TARGET_IS_NOT_COMBAT_SUMMON,
 	## 事件目标当前生命未满（可再接受治疗）；须追加在枚举末尾。
 	EVENT_TARGET_NOT_AT_MAX_HP,
+	## 击杀来自出手，不含技能伤害造成的击杀；须追加在枚举末尾。
+	KILL_FROM_ATTACK,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
