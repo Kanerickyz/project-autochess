@@ -186,6 +186,7 @@ func _ready() -> void:
 	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
 	_arena.map_shop_offer_drop.connect(_on_map_shop_offer_drop)
 	_arena.map_shop_team_seat_drop.connect(_on_map_shop_team_seat_drop)
+	_arena.prepare_team_seat_drop.connect(_on_prepare_team_seat_drop)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_ensure_refresh_button()
@@ -540,6 +541,17 @@ func try_swap_prepare_seats(from_slot: int, to_slot: int) -> bool:
 	_sync_slot_visuals()
 	_rebuild_cards()
 	return true
+
+
+## 准备：拖角色落到目标座（空座移入 / 占座互换）。
+func _on_prepare_team_seat_drop(entry_id: int, target_seat: int) -> void:
+	if _phase != Phase.PREPARE or _deck_state == null:
+		return
+	var from_i := _slots.find_slot_by_entry(entry_id)
+	if from_i < 0:
+		return
+	if not try_swap_prepare_seats(from_i, target_seat):
+		_show_hint("无法换座")
 
 
 ## 准备：从槽收回到手牌（遗留测试路径；主路径改为换座不收回）。
@@ -3226,7 +3238,7 @@ func _refresh_hud() -> void:
 	match _phase:
 		Phase.PREPARE:
 			_phase_label.text = (
-				"准备·点座位换阵" if _selected_entry_id < 0 else "点目标座位换座"
+				"准备·拖角色换座" if _selected_entry_id < 0 else "拖或点目标座位换座"
 			)
 		Phase.COMBAT:
 			_phase_label.text = _combat_phase_status_text()

@@ -28,6 +28,8 @@ signal enchant_team_seat_drop(entry_id: int, target_seat: int)
 signal map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int)
 ## 地图商店：上区队伍换座。
 signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
+## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
+signal prepare_team_seat_drop(entry_id: int, target_seat: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -211,6 +213,9 @@ var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
 var _map_shop_team_drag_id: int = -1
 var _map_shop_team_press_id: int = -1
+## 准备阶段座位拖换：按住已入座角色拖到目标座。
+var _prepare_team_drag_id: int = -1
+var _prepare_team_press_id: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
@@ -310,6 +315,8 @@ func _notification(what: int) -> void:
 		_map_shop_offer_press_index = -1
 		_map_shop_team_drag_id = -1
 		_map_shop_team_press_id = -1
+		_prepare_team_drag_id = -1
+		_prepare_team_press_id = -1
 		_finish_drag_visual(_hover_cell)
 		_hover_cell = NO_CELL
 	elif what == NOTIFICATION_MOUSE_EXIT:
@@ -670,25 +677,51 @@ func _gui_input(event: InputEvent) -> void:
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
-	## catalog_active 走与战斗相同的长按信息卡路径。
+	## catalog_active 走与战斗相同的长按信息卡路径；准备阶段额外支持拖座位换位。
 	if event is InputEventMouseMotion:
-		var motion_pos := (event as InputEventMouseMotion).position
-		_hover_cell = tile_to_cell(local_to_tile(motion_pos))
-		_track_press_motion(motion_pos)
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_track_press_motion(motion.position)
+		if _prepare_team_drag_id >= 0:
+			_set_drag_pointer(motion.position)
+			accept_event()
+		elif (
+			_can_prepare_seat_drag()
+			and _prepare_team_press_id >= 0
+			and _prepare_team_drag_id < 0
+			and not _info_shown
+		):
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_prepare_team_drag(_prepare_team_press_id, motion.position)
+				accept_event()
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if mb.pressed:
 			var info := inspect_at(mb.position)
+			_prepare_team_press_id = -1
 			if not info.is_empty():
-				## 按在单位上：点按动作推迟到松手，按住则改为看信息。
+				## 按在单位上：点按动作推迟到松手，按住则改为看信息；移超 slop 则拖换座。
+				if _can_prepare_seat_drag():
+					var press_cell := tile_to_cell(local_to_tile(mb.position))
+					var press_entry := _find_prepare_team_entry_at(press_cell)
+					if press_entry >= 0:
+						_prepare_team_press_id = press_entry
 				_begin_press(mb.position, info, board_pressed.emit.bind(local_to_tile(mb.position)))
 			else:
 				board_pressed.emit(local_to_tile(mb.position))
 			accept_event()
-		elif _end_press():
-			accept_event()
+		else:
+			var release_cell := tile_to_cell(local_to_tile(mb.position))
+			if _prepare_team_drag_id >= 0:
+				_finish_prepare_team_drag(release_cell)
+				accept_event()
+				return
+			_prepare_team_press_id = -1
+			if _end_press():
+				accept_event()
 
 
 func _gui_input_recruit(event: InputEvent) -> void:
@@ -1950,6 +1983,109 @@ func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 	return recruit_team_slots.find_slot_at_cell(cell)
 
 
+## 准备阶段可拖已入座角色换座（开战 / 目录 / 其它半场模式除外）。
+func _can_prepare_seat_drag() -> bool:
+	return (
+		prepare_slots != null
+		and not catalog_active
+		and not recruit_active
+		and not map_shop_active
+		and not enchant_active
+		and (sim == null or not sim.has_started())
+	)
+
+
+func _find_prepare_team_entry_at(cell: Vector2i) -> int:
+	if prepare_slots == null or cell == NO_CELL:
+		return -1
+	var slot_i := prepare_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := prepare_slots.get_entry(slot_i)
+	if entry == null:
+		return -1
+	return entry.entry_id
+
+
+func _find_prepare_team_seat_at(cell: Vector2i) -> int:
+	if prepare_slots == null or cell == NO_CELL:
+		return -1
+	return prepare_slots.find_slot_at_cell(cell)
+
+
+func _begin_prepare_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
+	if entry_id < 0 or prepare_slots == null or not _can_prepare_seat_drag():
+		return
+	var entry: DeckEntry = null
+	for i in prepare_slots.slot_count:
+		var e := prepare_slots.get_entry(i)
+		if e != null and e.entry_id == entry_id:
+			entry = e
+			break
+	if entry == null:
+		return
+	_prepare_team_drag_id = entry_id
+	_prepare_team_press_id = -1
+	_drag_active = true
+	var stats := entry.unit.stats if entry.unit != null else null
+	_drag_radius = stats.body_radius if stats != null else 0.7
+	_drag_visual_half_width = stats.get_visual_half_width() if stats != null else 0.0
+	_drag_visual_half_height = stats.get_visual_half_height() if stats != null else 0.0
+	_drag_label = entry.get_display_name()
+	_drag_unit_id = entry.get_unit_id()
+	_drag_texture = null
+	var origin := from_local if from_local != Vector2.ZERO else _press_pos
+	_start_drag_visual(origin)
+	queue_redraw()
+
+
+func _finish_prepare_team_drag(cell: Vector2i) -> void:
+	var entry_id := _prepare_team_drag_id
+	_prepare_team_drag_id = -1
+	_prepare_team_press_id = -1
+	_drag_active = false
+	_finish_drag_visual(cell)
+	if entry_id < 0:
+		queue_redraw()
+		return
+	var seat_i := _find_prepare_team_seat_at(cell)
+	if seat_i < 0 and prepare_slots != null:
+		seat_i = prepare_slots.find_nearest_empty_slot(cell)
+		if seat_i >= 0:
+			var sc := prepare_slots.get_cell(seat_i)
+			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
+				seat_i = -1
+	if seat_i >= 0:
+		prepare_team_seat_drop.emit(entry_id, seat_i)
+	queue_redraw()
+
+
+func _draw_prepare_team_seat_hint(px: float) -> void:
+	var cell := _hover_cell
+	if cell == NO_CELL:
+		return
+	var seat_i := _find_prepare_team_seat_at(cell)
+	var ok := seat_i >= 0
+	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
+	draw_rect(cell_rect, Color(0.45, 0.85, 1.0, 0.4) if ok else Color(1.0, 0.25, 0.2, 0.25))
+	if _drag_visual_alive:
+		return
+	_draw_body(
+		Vector2(cell) + Vector2(0.5, 0.5),
+		_drag_radius,
+		_drag_visual_half_width,
+		_drag_visual_half_height,
+		PLAYER_COLOR,
+		0.45,
+		_drag_label,
+		px,
+		true,
+		Vector2.ZERO,
+		true,
+		_drag_unit_id,
+	)
+
+
 func _find_map_shop_offer_at(cell: Vector2i) -> int:
 	if cell == NO_CELL:
 		return -1
@@ -2334,6 +2470,8 @@ func _draw() -> void:
 				_draw_recruit_team_seat_hint(px)
 	else:
 		_draw_prepare_slots(px)
+		if _prepare_team_drag_id >= 0 and _hover_cell != NO_CELL:
+			_draw_prepare_team_seat_hint(px)
 
 		## 敌方预览按 y 轴排序：靠下压上，避免剪影互盖错层。
 		var previews := enemy_previews.duplicate()
@@ -3040,7 +3178,10 @@ func _draw_prepare_slots(px: float) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		var alpha := DRAG_SOURCE_ALPHA if entry.entry_id == _enchant_team_drag_id else 0.9
+		var dragging := (
+			entry.entry_id == _enchant_team_drag_id or entry.entry_id == _prepare_team_drag_id
+		)
+		var alpha := DRAG_SOURCE_ALPHA if dragging else 0.9
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
