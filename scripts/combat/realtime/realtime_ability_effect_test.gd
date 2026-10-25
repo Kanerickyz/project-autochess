@@ -60,7 +60,8 @@ static func run_all() -> bool:
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
 	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
 	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
-	_check("blood_acolyte_combat_start_permanent", _test_blood_acolyte_combat_start_permanent())
+	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
+	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
@@ -1401,29 +1402,27 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 	return true
 
 
-## 血僧：开战永久 +1/+1；须写入 DeckEntry（2★ +6/+6）。
-static func _test_blood_acolyte_combat_start_permanent() -> bool:
-	var data := _load_unit("res://resources/units/realtime/blood_acolyte.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_permanent_self_atk_hp_1":
-		push_error("blood_perm: ability mount")
+## 血僧：开战不加；战斗结束且自身存活才永久 +1/+1（2★ +6/+6，写入 DeckEntry）。
+static func _test_blood_acolyte_survive_permanent() -> bool:
+	var built := _blood_acolyte_setup(4202)
+	if built.is_empty():
 		return false
-	var deck_cfg := DeckConfig.new()
-	deck_cfg.max_size = 10
-	var deck := DeckState.new()
-	deck.configure(deck_cfg)
-	var entry := deck.add_entry(data)
-	entry.level = 2
-	var sim := _new_sim()
-	sim.configure(ARENA, 4202)
-	sim.set_deck_state(deck)
-	var monk := sim.add_unit(
-		UnitInstance.from_deck_entry(entry, Vector2i(9, 20), UnitInstance.Team.PLAYER),
-		Vector2(9.5, 20.5),
-	)
-	var base_atk := monk.unit.get_effective_attack()
-	var base_hp := monk.unit.get_effective_max_hp()
+	var sim: RealtimeCombatSim = built["sim"]
+	var monk: RtUnit = built["monk"]
+	var entry: DeckEntry = built["entry"]
+	var base_atk: int = built["base_atk"]
+	var base_hp: int = built["base_hp"]
 	sim.begin_combat()
 	sim.flush_combat_start_lock()
+	if entry.bonus_attack != 0 or entry.bonus_max_hp != 0:
+		push_error("blood_perm: combat start must not grant bonus")
+		return false
+	if not _wipe_team_and_finish(sim, UnitInstance.Team.ENEMY):
+		push_error("blood_perm: combat did not finish")
+		return false
+	if not monk.unit.is_alive():
+		push_error("blood_perm: monk should survive")
+		return false
 	var expected := 6
 	if monk.unit.get_effective_attack() != base_atk + expected:
 		push_error(
@@ -1444,6 +1443,83 @@ static func _test_blood_acolyte_combat_start_permanent() -> bool:
 		)
 		return false
 	return true
+
+
+## 血僧阵亡则战斗结束不加永久攻血。
+static func _test_blood_acolyte_dead_skips_permanent() -> bool:
+	var built := _blood_acolyte_setup(4203)
+	if built.is_empty():
+		return false
+	var sim: RealtimeCombatSim = built["sim"]
+	var monk: RtUnit = built["monk"]
+	var entry: DeckEntry = built["entry"]
+	sim.begin_combat()
+	sim.flush_combat_start_lock()
+	if not _wipe_team_and_finish(sim, UnitInstance.Team.PLAYER):
+		push_error("blood_perm dead: combat did not finish")
+		return false
+	if monk.unit.is_alive():
+		push_error("blood_perm dead: monk should be dead")
+		return false
+	if entry.bonus_attack != 0 or entry.bonus_max_hp != 0:
+		push_error(
+			"blood_perm dead: bonus %d/%d expected 0/0"
+			% [entry.bonus_attack, entry.bonus_max_hp]
+		)
+		return false
+	return true
+
+
+static func _blood_acolyte_setup(seed: int) -> Dictionary:
+	var data := _load_unit("res://resources/units/realtime/blood_acolyte.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_permanent_self_atk_hp_1":
+		push_error("blood_perm: ability mount")
+		return {}
+	var specs: Array = data.ability.effect_specs
+	if specs.is_empty() or specs[0] == null or specs[0].trigger != CombatEvents.ON_COMBAT_END:
+		push_error("blood_perm: trigger must be combat end")
+		return {}
+	var deck_cfg := DeckConfig.new()
+	deck_cfg.max_size = 10
+	var deck := DeckState.new()
+	deck.configure(deck_cfg)
+	var entry := deck.add_entry(data)
+	entry.level = 2
+	var sim := _new_sim()
+	sim.configure(ARENA, seed)
+	sim.set_deck_state(deck)
+	var monk := sim.add_unit(
+		UnitInstance.from_deck_entry(entry, Vector2i(9, 20), UnitInstance.Team.PLAYER),
+		Vector2(9.5, 20.5),
+	)
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0}),
+		Vector2(9.5, 8.5),
+	)
+	if monk == null or monk.unit == null:
+		push_error("blood_perm: monk missing")
+		return {}
+	return {
+		"sim": sim,
+		"monk": monk,
+		"entry": entry,
+		"base_atk": monk.unit.get_effective_attack(),
+		"base_hp": monk.unit.get_effective_max_hp(),
+	}
+
+
+static func _wipe_team_and_finish(sim: RealtimeCombatSim, team: UnitInstance.Team) -> bool:
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or rt.unit == null or rt.get_team() != team:
+			continue
+		rt.unit.current_hp = 0
+		rt.state = RtUnit.State.DEAD
+	var guard := 0
+	while not sim.is_finished() and guard < 8:
+		sim.advance_fixed_step()
+		guard += 1
+	return sim.is_finished()
 
 
 ## 弩手：友方受伤 → 疗该友方 2。

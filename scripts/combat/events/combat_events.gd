@@ -2,6 +2,8 @@ class_name CombatEvents
 extends RefCounted
 
 const ON_COMBAT_START := &"OnCombatStart"
+## 胜负判定当时；只应由当时仍存活的单位响应。
+const ON_COMBAT_END := &"OnCombatEnd"
 const ON_FRIEND_SUMMONED := &"OnFriendSummoned"
 const ON_SUMMONED := &"OnSummoned"
 const ON_FRIEND_DEATH := &"OnFriendDeath"

@@ -27,6 +27,7 @@ var _round_active: bool = false
 var _round_phase: RoundPhase = RoundPhase.DONE
 var _act_index: int = 0
 var _paused: bool = false
+var _combat_end_emitted: bool = false
 
 
 func configure(
@@ -48,6 +49,7 @@ func configure(
 
 func start_combat() -> void:
 	_running = true
+	_combat_end_emitted = false
 	_timer = 0.0
 	_waiting_presentation = false
 	_paused = false
@@ -268,21 +270,32 @@ func _check_combat_end() -> void:
 		return
 	if _waiting_presentation:
 		return
-	if _effect_resolver != null and _effect_resolver.has_pending_steps():
+	if _effect_resolver != null and _effect_resolver.has_pending_steps() and not _combat_end_emitted:
 		return
 	var enemies := _grid.get_units_by_team(UnitInstance.Team.ENEMY, true)
 	var players := _grid.get_units_by_team(UnitInstance.Team.PLAYER, true)
-
+	var ending := false
+	var won := false
 	if enemies.is_empty():
 		if _spawn_controller != null and _spawn_controller.has_pending_spawn():
 			return
-		_running = false
-		_waiting_presentation = false
-		combat_finished.emit(true)
+		ending = true
+		won = true
 	elif players.is_empty():
-		_running = false
-		_waiting_presentation = false
-		combat_finished.emit(false)
+		ending = true
+		won = false
+	if not ending:
+		return
+	if not _combat_end_emitted and _event_bus != null:
+		_combat_end_emitted = true
+		_event_bus.emit_event(CombatEvents.ON_COMBAT_END, CombatEventPayload.new())
+		if _effect_resolver != null and _effect_resolver.has_pending_steps():
+			return
+	if _effect_resolver != null and _effect_resolver.has_pending_steps():
+		return
+	_running = false
+	_waiting_presentation = false
+	combat_finished.emit(won)
 
 
 func _get_sorted_alive_units() -> Array[UnitInstance]:

@@ -7,6 +7,7 @@ const CATALOG_COLUMNS := 5
 ## 触发按钮优先按此序排列（与 UnitInfoText 文案一致）；池中未出现的不显示。
 const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_COMBAT_START,
+	CombatEvents.ON_COMBAT_END,
 	CombatEvents.ON_ROUND_START,
 	CombatEvents.ON_SUMMONED,
 	CombatEvents.ON_FRIEND_SUMMONED,

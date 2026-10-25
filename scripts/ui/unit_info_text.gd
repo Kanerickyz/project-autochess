@@ -8,6 +8,7 @@ const STAT_ICON_GOLD := "⟦GOLD⟧"
 
 const TRIGGER_LABELS := {
 	CombatEvents.ON_COMBAT_START: "开战时",
+	CombatEvents.ON_COMBAT_END: "战斗结束且自身存活时",
 	CombatEvents.ON_FRIEND_SUMMONED: "友方召唤时",
 	CombatEvents.ON_SUMMONED: "被召唤时",
 	CombatEvents.ON_FRIEND_DEATH: "友方死亡时",

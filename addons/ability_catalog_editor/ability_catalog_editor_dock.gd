@@ -7,6 +7,7 @@ const ABILITIES_DIR := "res://resources/abilities"
 
 const TRIGGER_ENTRIES: Array[Dictionary] = [
 	{"id": CombatEvents.ON_COMBAT_START, "label": "开战时"},
+	{"id": CombatEvents.ON_COMBAT_END, "label": "战斗结束且自身存活时"},
 	{"id": CombatEvents.ON_FRIEND_SUMMONED, "label": "友方召唤时"},
 	{"id": CombatEvents.ON_FRIEND_DEATH, "label": "友方死亡时"},
 	{"id": CombatEvents.ON_ROUND_START, "label": "回合开始时"},

@@ -12,6 +12,7 @@ const ALPHA_MAX := 1.40
 ## 触发可靠度 / 强度权重（相对 STANDARD）。
 const TRIGGER_WEIGHTS := {
 	CombatEvents.ON_COMBAT_START: 0.85,
+	CombatEvents.ON_COMBAT_END: 0.7,
 	CombatEvents.ON_ROUND_START: 1.15,
 	CombatEvents.ON_SUMMONED: 0.7,
 	CombatEvents.ON_FRIEND_SUMMONED: 0.95,
