@@ -34,6 +34,7 @@ func apply_damage(
 	source: UnitInstance,
 	target: UnitInstance,
 	amount: int,
+	from_attack: bool = false,
 ) -> void:
 	if target == null or not target.is_alive():
 		return
@@ -51,6 +52,7 @@ func apply_damage(
 	payload.target = target
 	payload.amount = final_amount
 	payload.target_hp_before = hp_before
+	payload.from_attack = from_attack
 
 	## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
 	if target.is_alive():
@@ -74,9 +76,10 @@ func apply_rolled_damage(
 	source: UnitInstance,
 	target: UnitInstance,
 	base_amount: int,
+	from_attack: bool = false,
 ) -> void:
 	var rolled := roll_damage(source, base_amount)
-	apply_damage(source, target, rolled.amount)
+	apply_damage(source, target, rolled.amount, from_attack)
 
 
 func apply_attack_exchange(attacker: UnitInstance, defender: UnitInstance) -> void:
@@ -107,7 +110,7 @@ func _resolve_melee_strike(attacker: UnitInstance, defender: UnitInstance) -> vo
 		if hit_result.has("damage_target") and hit_result["damage_target"] != null:
 			damage_target = hit_result["damage_target"]
 
-	apply_rolled_damage(attacker, damage_target, attacker.get_effective_attack())
+	apply_rolled_damage(attacker, damage_target, attacker.get_effective_attack(), true)
 
 
 func apply_line_attack(attacker: UnitInstance, axis: int, damage: int) -> void:
@@ -129,4 +132,4 @@ func apply_line_attack(attacker: UnitInstance, axis: int, damage: int) -> void:
 	var enemies: Array[UnitInstance] = _GridLine.enemies_on_axis(_grid, origin, axis, attacker.team)
 	for enemy in enemies:
 		if enemy != null and enemy.is_alive():
-			apply_rolled_damage(attacker, enemy, damage)
+			apply_rolled_damage(attacker, enemy, damage, true)

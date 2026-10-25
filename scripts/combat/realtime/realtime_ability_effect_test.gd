@@ -62,6 +62,7 @@ static func run_all() -> bool:
 	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
 	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
 	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
+	_check("aftershock_attack_kill_only", _test_aftershock_attack_kill_only())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
@@ -1398,6 +1399,64 @@ static func _test_hurt_heal_capped_to_hit() -> bool:
 			"hurt_heal_capped: combat_skill_heal_received=%d expected 1"
 			% spear.unit.combat_skill_heal_received
 		)
+		return false
+	return true
+
+
+## 余震：普攻击杀才点残；技能击杀不再连锁。
+static func _test_aftershock_attack_kill_only() -> bool:
+	var data := _load_unit("res://resources/units/realtime/aftershock.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_damage_random_enemy_1":
+		push_error("aftershock: ability mount")
+		return false
+	var specs: Array = data.ability.effect_specs
+	if (
+		specs.is_empty()
+		or specs[0] == null
+		or specs[0].trigger != CombatEvents.ON_KILL
+		or specs[0].condition != EffectSpec.Condition.KILL_FROM_ATTACK
+	):
+		push_error("aftershock: kill must be attack-only")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 77)
+	var shock := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(4.5, 20.5))
+	var foes: Array[RtUnit] = []
+	for i in 4:
+		foes.append(sim.add_unit(
+			_dummy(UnitInstance.Team.ENEMY, 1, {"id": "fodder_%d" % i, "attack": 0}),
+			Vector2(4.5 + float(i), 8.5),
+		))
+	if shock == null:
+		push_error("aftershock: missing unit")
+		return false
+	sim.begin_combat()
+	sim.flush_combat_start_lock()
+	## 技能直伤击杀不算「攻击击杀」。
+	if not sim._pipeline.apply_damage(shock.unit, foes[0], 5):
+		push_error("aftershock: skill-like hit should kill fodder 0")
+		return false
+	sim._drain_effects(true)
+	if not foes[1].is_alive() or not foes[2].is_alive() or not foes[3].is_alive():
+		push_error("aftershock: non-attack kill must not splash")
+		return false
+	var killed := sim._pipeline.resolve_hit(shock, foes[1], shock.get_effective_attack(), 0.0, sim.get_units())
+	if killed.is_empty():
+		push_error("aftershock: attack should kill fodder 1")
+		return false
+	sim._drain_effects(true)
+	var alive := 0
+	if foes[0].is_alive():
+		alive += 1
+	if foes[1].is_alive():
+		alive += 1
+	if foes[2].is_alive():
+		alive += 1
+	if foes[3].is_alive():
+		alive += 1
+	## 非攻击击杀不触发；普攻打死 1 个后再点残 1 个，应剩 1 个。
+	if alive != 1:
+		push_error("aftershock: expected 1 foe left, alive=%d" % alive)
 		return false
 	return true
 

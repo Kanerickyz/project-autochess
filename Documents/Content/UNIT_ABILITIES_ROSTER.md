@@ -59,7 +59,7 @@
 | `hurt_heal_self_small` | 痛彻回春 | 挨打 · 高频 | 否 | 自己受伤时，自身恢复 **4** 当前生命 | **偏弱～中庸** | 愈修 | 生命·自愈 |
 | `kill_heal_self_mid` | 饮命回春 | 出手 · 条件稀有 | 否 | 自己击杀时，自身恢复 **8** 当前生命 | **中庸** | 命卫 | 生命·收割 |
 | `kill_heal_random_ally_2` | 收刀济友 | 出手 · 条件稀有 | 否* | 自己击杀时，**随机一名友方**恢复 **2** 当前生命（三合一后 **6**；`merge_value_mult=3`；含自己） | **中庸** | 疗刃 | 收割·输血；`OnKill` + `RANDOM_ALLY` |
-| `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`） | **偏弱** | 余震 | 收割·点残；`OnKill` + `RANDOM_ENEMY` |
+| `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己**攻击**击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`）。不含本技能伤害造成的击杀 | **偏弱** | 余震 | 收割·点残；`OnKill` + `KILL_FROM_ATTACK` + `RANDOM_ENEMY` |
 | `combat_start_nearby_ally_atk_1` | 咒刃点锋 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 咒刃 | 开场·惠攻；`OnCombatStart`；附近=1 格；`exclude_owner` |
 | `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart`；附近=1 格；`exclude_owner` |
 | `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | 掘墓 | 见 §4 |

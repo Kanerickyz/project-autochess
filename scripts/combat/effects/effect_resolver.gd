@@ -603,6 +603,8 @@ func _spec_condition_met(
 			)
 		EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP:
 			return _unit_below_max_hp(payload.target if payload != null else null)
+		EffectSpec.Condition.KILL_FROM_ATTACK:
+			return payload != null and payload.from_attack
 		_:
 			return true
 

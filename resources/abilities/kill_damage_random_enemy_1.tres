@@ -13,11 +13,12 @@ value = 1
 script = ExtResource("2_spec")
 trigger = &"OnKill"
 target_selector = 4
+condition = 5
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 
 [resource]
 script = ExtResource("1_ab")
 id = "kill_damage_random_enemy_1"
-display_name = "击杀时 对随机敌人造成 1 点伤害"
+display_name = "攻击击杀时 对随机敌人造成 1 点伤害"
 merge_value_mult = 3
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
