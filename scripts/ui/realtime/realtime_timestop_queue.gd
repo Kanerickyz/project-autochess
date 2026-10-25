@@ -8,6 +8,7 @@ enum Phase {
 	IDLE,
 	SHOW_CARD,
 	## 卡拍已结束、等待控制器 process_next_step；tick 不再推进。
+	## 正常只应存在同一帧内；若跨帧仍停在此，控制器须强制结算以免卡死。
 	AWAITING_RESOLVE,
 	RESULT,
 }
@@ -18,6 +19,7 @@ const CARD_PAUSE_SECONDS := 1.0
 const RESULT_PAUSE_SECONDS := 0.4
 ## 加速后单拍墙钟下限，仍须可扫读。
 const MIN_PAUSE_SECONDS := 0.12
+
 
 var _phase: int = Phase.IDLE
 var _card_owner: UnitInstance = null
@@ -37,6 +39,10 @@ func clear() -> void:
 
 func is_blocking() -> bool:
 	return _phase != Phase.IDLE
+
+
+func is_awaiting_resolve() -> bool:
+	return _phase == Phase.AWAITING_RESOLVE
 
 
 func size() -> int:
@@ -105,6 +111,12 @@ func tick(delta: float, time_scale: float = 1.0) -> StringName:
 		_result_payload = null
 		return &"result_done"
 	return &""
+
+
+## 立刻耗尽当前可读暂停（SHOW_CARD / RESULT），供「下一动」跳过演出。
+func expire_current_pause() -> void:
+	if _phase == Phase.SHOW_CARD or _phase == Phase.RESULT:
+		_remaining = 0.0
 
 
 func _pause_remaining(base_seconds: float, time_scale: float) -> float:

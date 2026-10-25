@@ -22,6 +22,8 @@ func _run() -> void:
 	await _test_rider_enemy_death_feedback()
 	await _test_basic_attack_does_not_float()
 	await _test_timestop_queue_blocks_sim()
+	await _test_tape_next_skips_stuck_timestop()
+	await _test_awaiting_resolve_recovers_next_frame()
 	if _failures == 0:
 		print("RealtimeCombatFeedbackTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -252,19 +254,28 @@ func _test_rider_enemy_death_feedback() -> void:
 	_expect(battle.try_start_combat(), "rider: start combat")
 	await process_frame
 	var arena := battle.get_arena()
+	var sim := battle.get_sim()
 	arena.clear_fx()
+	battle._timestop_queue.clear()
+	if sim.get_effect_resolver() != null:
+		sim.get_effect_resolver().clear_pending()
+	sim.release_presentation()
 	var before := arena.get_feedback_count()
 	var enemy_rt: RtUnit = null
-	for item in battle.get_sim().get_units():
+	for item in sim.get_units():
 		var rt := item as RtUnit
 		if rt != null and not rt.is_player() and rt.is_alive():
 			enemy_rt = rt
 			break
 	_expect(enemy_rt != null, "rider: have enemy to kill")
 	if enemy_rt != null:
-		battle.get_sim()._pipeline.apply_damage(null, enemy_rt, 999)
-		battle.get_sim()._drain_effects()
-	await process_frame
+		## defer 时停：入队后须播完介绍/结果拍才有 ON_EFFECT_RESOLVED 反馈。
+		sim._pipeline.apply_damage(null, enemy_rt, 999)
+	battle.time_scale = 8.0
+	var guard := 0
+	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
+		await process_frame
+		guard += 1
 	_expect(arena.get_feedback_count() > before, "rider: enemy-death effect yields feedback")
 	var has_stat := false
 	for fb in arena.get_feedback_entries():
@@ -377,9 +388,134 @@ func _test_timestop_queue_blocks_sim() -> void:
 		guard += 1
 	_expect(not battle.is_timestop_blocking(), "timestop: queue drains")
 	_expect(not sim.has_pending_effects(), "timestop: effects resolved after card")
-	_expect(target.current_hp == hp_before + 5, "timestop: heal applied after card")
+	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
+	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied after card")
 	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
 	_expect(not sim.presentation_hold, "timestop: presentation hold released")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_tape_next_skips_stuck_timestop() -> void:
+	## 「下一动」须能跳过技能介绍拍；否则时停阻塞时 _tape_step_once 永远无法步进（战斗假死）。
+	var battle := _make_battle(101)
+	await process_frame
+	_expect(_seat_first_hand(battle), "tape-skip: seat one unit")
+	_expect(battle.try_start_combat(), "tape-skip: start combat")
+	var sim := battle.get_sim()
+	battle._timestop_queue.clear()
+	var resolver := sim.get_effect_resolver()
+	if resolver != null:
+		resolver.clear_pending()
+	sim.release_presentation()
+
+	var target: UnitInstance = null
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt.is_player():
+			target = rt.unit
+			break
+	_expect(target != null, "tape-skip: player unit")
+	if target == null:
+		battle.queue_free()
+		await process_frame
+		return
+
+	target.current_hp = maxi(1, target.get_effective_max_hp() - 10)
+	var hp_before := target.current_hp
+	var action := EffectAction.new()
+	action.action_type = EffectAction.Type.HEAL
+	action.value = 3
+	var step := QueuedEffectStep.new()
+	step.action = action
+	step.target = target
+	step.owner = target
+	var batch := QueuedEffectBatch.new()
+	batch.owner = target
+	batch.payload = CombatEventPayload.new()
+	batch.entries.append(step)
+	resolver._pending_batches.append(batch)
+
+	await process_frame
+	_expect(battle.is_timestop_blocking(), "tape-skip: card blocks")
+	_expect(sim.has_pending_effects(), "tape-skip: still pending during card")
+	_expect(target.current_hp == hp_before, "tape-skip: not healed during card")
+
+	## 同步强制收拍；随后关掉 step_once，避免本帧把整场打完干扰血量断言。
+	battle._on_tape_next_pressed()
+	_expect(not sim.has_pending_effects(), "tape-skip: next resolves pending")
+	var heal_cap := mini(hp_before + 3, target.get_effective_max_hp())
+	_expect(target.current_hp == heal_cap, "tape-skip: heal applied after next")
+	battle._tape_step_once = false
+	battle._tape_paused = true
+	await process_frame
+	_expect(not battle.is_timestop_blocking(), "tape-skip: timestop cleared after next")
+	_expect(not sim.presentation_hold, "tape-skip: hold released")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_awaiting_resolve_recovers_next_frame() -> void:
+	## 若卡拍结束停在 AWAITING_RESOLVE 未 begin_result，下一帧须强制结算，不能永久挡模拟。
+	var battle := _make_battle(102)
+	await process_frame
+	_expect(_seat_first_hand(battle), "await-recover: seat")
+	_expect(battle.try_start_combat(), "await-recover: start")
+	var sim := battle.get_sim()
+	battle._timestop_queue.clear()
+	var resolver := sim.get_effect_resolver()
+	if resolver != null:
+		resolver.clear_pending()
+	sim.release_presentation()
+
+	var target: UnitInstance = null
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt.is_player():
+			target = rt.unit
+			break
+	_expect(target != null, "await-recover: player")
+	if target == null:
+		battle.queue_free()
+		await process_frame
+		return
+
+	target.current_hp = maxi(1, target.get_effective_max_hp() - 8)
+	var hp_before := target.current_hp
+	var action := EffectAction.new()
+	action.action_type = EffectAction.Type.HEAL
+	action.value = 2
+	var step := QueuedEffectStep.new()
+	step.action = action
+	step.target = target
+	step.owner = target
+	var batch := QueuedEffectBatch.new()
+	batch.owner = target
+	batch.payload = CombatEventPayload.new()
+	batch.entries.append(step)
+	resolver._pending_batches.append(batch)
+	## 直接进入 AWAITING_RESOLVE（模拟 card_done 回调中断）。
+	battle._timestop_queue.begin_card(target, null, 1.0)
+	battle._timestop_queue._phase = RealtimeTimestopQueue.Phase.AWAITING_RESOLVE
+	battle._timestop_queue._remaining = 0.0
+	sim.hold_for_presentation()
+
+	await process_frame
+	_expect(not sim.has_pending_effects(), "await-recover: pending resolved")
+	_expect(target.current_hp == hp_before + 2, "await-recover: heal applied")
+	_expect(
+		battle._timestop_queue.get_phase() != RealtimeTimestopQueue.Phase.AWAITING_RESOLVE,
+		"await-recover: left AWAITING_RESOLVE"
+	)
+
+	var guard := 0
+	while battle.is_timestop_blocking() and guard < 60:
+		await process_frame
+		guard += 1
+	_expect(not battle.is_timestop_blocking(), "await-recover: queue drains")
+	_expect(not sim.presentation_hold, "await-recover: hold released")
 
 	battle.queue_free()
 	await process_frame

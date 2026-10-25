@@ -832,6 +832,12 @@ func has_active_combat_action_tween() -> bool:
 	return _motion != null and _motion.has_active_action_tween()
 
 
+## 「下一动」解卡：打断出击/回位 tween 并归零姿态，避免演出门闩永久挡住模拟。
+func finish_combat_action_tweens() -> void:
+	if _motion != null:
+		_motion.force_home_all()
+
+
 ## 控制器在出手瞬间调用：立刻识别 last_attack 并开 strike tween（不等到本帧 _process）。
 func sync_combat_motion_now() -> void:
 	if _motion == null or sim == null or not sim.has_started():
