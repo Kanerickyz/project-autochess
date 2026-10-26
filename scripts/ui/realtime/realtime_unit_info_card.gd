@@ -16,6 +16,10 @@ const ENEMY_ACCENT := Color(0.69, 0.23, 0.20, 1.0)
 
 const POP_IN_SEC := 0.18
 const SWITCH_SEC := 0.22
+## 主卡下方附属卡：略晚于主卡弹出，多张之间错峰。
+const ATTACHMENT_STAGGER_SEC := 0.07
+const ATTACHMENT_POP_DELAY_SEC := 0.12
+const ATTACHMENT_POP_OFFSET_Y := 18.0
 const TILT_DEG := 11.0
 const SWITCH_KICK_PX := 42.0
 const SWITCH_LIFT_PX := 10.0
@@ -152,6 +156,65 @@ func _init() -> void:
 ## 物品：{is_item, kind_label, cost, armor?, skills, texture?} — 隐藏攻血标，侧栏写种类与价格。
 ## anchor: 单位贴图头顶（父节点本地坐标）；bounds: 可放置范围。
 ## slide_dir: 滑动切换水平方向（-1 左 / 0 首次弹出 / +1 右），小丑牌式倾斜用。
+func get_rest_position() -> Vector2:
+	return _rest_position
+
+
+func get_follow_offset() -> Vector2:
+	return _follow_offset
+
+
+func is_motion_running() -> bool:
+	return _motion != null and _motion.is_valid() and _motion.is_running()
+
+
+## 附属卡跟主卡同位移（长按跟手）；动画播放中不抢位。
+func apply_follow_offset(leader_offset: Vector2) -> void:
+	if not _open or not visible:
+		return
+	if is_motion_running():
+		return
+	position = _rest_position + leader_offset
+
+
+## 主卡 rest 下方居中叠放；须先写入 info 以得到正确 size。
+func stack_rest_below(leader_rest: Vector2, leader_size: Vector2, gap: float) -> Vector2:
+	var card_size := get_combined_minimum_size()
+	if card_size.y <= 0.0:
+		card_size = size
+	return Vector2(
+		leader_rest.x + (leader_size.x - card_size.x) * 0.5,
+		leader_rest.y + leader_size.y + gap,
+	)
+
+
+## 附属信息卡：叠在主卡（或上一张附属）rest 下方；带延迟 Tween。
+func show_stack_attachment(
+	info: Dictionary,
+	leader_rest: Vector2,
+	leader_size: Vector2,
+	gap: float,
+	bounds: Rect2,
+	slide_dir: float,
+	stagger_index: int,
+) -> void:
+	_apply_content(info)
+	reset_size()
+	var card_size := get_combined_minimum_size()
+	size = card_size
+	pivot_offset = card_size * 0.5
+	var target := _clamp_card_top_left(stack_rest_below(leader_rest, leader_size, gap), bounds, card_size)
+	_rest_position = target
+	_follow_offset = Vector2.ZERO
+	visible = true
+	_open = true
+	var delay := ATTACHMENT_POP_DELAY_SEC + float(stagger_index) * ATTACHMENT_STAGGER_SEC
+	if absf(slide_dir) > 0.01:
+		_play_attachment_switch(target, slide_dir, delay)
+	else:
+		_play_attachment_pop_in(target, delay)
+
+
 func show_info(
 	info: Dictionary,
 	anchor: Vector2,
@@ -290,6 +353,10 @@ func _compute_position(
 		pos = Vector2(anchor.x - card_size.x * 0.5, anchor.y - card_size.y - MARGIN_PX)
 		if pos.y < bounds.position.y + MARGIN_PX:
 			pos.y = foot.y + MARGIN_PX
+	return _clamp_card_top_left(pos, bounds, card_size)
+
+
+func _clamp_card_top_left(pos: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
 	pos.x = clampf(
 		pos.x,
 		bounds.position.x + MARGIN_PX,
@@ -301,6 +368,56 @@ func _compute_position(
 		maxf(bounds.position.y + MARGIN_PX, bounds.end.y - card_size.y - MARGIN_PX),
 	)
 	return pos
+
+
+func _play_attachment_pop_in(target: Vector2, delay: float) -> void:
+	_kill_motion()
+	_set_shadow_lift(true)
+	position = target + Vector2(0.0, ATTACHMENT_POP_OFFSET_Y)
+	rotation_degrees = 0.0
+	scale = Vector2.ONE * SCALE_POP
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_base_rotation = 0.0
+	_base_scale = 1.0
+	_motion = create_tween()
+	_motion.set_parallel(true)
+	_motion.tween_property(self, "position", target, POP_IN_SEC).set_delay(delay).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_motion.tween_property(self, "scale", Vector2.ONE, POP_IN_SEC).set_delay(delay).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_motion.tween_property(self, "modulate:a", 1.0, POP_IN_SEC * 0.7).set_delay(delay).set_trans(
+		Tween.TRANS_QUAD
+	).set_ease(Tween.EASE_OUT)
+	_motion.chain().tween_callback(_on_motion_settled)
+
+
+func _play_attachment_switch(target: Vector2, slide_dir: float, delay: float) -> void:
+	_kill_motion()
+	var dir := signf(slide_dir)
+	if is_zero_approx(dir):
+		dir = 1.0
+	_set_shadow_lift(true)
+	var kick := Vector2(dir * SWITCH_KICK_PX * 0.65, -SWITCH_LIFT_PX * 0.5)
+	position = target - kick * 0.35
+	rotation_degrees = dir * TILT_DEG * 0.85
+	scale = Vector2.ONE * SCALE_PUNCH
+	modulate = Color.WHITE
+	_base_rotation = dir * TILT_DEG * 0.85
+	_base_scale = SCALE_PUNCH
+	_motion = create_tween()
+	_motion.set_parallel(true)
+	_motion.tween_property(self, "position", target, SWITCH_SEC).set_delay(delay).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_motion.tween_property(self, "rotation_degrees", 0.0, SWITCH_SEC).set_delay(delay).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_motion.tween_property(self, "scale", Vector2.ONE, SWITCH_SEC).set_delay(delay).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_motion.chain().tween_callback(_on_motion_settled)
 
 
 func _play_pop_in(target: Vector2) -> void:
