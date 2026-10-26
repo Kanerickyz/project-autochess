@@ -6,7 +6,7 @@ func _initialize() -> void:
 	ok = _test_spawn_budget_extrapolation() and ok
 	ok = _test_panel_floors_rise_with_f() and ok
 	ok = _test_forward_tier_unlock() and ok
-	ok = _test_endless_flat_and_star2_knobs() and ok
+	ok = _test_endless_flat_only_knobs() and ok
 	quit(0 if ok else 1)
 
 
@@ -31,12 +31,8 @@ func _test_spawn_budget_extrapolation() -> bool:
 
 
 func _test_panel_floors_rise_with_f() -> bool:
+	## 主塔默认：层向面板下限随 F 升（无尽关闭此项，见 flat-only 断言）。
 	var cfg := SpawnBudgetConfig.load_or_default()
-	## 无尽加压资源若存在则用之。
-	if ResourceLoader.exists("res://resources/spawn/endless_spawn_budget.tres"):
-		var loaded := load("res://resources/spawn/endless_spawn_budget.tres")
-		if loaded is SpawnBudgetConfig:
-			cfg = loaded as SpawnBudgetConfig
 	var atk5 := cfg.get_panel_atk_floor(5)
 	var atk15 := cfg.get_panel_atk_floor(15)
 	var hp5 := cfg.get_panel_hp_floor(5)
@@ -74,7 +70,7 @@ func _test_forward_tier_unlock() -> bool:
 	return true
 
 
-func _test_endless_flat_and_star2_knobs() -> bool:
+func _test_endless_flat_only_knobs() -> bool:
 	if not ResourceLoader.exists("res://resources/spawn/endless_spawn_budget.tres"):
 		push_error("missing endless_spawn_budget.tres")
 		return false
@@ -82,20 +78,28 @@ func _test_endless_flat_and_star2_knobs() -> bool:
 	if cfg == null:
 		push_error("endless_spawn_budget is not SpawnBudgetConfig")
 		return false
-	if cfg.floor_flat_atk_per_level < 1 or cfg.floor_flat_hp_per_level < 1:
-		push_error("endless must grant ≥+1/+1 per floor per unit")
+	if cfg.floor_flat_atk_per_level != 1 or cfg.floor_flat_hp_per_level != 1:
+		push_error("endless must use exactly +1/+1 per floor per unit")
 		return false
-	if cfg.floor_star2_per_level < 1:
-		push_error("endless must enable floor star2 quota")
+	if cfg.floor_star2_per_level != 0:
+		push_error("endless must not use floor star2 quota (too strong)")
 		return false
-	if cfg.get_floor_flat_atk_bonus(5) < 4 or cfg.get_floor_flat_hp_bonus(5) < 4:
-		push_error("endless F5 flat bonus should be ≥4/4")
+	if cfg.panel_floor_growth > 0.0:
+		push_error("endless must not stack panel_floor_growth on top of flat")
 		return false
-	if cfg.get_floor_star2_quota(5) < 4:
-		push_error("endless F5 star2 quota should be ≥4")
+	if cfg.get_floor_flat_atk_bonus(5) != 4 or cfg.get_floor_flat_hp_bonus(5) != 4:
+		push_error("endless F5 flat bonus should be exactly 4/4")
+		return false
+	if cfg.get_floor_star2_quota(5) != 0:
+		push_error("endless F5 star2 quota should be 0")
 		return false
 	print(
-		"Endless knobs: flat F5=%d/%d star2 F5=%d"
-		% [cfg.get_floor_flat_atk_bonus(5), cfg.get_floor_flat_hp_bonus(5), cfg.get_floor_star2_quota(5)]
+		"Endless knobs: flat F5=%d/%d star2 F5=%d panel_growth=%.2f"
+		% [
+			cfg.get_floor_flat_atk_bonus(5),
+			cfg.get_floor_flat_hp_bonus(5),
+			cfg.get_floor_star2_quota(5),
+			cfg.panel_floor_growth,
+		]
 	)
 	return true
