@@ -4,13 +4,19 @@ extends Control
 
 const TEXTURE_PATH := "res://assets/sprites/combat/combo/combo_%02d.png"
 const DISPLAY_PX := 88.0
-const POP_SCALE := 1.18
-const POP_IN_SECONDS := 0.1
-const POP_OUT_SECONDS := 0.14
+const PUNCH_IN_SECONDS := 0.085
+const SETTLE_SECONDS := 0.14
+const FLASH_SECONDS := 0.16
+const WOBBLE_SECONDS := 0.13
+const HIDE_SECONDS := 0.1
+const PEAK_SCALE_MIN := 1.26
+const PEAK_SCALE_MAX := 1.42
+const START_SCALE := 0.38
 
 var _textures: Array[Texture2D] = []
 var _icon: TextureRect
-var _pop_tween: Tween
+var _impact_tween: Tween
+var _last_combo_shown: int = 0
 
 
 func _ready() -> void:
@@ -52,15 +58,29 @@ func set_combo_count(combo: int) -> void:
 	_icon.texture = _textures[idx]
 	if not visible:
 		visible = true
-		scale = Vector2.ONE
-	_play_pop()
+	_play_impact(combo)
+	_last_combo_shown = combo
 
 
 func _hide_combo() -> void:
-	if _pop_tween != null and _pop_tween.is_valid():
-		_pop_tween.kill()
+	_kill_impact_tween()
+	if not visible:
+		_last_combo_shown = 0
+		return
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "scale", Vector2.ONE * 0.65, HIDE_SECONDS)
+	tween.parallel().tween_property(self, "modulate:a", 0.0, HIDE_SECONDS)
+	tween.chain().tween_callback(_finish_hide)
+
+
+func _finish_hide() -> void:
 	visible = false
 	scale = Vector2.ONE
+	modulate = Color.WHITE
+	rotation_degrees = 0.0
+	_last_combo_shown = 0
 
 
 func _preload_textures() -> void:
@@ -72,11 +92,37 @@ func _preload_textures() -> void:
 			_textures.append(tex)
 
 
-func _play_pop() -> void:
-	if _pop_tween != null and _pop_tween.is_valid():
-		_pop_tween.kill()
-	_pop_tween = create_tween()
-	_pop_tween.set_trans(Tween.TRANS_BACK)
-	_pop_tween.set_ease(Tween.EASE_OUT)
-	scale = Vector2.ONE * POP_SCALE
-	_pop_tween.tween_property(self, "scale", Vector2.ONE, POP_OUT_SECONDS).from_current()
+func _kill_impact_tween() -> void:
+	if _impact_tween != null and _impact_tween.is_valid():
+		_impact_tween.kill()
+	_impact_tween = null
+
+
+func _peak_scale_for_combo(combo: int) -> float:
+	var t := float(mini(maxi(combo, 1), 15) - 1) / 14.0
+	return lerpf(PEAK_SCALE_MIN, PEAK_SCALE_MAX, t)
+
+
+func _play_impact(combo: int) -> void:
+	_kill_impact_tween()
+	modulate = Color.WHITE
+	rotation_degrees = 0.0
+	scale = Vector2.ONE * START_SCALE
+	var peak := _peak_scale_for_combo(combo)
+	var wobble_sign := 1.0 if combo % 2 == 0 else -1.0
+
+	_impact_tween = create_tween()
+	_impact_tween.set_parallel(true)
+	var punch := _impact_tween.tween_property(self, "scale", Vector2.ONE * peak, PUNCH_IN_SECONDS)
+	punch.set_trans(Tween.TRANS_BACK)
+	punch.set_ease(Tween.EASE_OUT)
+	_impact_tween.tween_property(self, "modulate", Color.WHITE, FLASH_SECONDS).from(
+		Color(1.65, 1.08, 0.72, 1.0)
+	)
+	_impact_tween.tween_property(self, "rotation_degrees", 0.0, WOBBLE_SECONDS).from(
+		9.0 * wobble_sign
+	)
+
+	var settle := _impact_tween.chain().tween_property(self, "scale", Vector2.ONE, SETTLE_SECONDS)
+	settle.set_trans(Tween.TRANS_ELASTIC)
+	settle.set_ease(Tween.EASE_OUT)
