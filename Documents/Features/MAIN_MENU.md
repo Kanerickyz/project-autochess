@@ -20,8 +20,8 @@
 
 ## 3. As-Is 实现
 
-- 代码：`MainMenuParallaxBackground` + `main_menu_background.gdshader` — 底图 `menu_background.jpg`；**纸面格纹**在 Shader 内自**右上向左下**持续滚动；指针仅轻微改 `pointer_offset`。
-- 待美术：分层远景 PNG 仍可作为 `bg_texture` 或额外采样层替换占位图。
+- 代码：`MainMenuParallaxBackground` + `main_menu_background.gdshader` — **两种深色**纯色**正方形棋盘**格，自**右上向左下**缓慢滚动；指针仅轻微改 `pointer_offset`。
+- 待美术：可改为营地分层图或替换 `color_dark_a/b`；静态图回退仍可用 `menu_background.jpg`。
 - 静态回退：可将场景 `Background` 改回单 `TextureRect`（或接设置关动效）。
 
 ## 4. 验收（GUI）
