@@ -1018,6 +1018,30 @@ func _half_slide_travel() -> float:
 	return maxf(_arena.size.y * 0.65, 220.0)
 
 
+func _bench_slide_travel() -> float:
+	if _arena == null:
+		return 120.0
+	var px := _arena.get_cell_px()
+	return px * (RealtimeArenaView.BENCH_GAP_TILES + RealtimeArenaView.BENCH_ROW_TILES + 0.75) + 48.0
+
+
+func _play_bench_exit_on_combat_start() -> void:
+	if _arena == null or not _arena.bench_visible:
+		return
+	var travel := _bench_slide_travel()
+	var seconds := recruit_enter_seconds
+	if seconds <= 0.001:
+		_arena.bench_slide_y = travel
+		_arena.queue_redraw()
+		return
+	_arena.bench_slide_y = 0.0
+	var tween := create_tween()
+	tween.set_ease(Tween.EASE_IN)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(_arena, "bench_slide_y", travel, seconds)
+	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
+
+
 ## 敌半场向上、友半场向下移出摄像范围（可读占位演出）；供外部 await。
 func play_half_field_exit_animation(duration: float = -1.0) -> void:
 	if _arena == null:
@@ -1363,6 +1387,7 @@ func _begin_combat_from_prepare() -> void:
 	_lock_phase_active = false
 	_set_phase(Phase.COMBAT)
 	_update_tape_controls()
+	_play_bench_exit_on_combat_start()
 
 
 ## 从当前准备座位 + _enemy_spawns 重建 sim；silent=true 时用于倒带重演（立刻排空技能、不绑统计）。

@@ -149,8 +149,12 @@ func _test_battle_controller_rules() -> void:
 			_expect(rebuilt.level == 2, "controller: fresh-spawn keeps star level")
 
 	# 开战
+	battle.recruit_enter_seconds = 0.0
 	_expect(battle.try_start_combat(), "controller: start combat with >=1 seated")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.COMBAT, "controller: phase COMBAT after start")
+	var arena_combat := battle.get_arena()
+	if arena_combat != null:
+		_expect(arena_combat.bench_slide_y > 1.0, "controller: bench parked offscreen on combat start")
 	var sim := battle.get_sim()
 	_expect(sim != null and sim.has_started(), "controller: sim started on combat start")
 	_expect(sim.count_alive(UnitInstance.Team.ENEMY) > 0, "controller: enemies spawned on combat start")
