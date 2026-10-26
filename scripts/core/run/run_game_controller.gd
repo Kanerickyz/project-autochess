@@ -98,6 +98,7 @@ func _start_new_run() -> void:
 	_suppress_map_show = true
 	_opening_recruit_pending = true
 	run_controller.start_run()
+	run_controller.run_state.mark_run_started()
 	## 见地图之前先开局招募；完成且队伍 ≥1 后由 _on_recruit_finished → _show_map。
 	await _open_opening_recruit()
 
@@ -174,11 +175,6 @@ func _on_placeholder_continue() -> void:
 	_grant_pending_node_floor_gold()
 	_placeholder_screen.hide_placeholder()
 	run_controller.complete_encounter()
-
-
-func _on_combat_resolved(_won: bool) -> void:
-	if _battle != null:
-		run_controller.run_state.add_combat_time(_battle.get_last_encounter_elapsed_seconds())
 
 
 func _on_encounter_completed(won: bool) -> void:
@@ -404,7 +400,7 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 	var rs := run_controller.run_state
 	snap.encounters_won = rs.completed_encounter_count
 	snap.shop_visits = rs.shop_visit_count
-	snap.combat_seconds = rs.total_combat_seconds
+	snap.combat_seconds = rs.get_run_elapsed_real_seconds()
 	snap.gold = run_economy.gold
 	snap.endless_mode = _is_endless()
 	## 败局：优先用正打着的战斗层；否则用已胜场+1；通关不记层深成绩。
