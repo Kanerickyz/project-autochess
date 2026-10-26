@@ -124,6 +124,9 @@ static func roll(
 				tier_caps.y,
 				t2_base,
 				t3_base,
+				floor_index,
+				floor_count,
+				forward_tier_unlock,
 			)
 		elif remain_seats > 0 and fill_n > 0 and remain_e <= 0.0 and fixed_units.is_empty():
 			## 无固定且预算异常：仍按人数硬约束贪心填满。
@@ -329,6 +332,9 @@ static func _sample_fill(
 	t3_cap: int = 9999,
 	t2_base: int = 0,
 	t3_base: int = 0,
+	floor_index: int = 1,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> Array[UnitData]:
 	var n := maxi(0, exact_fill_n)
 	if n <= 0 or pool.is_empty():
@@ -360,6 +366,9 @@ static func _sample_fill(
 		t3_cap,
 		t2_base,
 		t3_base,
+		floor_index,
+		floor_count,
+		forward_tier_unlock,
 	)
 	if _within_band(best, target_e, base_band, cfg) and best.size() == n:
 		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
@@ -383,6 +392,9 @@ static func _sample_fill(
 			t3_cap,
 			t2_base,
 			t3_base,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
 		),
 		target_e,
 		cfg,
@@ -410,6 +422,9 @@ static func _sample_fill(
 			t3_cap,
 			t2_base,
 			t3_base,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
 		),
 		target_e,
 		cfg,
@@ -420,10 +435,34 @@ static func _sample_fill(
 	## 最近解 + 仅替换爬山（不改人数）
 	if best.is_empty() or best.size() != n:
 		best = _random_composition(
-			pool, center, rng, max_ranged, cfg, t2_cap, t3_cap, t2_base, t3_base
+			pool,
+			center,
+			rng,
+			max_ranged,
+			cfg,
+			t2_cap,
+			t3_cap,
+			t2_base,
+			t3_base,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
 		)
 	best = _hill_climb(
-		best, pool, target_e, cfg, rng, true, max_ranged, t2_cap, t3_cap, t2_base, t3_base
+		best,
+		pool,
+		target_e,
+		cfg,
+		rng,
+		true,
+		max_ranged,
+		t2_cap,
+		t3_cap,
+		t2_base,
+		t3_base,
+		floor_index,
+		floor_count,
+		forward_tier_unlock,
 	)
 	if _within_band(best, target_e, wide_band, cfg) and best.size() == n:
 		return _enforce_max_ranged(best, pool, max_ranged, target_e, cfg)
@@ -454,6 +493,9 @@ static func _rejection_search(
 	t3_cap: int = 9999,
 	t2_base: int = 0,
 	t3_base: int = 0,
+	floor_index: int = 1,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> Array[UnitData]:
 	var best: Array[UnitData] = []
 	var best_err := INF
@@ -464,7 +506,18 @@ static func _rejection_search(
 	for _i in attempts:
 		var n := _roll_n(center, n_min, n_max, rng)
 		var comp := _random_composition(
-			pool, n, rng, max_ranged, cfg, t2_cap, t3_cap, t2_base, t3_base
+			pool,
+			n,
+			rng,
+			max_ranged,
+			cfg,
+			t2_cap,
+			t3_cap,
+			t2_base,
+			t3_base,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
 		)
 		if require_formation and not _matches_formation(comp, formation):
 			continue
@@ -504,6 +557,9 @@ static func _random_composition(
 	t3_cap: int = 9999,
 	t2_base: int = 0,
 	t3_base: int = 0,
+	floor_index: int = 1,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> Array[UnitData]:
 	var result: Array[UnitData] = []
 	if pool.is_empty() or n <= 0:
@@ -514,7 +570,15 @@ static func _random_composition(
 			var pick_pool := EnemyTierIntro.filter_pool_for_add(
 				pool, result, t2_cap, t3_cap, t2_base, t3_base
 			)
-			var picked := _pick_unit_soft_dedup(pick_pool, selected_ids, cfg, rng)
+			var picked := _pick_unit_soft_dedup(
+				pick_pool,
+				selected_ids,
+				cfg,
+				rng,
+				floor_index,
+				floor_count,
+				forward_tier_unlock,
+			)
 			if picked == null:
 				break
 			result.append(picked)
@@ -538,7 +602,15 @@ static func _random_composition(
 		var ranged_pick_pool := EnemyTierIntro.filter_pool_for_add(
 			ranged_pool, result, t2_cap, t3_cap, t2_base, t3_base
 		)
-		var ranged_pick := _pick_unit_soft_dedup(ranged_pick_pool, selected_ids, cfg, rng)
+		var ranged_pick := _pick_unit_soft_dedup(
+			ranged_pick_pool,
+			selected_ids,
+			cfg,
+			rng,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
+		)
 		if ranged_pick == null:
 			break
 		result.append(ranged_pick)
@@ -549,7 +621,15 @@ static func _random_composition(
 			var melee_pick_pool := EnemyTierIntro.filter_pool_for_add(
 				melee_pool, result, t2_cap, t3_cap, t2_base, t3_base
 			)
-			var melee_pick := _pick_unit_soft_dedup(melee_pick_pool, selected_ids, cfg, rng)
+			var melee_pick := _pick_unit_soft_dedup(
+				melee_pick_pool,
+				selected_ids,
+				cfg,
+				rng,
+				floor_index,
+				floor_count,
+				forward_tier_unlock,
+			)
 			if melee_pick == null:
 				break
 			result.append(melee_pick)
@@ -559,7 +639,15 @@ static func _random_composition(
 			var ranged_fill_pool := EnemyTierIntro.filter_pool_for_add(
 				ranged_pool, result, t2_cap, t3_cap, t2_base, t3_base
 			)
-			var ranged_fill := _pick_unit_soft_dedup(ranged_fill_pool, selected_ids, cfg, rng)
+			var ranged_fill := _pick_unit_soft_dedup(
+				ranged_fill_pool,
+				selected_ids,
+				cfg,
+				rng,
+				floor_index,
+				floor_count,
+				forward_tier_unlock,
+			)
 			if ranged_fill == null:
 				break
 			result.append(ranged_fill)
@@ -568,7 +656,15 @@ static func _random_composition(
 			var any_pick_pool := EnemyTierIntro.filter_pool_for_add(
 				pool, result, t2_cap, t3_cap, t2_base, t3_base
 			)
-			var any_pick := _pick_unit_soft_dedup(any_pick_pool, selected_ids, cfg, rng)
+			var any_pick := _pick_unit_soft_dedup(
+				any_pick_pool,
+				selected_ids,
+				cfg,
+				rng,
+				floor_index,
+				floor_count,
+				forward_tier_unlock,
+			)
 			if any_pick == null:
 				break
 			result.append(any_pick)
@@ -582,6 +678,9 @@ static func _pick_unit_soft_dedup(
 	selected_ids: Dictionary,
 	cfg: SpawnBudgetConfig,
 	rng: RandomNumberGenerator,
+	floor_index: int = 1,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> UnitData:
 	if pool.is_empty() or rng == null:
 		return null
@@ -590,7 +689,9 @@ static func _pick_unit_soft_dedup(
 		if int(selected_ids.get(_unit_id(u), 0)) <= 0:
 			unused.append(u)
 	if not unused.is_empty():
-		return unused[rng.randi_range(0, unused.size() - 1)]
+		return EnemyTierIntro.pick_weighted_from_pool(
+			unused, rng, floor_index, floor_count, forward_tier_unlock
+		)
 	var soft := 1.0
 	if cfg != null:
 		soft = clampf(cfg.same_id_soft_dedup_weight, 0.0, 1.0)
@@ -601,6 +702,7 @@ static func _pick_unit_soft_dedup(
 		var w := 1.0
 		if count > 0:
 			w = pow(soft, float(count))
+		w *= EnemyTierIntro.intro_pick_weight(u, floor_index, floor_count, forward_tier_unlock)
 		weights.append(w)
 		total += w
 	if total <= 0.0000001:
@@ -876,6 +978,9 @@ static func _hill_climb(
 	t3_cap: int = 9999,
 	t2_base: int = 0,
 	t3_base: int = 0,
+	floor_index: int = 1,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_tier_unlock: bool = false,
 ) -> Array[UnitData]:
 	if seed_units.is_empty() or pool.is_empty():
 		return seed_units
@@ -892,7 +997,15 @@ static func _hill_climb(
 		var pick_pool := EnemyTierIntro.filter_pool_for_add(
 			pool, comp_no_slot, t2_cap, t3_cap, t2_base, t3_base
 		)
-		var replacement := _pick_unit_soft_dedup(pick_pool, selected_ids, cfg, rng)
+		var replacement := _pick_unit_soft_dedup(
+			pick_pool,
+			selected_ids,
+			cfg,
+			rng,
+			floor_index,
+			floor_count,
+			forward_tier_unlock,
+		)
 		if replacement == null:
 			continue
 		var trial: Array[UnitData] = current.duplicate()
@@ -906,7 +1019,15 @@ static func _hill_climb(
 				var append_pool := EnemyTierIntro.filter_pool_for_add(
 					pool, trial, t2_cap, t3_cap, t2_base, t3_base
 				)
-				var append_u := _pick_unit_soft_dedup(append_pool, append_ids, cfg, rng)
+				var append_u := _pick_unit_soft_dedup(
+					append_pool,
+					append_ids,
+					cfg,
+					rng,
+					floor_index,
+					floor_count,
+					forward_tier_unlock,
+				)
 				if append_u != null:
 					trial.append(append_u)
 		if max_ranged >= 0 and _count_ranged(trial) > max_ranged:
