@@ -5,7 +5,7 @@ extends Control
 const BACKGROUND_SHADER := preload("res://assets/ui/main_menu/main_menu_background.gdshader")
 
 const PARALLAX_STRENGTH := 18.0
-const SCROLL_SPEED := 0.5
+const SCROLL_SPEED := 0.25
 const SCROLL_RAMP_DURATION := 1.05
 const PARALLAX_TWEEN_DURATION := 0.32
 const PARALLAX_RETARGET_DISTANCE := 1.25
