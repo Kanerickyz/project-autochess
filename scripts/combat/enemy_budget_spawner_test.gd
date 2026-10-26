@@ -15,6 +15,7 @@ static func run_all() -> bool:
 	ok = _check("panel_match_floor_guard", _test_panel_match_floor_guard()) and ok
 	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
 	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
+	ok = _check("panel_match_disable_through_floor", _test_panel_match_disable_through_floor()) and ok
 	ok = _check("panel_flat_per_floor", _test_panel_flat_per_floor()) and ok
 	ok = _check("star2_then_panel_then_flat", _test_star2_then_panel_then_flat()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
@@ -182,6 +183,28 @@ static func _test_panel_match_elite_higher() -> bool:
 	EnemyPanelMatcher.apply_to_units([combat_e], team, 1, MapNodeType.Type.COMBAT, cfg)
 	EnemyPanelMatcher.apply_to_units([elite_e], team, 1, MapNodeType.Type.ELITE, cfg)
 	return elite_e.stats.attack > combat_e.stats.attack and elite_e.stats.max_hp > combat_e.stats.max_hp
+
+
+static func _test_panel_match_disable_through_floor() -> bool:
+	var ally := _make_unit("ally", 40, 20, 1.0, 1)
+	var team: Array = [_make_entry(ally)]
+	var enemy := UnitInstance.from_unit_data(
+		_make_unit("e", 4, 2, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.panel_match_enabled = true
+	cfg.panel_match_disable_through_floor = 8
+	cfg.panel_mult_combat = 1.0
+	if EnemyPanelMatcher.apply_to_units([enemy], team, 8, MapNodeType.Type.COMBAT, cfg):
+		return false
+	if enemy.stats.attack != 4 or enemy.stats.max_hp != 2:
+		return false
+	var enemy9 := UnitInstance.from_unit_data(
+		_make_unit("e9", 4, 2, 1.0, 1), Vector2i.ZERO, UnitInstance.Team.ENEMY
+	)
+	if not EnemyPanelMatcher.apply_to_units([enemy9], team, 9, MapNodeType.Type.COMBAT, cfg):
+		return false
+	return enemy9.stats.attack == 40 and enemy9.stats.max_hp == 20
 
 
 static func _test_panel_match_skips_boss() -> bool:
