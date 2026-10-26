@@ -18,14 +18,15 @@
 | **性能** | 优先少量全屏分层，控 draw；须兼容 **GL Compatibility** / Web |
 | **降级（【建议】v2）** | 设置「菜单动效 高/低/关」；关 = 静态 `menu_background.jpg` |
 
-## 3. As-Is 实现（占位）
+## 3. As-Is 实现
 
-- 代码：`MainMenuParallaxBackground` — 远/中层复用 `menu_background.jpg` + 慢速漂移 + 指针视差 + 暗角；待美术交付分层 PNG 后替换子层纹理。
+- 代码：`MainMenuParallaxBackground` + `main_menu_background.gdshader` — 底图 `menu_background.jpg`；**纸面格纹**在 Shader 内自**右上向左下**持续滚动；指针仅轻微改 `pointer_offset`。
+- 待美术：分层远景 PNG 仍可作为 `bg_texture` 或额外采样层替换占位图。
 - 静态回退：可将场景 `Background` 改回单 `TextureRect`（或接设置关动效）。
 
 ## 4. 验收（GUI）
 
-1. 主菜单停留 10s：中央 Logo/按钮区仍清晰可读。  
-2. 移动指针/手指：远景与中景**反向轻微位移**，无晕眩感。  
+1. 主菜单停留 5s：能明显看到格纹沿右上→左下漂移；中央 Logo/按钮仍可读。  
+2. 移动指针/手指：底图与格纹有轻微跟手，无晕眩感。  
 3. Web 与桌面：无明显掉帧（目标 30fps+）。  
 4. 从主菜单进入各入口再返回：背景状态正常、无泄漏 Tween。
