@@ -16,7 +16,7 @@ static func run_all() -> bool:
 	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
 	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
 	ok = _check("panel_flat_per_floor", _test_panel_flat_per_floor()) and ok
-	ok = _check("star2_does_not_dilute_flat", _test_star2_does_not_dilute_flat()) and ok
+	ok = _check("star2_then_panel_then_flat", _test_star2_then_panel_then_flat()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
@@ -331,8 +331,8 @@ static func _test_panel_flat_per_floor() -> bool:
 	return true
 
 
-static func _test_star2_does_not_dilute_flat() -> bool:
-	## 先跟队再 2★ 身体，再 flat：同场 1★ 不被 2★ 均值压低，且仍拿满层向 +攻/+血。
+static func _test_star2_then_panel_then_flat() -> bool:
+	## 规格顺序：先 2★ 身体 → 跟队（场均≈锚）→ flat。禁止跟队后再 ×3。
 	var cfg := SpawnBudgetConfig.new()
 	cfg.panel_match_enabled = true
 	cfg.default_panel_atk_floor = 5.0
@@ -347,26 +347,26 @@ static func _test_star2_does_not_dilute_flat() -> bool:
 	var two_star := UnitInstance.from_unit_data(
 		_make_unit("two", 5, 5, 1.0, 1), Vector2i(1, 0), UnitInstance.Team.ENEMY
 	)
+	## 先身体 ×3（开战路径）
 	two_star.level = 2
-	var units: Array = [one_star, two_star]
-	EnemyPanelMatcher.apply_to_units(units, [], 3, MapNodeType.Type.COMBAT, cfg)
-	## 模拟开战路径：面板后身体 ×3
 	two_star.stats.attack = maxi(1, two_star.stats.attack * 3)
 	two_star.stats.max_hp = maxi(1, two_star.stats.max_hp * 3)
 	two_star.current_hp = two_star.stats.max_hp
+	var units: Array = [one_star, two_star]
+	EnemyPanelMatcher.apply_to_units(units, [], 3, MapNodeType.Type.COMBAT, cfg)
 	EnemyPanelMatcher.apply_floor_flat_to_units(units, 3, cfg)
 	var flat := 2
-	if one_star.stats.attack < 5 + flat or one_star.stats.max_hp < 10 + flat:
-		push_error(
-			"1★ diluted: got %d/%d want ≥ %d/%d"
-			% [one_star.stats.attack, one_star.stats.max_hp, 5 + flat, 10 + flat]
-		)
+	## 跟队后场均应贴近锚 5/10，再 +flat；2★ 仍应严于 1★。
+	var mean_atk := float(one_star.stats.attack + two_star.stats.attack) / 2.0
+	var mean_hp := float(one_star.stats.max_hp + two_star.stats.max_hp) / 2.0
+	if mean_atk < 5.0 + flat - 0.6 or mean_hp < 10.0 + flat - 0.6:
+		push_error("star→panel→flat mean too low: %.1f/%.1f" % [mean_atk, mean_hp])
 		return false
-	if two_star.stats.attack < 15 + flat or two_star.stats.max_hp < 30 + flat:
-		push_error(
-			"2★ flat missing: got %d/%d want ≥ %d/%d"
-			% [two_star.stats.attack, two_star.stats.max_hp, 15 + flat, 30 + flat]
-		)
+	if mean_atk > 5.0 + flat + 1.5 or mean_hp > 10.0 + flat + 1.5:
+		push_error("star→panel→flat mean too high (double star?): %.1f/%.1f" % [mean_atk, mean_hp])
+		return false
+	if two_star.stats.attack <= one_star.stats.attack or two_star.stats.max_hp <= one_star.stats.max_hp:
+		push_error("2★ should stay above 1★ after panel")
 		return false
 	return true
 

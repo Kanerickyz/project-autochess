@@ -48,7 +48,7 @@ static func apply_to_units(
 	var factor_atk := target_atk / maxf(1.0, mean_atk)
 	var factor_hp := target_hp / maxf(1.0, mean_hp)
 
-	## 只做跟队缩放；层向固定 +攻/+血见 apply_floor_flat_to_units（须在星级身体倍率之后加，避免被均值归一冲掉）。
+	## 只做跟队缩放。调用方须先施加星级身体，再调用本函数，最后 apply_floor_flat_to_units。
 	for unit in targets:
 		unit.stats.attack = maxi(1, int(round(float(unit.stats.attack) * factor_atk)))
 		unit.stats.max_hp = maxi(1, int(round(float(unit.stats.max_hp) * factor_hp)))
