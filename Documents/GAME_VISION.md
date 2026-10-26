@@ -119,22 +119,6 @@ flowchart TD
 
 数据：`RunMapConfig` + `MapGenerator` → `MapState`；单次战斗 `EncounterData.wave`。见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.1。
 
-### 线性波次（开发用）
-
-[`main.tscn`](../scenes/main/main.tscn) + [`dev_6x6.tres`](../resources/levels/dev_6x6.tres) 15 波；遭遇池在 [`resources/encounters/`](../resources/encounters/)。
-
-```mermaid
-flowchart TD
-    enterWave[1_进入波次] --> prepare[2_准备_站位入座]
-    prepare --> combat[3_战斗_观战]
-    combat --> resolve[4_结算]
-    resolve -->|胜利且还有波| shop[5_商店]
-    shop --> enterWave
-    resolve -->|最后一波胜利| levelWin[关卡完成]
-    combat -->|己方全灭| defeat[失败_重开]
-    defeat --> enterWave
-```
-
 ### 阶段职责（To-Be）
 
 | 步骤 | 阶段 | 玩家行为 | 系统行为 |
@@ -172,7 +156,7 @@ LEVEL_LOAD → PREPARE → COMBAT → RESOLVE → … → LEVEL_COMPLETE
 
 - Run 主路径战场：竖屏、我下敌上、中线对半；没有河、桥、塔。见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)。  
 - **【To-Be】** 双方各有可见**角色座位**（默认 4×5 铺满半场）；友方席位内全体入座；敌方占座由关卡配置、开战一次出齐。开战后在 **5×8** 逻辑格网上走**回合制依次行动**（敌我混排固定序）；每一动内八向寻路、落格顿步、一格一体，可越线交战。  
-- 旧线性开发关 [`dev_6x6.tres`](../resources/levels/dev_6x6.tres)（8×8）仍是旧网格工具环（象棋式走法身份等；**非**本篇主路径规格）。
+- 旧网格工具环 [`main.tscn`](../scenes/main/main.tscn) + [`wfc_demo_8x8.tres`](../resources/levels/wfc_demo_8x8.tres) 仅本地烟测；**非** Run 主路径规格。
 
 ### 敌情节奏【设计定稿】
 

@@ -126,6 +126,9 @@ func get_floor_star2_quota(floor_index: int) -> int:
 ## 普通关：第 F 层人数闭区间 [F, F＋1]（F≥1；floor_index≤0 按第 1 层）。
 static func combat_enemy_count_bounds(floor_index: int) -> Vector2i:
 	var floor_f := maxi(1, floor_index)
+	## 第 1 层仅 1 敌，避免开局人数碾压。
+	if floor_f <= 1:
+		return Vector2i(1, 1)
 	return Vector2i(floor_f, floor_f + 1)
 
 
