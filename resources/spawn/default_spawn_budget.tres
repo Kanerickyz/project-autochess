@@ -65,6 +65,7 @@ band_boss = 0.12
 band_widen_step = 0.1
 prefer_upper_band = false
 panel_match_enabled = true
+spawn_softening_through_floor = 8
 panel_mult_combat = 0.85
 panel_mult_elite = 1.05
 default_panel_atk_floor = 2.0
