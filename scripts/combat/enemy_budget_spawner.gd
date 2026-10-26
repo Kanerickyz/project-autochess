@@ -10,8 +10,9 @@ const MAX_SEATS_HARD := 10
 ## 返回书写顺序（前排→后排，同行中心向外）的字典数组：
 ## { "unit_data": UnitData, "seat_index": int, "power_u": float }
 ## team_entries：进点瞬间 DeckState 成员快照（DeckEntry）；Boss 忽略强度。
-## 普通/精英敌方 2★ 只数＝快照里展示为 2★ 的成员数（3★ 不计）。
-## floor_count：地图普通层数；品阶解锁用，不决定敌方星级。
+## 普通/精英敌方 2★ 只数＝max(玩家队内 2★ 人数, 层向保底配额)；3★ 不计。
+## 层向保底由 SpawnBudgetConfig.floor_star2_per_level 控制（主塔 0；无尽 ≥1）。
+## floor_count：地图普通层数；品阶解锁用。
 static func roll(
 	wave: WaveData,
 	config: SpawnBudgetConfig,
@@ -168,22 +169,25 @@ static func roll(
 		all_units.append(_pick_closest_unit(pool, target_e, cfg))
 
 	var seated := _seat_units(all_units, cols, seat_count, cfg)
-	_assign_enemy_star2_from_player(seated, node_type, rng, cfg, team_entries)
+	_assign_enemy_star2(seated, node_type, rng, cfg, team_entries, floor_index)
 	return seated
 
 
-## 普通/精英：敌方 2★ 只数＝玩家队内展示为 2★ 的人数（不超过可升星座位）。
+## 普通/精英：敌方 2★ 只数＝max(玩家队内 2★, 层向保底)，不超过可升星座位。
 ## 3★ 不计。Boss 节点不升星。只标 2★ 模板，不做敌方队伍内三合一。
-static func _assign_enemy_star2_from_player(
+static func _assign_enemy_star2(
 	seated: Array,
 	node_type: MapNodeType.Type,
 	rng: RandomNumberGenerator,
 	cfg: SpawnBudgetConfig,
 	team_entries: Array,
+	floor_index: int = 1,
 ) -> void:
 	if node_type == MapNodeType.Type.BOSS or seated.is_empty():
 		return
 	var want := _count_player_star2(team_entries)
+	if cfg != null:
+		want = maxi(want, cfg.get_floor_star2_quota(floor_index))
 	if want <= 0:
 		return
 	var eligible: Array = []
