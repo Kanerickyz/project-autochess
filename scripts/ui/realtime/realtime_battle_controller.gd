@@ -194,6 +194,7 @@ func _ready() -> void:
 	_arena.board_pressed.connect(_on_board_pressed)
 	_arena.card_dropped.connect(_on_card_dropped)
 	_arena.recruit_drop.connect(_on_recruit_drop)
+	_arena.recruit_drop_rejected.connect(_on_recruit_drop_rejected)
 	_arena.recruit_candidate_pressed.connect(_on_recruit_candidate_pressed)
 	_arena.recruit_team_pressed.connect(_on_recruit_team_pressed)
 	_arena.recruit_sell.connect(_on_recruit_sell)
@@ -2655,7 +2656,21 @@ func _refresh_recruit_hud() -> void:
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	_try_recruit(candidate_index, replace_entry_id, seat_index)
+	## 拖放路径禁止盖到已上场：即便信号误带 replace_id 也不替换。
+	if replace_entry_id >= 0:
+		_on_recruit_drop_rejected(&"occupied_seat")
+		return
+	_try_recruit(candidate_index, -1, seat_index)
+
+
+func _on_recruit_drop_rejected(reason: StringName) -> void:
+	if _phase != Phase.RECRUIT or _recruit_hint == null:
+		return
+	match reason:
+		&"occupied_seat":
+			_recruit_hint.text = "不能拖到已上场角色上，请拖到空座位"
+		_:
+			_recruit_hint.text = "无法放置"
 
 
 func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
@@ -2852,7 +2867,7 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 		"no_gold":
 			_recruit_hint.text = "金币不足"
 		"roster_full", "need_replace":
-			_recruit_hint.text = "拥有已满：请出售腾位，或拖到上区替换"
+			_recruit_hint.text = "拥有已满：请出售腾位，或点选上区角色替换"
 		"seat_cap_full":
 			_recruit_hint.text = "上场席位已满"
 		_:
