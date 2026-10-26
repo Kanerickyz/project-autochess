@@ -52,6 +52,7 @@ static func run_all() -> bool:
 	ok = _check("acquire_prefers_lane_on_chebyshev_tie", _test_acquire_prefers_lane_on_chebyshev_tie()) and ok
 	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
 	ok = _check("windup_advances_under_presentation_hold", _test_windup_advances_under_presentation_hold()) and ok
+	ok = _check("step_breaks_on_pending_defer", _test_step_breaks_on_pending_defer()) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -1814,4 +1815,41 @@ static func _test_windup_advances_under_presentation_hold() -> bool:
 		push_error("windup hold: expected ranged fire while presentation held")
 		return false
 	sim.release_presentation()
+	return true
+
+
+## defer + 待结算技能：step 不得同帧追帧忙等（实战卡死回归）。
+static func _test_step_breaks_on_pending_defer() -> bool:
+	var data := load("res://resources/units/realtime/shinobi.tres") as UnitData
+	if data == null:
+		push_error("step_pending: shinobi data missing")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 881)
+	sim.defer_effect_resolve = true
+	var shinobi_rt := sim.add_unit(
+		UnitInstance.from_unit_data(data, Vector2i(2, 26), UnitInstance.Team.PLAYER),
+		Vector2(2.5, 26.5),
+	)
+	shinobi_rt.unit.level = 2
+	shinobi_rt.unit.stats.steps_per_turn = 0
+	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 20), Vector2(14.5, 8.5))
+	sim.begin_combat()
+	var payload := CombatEventPayload.new()
+	payload.source = shinobi_rt.unit
+	payload.target = shinobi_rt.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	if not sim.has_pending_effects():
+		push_error("step_pending: expected pending skill batch after ON_ROUND_START")
+		return false
+	var steps_before := sim.fixed_step_count
+	sim.presentation_hold = false
+	sim.step(2.0)
+	var progressed := sim.fixed_step_count - steps_before
+	if progressed >= 30:
+		push_error(
+			"step_pending: step(2s) progressed %d fixed steps while blocked (busy loop?)"
+			% progressed
+		)
+		return false
 	return true
