@@ -24,6 +24,8 @@ static func run_all() -> bool:
 	ok = _check("tier_filter_hard", _test_tier_filter_hard()) and ok
 	ok = _check("player_tier_caps_enemy_pool", _test_player_tier_caps_enemy_pool()) and ok
 	ok = _check("t2_intro_cap_floor4", _test_t2_intro_cap_floor4_one_team_t2()) and ok
+	ok = _check("t3_band_t2_cap_floor10", _test_t3_band_t2_cap_floor10()) and ok
+	ok = _check("t3_intro_cap_floor10", _test_t3_intro_cap_floor10_one_team_t3()) and ok
 	ok = _check("boss_fixed_only_no_fill", _test_boss_fixed_only_no_fill()) and ok
 	ok = _check("boss_ignores_team_power", _test_boss_ignores_team_power()) and ok
 	ok = _check("boss_back_center_seat", _test_boss_back_center_seat()) and ok
@@ -642,6 +644,53 @@ static func _test_t2_intro_cap_floor4_one_team_t2() -> bool:
 			if ud != null and ud.tier >= 2:
 				enemy_t2 += 1
 		if enemy_t2 > 1:
+			return false
+	return true
+
+
+## 第 10 层（T3 层带首日）：T2 只数帽不瞬间放开到 n，与第 9 层同为 75% 档。
+static func _test_t3_band_t2_cap_floor10() -> bool:
+	var n := 8
+	var caps9 := EnemyTierIntro.compute_effective_caps(
+		9, n, MapNodeType.Type.COMBAT, [], 15
+	)
+	var caps10 := EnemyTierIntro.compute_effective_caps(
+		10, n, MapNodeType.Type.COMBAT, [], 15
+	)
+	if caps9.x != 6:
+		push_error("t3 band: F9 t2 cap expected 6, got %d" % caps9.x)
+		return false
+	if caps10.x != 6:
+		push_error("t3 band: F10 t2 cap expected 6 (not %d), got %d" % [n, caps10.x])
+		return false
+	if caps10.y != 1:
+		push_error("t3 band: F10 t3 cap expected 1, got %d" % caps10.y)
+		return false
+	return true
+
+
+## 第 10 层、队内 1 个 T3：敌方 T3 只数 ≤1（§6.2 层表 ∩ P3+1）。
+static func _test_t3_intro_cap_floor10_one_team_t3() -> bool:
+	var t1 := _make_unit("t1_lo", 10, 2, 1.0, 1, 0.0, 0.0, true)
+	var t2 := _make_unit("t2_mid", 18, 3, 1.0, 2, 0.0, 0.0, true)
+	var t3 := _make_unit("t3_hi", 28, 5, 1.0, 3, 0.0, 0.0, true)
+	var cfg := _make_config([t1, t2, t3])
+	var wave := _make_wave(5)
+	var team: Array = [_make_entry(t1), _make_entry(t2), _make_entry(t3)]
+	for seed in 40:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed + 1010
+		var seated := EnemyBudgetSpawner.roll(
+			wave, cfg, [], 5, 10, MapNodeType.Type.COMBAT, 2, 5, rng, team, 15
+		)
+		if seated.is_empty():
+			return false
+		var enemy_t3 := 0
+		for item in seated:
+			var ud: UnitData = item.get("unit_data") as UnitData
+			if ud != null and ud.tier >= 3:
+				enemy_t3 += 1
+		if enemy_t3 > 1:
 			return false
 	return true
 
