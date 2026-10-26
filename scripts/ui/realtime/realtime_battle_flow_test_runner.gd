@@ -130,6 +130,24 @@ func _test_battle_controller_rules() -> void:
 	## 准备刷新手牌已取消
 	_expect(not battle.try_refresh_hand(), "controller: refresh disabled in prepare")
 
+	## 开战重建必须保留模板已结算攻血（跟队 / 星级身体 / 层向 flat），不可回退 .tres 底模。
+	var tmpl := UnitInstance.from_unit_data(
+		load("res://resources/units/realtime/goblin.tres") as UnitData,
+		Vector2i(0, 0),
+		UnitInstance.Team.ENEMY,
+	)
+	_expect(tmpl != null and tmpl.stats != null, "controller: fresh-spawn template loads")
+	if tmpl != null and tmpl.stats != null:
+		tmpl.stats.attack = 97
+		tmpl.stats.max_hp = 83
+		tmpl.level = 2
+		var rebuilt := battle._fresh_enemy_unit_for_spawn(tmpl, Vector2(0.5, 0.5))
+		_expect(rebuilt != null, "controller: fresh-spawn rebuilds")
+		if rebuilt != null and rebuilt.stats != null:
+			_expect(rebuilt.stats.attack == 97, "controller: fresh-spawn keeps panel/flat attack")
+			_expect(rebuilt.stats.max_hp == 83, "controller: fresh-spawn keeps panel/flat max_hp")
+			_expect(rebuilt.level == 2, "controller: fresh-spawn keeps star level")
+
 	# 开战
 	_expect(battle.try_start_combat(), "controller: start combat with >=1 seated")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.COMBAT, "controller: phase COMBAT after start")
@@ -138,6 +156,25 @@ func _test_battle_controller_rules() -> void:
 	_expect(sim.count_alive(UnitInstance.Team.ENEMY) > 0, "controller: enemies spawned on combat start")
 	_expect(sim.count_alive(UnitInstance.Team.PLAYER) >= 1, "controller: allies spawned from seats")
 	_expect(battle.get_hand().is_empty(), "controller: unseated hand returned / cleared on combat")
+	## 开战敌攻血与准备模板一致（回归：曾只读底模导致无尽层向加压丢失）。
+	var combat_stats_match := true
+	for spawn in battle._enemy_spawns:
+		var prep: UnitInstance = spawn.get("unit") as UnitInstance
+		if prep == null or prep.stats == null:
+			continue
+		var found := false
+		for rt in sim.get_units():
+			if rt == null or rt.unit == null or rt.is_player():
+				continue
+			if rt.unit.unit_data != prep.unit_data:
+				continue
+			if rt.unit.stats.attack != prep.stats.attack or rt.unit.stats.max_hp != prep.stats.max_hp:
+				combat_stats_match = false
+			found = true
+			break
+		if not found:
+			combat_stats_match = false
+	_expect(combat_stats_match, "controller: combat enemies keep prepare panel/flat stats")
 	## 敌方生成序：座位索引升序（配置书写序 → 顺序占座，无 shuffle）
 	var enemy_seats: Array[int] = []
 	for spawn in battle._enemy_spawns:

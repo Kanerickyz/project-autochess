@@ -16,6 +16,7 @@ static func run_all() -> bool:
 	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
 	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
 	ok = _check("panel_flat_per_floor", _test_panel_flat_per_floor()) and ok
+	ok = _check("star2_then_panel_then_flat", _test_star2_then_panel_then_flat()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
@@ -284,7 +285,7 @@ static func _test_enemy_star2_floor_quota() -> bool:
 
 
 static func _test_panel_flat_per_floor() -> bool:
-	## 跟队后每层每单位至少 +1/+1（F5 → +4/+4）。
+	## 跟队后另加层向 flat：F5 → +4/+4；F2 相对 F1 每单位至少 +1/+1。
 	var enemy := UnitInstance.from_unit_data(
 		_make_unit("flat", 4, 2, 1.0, 1), Vector2i(0, 0), UnitInstance.Team.ENEMY
 	)
@@ -295,18 +296,77 @@ static func _test_panel_flat_per_floor() -> bool:
 	cfg.panel_floor_growth = 0.0
 	cfg.floor_flat_atk_per_level = 1
 	cfg.floor_flat_hp_per_level = 1
-	var atk_before := enemy.stats.attack
-	var hp_before := enemy.stats.max_hp
 	EnemyPanelMatcher.apply_to_units([enemy], [], 5, MapNodeType.Type.COMBAT, cfg)
+	var atk_after_panel := enemy.stats.attack
+	var hp_after_panel := enemy.stats.max_hp
+	EnemyPanelMatcher.apply_floor_flat_to_units([enemy], 5, cfg)
 	var bonus := 4
-	if enemy.stats.attack < atk_before + bonus or enemy.stats.max_hp < hp_before + bonus:
+	if enemy.stats.attack != atk_after_panel + bonus or enemy.stats.max_hp != hp_after_panel + bonus:
 		push_error(
-			"flat per floor: atk/hp %d/%d expected ≥ base+%d (%d/%d)"
-			% [enemy.stats.attack, enemy.stats.max_hp, bonus, atk_before + bonus, hp_before + bonus]
+			"flat per floor: atk/hp %d/%d expected panel+%d (%d/%d)"
+			% [enemy.stats.attack, enemy.stats.max_hp, bonus, atk_after_panel + bonus, hp_after_panel + bonus]
 		)
 		return false
 	if cfg.get_floor_flat_atk_bonus(1) != 0 or cfg.get_floor_flat_hp_bonus(1) != 0:
 		push_error("F1 flat bonus must be 0")
+		return false
+
+	## 同底模：F2 每个角色攻血必须严格高于 F1（至少 +1/+1）。
+	var f1 := UnitInstance.from_unit_data(
+		_make_unit("grow", 4, 2, 1.0, 1), Vector2i(0, 0), UnitInstance.Team.ENEMY
+	)
+	var f2 := UnitInstance.from_unit_data(
+		_make_unit("grow", 4, 2, 1.0, 1), Vector2i(0, 0), UnitInstance.Team.ENEMY
+	)
+	EnemyPanelMatcher.apply_to_units([f1], [], 1, MapNodeType.Type.COMBAT, cfg)
+	EnemyPanelMatcher.apply_floor_flat_to_units([f1], 1, cfg)
+	EnemyPanelMatcher.apply_to_units([f2], [], 2, MapNodeType.Type.COMBAT, cfg)
+	EnemyPanelMatcher.apply_floor_flat_to_units([f2], 2, cfg)
+	if f2.stats.attack < f1.stats.attack + 1 or f2.stats.max_hp < f1.stats.max_hp + 1:
+		push_error(
+			"floor grow: F2 %d/%d must be ≥ F1 %d/%d +1/+1"
+			% [f2.stats.attack, f2.stats.max_hp, f1.stats.attack, f1.stats.max_hp]
+		)
+		return false
+	return true
+
+
+static func _test_star2_then_panel_then_flat() -> bool:
+	## 规格顺序：先 2★ 身体 → 跟队（场均≈锚）→ flat。禁止跟队后再 ×3。
+	var cfg := SpawnBudgetConfig.new()
+	cfg.panel_match_enabled = true
+	cfg.default_panel_atk_floor = 5.0
+	cfg.default_panel_hp_floor = 10.0
+	cfg.panel_floor_growth = 0.0
+	cfg.panel_mult_combat = 1.0
+	cfg.floor_flat_atk_per_level = 1
+	cfg.floor_flat_hp_per_level = 1
+	var one_star := UnitInstance.from_unit_data(
+		_make_unit("one", 5, 5, 1.0, 1), Vector2i(0, 0), UnitInstance.Team.ENEMY
+	)
+	var two_star := UnitInstance.from_unit_data(
+		_make_unit("two", 5, 5, 1.0, 1), Vector2i(1, 0), UnitInstance.Team.ENEMY
+	)
+	## 先身体 ×3（开战路径）
+	two_star.level = 2
+	two_star.stats.attack = maxi(1, two_star.stats.attack * 3)
+	two_star.stats.max_hp = maxi(1, two_star.stats.max_hp * 3)
+	two_star.current_hp = two_star.stats.max_hp
+	var units: Array = [one_star, two_star]
+	EnemyPanelMatcher.apply_to_units(units, [], 3, MapNodeType.Type.COMBAT, cfg)
+	EnemyPanelMatcher.apply_floor_flat_to_units(units, 3, cfg)
+	var flat := 2
+	## 跟队后场均应贴近锚 5/10，再 +flat；2★ 仍应严于 1★。
+	var mean_atk := float(one_star.stats.attack + two_star.stats.attack) / 2.0
+	var mean_hp := float(one_star.stats.max_hp + two_star.stats.max_hp) / 2.0
+	if mean_atk < 5.0 + flat - 0.6 or mean_hp < 10.0 + flat - 0.6:
+		push_error("star→panel→flat mean too low: %.1f/%.1f" % [mean_atk, mean_hp])
+		return false
+	if mean_atk > 5.0 + flat + 1.5 or mean_hp > 10.0 + flat + 1.5:
+		push_error("star→panel→flat mean too high (double star?): %.1f/%.1f" % [mean_atk, mean_hp])
+		return false
+	if two_star.stats.attack <= one_star.stats.attack or two_star.stats.max_hp <= one_star.stats.max_hp:
+		push_error("2★ should stay above 1★ after panel")
 		return false
 	return true
 
