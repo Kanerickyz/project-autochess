@@ -264,6 +264,9 @@ var _bench_empty_press: int = -1
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
+## 主卡下方的附属信息卡（装备等）；顺序与 info.attachments 一致。
+var _info_attachment_cards: Array[RealtimeUnitInfoCard] = []
+const INFO_ATTACHMENT_GAP_PX := 8.0
 var _press_active := false
 var _press_pos := Vector2.ZERO
 var _press_ms: int = -1
@@ -321,8 +324,7 @@ func _process(delta: float) -> void:
 		_show_info_card(_press_info)
 	if _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
 		if not _press_active:
-			_info_card.hide_info()
-			_info_card.top_level = false
+			_hide_all_info_cards()
 			_info_shown = false
 			_shown_info = {}
 			_clear_inspect_focus()
@@ -1644,6 +1646,7 @@ func _track_press_motion(pos: Vector2) -> void:
 			_info_card.follow_finger(get_global_transform() * pos)
 		else:
 			_info_card.follow_finger(pos)
+		_sync_info_attachment_positions()
 		return
 	if _press_ms >= 0 and pos.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 		_press_ms = -1
@@ -1691,12 +1694,45 @@ func _cancel_press() -> void:
 	_shown_info = {}
 	_enchant_forge_press = false
 	_clear_inspect_focus()
-	_info_card.hide_info()
-	_info_card.top_level = false
+	_hide_all_info_cards()
 
 
 func is_info_card_visible() -> bool:
 	return _info_card.visible
+
+
+func _hide_all_info_cards() -> void:
+	_info_card.hide_info()
+	_info_card.top_level = false
+	_hide_info_attachments()
+
+
+func _hide_info_attachments() -> void:
+	for card in _info_attachment_cards:
+		if card != null:
+			card.hide_info()
+			card.top_level = false
+
+
+func _ensure_info_attachment_card(index: int) -> RealtimeUnitInfoCard:
+	while _info_attachment_cards.size() <= index:
+		var card := RealtimeUnitInfoCard.new()
+		card.name = "UnitInfoAttachment_%d" % _info_attachment_cards.size()
+		add_child(card)
+		_info_attachment_cards.append(card)
+	return _info_attachment_cards[index]
+
+
+func _sync_info_attachment_positions() -> void:
+	if not _info_card.visible:
+		return
+	var stack_top := _info_card.position.y + _info_card.size.y + INFO_ATTACHMENT_GAP_PX
+	var center_x := _info_card.position.x + _info_card.size.x * 0.5
+	for card in _info_attachment_cards:
+		if card == null or not card.visible:
+			continue
+		card.position = Vector2(center_x - card.size.x * 0.5, stack_top)
+		stack_top += card.size.y + INFO_ATTACHMENT_GAP_PX
 
 
 ## 测试与无障碍入口：直接弹出指定位置单位的信息卡。
@@ -1730,6 +1766,8 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	var attachments: Array = info.get("attachments", [])
+	_hide_info_attachments()
 	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
 	if catalog_active:
 		_info_card.top_level = true
@@ -1738,10 +1776,48 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 		var foot_g := xf * foot
 		var vp := get_viewport().get_visible_rect()
 		_info_card.show_info(info, head_g, foot_g, vp, slide_dir)
+		_show_info_attachments(attachments, vp, slide_dir)
 	else:
 		_info_card.top_level = false
-		_info_card.show_info(info, head, foot, Rect2(Vector2.ZERO, size), slide_dir)
+		var bounds := Rect2(Vector2.ZERO, size)
+		_info_card.show_info(info, head, foot, bounds, slide_dir)
+		_show_info_attachments_local(attachments, bounds, slide_dir)
 	queue_redraw()
+
+
+func _show_info_attachments(attachments: Array, bounds: Rect2, slide_dir: float) -> void:
+	if attachments.is_empty():
+		return
+	var stack_anchor := _info_card.position + Vector2(_info_card.size.x * 0.5, _info_card.size.y)
+	for i in attachments.size():
+		var att: Dictionary = attachments[i] as Dictionary
+		if att.is_empty():
+			continue
+		var card := _ensure_info_attachment_card(i)
+		card.top_level = true
+		var anchor_g := stack_anchor
+		var foot_g := anchor_g + Vector2(0.0, 24.0)
+		card.show_info(att, anchor_g, foot_g, bounds, slide_dir if i == 0 else 0.0, true)
+		stack_anchor = card.position + Vector2(card.size.x * 0.5, card.size.y)
+	_sync_info_attachment_positions()
+
+
+func _show_info_attachments_local(
+	attachments: Array, bounds: Rect2, slide_dir: float
+) -> void:
+	if attachments.is_empty():
+		return
+	var stack_anchor := _info_card.position + Vector2(_info_card.size.x * 0.5, _info_card.size.y)
+	for i in attachments.size():
+		var att: Dictionary = attachments[i] as Dictionary
+		if att.is_empty():
+			continue
+		var card := _ensure_info_attachment_card(i)
+		card.top_level = false
+		var foot := stack_anchor + Vector2(0.0, 24.0)
+		card.show_info(att, stack_anchor, foot, bounds, slide_dir if i == 0 else 0.0, true)
+		stack_anchor = card.position + Vector2(card.size.x * 0.5, card.size.y)
+	_sync_info_attachment_positions()
 
 
 func _begin_inspect_focus(info: Dictionary, slide_dir: float) -> void:
@@ -2026,8 +2102,8 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
 		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
 		"armor": entry.get_armor_block(),
-		"equipment_name": entry.get_equipment_display_name(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
+		"attachments": UnitInfoText.collect_info_attachments_from_entry(entry, true),
 		"texture": _art.get_texture(entry.get_unit_id(), true) if _art != null else null,
 		## 与攻/血同列展示角色花费（招募价另传 recruit_cost 时覆盖）。
 		"recruit_cost": maxi(0, unit_cost),
@@ -2084,6 +2160,7 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"hp": hp,
 		"armor": unit.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block(unit, true),
+		"attachments": UnitInfoText.collect_info_attachments_from_unit(unit, true),
 		"texture": _art.get_texture(unit_id, is_player) if _art != null else null,
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
