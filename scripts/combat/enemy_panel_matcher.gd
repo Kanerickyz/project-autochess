@@ -12,7 +12,7 @@ static func apply_to_units(
 	node_type: MapNodeType.Type,
 	config: SpawnBudgetConfig,
 ) -> bool:
-	if config == null or not config.panel_match_enabled:
+	if config == null or not config.panel_match_active_for_floor(floor_index):
 		return false
 	if node_type == MapNodeType.Type.BOSS:
 		return false
