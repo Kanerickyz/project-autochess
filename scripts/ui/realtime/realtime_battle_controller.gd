@@ -2052,16 +2052,13 @@ func _on_tape_next_pressed() -> void:
 		_tape_paused = true
 		_update_tape_controls()
 		return
-	## 技能时停或出击 tween 挡住推进时：先强制收拍，否则 _tape_step_once 永远进不了步进。
-	if _timestop_queue != null and _timestop_queue.is_blocking():
-		_force_advance_skill_presentation()
-	if _arena != null and _arena.has_active_combat_action_tween():
-		_arena.finish_combat_action_tweens()
+	## 先置步进标志，再清演出门闩：即使收拍中脚本报错，下一帧仍能带着 step_once 重试解锁。
 	_tape_paused = false
 	_tape_pause_requested = false
 	_tape_boundary_pending = false
 	_tape_step_once = true
 	_presentation_block_elapsed = 0.0
+	_unstick_combat_presentation()
 	_update_tape_controls()
 
 
@@ -3085,21 +3082,28 @@ func _tick_combat_presentation(delta: float) -> void:
 		and not _sim.has_pending_effects()
 	):
 		_sim.try_seed_action_queue()
+	## 用户已点「下一动」：优先拆掉时停/出击门闩，否则 step_once 永远进不了步进循环（假死）。
+	if _tape_step_once and (
+		(_timestop_queue != null and _timestop_queue.is_blocking())
+		or _sim.has_pending_effects()
+		or (_arena != null and _arena.has_active_combat_action_tween() and not _sim.is_actor_turn_active())
+	):
+		_unstick_combat_presentation()
 	if _timestop_queue.is_blocking():
 		_sim.hold_for_presentation()
 		## 跨帧仍停在 AWAITING_RESOLVE：上一拍 card_done 处理中断，强制收拍以免假死。
 		if _timestop_queue.is_awaiting_resolve():
-			_on_skill_card_done()
+			_resolve_skill_card_safe()
 			_presentation_block_elapsed = 0.0
 			return
 		_presentation_block_elapsed += delta
 		if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
-			_force_advance_skill_presentation()
+			_unstick_combat_presentation()
 			_presentation_block_elapsed = 0.0
 			return
 		var done := _timestop_queue.tick(delta, time_scale)
 		if done == &"card_done":
-			_on_skill_card_done()
+			_resolve_skill_card_safe()
 		elif done == &"result_done":
 			_on_skill_result_done()
 			_presentation_block_elapsed = 0.0
@@ -3181,21 +3185,37 @@ func _start_next_skill_card() -> void:
 	_show_skill_trigger_info_for_owner(batch.owner)
 
 
-func _on_skill_card_done() -> void:
+## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
+func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
+	## 先进入 RESULT，保证即便 resolve 中途 SCRIPT ERROR，时停也不会粘在 AWAITING_RESOLVE。
+	if _timestop_queue != null:
+		_timestop_queue.begin_result(null, time_scale)
 	_resolving_presented_skill = true
 	if _sim != null and _sim.has_pending_effects():
 		_sim.resolve_next_pending_effect()
 	_resolving_presented_skill = false
 	var payload := _last_resolved_payload
 	_last_resolved_payload = null
-	## 无论结算是否写出 payload，必须离开 AWAITING_RESOLVE，否则时停永久挡住下一动。
-	_timestop_queue.begin_result(payload, time_scale)
+	if _timestop_queue != null:
+		_timestop_queue.begin_result(payload, time_scale)
 	if payload != null:
 		_present_effect_result(payload, true)
 
 
+func _on_skill_card_done() -> void:
+	_resolve_skill_card_safe()
+
+
 func _on_skill_result_done() -> void:
+	## 「下一动」推进中：勿再开下一张介绍卡，改为静默排空待结算，否则会再次挡步进。
+	if _tape_step_once and _sim != null and _sim.has_pending_effects():
+		_drain_pending_effects_silent()
+		_timestop_queue.clear()
+		_presentation_block_elapsed = 0.0
+		_sim.try_seed_action_queue()
+		_sim.release_presentation()
+		return
 	if _sim != null and _sim.has_pending_effects():
 		_start_next_skill_card()
 		return
@@ -3207,18 +3227,43 @@ func _on_skill_result_done() -> void:
 		_sim.release_presentation()
 
 
-## 「下一动」或看门狗：跳过当前技能介绍/结果拍（仍结算真值），避免演出门闩卡死。
-func _force_advance_skill_presentation() -> void:
-	if _timestop_queue == null or not _timestop_queue.is_blocking():
+## 「下一动」/看门狗：拆掉时停、待结算队列与出击 tween，恢复可步进状态。
+func _unstick_combat_presentation() -> void:
+	if _arena != null:
+		if _arena.has_active_combat_action_tween():
+			_arena.finish_combat_action_tweens()
+		_arena.hide_unit_info()
+	if _timestop_queue != null and _timestop_queue.is_blocking():
+		var phase := _timestop_queue.get_phase()
+		if (
+			phase == RealtimeTimestopQueue.Phase.SHOW_CARD
+			or phase == RealtimeTimestopQueue.Phase.AWAITING_RESOLVE
+		):
+			_resolve_skill_card_safe()
+		_timestop_queue.clear()
+	if _sim != null and _sim.has_pending_effects():
+		_drain_pending_effects_silent()
+	if _sim != null:
+		_sim.try_seed_action_queue()
+		_sim.release_presentation()
+	_presentation_block_elapsed = 0.0
+
+
+## 不播介绍卡：顺序结算剩余技能批次（「下一动」解锁用；真值仍写入）。
+func _drain_pending_effects_silent() -> void:
+	if _sim == null:
 		return
-	var phase := _timestop_queue.get_phase()
-	if (
-		phase == RealtimeTimestopQueue.Phase.SHOW_CARD
-		or phase == RealtimeTimestopQueue.Phase.AWAITING_RESOLVE
-	):
-		_on_skill_card_done()
-	if _timestop_queue.is_blocking():
-		_on_skill_result_done()
+	var guard := 0
+	while _sim.has_pending_effects() and guard < 64:
+		_last_resolved_payload = null
+		_resolving_presented_skill = true
+		_sim.resolve_next_pending_effect()
+		_resolving_presented_skill = false
+		var payload := _last_resolved_payload
+		_last_resolved_payload = null
+		if payload != null:
+			_present_effect_result(payload, false)
+		guard += 1
 
 
 ## 锁阵等：介绍卡 + 结果数字（已结算）。

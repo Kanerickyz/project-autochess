@@ -24,6 +24,7 @@ func _run() -> void:
 	await _test_timestop_queue_blocks_sim()
 	await _test_tape_next_skips_stuck_timestop()
 	await _test_awaiting_resolve_recovers_next_frame()
+	await _test_tape_next_unsticks_ally_death_spawn_lifecycle()
 	if _failures == 0:
 		print("RealtimeCombatFeedbackTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -516,6 +517,71 @@ func _test_awaiting_resolve_recovers_next_frame() -> void:
 		guard += 1
 	_expect(not battle.is_timestop_blocking(), "await-recover: queue drains")
 	_expect(not sim.presentation_hold, "await-recover: hold released")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_tape_next_unsticks_ally_death_spawn_lifecycle() -> void:
+	## 生命周期：友亡入队「义士应召」→ 粘在 AWAITING → 点下一动须拆门闩并让模拟继续走步。
+	var battle := _make_battle(103)
+	await process_frame
+	_expect(_seat_first_hand(battle), "lifecycle: seat")
+	_expect(battle.try_start_combat(), "lifecycle: start")
+	var sim := battle.get_sim()
+	battle._timestop_queue.clear()
+	var resolver := sim.get_effect_resolver()
+	if resolver != null:
+		resolver.clear_pending()
+	sim.release_presentation()
+
+	var soul_data := load("res://resources/units/realtime/soulcaller.tres") as UnitData
+	_expect(soul_data != null and soul_data.ability != null, "lifecycle: soulcaller data")
+	if soul_data == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var caller := UnitInstance.from_unit_data(soul_data, Vector2i(2, 6), UnitInstance.Team.PLAYER)
+	sim.add_unit(caller, Vector2(2.5, 6.5))
+	var fodder := UnitInstance.from_unit_data(
+		load("res://resources/units/realtime/knight.tres") as UnitData,
+		Vector2i(1, 6),
+		UnitInstance.Team.PLAYER,
+	)
+	var fodder_rt := sim.add_unit(fodder, Vector2(1.5, 6.5))
+	_expect(fodder_rt != null, "lifecycle: fodder on field")
+
+	## 击杀友方角色 → OnFriendDeath 入队义士应召（defer 不立刻结算）。
+	sim._pipeline.apply_damage(null, fodder_rt, 999)
+	_expect(sim.has_pending_effects() or battle.is_timestop_blocking(), "lifecycle: death queued or presenting")
+
+	## 等到介绍卡，再人工粘住 AWAITING（复现 card_done 中断）。
+	battle.time_scale = 8.0
+	var wait_card := 0
+	while not battle.is_timestop_blocking() and wait_card < 30:
+		await process_frame
+		wait_card += 1
+	if battle.is_timestop_blocking():
+		battle._timestop_queue._phase = RealtimeTimestopQueue.Phase.AWAITING_RESOLVE
+		battle._timestop_queue._remaining = 0.0
+		sim.hold_for_presentation()
+
+	var steps_before := sim.fixed_step_count
+	## 点「下一动」：须拆掉时停/待结算，并在随后帧推进固定步。
+	battle._on_tape_next_pressed()
+	_expect(not battle.is_timestop_blocking(), "lifecycle: next clears timestop")
+	_expect(not sim.has_pending_effects(), "lifecycle: next drains pending")
+	_expect(not sim.presentation_hold, "lifecycle: next releases hold")
+
+	var advanced := false
+	var guard := 0
+	while guard < 90 and not sim.is_finished():
+		await process_frame
+		if sim.fixed_step_count > steps_before:
+			advanced = true
+			break
+		guard += 1
+	_expect(advanced or sim.is_finished(), "lifecycle: sim advances after next")
 
 	battle.queue_free()
 	await process_frame
