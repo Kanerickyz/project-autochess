@@ -104,6 +104,8 @@ var _encounter_rng: RandomNumberGenerator
 ## 开战锁阵阶段：部署/开战技能只播动画·UI，不走行动内播报队列。
 var _lock_phase_active: bool = false
 var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
+var _combo_tracker: CombatComboTracker = CombatComboTracker.new()
+var _combo_hud: ComboCounterHud
 ## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
 var _resolving_presented_skill: bool = false
 var _last_resolved_payload: CombatEventPayload = null
@@ -245,6 +247,7 @@ func _ready() -> void:
 	_ensure_recruit_hud()
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
+	_ensure_combo_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -514,6 +517,30 @@ func get_deploy_cap() -> int:
 
 func get_timestop_queue_size() -> int:
 	return _timestop_queue.size() if _timestop_queue != null else 0
+
+
+func get_combo_tracker() -> CombatComboTracker:
+	return _combo_tracker
+
+
+func _ensure_combo_hud() -> void:
+	if _combo_hud != null or _arena == null:
+		return
+	_combo_hud = ComboCounterHud.new()
+	_combo_hud.name = "ComboCounterHud"
+	_arena.add_child(_combo_hud)
+
+
+func _reset_combo_display() -> void:
+	_combo_tracker.reset()
+	if _combo_hud != null:
+		_combo_hud.set_combo_count(0)
+
+
+func _refresh_combo_hud_from_tracker() -> void:
+	if _combo_hud == null:
+		return
+	_combo_hud.set_combo_count(_combo_tracker.get_display_value())
 
 
 func is_timestop_blocking() -> bool:
@@ -1532,6 +1559,7 @@ func _begin_combat_from_prepare() -> void:
 	## COMBAT.md §6.5：友方入座时间序 → 敌方配置书写序 → 清手牌 → 锁操作 → 游戏开始。
 	_lock_phase_active = true
 	_timestop_queue.clear()
+	_reset_combo_display()
 	_reset_tape_state()
 
 	_spawn_combat_sim_from_lock(false)
@@ -2265,6 +2293,7 @@ func _on_actor_turn_ended(completed_turns: int) -> void:
 	if _tape_rewinding:
 		_tape_completed_turns = completed_turns
 		return
+	_reset_combo_display()
 	_tape_completed_turns = completed_turns
 	if _tape_step_once or _tape_pause_requested:
 		_tape_boundary_pending = true
@@ -3388,6 +3417,8 @@ func _start_next_skill_card() -> void:
 		_sim.release_presentation()
 		return
 	_timestop_queue.begin_card(batch.owner, batch.spec, time_scale)
+	_combo_tracker.register_skill_intro_card(batch.owner)
+	_refresh_combo_hud_from_tracker()
 	_presentation_block_elapsed = 0.0
 	_show_skill_trigger_info_for_owner(batch.owner)
 
