@@ -35,6 +35,8 @@ static func run_all() -> bool:
 	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
 	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
 	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
+	_check("enemy_death_nearby_allies_atk_hp_small", _test_enemy_death_nearby_allies_atk_hp_small())
+	_check("survive_turn_end_bank_turn_refresh", _test_survive_turn_end_bank_turn_refresh())
 	_check("scatter_hex_friend_kill_damage", _test_scatter_hex_friend_kill_damage())
 	_check("scatter_hex_friend_kill_damage_star2", _test_scatter_hex_friend_kill_damage_star2())
 	_check("arcane_friend_summon_nearby_hp", _test_arcane_friend_summon_nearby_hp())
@@ -641,6 +643,78 @@ static func _test_enemy_death_random_ally_atk_hp_star2_x3() -> bool:
 		return false
 	if bow.unit.get_effective_max_hp() != base_hp + 3:
 		push_error("horsebow2: max_hp expected +3")
+		return false
+	return true
+
+
+static func _test_enemy_death_nearby_allies_atk_hp_small() -> bool:
+	var data := _load_unit("res://resources/units/realtime/blade_mender.tres")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_nearby_allies_atk_hp_small":
+		push_error("blade_mender: ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 46)
+	var mender := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	var near_ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_near_bm", "steps_per_turn": 0}),
+		Vector2(8.5, 24.5),
+	)
+	var far_ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_far_bm", "steps_per_turn": 0}),
+		Vector2(6.5, 24.5),
+	)
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_bm", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.begin_combat()
+	var near_atk0 := near_ally.unit.get_effective_attack()
+	var far_atk0 := far_ally.unit.get_effective_attack()
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("blade_mender: failed to kill enemy")
+		return false
+	sim._drain_effects()
+	if near_ally.unit.get_effective_attack() != near_atk0 + 1:
+		push_error("blade_mender: nearby ally expected +1 atk")
+		return false
+	if far_ally.unit.get_effective_attack() != far_atk0:
+		push_error("blade_mender: far ally should not be buffed")
+		return false
+	return true
+
+
+static func _test_survive_turn_end_bank_turn_refresh() -> bool:
+	var data := _load_unit("res://resources/units/realtime/vita_keeper.tres")
+	if data == null or data.ability == null or data.ability.id != "survive_turn_end_bank_turn_refresh":
+		push_error("vita_keeper: ability not mounted")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 47)
+	var keeper := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.begin_combat()
+	if keeper.unit.banked_turn_refresh_charges != 0:
+		push_error("vita: expected 0 charges at start")
+		return false
+	var end_payload := CombatEventPayload.new()
+	end_payload.source = keeper.unit
+	end_payload.target = keeper.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ACTOR_TURN_END, end_payload)
+	sim._drain_effects()
+	if keeper.unit.banked_turn_refresh_charges != 1:
+		push_error("vita: expected 1 charge after turn end")
+		return false
+	var start_payload := CombatEventPayload.new()
+	start_payload.source = keeper.unit
+	start_payload.target = keeper.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, start_payload)
+	sim._drain_effects()
+	if keeper.unit.banked_turn_refresh_charges != 0:
+		push_error("vita: expected 0 charges after consuming on round start")
+		return false
+	if not keeper.unit.banked_turn_refresh_bonus_pending:
+		push_error("vita: expected bonus turn pending after consume")
 		return false
 	return true
 

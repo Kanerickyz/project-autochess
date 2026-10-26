@@ -25,6 +25,10 @@ enum Type {
 	ABSORB_STATS_AND_KILL,
 	## 开战读金加身：攻/血各 +⌊玩家当前金/2⌋（不扣金；不加升星倍率；仅玩家友方）。
 	BUFF_STATS_FROM_GOLD_HALF,
+	## 一动结束存活时 +1 续动充能（上限由持有者星级与技能 merge_value_mult 决定）。
+	ADD_BANKED_TURN_REFRESH_CHARGE,
+	## 自己回合开始时消耗 1 充能，本动正常段结束后获得完整再动（战斗层处理）。
+	CONSUME_BANKED_TURN_REFRESH_FOR_BONUS_TURN,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

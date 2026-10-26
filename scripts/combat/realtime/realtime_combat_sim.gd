@@ -552,6 +552,20 @@ func _end_current_actor_turn() -> void:
 	if not _actor_turn_active:
 		return
 	var ending := _current_actor
+	if (
+		ending != null
+		and ending.is_alive()
+		and ending.unit != null
+		and ending.unit.banked_turn_refresh_bonus_pending
+	):
+		ending.unit.banked_turn_refresh_bonus_pending = false
+		_actor_has_attacked = false
+		_actor_steps_left = RtUnitBrain.turn_step_budget(ending)
+		if ending.state == RtUnit.State.ATTACKING:
+			ending.state = RtUnit.State.MOVING
+			ending.attack_timer = 0.0
+		current_actor_changed.emit(ending)
+		return
 	_actor_turn_active = false
 	_current_actor = null
 	_actor_has_attacked = false
@@ -559,6 +573,13 @@ func _end_current_actor_turn() -> void:
 	if ending != null and ending.is_alive() and ending.state == RtUnit.State.ATTACKING:
 		ending.state = RtUnit.State.MOVING
 		ending.attack_timer = 0.0
+	if ending != null and ending.is_alive() and ending.unit != null:
+		_sync_effect_grid_from_rt_positions()
+		var turn_end_payload := CombatEventPayload.new()
+		turn_end_payload.source = ending.unit
+		turn_end_payload.target = ending.unit
+		_bus_emit(CombatEvents.ON_ACTOR_TURN_END, turn_end_payload)
+		_drain_effects()
 	_queue_cursor += 1
 	_completed_actor_turns += 1
 	current_actor_changed.emit(null)
