@@ -931,6 +931,23 @@ func _execute_action(
 				]
 			)
 			executed = true
+		EffectAction.Type.DEAL_DAMAGE_BONUS_SHOTS_BY_STAR:
+			if _pipeline == null or owner == null or not owner.is_alive():
+				return false
+			var shot_damage := _resolve_damage_value(owner, action)
+			var shot_count := mini(maxi(owner.level, 1), 3)
+			_suppress_deal_damage_triggers += 1
+			for _shot in range(shot_count):
+				var victim := _pick_random_enemy(owner)
+				if victim == null or not victim.is_alive():
+					continue
+				_pipeline.apply_rolled_damage(owner, victim, shot_damage)
+				print(
+					"[Effect] %s bonus shot deals %d to %s (hp=%d)"
+					% [owner.id, shot_damage, victim.id, victim.current_hp]
+				)
+			_suppress_deal_damage_triggers = maxi(0, _suppress_deal_damage_triggers - 1)
+			executed = true
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
 			if owner == null or target == null or not owner.is_alive():
 				return false

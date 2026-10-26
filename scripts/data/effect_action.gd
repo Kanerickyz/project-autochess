@@ -29,6 +29,8 @@ enum Type {
 	ADD_BANKED_TURN_REFRESH_CHARGE,
 	## 自己回合开始时消耗 1 充能，本动正常段结束后获得完整再动（战斗层处理）。
 	CONSUME_BANKED_TURN_REFRESH_FOR_BONUS_TURN,
+	## 按持有者星级（1★1 / 2★2 / 3★3 枪）对随机敌人各造成固定点伤（走升星倍率；不连锁 OnDealDamage）。
+	DEAL_DAMAGE_BONUS_SHOTS_BY_STAR,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

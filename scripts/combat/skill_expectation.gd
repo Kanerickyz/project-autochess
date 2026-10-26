@@ -39,6 +39,7 @@ const ACTION_WEIGHTS := {
 	EffectAction.Type.GRANT_ACTOR_TURN_REFRESH: 1.4,
 	EffectAction.Type.ADD_BANKED_TURN_REFRESH_CHARGE: 1.2,
 	EffectAction.Type.CONSUME_BANKED_TURN_REFRESH_FOR_BONUS_TURN: 1.15,
+	EffectAction.Type.DEAL_DAMAGE_BONUS_SHOTS_BY_STAR: 1.1,
 	EffectAction.Type.FUSE_EXPLODE: 1.2,
 	EffectAction.Type.DEAL_DAMAGE: 1.05,
 	EffectAction.Type.FRIENDS_HURT_AOE: 1.15,
