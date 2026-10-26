@@ -118,6 +118,7 @@ static func _combat_rows(snapshot: RunStatsSnapshot) -> Array:
 	return [
 		["造成伤害", "%d" % ledger.sum_damage_dealt()],
 		["恢复生命", "%d" % ledger.sum_healing_done()],
+		["生命上限提升", "%d" % ledger.sum_max_hp_gained()],
 		["击杀单位", "%d" % ledger.sum_kills()],
 		["召唤单位", "%d" % ledger.sum_summons()],
 	]

@@ -15,6 +15,10 @@ class EntryTotals extends RefCounted:
 
 
 var _entries: Dictionary = {} # int -> EntryTotals
+## 全 Run 友方实际恢复生命合计（战斗技能等；与按 entry 分桶并行维护）。
+var healing_done_total: int = 0
+## 全 Run 队伍永久生命上限净增量合计（药水、永久牌库属性等）。
+var max_hp_gained_total: int = 0
 ## 战中友方 effective_attack + effective_max_hp 历史最高（跨遭遇）。
 var peak_combat_atk_hp_sum: int = 0
 var peak_combat_entries: Array[DeckEntry] = []
@@ -24,6 +28,8 @@ var _peak_instance_ids: Array[int] = []
 
 func reset() -> void:
 	_entries.clear()
+	healing_done_total = 0
+	max_hp_gained_total = 0
 	peak_combat_atk_hp_sum = 0
 	peak_combat_entries.clear()
 	_peak_instance_ids.clear()
@@ -48,6 +54,8 @@ func duplicate_ledger() -> RunStatLedger:
 		dst.healing_done = src.healing_done
 		dst.kills = src.kills
 		dst.summons = src.summons
+	out.healing_done_total = healing_done_total
+	out.max_hp_gained_total = max_hp_gained_total
 	out.peak_combat_atk_hp_sum = peak_combat_atk_hp_sum
 	for entry in peak_combat_entries:
 		if entry == null:
@@ -129,9 +137,16 @@ func record_damage(entry_id: int, amount: int) -> void:
 func record_healing(entry_id: int, amount: int) -> void:
 	if amount <= 0:
 		return
+	healing_done_total += amount
 	var b := _bucket(entry_id)
 	if b != null:
 		b.healing_done += amount
+
+
+func record_max_hp_gained(delta: int) -> void:
+	if delta <= 0:
+		return
+	max_hp_gained_total += delta
 
 
 func record_kill(entry_id: int) -> void:
@@ -158,10 +173,11 @@ func sum_damage_dealt() -> int:
 
 
 func sum_healing_done() -> int:
-	var n := 0
-	for v in _entries.values():
-		n += (v as EntryTotals).healing_done
-	return n
+	return healing_done_total
+
+
+func sum_max_hp_gained() -> int:
+	return max_hp_gained_total
 
 
 func sum_kills() -> int:

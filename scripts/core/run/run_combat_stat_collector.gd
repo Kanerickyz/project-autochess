@@ -54,9 +54,15 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 			if summoner != null and summoner.team == UnitInstance.Team.PLAYER:
 				_ledger.record_summon(_player_entry_id(summoner))
 		CombatEvents.ON_HEAL_APPLIED:
+			if payload.amount <= 0:
+				return
+			var target := payload.target
+			if target == null or target.team != UnitInstance.Team.PLAYER:
+				return
 			var healer := payload.effect_owner if payload.effect_owner != null else payload.source
-			if healer != null and healer.team == UnitInstance.Team.PLAYER and payload.amount > 0:
-				_ledger.record_healing(_player_entry_id(healer), payload.amount)
+			if healer == null or healer.team != UnitInstance.Team.PLAYER:
+				healer = target
+			_ledger.record_healing(_player_entry_id(healer), payload.amount)
 		CombatEvents.ON_EFFECT_RESOLVED:
 			_note_combat_atk_hp_if_player(payload.target)
 			_note_combat_atk_hp_if_player(payload.source)

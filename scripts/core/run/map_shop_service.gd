@@ -151,7 +151,10 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		failed["reason"] = "cant_afford"
 		return failed
 	entry.bonus_attack += item.bonus_attack
-	entry.bonus_max_hp += item.bonus_max_hp
+	if item.bonus_max_hp > 0:
+		_deck.add_bonus_max_hp(entry, item.bonus_max_hp)
+	elif item.bonus_max_hp < 0:
+		entry.bonus_max_hp += item.bonus_max_hp
 	## 永久生命降至 ≤0：角色销毁离队（不退金、不出售）。
 	var destroyed := false
 	if DeckUpgradeService.get_display_max_hp(entry) <= 0:

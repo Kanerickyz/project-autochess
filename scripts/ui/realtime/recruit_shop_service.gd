@@ -143,7 +143,7 @@ func try_buy_potion_on_entry(slot_index: int, deck: DeckState, entry_id: int) ->
 	var bonus := maxi(1, item.bonus_value)
 	match item.item_type:
 		PrepareItemData.ItemType.HP_POTION:
-			entry.bonus_max_hp += bonus
+			deck.add_bonus_max_hp(entry, bonus)
 		PrepareItemData.ItemType.ATK_POTION:
 			entry.bonus_attack += bonus
 		_:

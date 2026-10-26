@@ -77,6 +77,7 @@ func _is_endless() -> bool:
 
 func _start_new_run() -> void:
 	_run_stat_ledger.reset()
+	deck_state.set_run_stat_ledger(_run_stat_ledger)
 	_pending_end_victory = false
 	_pending_end_snapshot = null
 	deck_state.reset_from_config()
