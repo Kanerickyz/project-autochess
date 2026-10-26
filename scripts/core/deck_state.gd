@@ -257,6 +257,36 @@ func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
 	return count >= 2
 
 
+## 备战席上「同角色同星已有 2 只、再买即三合一」的成员 entry_id（仅未入座）。
+func get_bench_triple_merge_hint_entry_ids() -> PackedInt32Array:
+	var buckets: Dictionary = {}
+	for entry in _entries:
+		if entry == null or entry.unit == null:
+			continue
+		if entry.is_fused_enchant():
+			continue
+		if entry.level >= 3:
+			continue
+		var key := "%s#%d" % [entry.get_unit_id(), entry.level]
+		if not buckets.has(key):
+			buckets[key] = {"count": 0, "bench_ids": PackedInt32Array()}
+		var bucket: Dictionary = buckets[key]
+		bucket["count"] = int(bucket["count"]) + 1
+		if entry.seat_index < 0:
+			var ids: PackedInt32Array = bucket["bench_ids"]
+			ids.append(entry.entry_id)
+			bucket["bench_ids"] = ids
+	var out := PackedInt32Array()
+	for key in buckets.keys():
+		var bucket: Dictionary = buckets[key]
+		if int(bucket["count"]) != 2:
+			continue
+		var ids: PackedInt32Array = bucket["bench_ids"]
+		for i in ids.size():
+			out.append(ids[i])
+	return out
+
+
 func add_fused_enchant_entry(
 	runtime_ability: AbilityData,
 	display_attack: int,

@@ -156,6 +156,8 @@ var bench_slots: PrepareSlotBoard
 var bench_visible: bool = false
 ## 准备/招募可拖；战斗只读（长按信息仍可）。
 var bench_interactive: bool = false
+## 备战 entry_id → true：队伍内同角色同星已满 2，再买即三合一。
+var bench_triple_merge_hint_entry_ids: Dictionary = {}
 ## 备战行与棋盘底边的空隙（逻辑格；仅棋盘外备战）。
 const BENCH_GAP_TILES := 0.25
 const BENCH_ROW_TILES := 1.0
@@ -3771,6 +3773,8 @@ func _draw_bench_row(px: float) -> void:
 		var entry: DeckEntry = bench_slots.get_entry(i)
 		if entry == null:
 			continue
+		if bench_triple_merge_hint_entry_ids.get(entry.entry_id, false):
+			_draw_bench_triple_merge_hint(center, px)
 		var dragging := (
 			entry.entry_id == _prepare_team_drag_id or entry.entry_id == _recruit_team_drag_id
 		)
@@ -3805,6 +3809,16 @@ func _draw_bench_row(px: float) -> void:
 	## 小标签：备战
 	var label_pos := bench_slot_center_local(0) + Vector2(-px * 0.45, -px * 0.62)
 	draw_string(font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.75))
+
+
+func _draw_bench_triple_merge_hint(center: Vector2, px: float) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var pulse := 0.5 + 0.5 * sin(t * 5.2)
+	var ring_r := px * (0.38 + 0.08 * pulse)
+	var outer := Color(1.0, 0.82, 0.22, 0.22 + 0.28 * pulse)
+	var inner := Color(1.0, 0.94, 0.45, 0.35 + 0.4 * pulse)
+	draw_arc(center, ring_r, 0.0, TAU, 32, outer, 3.0)
+	draw_arc(center, ring_r * 0.86, 0.0, TAU, 24, inner, 1.75)
 
 
 func _draw_units(px: float) -> void:
