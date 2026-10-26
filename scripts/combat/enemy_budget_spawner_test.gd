@@ -10,10 +10,12 @@ static func run_all() -> bool:
 	ok = _check("splash_body_mult", _test_splash_body_mult()) and ok
 	ok = _check("entry_star_body_power", _test_entry_star_body_power()) and ok
 	ok = _check("enemy_star2_matches_player", _test_enemy_star2_matches_player()) and ok
+	ok = _check("enemy_star2_floor_quota", _test_enemy_star2_floor_quota()) and ok
 	ok = _check("panel_match_follows_team_avg", _test_panel_match_follows_team_avg()) and ok
 	ok = _check("panel_match_floor_guard", _test_panel_match_floor_guard()) and ok
 	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
 	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
+	ok = _check("panel_flat_per_floor", _test_panel_flat_per_floor()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
 	ok = _check("seat_melee_front_ranged_back", _test_seat_melee_front_ranged_back()) and ok
 	ok = _check("seat_write_order", _test_seat_write_order()) and ok
@@ -252,6 +254,61 @@ static func _roll_fixed(
 	return EnemyBudgetSpawner.roll(
 		wave, cfg, [], 0, floor_index, node_type, 2, 5, rng, team, 15
 	)
+
+
+static func _test_enemy_star2_floor_quota() -> bool:
+	## 无尽：玩家无 2★ 时，层向配额仍给敌方 2★（F4 → 至少 3 只）。
+	var fodder: Array[UnitData] = []
+	for i in 6:
+		fodder.append(_make_unit("fodder_%d" % i, 10, 2, 1.0, 1))
+	var ally := _make_unit("ally", 10, 2, 1.0, 1)
+	var team: Array = [_make_entry(ally, 0, 0, 1), _make_entry(ally, 0, 0, 1)]
+	var cfg := _make_config(fodder)
+	cfg.floor_star2_per_level = 1
+	var wave := _make_wave(fodder.size(), fodder)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, [], 0, 4, MapNodeType.Type.COMBAT, 2, 5, rng, team, 30, true
+	)
+	var star2 := _count_level(seated, 2)
+	if star2 < 3:
+		push_error("floor star2 quota: F4 want≥3, got %d (n=%d)" % [star2, seated.size()])
+		return false
+	## 主塔默认 0：无玩家 2★ 则仍全是 1★。
+	var tower := _roll_fixed(fodder, team, 4, MapNodeType.Type.COMBAT, 22)
+	if _count_level(tower, 2) != 0:
+		push_error("tower default must not invent star2 without player stars")
+		return false
+	return true
+
+
+static func _test_panel_flat_per_floor() -> bool:
+	## 跟队后每层每单位至少 +1/+1（F5 → +4/+4）。
+	var enemy := UnitInstance.from_unit_data(
+		_make_unit("flat", 4, 2, 1.0, 1), Vector2i(0, 0), UnitInstance.Team.ENEMY
+	)
+	var cfg := SpawnBudgetConfig.new()
+	cfg.panel_match_enabled = true
+	cfg.default_panel_atk_floor = 2.0
+	cfg.default_panel_hp_floor = 4.0
+	cfg.panel_floor_growth = 0.0
+	cfg.floor_flat_atk_per_level = 1
+	cfg.floor_flat_hp_per_level = 1
+	var atk_before := enemy.stats.attack
+	var hp_before := enemy.stats.max_hp
+	EnemyPanelMatcher.apply_to_units([enemy], [], 5, MapNodeType.Type.COMBAT, cfg)
+	var bonus := 4
+	if enemy.stats.attack < atk_before + bonus or enemy.stats.max_hp < hp_before + bonus:
+		push_error(
+			"flat per floor: atk/hp %d/%d expected ≥ base+%d (%d/%d)"
+			% [enemy.stats.attack, enemy.stats.max_hp, bonus, atk_before + bonus, hp_before + bonus]
+		)
+		return false
+	if cfg.get_floor_flat_atk_bonus(1) != 0 or cfg.get_floor_flat_hp_bonus(1) != 0:
+		push_error("F1 flat bonus must be 0")
+		return false
+	return true
 
 
 static func _test_enemy_star2_matches_player() -> bool:

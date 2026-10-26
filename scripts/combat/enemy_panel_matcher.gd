@@ -48,9 +48,11 @@ static func apply_to_units(
 	var factor_atk := target_atk / maxf(1.0, mean_atk)
 	var factor_hp := target_hp / maxf(1.0, mean_hp)
 
+	var flat_atk := config.get_floor_flat_atk_bonus(floor_index)
+	var flat_hp := config.get_floor_flat_hp_bonus(floor_index)
 	for unit in targets:
-		unit.stats.attack = maxi(1, int(round(float(unit.stats.attack) * factor_atk)))
-		unit.stats.max_hp = maxi(1, int(round(float(unit.stats.max_hp) * factor_hp)))
+		unit.stats.attack = maxi(1, int(round(float(unit.stats.attack) * factor_atk)) + flat_atk)
+		unit.stats.max_hp = maxi(1, int(round(float(unit.stats.max_hp) * factor_hp)) + flat_hp)
 		unit.current_hp = unit.stats.max_hp
 	return true
 

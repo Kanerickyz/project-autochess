@@ -92,6 +92,35 @@ enum FormationTag {
 @export_range(1.0, 200.0, 0.5) var default_panel_hp_floor: float = 5.0
 ## 无表时层向面板下限随层缓增。
 @export_range(0.0, 0.5, 0.01) var panel_floor_growth: float = 0.08
+## 跟队缩放后再加：每层（F−1）每单位固定攻击；0＝关闭（主塔默认）。无尽建议 1。
+@export_range(0, 20, 1) var floor_flat_atk_per_level: int = 0
+## 跟队缩放后再加：每层（F−1）每单位固定生命；0＝关闭。无尽建议 1。
+@export_range(0, 40, 1) var floor_flat_hp_per_level: int = 0
+
+@export_group("Enemy Stars")
+## 层向 2★ 保底配额乘数：want≥(F−1)×本值，再与玩家 2★ 人数取 max；0＝仅跟玩家（主塔）。无尽建议 1。
+@export_range(0, 5, 1) var floor_star2_per_level: int = 0
+
+
+## 第 F 层每单位应加的固定攻（F≤1 为 0）。
+func get_floor_flat_atk_bonus(floor_index: int) -> int:
+	if floor_flat_atk_per_level <= 0:
+		return 0
+	return maxi(0, maxi(1, floor_index) - 1) * floor_flat_atk_per_level
+
+
+## 第 F 层每单位应加的固定血。
+func get_floor_flat_hp_bonus(floor_index: int) -> int:
+	if floor_flat_hp_per_level <= 0:
+		return 0
+	return maxi(0, maxi(1, floor_index) - 1) * floor_flat_hp_per_level
+
+
+## 第 F 层层向 2★ 保底只数（尚未与座位数 / 玩家人数取 min/max）。
+func get_floor_star2_quota(floor_index: int) -> int:
+	if floor_star2_per_level <= 0:
+		return 0
+	return maxi(0, maxi(1, floor_index) - 1) * floor_star2_per_level
 
 
 ## 普通关：第 F 层人数闭区间 [F, F＋1]（F≥1；floor_index≤0 按第 1 层）。

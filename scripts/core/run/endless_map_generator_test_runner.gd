@@ -6,6 +6,7 @@ func _initialize() -> void:
 	ok = _test_spawn_budget_extrapolation() and ok
 	ok = _test_panel_floors_rise_with_f() and ok
 	ok = _test_forward_tier_unlock() and ok
+	ok = _test_endless_flat_and_star2_knobs() and ok
 	quit(0 if ok else 1)
 
 
@@ -70,4 +71,31 @@ func _test_forward_tier_unlock() -> bool:
 		push_error("tower late-band: F15/30 should still be T2")
 		return false
 	print("Forward tier unlock OK")
+	return true
+
+
+func _test_endless_flat_and_star2_knobs() -> bool:
+	if not ResourceLoader.exists("res://resources/spawn/endless_spawn_budget.tres"):
+		push_error("missing endless_spawn_budget.tres")
+		return false
+	var cfg := load("res://resources/spawn/endless_spawn_budget.tres") as SpawnBudgetConfig
+	if cfg == null:
+		push_error("endless_spawn_budget is not SpawnBudgetConfig")
+		return false
+	if cfg.floor_flat_atk_per_level < 1 or cfg.floor_flat_hp_per_level < 1:
+		push_error("endless must grant ≥+1/+1 per floor per unit")
+		return false
+	if cfg.floor_star2_per_level < 1:
+		push_error("endless must enable floor star2 quota")
+		return false
+	if cfg.get_floor_flat_atk_bonus(5) < 4 or cfg.get_floor_flat_hp_bonus(5) < 4:
+		push_error("endless F5 flat bonus should be ≥4/4")
+		return false
+	if cfg.get_floor_star2_quota(5) < 4:
+		push_error("endless F5 star2 quota should be ≥4")
+		return false
+	print(
+		"Endless knobs: flat F5=%d/%d star2 F5=%d"
+		% [cfg.get_floor_flat_atk_bonus(5), cfg.get_floor_flat_hp_bonus(5), cfg.get_floor_star2_quota(5)]
+	)
 	return true
