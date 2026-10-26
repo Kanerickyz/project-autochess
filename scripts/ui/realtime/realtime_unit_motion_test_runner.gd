@@ -34,6 +34,7 @@ func _run() -> void:
 	await _test_recruit_team_sell_drag()
 	await _test_recruit_team_bench_drag()
 	await _test_recruit_lock_drag()
+	await _test_recruit_candidate_rejects_occupied_seat()
 	await _test_hand_card_long_press()
 	await _test_combat_motion()
 	if _failures == 0:
@@ -697,6 +698,50 @@ func _test_recruit_lock_drag() -> void:
 	_expect(locks == [0], "drag candidate to lock cell emits recruit_candidate_lock")
 	_expect(drops.is_empty(), "lock drop does not emit recruit_drop")
 
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _test_recruit_candidate_rejects_occupied_seat() -> void:
+	## 候选人拖到已上场友方：拒绝，不发 recruit_drop（避免旧人被替换消失）。
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 8)
+	root.add_child(arena)
+	await process_frame
+	var seated := DeckEntry.new()
+	seated.entry_id = 21
+	seated.unit = load(UNIT_PATHS[0]) as UnitData
+	seated.level = 1
+	var team := PrepareSlotBoard.new()
+	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	team.try_assign(0, seated)
+	arena.recruit_active = true
+	arena.recruit_team_slots = team
+	arena.recruit_candidates = [{
+		"index": 0,
+		"unit": load(UNIT_PATHS[2]) as UnitData,
+		"cell": Vector2i(1, 11),
+		"cost": 3,
+		"affordable": true,
+	}]
+	var drops: Array = []
+	var rejected: Array = []
+	arena.recruit_drop.connect(func(i: int, r: int, s: int) -> void: drops.append([i, r, s]))
+	arena.recruit_drop_rejected.connect(func(reason: StringName) -> void: rejected.append(reason))
+	var cand_center := arena.tile_to_local(Vector2(1, 11) + Vector2(0.5, 0.5))
+	var occupied_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
+	_press(arena, cand_center, true)
+	var move := InputEventMouseMotion.new()
+	move.position = cand_center + Vector2(0, -40)
+	move.relative = Vector2(0, -40)
+	arena._gui_input(move)
+	_hover_to(arena, occupied_center)
+	_press(arena, occupied_center, false)
+	_expect(drops.is_empty(), "candidate on occupied seat does not emit recruit_drop")
+	_expect(rejected == [&"occupied_seat"], "candidate on occupied emits recruit_drop_rejected")
+	_expect(team.get_entry(0) != null and team.get_entry(0).entry_id == 21, "occupied ally still on seat")
 	arena.clear_recruit_mode()
 	arena.queue_free()
 	await process_frame

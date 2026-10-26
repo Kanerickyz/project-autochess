@@ -235,7 +235,7 @@ func needs_replace_for_candidate(candidate_index: int) -> bool:
 
 ## 点买（seat_index<0 且无 replace）：上场未满→首空座；上场满且备战未满→备战；都满→失败。
 ## 拖到空座：seat_index≥0 落到该座。
-## 拖到已占座：replace_entry_id≥0，旧人不退金、继承座位（不要求总拥有已满）。
+## 点选替换：replace_entry_id≥0，旧人不退金、继承座位（UI 拖候选人盖到已占座须拒绝，勿走本路径）。
 ## 例外：总拥有满但可三合一时允许短暂溢出买入。
 func try_recruit(
 	candidate_index: int,
