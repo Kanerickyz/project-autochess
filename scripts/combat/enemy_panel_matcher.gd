@@ -48,13 +48,42 @@ static func apply_to_units(
 	var factor_atk := target_atk / maxf(1.0, mean_atk)
 	var factor_hp := target_hp / maxf(1.0, mean_hp)
 
-	var flat_atk := config.get_floor_flat_atk_bonus(floor_index)
-	var flat_hp := config.get_floor_flat_hp_bonus(floor_index)
+	## 只做跟队缩放；层向固定 +攻/+血见 apply_floor_flat_to_units（须在星级身体倍率之后加，避免被均值归一冲掉）。
 	for unit in targets:
-		unit.stats.attack = maxi(1, int(round(float(unit.stats.attack) * factor_atk)) + flat_atk)
-		unit.stats.max_hp = maxi(1, int(round(float(unit.stats.max_hp) * factor_hp)) + flat_hp)
+		unit.stats.attack = maxi(1, int(round(float(unit.stats.attack) * factor_atk)))
+		unit.stats.max_hp = maxi(1, int(round(float(unit.stats.max_hp) * factor_hp)))
 		unit.current_hp = unit.stats.max_hp
 	return true
+
+
+## 第 F 层每单位固定 +(F−1)×knob 攻/血。与 panel_match 开关无关；Boss 首领跳过。
+static func apply_floor_flat_to_units(
+	units: Array,
+	floor_index: int,
+	config: SpawnBudgetConfig,
+) -> bool:
+	if config == null:
+		return false
+	var flat_atk := config.get_floor_flat_atk_bonus(floor_index)
+	var flat_hp := config.get_floor_flat_hp_bonus(floor_index)
+	if flat_atk <= 0 and flat_hp <= 0:
+		return false
+	var applied := false
+	for item in units:
+		var unit: UnitInstance = null
+		if item is UnitInstance:
+			unit = item as UnitInstance
+		elif item is Dictionary:
+			unit = (item as Dictionary).get("unit") as UnitInstance
+		if unit == null or unit.stats == null:
+			continue
+		if unit.is_boss_leader():
+			continue
+		unit.stats.attack = maxi(1, unit.stats.attack + flat_atk)
+		unit.stats.max_hp = maxi(1, unit.stats.max_hp + flat_hp)
+		unit.current_hp = unit.stats.max_hp
+		applied = true
+	return applied
 
 
 ## 返回 Vector2(队均展示攻击, 队均展示生命)；空队为 (0, 0)。

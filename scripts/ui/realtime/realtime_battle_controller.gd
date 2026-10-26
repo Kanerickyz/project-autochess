@@ -1538,14 +1538,15 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 			continue
 		var cell := _enemy_slots.get_cell(seat_i)
 		var unit := UnitInstance.from_unit_data(unit_data, cell, UnitInstance.Team.ENEMY)
+		## 先标星级供技能倍率；身体 ×3 放在面板跟队之后，避免 2★ 抬高均值把同场 1★ 压扁。
 		var star_lv := clampi(int(item.get("level", 1)), 1, 3)
-		_apply_enemy_star_level(unit, star_lv)
+		unit.level = star_lv
 		result.append({
 			"unit": unit,
 			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
-	## 星级模板之后：面板跟队缩放（主加压）；Boss 节点内跳过。
+	## 1★ 底模跟队 → 2★ 身体倍率 → 层向每单位固定 +攻/+血。
 	var panel_units: Array = []
 	for spawn in result:
 		panel_units.append(spawn.get("unit"))
@@ -1556,16 +1557,21 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		_node_type,
 		budget_cfg,
 	)
+	for spawn in result:
+		var u: UnitInstance = spawn.get("unit") as UnitInstance
+		if u != null:
+			_apply_enemy_star_body(u)
+	EnemyPanelMatcher.apply_floor_flat_to_units(panel_units, _floor_index, budget_cfg)
 	return result
 
 
-## 敌方 2★：身体 ×3（等同三份 1★ 底模加总）；技能倍率由 unit.level 驱动。
-func _apply_enemy_star_level(unit: UnitInstance, level: int) -> void:
-	if unit == null:
+## 按 unit.level 施加敌方身体倍率（2★ ×3）；技能倍率仍读 level。可在面板缩放后调用。
+func _apply_enemy_star_body(unit: UnitInstance) -> void:
+	if unit == null or unit.stats == null:
 		return
-	var lv := clampi(level, 1, 3)
+	var lv := clampi(unit.level, 1, 3)
 	unit.level = lv
-	if lv <= 1 or unit.stats == null:
+	if lv <= 1:
 		return
 	var body_mult := 1
 	for _i in range(lv - 1):
@@ -2142,7 +2148,8 @@ func _resolve_pending_effects_instant() -> void:
 	_sim.release_presentation()
 
 
-## 从敌方预生成模板重建开战实例（满血、无本场临时层）；保留 level。
+## 从敌方预生成模板重建开战实例（满血、无本场临时层）。
+## 必须拷贝模板上已结算的攻/血（跟队 + 星级身体 + 层向 flat），不可只读 .tres 底模。
 func _fresh_enemy_unit_for_spawn(template: UnitInstance, place: Vector2) -> UnitInstance:
 	if template == null or template.unit_data == null:
 		return null
@@ -2151,6 +2158,9 @@ func _fresh_enemy_unit_for_spawn(template: UnitInstance, place: Vector2) -> Unit
 	if unit == null:
 		return null
 	unit.level = clampi(template.level, 1, 3)
+	if template.stats != null and unit.stats != null:
+		unit.stats.attack = maxi(1, template.stats.attack)
+		unit.stats.max_hp = maxi(1, template.stats.max_hp)
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
 
