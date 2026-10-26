@@ -97,7 +97,7 @@ Project Autochess/
 | `scenes/ui/player_hud.tscn` | 金币 HUD | **M3 已实现** |
 | `resources/economy/` | `EconomyConfig` | **M3 已实现** |
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
-| `resources/levels/dev_6x6.tres` | **8×8** 线性开发关，**15 波**（`wave_01`–`wave_15`）；`main.tscn` 直接 F5 | **M1 已实现** |
+| `resources/levels/wfc_demo_8x8.tres` | 旧网格工具环 WFC 演示关（`main.tscn` 可选）；**非** Run 主路径 | **M1 已实现** |
 | `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 5×8 + 座位见 COMBATLEVEL） | **Run 已实现** |
 | `resources/levels/board_legacy_4x8.tres` | 旧 4×8 格子棋盘（线性开发关工具） | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |

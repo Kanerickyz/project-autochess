@@ -755,13 +755,13 @@ static func _test_combat_count_by_floor() -> bool:
 			return false
 	if not (saw_lo and saw_hi):
 		return false
-	## 第 1 层：1～2；不因队伍 5 人而抬到 5。
+	## 第 1 层：固定 1 敌；不因队伍 5 人而抬到 5。
 	for seed_i in 20:
 		rng.seed = 200 + seed_i
 		var seated1 := EnemyBudgetSpawner.roll(
 			wave, cfg, [], 0, 1, MapNodeType.Type.COMBAT, 2, 5, rng, team
 		)
-		if seated1.size() < 1 or seated1.size() > 2:
+		if seated1.size() != 1:
 			return false
 	var bounds3 := SpawnBudgetConfig.combat_enemy_count_bounds(3)
 	return bounds3 == Vector2i(3, 4)
@@ -946,7 +946,7 @@ static func _test_roll_enemy_count_config() -> bool:
 		return false
 	## floor_index≤0 按第 1 层。
 	var bounds0 := SpawnBudgetConfig.combat_enemy_count_bounds(0)
-	return bounds0 == Vector2i(1, 2)
+	return bounds0 == Vector2i(1, 1)
 
 
 static func _test_overflow_melee_to_back() -> bool:

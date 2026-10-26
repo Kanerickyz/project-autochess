@@ -6,7 +6,7 @@ enum BoardSizeMode {
 	CUSTOM,
 }
 
-const DEV_LEVEL := preload("res://resources/levels/dev_6x6.tres")
+const DEFAULT_LEVEL := preload("res://resources/levels/wfc_demo_8x8.tres")
 const DEFAULT_ECONOMY := preload("res://resources/economy/default_economy.tres")
 const DEFAULT_SHOP_POOL := preload("res://resources/shop/dev_shop_pool.tres")
 const DEFAULT_DECK_CONFIG := preload("res://resources/deck/default_deck.tres")
@@ -29,8 +29,6 @@ const _BoardCameraRigScript := preload("res://scripts/ui/board_camera_rig.gd")
 
 @export_group("Run")
 @export var run_mode_enabled: bool = false
-## 直接运行 main.tscn 时启用线性波次（不走地图）
-@export var linear_dev_mode: bool = true
 
 signal encounter_completed(won: bool)
 signal shop_visit_completed()
@@ -89,7 +87,6 @@ var _prepare_drag_enabled: bool = false
 ## PREPARE + COMBAT: drag / click hand cards onto empty cells.
 var _hand_deploy_drag_enabled: bool = false
 var _pending_defeat_reset: bool = false
-var _pending_run_reset_on_shop: bool = false
 ## 本 Run 内进入商店的次数（首店=1），用于 Tier 解锁，与 wave_index 解耦。
 var _shop_visit_count: int = 0
 var _last_shop_max_tier: int = 0
@@ -100,7 +97,6 @@ var _last_preview_placements: Array = []
 var _board_animating: bool = false
 var _shop_ui_animating: bool = false
 var _encounter_tier_index: int = 0
-var _linear_wave_index: int = 0
 var _run_controller: RunController
 var _current_encounter_label: String = ""
 var _awaiting_run_shop_finish: bool = false
@@ -109,7 +105,7 @@ var _awaiting_run_shop_finish: bool = false
 func _ready() -> void:
 	_rng.randomize()
 	if level_data == null:
-		level_data = DEV_LEVEL
+		level_data = DEFAULT_LEVEL
 	if economy_config == null:
 		economy_config = DEFAULT_ECONOMY
 	if shop_pool_config == null:
@@ -166,11 +162,8 @@ func _ready() -> void:
 		set_run_visible(false)
 		return
 	await get_tree().process_frame
-	if linear_dev_mode and level_data != null and not level_data.waves.is_empty():
-		_start_linear_dev_run()
-	else:
-		_enter_shop_phase(true, false)
-		_set_status(_get_shop_status_text("商店阶段：购买或出售角色卡/增益卡，完成后进入部署"))
+	_enter_shop_phase(true, false)
+	_set_status(_get_shop_status_text("商店阶段：购买或出售角色卡/增益卡，完成后进入部署"))
 
 
 func reload_board() -> void:
@@ -179,16 +172,12 @@ func reload_board() -> void:
 	board_grid.clear_units()
 	match_state.reset()
 	_reset_run()
-	_linear_wave_index = 0
 	_setup_board()
 	if run_mode_enabled:
 		set_run_visible(false)
 		return
-	if linear_dev_mode and level_data != null and not level_data.waves.is_empty():
-		_start_linear_dev_run()
-	else:
-		_enter_shop_phase(true, false)
-		_set_status(_get_shop_status_text("商店阶段：购买或出售角色卡/增益卡，完成后进入部署"))
+	_enter_shop_phase(true, false)
+	_set_status(_get_shop_status_text("商店阶段：购买或出售角色卡/增益卡，完成后进入部署"))
 
 
 func initialize_for_run(run_controller: RunController) -> void:
@@ -198,7 +187,6 @@ func initialize_for_run(run_controller: RunController) -> void:
 	_sync_exports_from_level_data()
 	_setup_board()
 	_reset_run()
-	_linear_wave_index = 0
 	_encounter_tier_index = run_controller.get_encounter_tier_index()
 	_shop_visit_count = run_controller.run_state.shop_visit_count
 	_last_shop_max_tier = 0
@@ -305,26 +293,6 @@ func _make_terrain_rng(encounter: EncounterData = null) -> RandomNumberGenerator
 	return rng
 
 
-func _start_linear_dev_run() -> void:
-	_linear_wave_index = 0
-	_encounter_tier_index = 0
-	match_state.reset()
-	_enter_shop_phase(true, false)
-	_set_status(_get_shop_status_text("线性开发关：购买完成后进入第 1 波部署"))
-
-
-func _set_linear_encounter_from_wave() -> void:
-	if level_data == null or _linear_wave_index >= level_data.waves.size():
-		match_state.set_encounter(null)
-		return
-	var encounter := EncounterData.new()
-	encounter.display_name = "第 %d 波" % (_linear_wave_index + 1)
-	encounter.wave = level_data.waves[_linear_wave_index]
-	match_state.set_encounter(encounter)
-	_encounter_tier_index = _linear_wave_index
-	_current_encounter_label = encounter.display_name
-
-
 func get_board_size() -> Vector2i:
 	return _resolve_board_size()
 
@@ -359,10 +327,6 @@ func _enter_shop_phase(reroll_shop: bool = true, animate_ui: bool = false) -> vo
 	if _pending_defeat_reset:
 		_apply_defeat_reset()
 		_pending_defeat_reset = false
-	if _pending_run_reset_on_shop:
-		_linear_wave_index = 0
-		_pending_run_reset_on_shop = false
-
 	clear_wave_hand()
 	if not _awaiting_run_shop_finish:
 		_shop_visit_count += 1
@@ -1312,7 +1276,6 @@ func _apply_defeat_reset() -> void:
 	board_grid.clear_team(UnitInstance.Team.PLAYER)
 	_reset_player_hp()
 	match_state.reset()
-	_linear_wave_index = 0
 	_encounter_tier_index = 0
 	_shop_visit_count = 0
 	_last_shop_max_tier = 0
@@ -1338,8 +1301,6 @@ func _on_finish_shop_pressed() -> void:
 		set_run_visible(false)
 		shop_visit_completed.emit()
 		return
-	if linear_dev_mode and level_data != null and not level_data.waves.is_empty():
-		_set_linear_encounter_from_wave()
 	_enter_prepare_phase_async()
 
 
@@ -1591,11 +1552,7 @@ func _resolve_combat_after_hold(won: bool) -> void:
 	var wave_number := _encounter_tier_index + 1
 	var encounter := match_state.current_encounter
 	var is_boss := encounter != null and encounter.is_boss
-	var level_complete := false
-	if linear_dev_mode and level_data != null and not level_data.waves.is_empty():
-		level_complete = _linear_wave_index >= level_data.waves.size() - 1
-	elif is_boss:
-		level_complete = true
+	var level_complete := is_boss
 
 	_set_status("战斗胜利！+%d 金" % wave_gold)
 	await get_tree().create_timer(COMBAT_VICTORY_PRE_OVERLAY_HOLD_SEC).timeout
@@ -1614,17 +1571,6 @@ func _resolve_combat_after_hold(won: bool) -> void:
 	if run_mode_enabled:
 		set_run_visible(false)
 		encounter_completed.emit(true)
-		return
-
-	if linear_dev_mode and level_data != null and not level_data.waves.is_empty():
-		_linear_wave_index += 1
-		if _linear_wave_index < level_data.waves.size():
-			await _enter_shop_phase(true, true)
-			_set_status(_get_shop_status_text("波次胜利！+%d 金 — 商店阶段：购买单位" % wave_gold))
-		else:
-			_pending_run_reset_on_shop = true
-			await _enter_shop_phase(true, true)
-			_set_status(_get_shop_status_text("关卡完成！+%d 金 — 进入商店继续" % wave_gold))
 		return
 
 	await _enter_shop_phase(true, true)

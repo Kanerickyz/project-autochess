@@ -110,7 +110,7 @@ flowchart TD
 | `RunGameController` | `scripts/core/run/run_game_controller.gd` | 场景编排：地图 UI ↔ `RealtimeBattleController`（战斗节点）/ 占位界面（其他节点）；持有本局 `DeckState`、`RunEconomy`。`BoardController` 的 run 模式为遗留、无调用方 |
 | `EncounterData` | `scripts/data/encounter_data.gd` | 单节点战斗：`WaveData` + 棋盘覆盖 |
 
-**线性开发关**（`BoardController.linear_dev_mode`）：仍用 `LevelData.waves` 顺序推进，每波战后商店。
+**旧网格工具环**（`main.tscn` + `BoardController`）：本地商店/部署烟测；Run 主路径见地图 + 实时战斗。
 
 PvE 波次循环（对齐 [GAME_VISION.md](./GAME_VISION.md) 六步，线性模式）：
 
