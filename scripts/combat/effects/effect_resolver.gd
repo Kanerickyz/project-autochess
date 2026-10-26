@@ -205,6 +205,8 @@ func _owner_qualifies_for_event(
 		CombatEvents.ON_ROUND_START:
 			## 旧全场回合：source 为空，全员可听。回合制「自己回合开始」：source=行动者，仅本人。
 			return payload.source == null or payload.source == owner
+		CombatEvents.ON_ACTOR_TURN_END:
+			return payload.source == owner
 		CombatEvents.ON_FRIEND_SUMMONED:
 			return (
 				payload.target != null
@@ -611,6 +613,8 @@ func _spec_condition_met(
 			return _unit_below_max_hp(payload.target if payload != null else null)
 		EffectSpec.Condition.KILL_FROM_ATTACK:
 			return payload != null and payload.from_attack
+		EffectSpec.Condition.OWNER_HAS_BANKED_TURN_REFRESH_CHARGE:
+			return owner != null and owner.banked_turn_refresh_charges > 0
 		_:
 			return true
 
@@ -619,6 +623,12 @@ static func _unit_below_max_hp(unit: UnitInstance) -> bool:
 	if unit == null or not unit.is_alive():
 		return false
 	return unit.current_hp < unit.get_effective_max_hp()
+
+
+static func _banked_turn_refresh_charge_cap(owner: UnitInstance) -> int:
+	if owner == null:
+		return 1
+	return 3 if owner.level >= 2 else 1
 
 
 func _spec_under_trigger_cap(owner: UnitInstance, spec: EffectSpec) -> bool:
@@ -1007,6 +1017,30 @@ func _execute_action(
 			refresh.target = owner
 			_bus.emit_event(CombatEvents.ON_ACTOR_TURN_REFRESH, refresh)
 			print("[Effect] %s granted actor turn refresh" % owner.id)
+			executed = true
+		EffectAction.Type.ADD_BANKED_TURN_REFRESH_CHARGE:
+			if owner == null or not owner.is_alive():
+				return false
+			var cap := _banked_turn_refresh_charge_cap(owner)
+			if owner.banked_turn_refresh_charges >= cap:
+				return false
+			owner.banked_turn_refresh_charges += 1
+			print(
+				"[Effect] %s banked turn refresh charge -> %d (cap %d)"
+				% [owner.id, owner.banked_turn_refresh_charges, cap]
+			)
+			executed = true
+		EffectAction.Type.CONSUME_BANKED_TURN_REFRESH_FOR_BONUS_TURN:
+			if owner == null or not owner.is_alive():
+				return false
+			if owner.banked_turn_refresh_charges <= 0:
+				return false
+			owner.banked_turn_refresh_charges -= 1
+			owner.banked_turn_refresh_bonus_pending = true
+			print(
+				"[Effect] %s consumed banked charge for bonus turn (left %d)"
+				% [owner.id, owner.banked_turn_refresh_charges]
+			)
 			executed = true
 		EffectAction.Type.TELEPORT_ADJACENT_TO_TARGET:
 			if owner == null or target == null or not owner.is_alive() or not target.is_alive():

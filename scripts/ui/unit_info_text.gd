@@ -228,6 +228,21 @@ static func get_ability_description(
 		return ""
 	if ability.id == "kill_grant_actor_turn_refresh":
 		return "击杀时，重置本动步数并允许再攻击一次（不触发自己回合开始技能；每场无限次）"
+	if ability.id == "survive_turn_end_bank_turn_refresh":
+		if unit_level <= 1:
+			return (
+				"自己一动结束且仍存活时，获得 1 次续动充能（最多存 1 次）；"
+				+ "下次轮到自己时先消耗 1 充能，本动正常段结束后完整再动一次"
+				+ "（三合一后最多存 3 次）"
+			)
+		return (
+			"自己一动结束且仍存活时，获得 1 次续动充能（最多存 3 次）；"
+			+ "下次轮到自己时先消耗 1 充能，本动正常段结束后完整再动一次"
+		)
+	if ability.id == "enemy_death_nearby_allies_atk_hp_small":
+		if unit_level <= 1:
+			return "敌方死亡时，持有者周围一格友方本场攻击与生命上限各 +1（三合一后 +3）"
+		return "敌方死亡时，持有者周围一格友方本场攻击与生命上限各 +3"
 	if ability.id == "turn_start_strike_weakest":
 		var dmg := _strike_weakest_skill_damage(unit_level)
 		if unit_level <= 1:

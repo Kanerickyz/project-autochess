@@ -24,6 +24,10 @@ var is_combat_summon: bool = false
 var combat_summons_spawned: int = 0
 ## 本场经 EffectResolver HEAL 累计受疗量（计在受疗单位上；含友方疗己）。
 var combat_skill_heal_received: int = 0
+## 命卫等：银行续动充能（本场临时）。
+var banked_turn_refresh_charges: int = 0
+## 本动正常段结束后是否立刻进入预约的续动段（由回合开始消耗充能设置）。
+var banked_turn_refresh_bonus_pending: bool = false
 ## 本场技能治疗预算上限；超出部分截断/跳过。
 const COMBAT_SKILL_HEAL_BUDGET: int = 100
 ## 队伍条目 runtime 主技能（熔印者等）；优先于 unit_data.ability。

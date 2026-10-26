@@ -55,6 +55,8 @@ enum Condition {
 	EVENT_TARGET_NOT_AT_MAX_HP,
 	## 击杀来自出手，不含技能伤害造成的击杀；须追加在枚举末尾。
 	KILL_FROM_ATTACK,
+	## 持有者 banked_turn_refresh_charges > 0。
+	OWNER_HAS_BANKED_TURN_REFRESH_CHARGE,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
@@ -78,6 +80,7 @@ const TRIGGER_NAMES: PackedStringArray = [
 	"OnEffectFizzled",
 	"OnMove",
 	"OnRoundStart",
+	"OnActorTurnEnd",
 	"OnLevelUp",
 	"OnBuy",
 	"OnSell",
