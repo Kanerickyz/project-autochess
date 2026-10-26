@@ -3783,9 +3783,8 @@ func _draw_units(px: float) -> void:
 	var started := sim.has_started()
 	## COMBAT_FEEDBACK：当前行动者高亮；其余略降对比，不做出手条。
 	var actor: RtUnit = sim.get_current_actor() if started else null
-	## 先画全部单位再画全部攻血标，避免相邻贴图盖住标签。
-	var badges: Array[Dictionary] = []
-	## 按 y 轴排序绘制：靠下（更大 y）后画压上，避免剪影叠层错乱。
+	## 按 y 轴排序绘制：靠下（更大 y）后画压上。攻血标与纸片同序同体绘制，
+	## 避免后排数值浮在全局顶层挡住前排剪影（准备/招募路径同口径）。
 	var ordered := sim.get_units().duplicate()
 	ordered.sort_custom(func(a: RtUnit, b: RtUnit) -> bool:
 		if a.position.y == b.position.y:
@@ -3829,23 +3828,15 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
-		badges.append({
-			"center": center,
-			"attack": rt.get_effective_attack(),
-			"hp": rt.get_current_hp(),
-			"alpha": alpha,
-			"armor": rt.unit.get_armor_block() if rt.unit != null else 0,
-		})
-	_draw_corpses(px)
-	for badge in badges:
 		_draw_stat_badges(
-			badge["center"],
-			badge["attack"],
-			badge["hp"],
-			badge["alpha"],
+			center,
+			rt.get_effective_attack(),
+			rt.get_current_hp(),
+			alpha,
 			px,
-			int(badge.get("armor", 0)),
+			rt.unit.get_armor_block() if rt.unit != null else 0,
 		)
+	_draw_corpses(px)
 
 
 func _draw_corpses(px: float) -> void:
