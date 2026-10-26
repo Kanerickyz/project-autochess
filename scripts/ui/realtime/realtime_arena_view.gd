@@ -1726,13 +1726,11 @@ func _ensure_info_attachment_card(index: int) -> RealtimeUnitInfoCard:
 func _sync_info_attachment_positions() -> void:
 	if not _info_card.visible:
 		return
-	var stack_top := _info_card.position.y + _info_card.size.y + INFO_ATTACHMENT_GAP_PX
-	var center_x := _info_card.position.x + _info_card.size.x * 0.5
+	var follow := _info_card.get_follow_offset()
 	for card in _info_attachment_cards:
 		if card == null or not card.visible:
 			continue
-		card.position = Vector2(center_x - card.size.x * 0.5, stack_top)
-		stack_top += card.size.y + INFO_ATTACHMENT_GAP_PX
+		card.apply_follow_offset(follow)
 
 
 ## 测试与无障碍入口：直接弹出指定位置单位的信息卡。
@@ -1776,48 +1774,33 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 		var foot_g := xf * foot
 		var vp := get_viewport().get_visible_rect()
 		_info_card.show_info(info, head_g, foot_g, vp, slide_dir)
-		_show_info_attachments(attachments, vp, slide_dir)
+		_show_info_attachments(attachments, vp, slide_dir, true)
 	else:
 		_info_card.top_level = false
 		var bounds := Rect2(Vector2.ZERO, size)
 		_info_card.show_info(info, head, foot, bounds, slide_dir)
-		_show_info_attachments_local(attachments, bounds, slide_dir)
+		_show_info_attachments(attachments, bounds, slide_dir, false)
 	queue_redraw()
 
 
-func _show_info_attachments(attachments: Array, bounds: Rect2, slide_dir: float) -> void:
-	if attachments.is_empty():
-		return
-	var stack_anchor := _info_card.position + Vector2(_info_card.size.x * 0.5, _info_card.size.y)
-	for i in attachments.size():
-		var att: Dictionary = attachments[i] as Dictionary
-		if att.is_empty():
-			continue
-		var card := _ensure_info_attachment_card(i)
-		card.top_level = true
-		var anchor_g := stack_anchor
-		var foot_g := anchor_g + Vector2(0.0, 24.0)
-		card.show_info(att, anchor_g, foot_g, bounds, slide_dir if i == 0 else 0.0, true)
-		stack_anchor = card.position + Vector2(card.size.x * 0.5, card.size.y)
-	_sync_info_attachment_positions()
-
-
-func _show_info_attachments_local(
-	attachments: Array, bounds: Rect2, slide_dir: float
+func _show_info_attachments(
+	attachments: Array, bounds: Rect2, slide_dir: float, top_level: bool
 ) -> void:
 	if attachments.is_empty():
 		return
-	var stack_anchor := _info_card.position + Vector2(_info_card.size.x * 0.5, _info_card.size.y)
+	var leader_rest := _info_card.get_rest_position()
+	var leader_size := _info_card.size
 	for i in attachments.size():
 		var att: Dictionary = attachments[i] as Dictionary
 		if att.is_empty():
 			continue
 		var card := _ensure_info_attachment_card(i)
-		card.top_level = false
-		var foot := stack_anchor + Vector2(0.0, 24.0)
-		card.show_info(att, stack_anchor, foot, bounds, slide_dir if i == 0 else 0.0, true)
-		stack_anchor = card.position + Vector2(card.size.x * 0.5, card.size.y)
-	_sync_info_attachment_positions()
+		card.top_level = top_level
+		card.show_stack_attachment(
+			att, leader_rest, leader_size, INFO_ATTACHMENT_GAP_PX, bounds, slide_dir, i
+		)
+		leader_rest = card.get_rest_position()
+		leader_size = card.size
 
 
 func _begin_inspect_focus(info: Dictionary, slide_dir: float) -> void:
