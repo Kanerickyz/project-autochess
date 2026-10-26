@@ -221,7 +221,7 @@ static func _test_spawn_softening_early_floors() -> bool:
 	var wave := _make_wave(1)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
-	var team2: Array = [_make_entry(_make_unit("p", 20, 5, 1.0, 1), 2, 0)]
+	var team2: Array = [_make_entry(_make_unit("p", 20, 5, 1.0, 1), 0, 0, 2)]
 	var seated := EnemyBudgetSpawner.roll(
 		wave, cfg, pool, 0, 8, MapNodeType.Type.COMBAT, 2, 5, rng, team2
 	)
