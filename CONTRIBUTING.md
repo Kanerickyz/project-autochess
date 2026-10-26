@@ -6,6 +6,22 @@
 
 项目使用 UTF-8。保留 `.uid` 和资产 `.import` 侧车，不提交 `.godot/`、`.artifacts/`、凭据或导出包。大文件接近 GitHub 单文件限制前评估 LFS，不只提交指针而遗漏对象。
 
+### 与 main 同步（改代码前必做）
+
+在**写新代码、改资源或开 PR 之前**，先把本地基准对齐远端 `main`，减少无意义的合并冲突（尤其 `project.godot` 的 `config/version`）。
+
+| 场景 | 建议命令（示例） |
+|------|------------------|
+| 已在功能分支上继续改 | `git fetch origin main` → `git merge origin/main`（冲突解决后再开发） |
+| 准备新建分支 | `git fetch origin main` → `git checkout main` → `git pull origin main` → `git checkout -b feat/...` |
+| Cloud Agent / 预构建快照 | 快照可能落后 `origin/main` 数小时；**依赖最新主干或要开 PR 时必须先 `fetch`**，不要默认本地 `main` 已最新 |
+
+约定：
+
+- 合并冲突里**仅版本号不同**时：取**更高**的 `application/config/version`，并删掉冲突标记后再提交。
+- 枚举 / 共享脚本等多处追加时：通常**保留双方新增**，不要整文件选一侧覆盖。
+- 不 `push --force` 到共享分支，不重置用户未授权的本地修改；冲突解决后跑一遍与改动相关的 smoke / runner（见下文「完成条件」）。
+
 ### 应用版本号（主菜单可见）
 
 主菜单下方显示的版本来自 `project.godot` 的 `application/config/version`（文案形如 `v0.2.0`）。

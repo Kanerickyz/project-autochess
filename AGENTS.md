@@ -35,5 +35,6 @@
 
 ## Git
 - `main` 保持可验证；新工作使用 `feat/`、`fix/`、`docs/` 或 `chore/` 分支，按功能拆提交。
+- **动手改代码前先同步 `main`**（见 [CONTRIBUTING.md](CONTRIBUTING.md)「与 main 同步」）：`git fetch origin main`；在功能分支上先 `merge origin/main`（或 `rebase`，与团队约定一致）并解决冲突后再写新改动；从主干开新分支前先 `checkout main && pull`。避免在陈旧分支上叠提交导致 `project.godot` 版本号等 trivial 冲突。
 - **玩家可见改动合入时须 bump** `project.godot` 的 `application/config/version`（主菜单下方显示 `v…`）；纯文档/工具链除外。细则见 [CONTRIBUTING.md](CONTRIBUTING.md)「应用版本号」。
 - 不改全局身份、不强推、不重置用户修改。发布、可见性改变和版本打标按用户任务授权执行。
