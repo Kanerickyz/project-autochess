@@ -107,7 +107,7 @@ static func _journey_rows(snapshot: RunStatsSnapshot) -> Array:
 	rows.append_array([
 		["战斗胜利", "%d 场" % snapshot.encounters_won],
 		["造访商店", "%d 次" % snapshot.shop_visits],
-		["战斗用时", _format_duration(snapshot.combat_seconds)],
+		["远征用时", _format_duration(snapshot.combat_seconds)],
 		["剩余金币", "%d" % snapshot.gold],
 	])
 	return rows
