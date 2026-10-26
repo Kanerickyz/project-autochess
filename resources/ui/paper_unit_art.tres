@@ -97,6 +97,8 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_wage_red.png" id="r_blood_wage"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_scatter_hex_red.png" id="r_scatter_hex"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_red.png" id="r_funeral_pyre"]
+[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="dev_enemy"]
+[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="dev_player"]
 
 
 [resource]
@@ -124,6 +126,7 @@ archetype_by_unit_id = {
 "devour": &"devour",
 "edge_hex": &"edge_hex",
 "echo_spear": &"echo_spear",
+"final_trial_dev": &"final_trial_dev",
 "paymaster": &"paymaster",
 
 "fused_enchant": &"fused_enchant",
@@ -184,6 +187,7 @@ player_textures = {
 &"edge_hex": ExtResource("b_edge_hex"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
 &"echo_spear": ExtResource("b_echo_spear"),
+&"final_trial_dev": ExtResource("dev_player"),
 &"fused_enchant": ExtResource("b_fused_enchant"),
 &"giant_knight": ExtResource("b_giant_knight"),
 &"goblin": ExtResource("b_goblin"),
@@ -237,6 +241,7 @@ enemy_textures = {
 &"edge_hex": ExtResource("r_edge_hex"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
 &"echo_spear": ExtResource("r_echo_spear"),
+&"final_trial_dev": ExtResource("dev_enemy"),
 &"fused_enchant": ExtResource("r_fused_enchant"),
 &"giant_knight": ExtResource("r_giant_knight"),
 &"goblin": ExtResource("r_goblin"),

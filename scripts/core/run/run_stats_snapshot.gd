@@ -11,6 +11,8 @@ var gold: int = 0
 var reached_floor: int = 0
 ## 本局是否无尽模式（文案/统计用）。
 var endless_mode: bool = false
+## 最终试炼已通过层数（0 = 未参与或未过第一层）。
+var final_trial_floors_cleared: int = 0
 ## 结束时仍在队伍中的成员（展示用）。
 var roster: Array[DeckEntry] = []
 var ledger: RunStatLedger = RunStatLedger.new()

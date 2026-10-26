@@ -104,6 +104,8 @@ static func _journey_rows(snapshot: RunStatsSnapshot) -> Array:
 	var rows: Array = []
 	if snapshot.endless_mode and snapshot.reached_floor > 0:
 		rows.append(["到达层数", "第 %d 层" % snapshot.reached_floor])
+	if snapshot.final_trial_floors_cleared > 0:
+		rows.append(["最终试炼", "通过 %d 层" % snapshot.final_trial_floors_cleared])
 	rows.append_array([
 		["战斗胜利", "%d 场" % snapshot.encounters_won],
 		["造访商店", "%d 次" % snapshot.shop_visits],

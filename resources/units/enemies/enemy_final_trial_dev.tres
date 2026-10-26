@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="3_icon"]
+
+[sub_resource type="Resource" id="UnitStats_final_trial_dev"]
+script = ExtResource("2_stats")
+max_hp = 6
+attack = 6
+steps_per_turn = 1
+attack_interval = 0.85
+attack_windup = 0.25
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.5
+visual_half_width = 0.55
+visual_half_height = 0.68
+mass = 0.5
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 0.7
+
+[resource]
+script = ExtResource("1_unit")
+id = "enemy_final_trial_dev"
+display_name = "试炼傀儡"
+cost = 0
+tier = 1
+command_cost = 1
+stats = SubResource("UnitStats_final_trial_dev")
+team_default = 1
+icon = ExtResource("3_icon")

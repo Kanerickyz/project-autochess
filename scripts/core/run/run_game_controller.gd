@@ -53,7 +53,7 @@ func _ready() -> void:
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
 	_battle.set_run_stat_ledger(_run_stat_ledger)
 	_battle.encounter_completed.connect(_on_encounter_completed)
-	_battle.combat_resolved.connect(_on_combat_resolved)
+	_battle.final_trial_floors_recorded.connect(_on_final_trial_floors_recorded)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
 	_battle.map_shop_finished.connect(_on_map_shop_finished)
@@ -85,6 +85,7 @@ func _start_new_run() -> void:
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
 	_recruit_session.clear_taken_copies()
+	_battle.reset_final_trial_state()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
@@ -175,6 +176,11 @@ func _on_placeholder_continue() -> void:
 	_grant_pending_node_floor_gold()
 	_placeholder_screen.hide_placeholder()
 	run_controller.complete_encounter()
+
+
+func _on_final_trial_floors_recorded(floors: int) -> void:
+	if run_controller != null and run_controller.run_state != null:
+		run_controller.run_state.final_trial_floors_cleared = maxi(0, floors)
 
 
 func _on_encounter_completed(won: bool) -> void:
@@ -403,6 +409,7 @@ func _build_stats_snapshot(victory: bool) -> RunStatsSnapshot:
 	snap.combat_seconds = rs.get_run_elapsed_real_seconds()
 	snap.gold = run_economy.gold
 	snap.endless_mode = _is_endless()
+	snap.final_trial_floors_cleared = rs.final_trial_floors_cleared
 	## 败局：优先用正打着的战斗层；否则用已胜场+1；通关不记层深成绩。
 	if not victory:
 		var pending := run_controller.get_pending_node()
