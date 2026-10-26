@@ -15,7 +15,7 @@ static func run_all() -> bool:
 	ok = _check("panel_match_floor_guard", _test_panel_match_floor_guard()) and ok
 	ok = _check("panel_match_elite_higher", _test_panel_match_elite_higher()) and ok
 	ok = _check("panel_match_skips_boss", _test_panel_match_skips_boss()) and ok
-	ok = _check("panel_match_disable_through_floor", _test_panel_match_disable_through_floor()) and ok
+	ok = _check("spawn_softening_early_floors", _test_spawn_softening_early_floors()) and ok
 	ok = _check("panel_flat_per_floor", _test_panel_flat_per_floor()) and ok
 	ok = _check("star2_then_panel_then_flat", _test_star2_then_panel_then_flat()) and ok
 	ok = _check("budget_roll_within_band", _test_budget_roll_within_band()) and ok
@@ -185,7 +185,7 @@ static func _test_panel_match_elite_higher() -> bool:
 	return elite_e.stats.attack > combat_e.stats.attack and elite_e.stats.max_hp > combat_e.stats.max_hp
 
 
-static func _test_panel_match_disable_through_floor() -> bool:
+static func _test_spawn_softening_early_floors() -> bool:
 	var ally := _make_unit("ally", 40, 20, 1.0, 1)
 	var team: Array = [_make_entry(ally)]
 	var enemy := UnitInstance.from_unit_data(
@@ -193,7 +193,7 @@ static func _test_panel_match_disable_through_floor() -> bool:
 	)
 	var cfg := SpawnBudgetConfig.make_code_defaults()
 	cfg.panel_match_enabled = true
-	cfg.panel_match_disable_through_floor = 8
+	cfg.spawn_softening_through_floor = 8
 	cfg.panel_mult_combat = 1.0
 	if EnemyPanelMatcher.apply_to_units([enemy], team, 8, MapNodeType.Type.COMBAT, cfg):
 		return false
@@ -204,7 +204,32 @@ static func _test_panel_match_disable_through_floor() -> bool:
 	)
 	if not EnemyPanelMatcher.apply_to_units([enemy9], team, 9, MapNodeType.Type.COMBAT, cfg):
 		return false
-	return enemy9.stats.attack == 40 and enemy9.stats.max_hp == 20
+	if enemy9.stats.attack != 40 or enemy9.stats.max_hp != 20:
+		return false
+	## E 护栏下限：弱队 F8 不抬到 floor_e_min。
+	cfg.floor_e_min = [100.0, 100.0]
+	var e_soft := cfg.get_target_pressure(8, MapNodeType.Type.COMBAT, 5.0)
+	if e_soft >= 100.0:
+		push_error("spawn softening: E should not use floor_e_min on F8, got %s" % e_soft)
+		return false
+	var e_late := cfg.get_target_pressure(9, MapNodeType.Type.COMBAT, 5.0)
+	if e_late < 100.0:
+		push_error("spawn softening: E should use floor_e_min on F9, got %s" % e_late)
+		return false
+	## 敌方 2★：F8 不镜像玩家 2★。
+	var pool: Array[UnitData] = [_make_unit("e0", 10, 3, 1.0, 1, 0.0, 0.0, true)]
+	var wave := _make_wave(1)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var team2: Array = [_make_entry(_make_unit("p", 20, 5, 1.0, 1), 2, 0)]
+	var seated := EnemyBudgetSpawner.roll(
+		wave, cfg, pool, 0, 8, MapNodeType.Type.COMBAT, 2, 5, rng, team2
+	)
+	for item in seated:
+		if int(item.get("level", 1)) != 1:
+			push_error("spawn softening: expected all 1★ on F8")
+			return false
+	return true
 
 
 static func _test_panel_match_skips_boss() -> bool:

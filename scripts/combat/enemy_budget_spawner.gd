@@ -185,6 +185,8 @@ static func _assign_enemy_star2(
 ) -> void:
 	if node_type == MapNodeType.Type.BOSS or seated.is_empty():
 		return
+	if cfg != null and cfg.spawn_softening_active(floor_index):
+		return
 	var want := _count_player_star2(team_entries)
 	if cfg != null:
 		want = maxi(want, cfg.get_floor_star2_quota(floor_index))

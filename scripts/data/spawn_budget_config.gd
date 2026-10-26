@@ -80,8 +80,8 @@ enum FormationTag {
 @export_group("Panel Match")
 ## 名单锁死后按队均展示攻/血缩放本场敌方面板（主加压）；Boss 节点跳过。
 @export var panel_match_enabled: bool = true
-## 地图层 F≤本值时不做敌方面板跟队（仍抽阵/星级）；0=不限制。主塔前段可设为 8。
-@export_range(0, 30, 1) var panel_match_disable_through_floor: int = 0
+## 主塔前段软化：地图层 F≤本值时关闭敌方面板跟队、E 护栏下限抬升、敌方 2★；0=不限制。
+@export_range(0, 30, 1) var spawn_softening_through_floor: int = 0
 ## 普通：面板锚＝队均 × 本倍率（再与层下限取 max）。
 @export_range(0.1, 3.0, 0.05) var panel_mult_combat: float = 1.0
 ## 精英：更高一档面板倍率。
@@ -104,14 +104,19 @@ enum FormationTag {
 @export_range(0, 5, 1) var floor_star2_per_level: int = 0
 
 
-## 本层是否施加面板跟队（含 panel_match_enabled 与层号豁免）。
+func spawn_softening_active(floor_index: int) -> bool:
+	if spawn_softening_through_floor <= 0:
+		return false
+	return maxi(1, floor_index) <= spawn_softening_through_floor
+
+
+## 本层是否施加面板跟队（含 panel_match_enabled 与层号软化）。
 func panel_match_active_for_floor(floor_index: int) -> bool:
 	if not panel_match_enabled:
 		return false
-	if panel_match_disable_through_floor <= 0:
-		return true
-	var floor_f := maxi(1, floor_index)
-	return floor_f > panel_match_disable_through_floor
+	if spawn_softening_active(floor_index):
+		return false
+	return true
 
 
 ## 第 F 层每单位应加的固定攻（F≤1 为 0）。
@@ -310,7 +315,11 @@ func get_target_pressure(
 	var e_raw := get_kappa(node_type) * s * floor_mult
 	var e_min := get_floor_e_min(floor_index)
 	var e_max := get_floor_e_max(floor_index)
-	return clampf(e_raw, e_min, maxf(e_min, e_max))
+	var e_hi := maxf(e_min, e_max)
+	if spawn_softening_active(floor_index):
+		## 前段不抬 E 下限，弱队不被护栏硬夹成高威胁阵容。
+		return clampf(e_raw, 0.0, e_hi)
+	return clampf(e_raw, e_min, e_hi)
 
 
 func get_enemy_pool_or_empty() -> Array[UnitData]:
