@@ -226,6 +226,12 @@ static func get_ability_description(
 ) -> String:
 	if ability == null:
 		return ""
+	if ability.id == "deal_damage_extra_2":
+		if unit_level <= 1:
+			return "自己造成伤害时，再对随机一名敌人造成 2 点技能伤害（2★ 2 次×6；3★ 3 次×18）"
+		if unit_level == 2:
+			return "自己造成伤害时，再对随机敌人造成 2 次各 6 点的技能伤害"
+		return "自己造成伤害时，再对随机敌人造成 3 次各 18 点的技能伤害"
 	if ability.id == "kill_grant_actor_turn_refresh":
 		return "击杀时，重置本动步数并允许再攻击一次（不触发自己回合开始技能；每场无限次）"
 	if ability.id == "survive_turn_end_bank_turn_refresh":

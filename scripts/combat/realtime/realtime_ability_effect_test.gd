@@ -853,8 +853,9 @@ static func _musketeer_extra_damage(level: int) -> int:
 	gun.unit.stats.attack_interval = 8.0
 	gun.unit.stats.attack_reach = 3.0
 	gun.unit.stats.steps_per_turn = 0
-	var bonus := 2 * UnitInstance.ability_value_multiplier_for(data.ability, level)
-	var expected := gun.unit.get_effective_attack() + bonus
+	var per_shot := 2 * UnitInstance.ability_value_multiplier_for(data.ability, level)
+	var shots := mini(maxi(level, 1), 3)
+	var expected := gun.unit.get_effective_attack() + per_shot * shots
 	var hp_before := enemy.unit.current_hp
 	var guard := 0
 	while enemy.unit.current_hp > hp_before - expected and guard < 400:
@@ -873,8 +874,16 @@ static func _test_deal_damage_extra_2() -> bool:
 
 static func _test_deal_damage_extra_2_star2() -> bool:
 	var dealt := _musketeer_extra_damage(2)
-	if dealt != 13:
-		push_error("musketeer star2: dealt %d, expected attack 7 + extra 6" % dealt)
+	if dealt != 19:
+		push_error("musketeer star2: dealt %d, expected attack 7 + 2 shots x6" % dealt)
+		return false
+	return true
+
+
+static func _test_deal_damage_extra_2_star3() -> bool:
+	var dealt := _musketeer_extra_damage(3)
+	if dealt != 61:
+		push_error("musketeer star3: dealt %d, expected attack 7 + 3 shots x18" % dealt)
 		return false
 	return true
 
