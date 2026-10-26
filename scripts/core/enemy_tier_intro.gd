@@ -82,10 +82,76 @@ static func _roster_has_member(team_entries: Array) -> bool:
 	return false
 
 
+## T2/T3 品阶在 intro 前几层的抽选软权重（§6.2.4）；硬帽仍优先。
+static func intro_pick_weight(
+	unit: UnitData,
+	floor_index: int,
+	floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
+	forward_only: bool = false,
+) -> float:
+	if unit == null:
+		return 1.0
+	var tier := maxi(1, unit.tier)
+	var f := maxi(1, floor_index)
+	var f2 := TierUnlock.T2_FROM_FLOOR
+	var f3 := tier3_first_floor(floor_count, forward_only)
+	if tier == 3 and f >= f3:
+		var o3 := f - f3
+		if o3 == 0:
+			return 0.38
+		if o3 == 1:
+			return 0.55
+		if o3 == 2:
+			return 0.72
+	if tier == 2 and f >= f2 and f < f3:
+		var o2 := f - f2
+		if o2 == 0:
+			return 0.38
+		if o2 == 1:
+			return 0.55
+		if o2 == 2:
+			return 0.72
+	return 1.0
+
+
+static func pick_weighted_from_pool(
+	pool: Array[UnitData],
+	rng: RandomNumberGenerator,
+	floor_index: int,
+	floor_count: int,
+	forward_only: bool,
+) -> UnitData:
+	if pool.is_empty() or rng == null:
+		return null
+	var total := 0.0
+	var weights: Array[float] = []
+	for u in pool:
+		var w := intro_pick_weight(u, floor_index, floor_count, forward_only)
+		weights.append(w)
+		total += w
+	if total <= 0.0000001:
+		return pool[rng.randi_range(0, pool.size() - 1)]
+	var roll := rng.randf() * total
+	var acc := 0.0
+	for i in pool.size():
+		acc += weights[i]
+		if roll <= acc:
+			return pool[i]
+	return pool[pool.size() - 1]
+
+
 static func _t2_layer(f: int, n: int, f2: int, f3: int) -> int:
 	if f < f2:
 		return 0
+	## T3 层带（F≥F3）：T2 只数与 F4 起 T2 同理阶梯爬升，避免 F3 当日「全员 T2 + T3 入场」叠满。
 	if f >= f3:
+		var offset := f - f3
+		if offset == 0:
+			return mini(int(ceili(0.75 * float(n))), n)
+		if offset == 1:
+			return mini(int(ceili(0.85 * float(n))), n)
+		if offset == 2:
+			return mini(int(ceili(0.92 * float(n))), n)
 		return n
 	if f == f2:
 		return mini(1, n)
