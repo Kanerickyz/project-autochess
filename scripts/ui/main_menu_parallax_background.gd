@@ -5,8 +5,8 @@ extends Control
 const BACKGROUND_SHADER := preload("res://assets/ui/main_menu/main_menu_background.gdshader")
 
 const PARALLAX_STRENGTH := 18.0
-## 较原 0.038 加快 20%。
-const SCROLL_SPEED := 0.0456
+## 在 0.0456 基础上再加快 100%（×2）。
+const SCROLL_SPEED := 0.0912
 const SCROLL_RAMP_DURATION := 1.05
 const PARALLAX_TWEEN_DURATION := 0.32
 const PARALLAX_RETARGET_DISTANCE := 1.25
