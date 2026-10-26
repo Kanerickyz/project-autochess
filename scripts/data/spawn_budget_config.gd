@@ -80,6 +80,8 @@ enum FormationTag {
 @export_group("Panel Match")
 ## 名单锁死后按队均展示攻/血缩放本场敌方面板（主加压）；Boss 节点跳过。
 @export var panel_match_enabled: bool = true
+## 地图层 F≤本值时不做敌方面板跟队（仍抽阵/星级）；0=不限制。主塔前段可设为 8。
+@export_range(0, 30, 1) var panel_match_disable_through_floor: int = 0
 ## 普通：面板锚＝队均 × 本倍率（再与层下限取 max）。
 @export_range(0.1, 3.0, 0.05) var panel_mult_combat: float = 1.0
 ## 精英：更高一档面板倍率。
@@ -100,6 +102,16 @@ enum FormationTag {
 @export_group("Enemy Stars")
 ## 层向 2★ 保底配额乘数：want≥(F−1)×本值，再与玩家 2★ 人数取 max；0＝仅跟玩家（主塔）。无尽建议 1。
 @export_range(0, 5, 1) var floor_star2_per_level: int = 0
+
+
+## 本层是否施加面板跟队（含 panel_match_enabled 与层号豁免）。
+func panel_match_active_for_floor(floor_index: int) -> bool:
+	if not panel_match_enabled:
+		return false
+	if panel_match_disable_through_floor <= 0:
+		return true
+	var floor_f := maxi(1, floor_index)
+	return floor_f > panel_match_disable_through_floor
 
 
 ## 第 F 层每单位应加的固定攻（F≤1 为 0）。
