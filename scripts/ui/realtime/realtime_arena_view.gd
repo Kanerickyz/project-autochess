@@ -165,6 +165,8 @@ var presentation_time_scale: float = 1.0
 ## 草地与外框不随位移；仅半场色调与单位/座位内容滑动。
 var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
+## 开战后备战行向下移出屏（准备/战斗棋盘外一行；与半场 slide 独立）。
+var bench_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
 ## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
@@ -429,9 +431,14 @@ func bench_slot_center_local(slot_index: int) -> Vector2:
 	var px := get_cell_px()
 	## 棋盘内备战（招募中缝）：与座位同口径的格心。
 	if cell.y < board_size.y:
-		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5))
+		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)) + Vector2(0.0, bench_slide_y)
 	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
-	return get_board_rect().position + Vector2(float(cell.x) + 0.5, float(board_size.y)) * px + Vector2(0.0, gap + px * 0.5)
+	return (
+		get_board_rect().position
+		+ Vector2(float(cell.x) + 0.5, float(board_size.y)) * px
+		+ Vector2(0.0, gap + px * 0.5)
+		+ Vector2(0.0, bench_slide_y)
+	)
 
 
 func local_to_tile(local_pos: Vector2) -> Vector2:
@@ -2793,6 +2800,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 func reset_half_slide() -> void:
 	enemy_half_slide_y = 0.0
 	ally_half_slide_y = 0.0
+	bench_slide_y = 0.0
 	queue_redraw()
 
 
@@ -2986,6 +2994,8 @@ func _draw() -> void:
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
+		## 备战在中缝、候选在下半场：先画备战再画候选，避免纸片盖住招募席。
+		_draw_bench_row(px)
 		_draw_recruit_candidates(px, ally_off)
 		_draw_recruit_items(px, ally_off)
 		_draw_recruit_sell_slot(px, ally_off)
@@ -3038,8 +3048,9 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
-	## 备战行：准备/战斗在友方半场下方；招募夹在队伍与招募半场中缝；拖源降透明。
-	_draw_bench_row(px)
+	## 备战行：准备/战斗在友方半场下方；招募已在候选之前绘制。
+	if not recruit_active:
+		_draw_bench_row(px)
 	_draw_fx(px)
 	_draw_feedback(px)
 	if showing_placement and _hover_cell != NO_CELL:
@@ -3735,14 +3746,30 @@ func _draw_bench_row(px: float) -> void:
 		return
 	var font := get_theme_default_font()
 	var font_size := clampi(int(px * 0.32), 9, 13)
-	## 空格淡底 + 已占纸片/攻血；拖源降透明。
+	var occupied_indices: Array[int] = []
 	for i in bench_slots.cells.size():
+		if bench_slots.get_entry(i) != null:
+			occupied_indices.append(i)
+	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
+		var ca := bench_slots.cells[a]
+		var cb := bench_slots.cells[b]
+		if ca.y != cb.y:
+			return ca.y < cb.y
+		return ca.x < cb.x
+	)
+	_bring_inspect_slot_to_front(occupied_indices, bench_slots, Vector2(0.0, bench_slide_y))
+	## 空格淡底；已占按 y/x 排序后绘制（与准备席同口径）。
+	for i in bench_slots.cells.size():
+		if bench_slots.get_entry(i) != null:
+			continue
 		var center := bench_slot_center_local(i)
 		var cell_rect := Rect2(center - Vector2(px, px) * 0.5, Vector2(px, px))
+		draw_rect(cell_rect, Color(PLAYER_COLOR, 0.10))
+		draw_rect(cell_rect, Color(0.85, 0.90, 1.0, 0.22), false, 1.0)
+	for i in occupied_indices:
+		var center := bench_slot_center_local(i)
 		var entry: DeckEntry = bench_slots.get_entry(i)
 		if entry == null:
-			draw_rect(cell_rect, Color(PLAYER_COLOR, 0.10))
-			draw_rect(cell_rect, Color(0.85, 0.90, 1.0, 0.22), false, 1.0)
 			continue
 		var dragging := (
 			entry.entry_id == _prepare_team_drag_id or entry.entry_id == _recruit_team_drag_id
