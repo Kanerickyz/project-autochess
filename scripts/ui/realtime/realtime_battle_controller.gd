@@ -3604,7 +3604,22 @@ func _sync_arena_bench() -> void:
 	_arena.bench_visible = show_bench
 	_arena.bench_interactive = _phase == Phase.PREPARE or _phase == Phase.RECRUIT
 	_arena.bench_slots = _bench_slots if show_bench else null
+	if _phase == Phase.PREPARE or _phase == Phase.RECRUIT:
+		_arena.bench_slide_y = 0.0
+	_sync_bench_triple_merge_hints()
 	_arena.queue_redraw()
+
+
+func _sync_bench_triple_merge_hints() -> void:
+	if _arena == null:
+		return
+	_arena.bench_triple_merge_hint_entry_ids.clear()
+	if _deck_state == null:
+		return
+	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
+		return
+	for entry_id in _deck_state.get_bench_triple_merge_hint_entry_ids():
+		_arena.bench_triple_merge_hint_entry_ids[entry_id] = true
 
 
 func _refresh_bench_row() -> void:
