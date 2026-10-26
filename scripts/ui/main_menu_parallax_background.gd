@@ -10,6 +10,8 @@ const SCROLL_SPEED := 0.0456
 const SCROLL_RAMP_DURATION := 1.05
 const PARALLAX_TWEEN_DURATION := 0.32
 const PARALLAX_RETARGET_DISTANCE := 1.25
+## 棋盘绕屏幕中心旋转（弧度），减轻正对屏幕的方正感。
+const GRID_ROTATION_RAD := -0.22
 
 const _SCROLL_DIR := Vector2(-0.70710678118, 0.70710678118)
 
@@ -44,6 +46,7 @@ func _notification(what: int) -> void:
 func _build_layers() -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = BACKGROUND_SHADER
+	_material.set_shader_parameter("grid_rotation", GRID_ROTATION_RAD)
 
 	_bg = ColorRect.new()
 	_bg.name = "ShaderBackground"
