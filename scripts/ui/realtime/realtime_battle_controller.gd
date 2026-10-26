@@ -194,6 +194,7 @@ func _ready() -> void:
 	_arena.board_pressed.connect(_on_board_pressed)
 	_arena.card_dropped.connect(_on_card_dropped)
 	_arena.recruit_drop.connect(_on_recruit_drop)
+	_arena.recruit_drop_rejected.connect(_on_recruit_drop_rejected)
 	_arena.recruit_candidate_pressed.connect(_on_recruit_candidate_pressed)
 	_arena.recruit_team_pressed.connect(_on_recruit_team_pressed)
 	_arena.recruit_sell.connect(_on_recruit_sell)
@@ -1538,6 +1539,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 			continue
 		var cell := _enemy_slots.get_cell(seat_i)
 		var unit := UnitInstance.from_unit_data(unit_data, cell, UnitInstance.Team.ENEMY)
+		## 先 2★ 身体（与规格一致）；再跟队把场均拉到队均——若跟队后再 ×3，2★ 会相对队均暴涨。
 		var star_lv := clampi(int(item.get("level", 1)), 1, 3)
 		_apply_enemy_star_level(unit, star_lv)
 		result.append({
@@ -1545,7 +1547,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 			"position": _enemy_spawn_visual_position(unit, cell),
 			"seat_index": seat_i,
 		})
-	## 星级模板之后：面板跟队缩放（主加压）；Boss 节点内跳过。
+	## 星级身体 → 面板跟队 → 层向 flat（flat 在跟队后加，不被均值归一吃掉）。
 	var panel_units: Array = []
 	for spawn in result:
 		panel_units.append(spawn.get("unit"))
@@ -1556,6 +1558,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		_node_type,
 		budget_cfg,
 	)
+	EnemyPanelMatcher.apply_floor_flat_to_units(panel_units, _floor_index, budget_cfg)
 	return result
 
 
@@ -2142,7 +2145,8 @@ func _resolve_pending_effects_instant() -> void:
 	_sim.release_presentation()
 
 
-## 从敌方预生成模板重建开战实例（满血、无本场临时层）；保留 level。
+## 从敌方预生成模板重建开战实例（满血、无本场临时层）。
+## 必须拷贝模板上已结算的攻/血（跟队 + 星级身体 + 层向 flat），不可只读 .tres 底模。
 func _fresh_enemy_unit_for_spawn(template: UnitInstance, place: Vector2) -> UnitInstance:
 	if template == null or template.unit_data == null:
 		return null
@@ -2151,6 +2155,9 @@ func _fresh_enemy_unit_for_spawn(template: UnitInstance, place: Vector2) -> Unit
 	if unit == null:
 		return null
 	unit.level = clampi(template.level, 1, 3)
+	if template.stats != null and unit.stats != null:
+		unit.stats.attack = maxi(1, template.stats.attack)
+		unit.stats.max_hp = maxi(1, template.stats.max_hp)
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
 
@@ -2645,7 +2652,21 @@ func _refresh_recruit_hud() -> void:
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	_try_recruit(candidate_index, replace_entry_id, seat_index)
+	## 拖放路径禁止盖到已上场：即便信号误带 replace_id 也不替换。
+	if replace_entry_id >= 0:
+		_on_recruit_drop_rejected(&"occupied_seat")
+		return
+	_try_recruit(candidate_index, -1, seat_index)
+
+
+func _on_recruit_drop_rejected(reason: StringName) -> void:
+	if _phase != Phase.RECRUIT or _recruit_hint == null:
+		return
+	match reason:
+		&"occupied_seat":
+			_recruit_hint.text = "不能拖到已上场角色上，请拖到空座位"
+		_:
+			_recruit_hint.text = "无法放置"
 
 
 func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
@@ -2842,7 +2863,7 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 		"no_gold":
 			_recruit_hint.text = "金币不足"
 		"roster_full", "need_replace":
-			_recruit_hint.text = "拥有已满：请出售腾位，或拖到上区替换"
+			_recruit_hint.text = "拥有已满：请出售腾位，或点选上区角色替换"
 		"seat_cap_full":
 			_recruit_hint.text = "上场席位已满"
 		_:

@@ -6,8 +6,10 @@ extends Control
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
-## 招募：候选人拖放到上半场；replace_entry_id≥0 为替换；seat_index≥0 为指定空座。
+## 招募：候选人拖放到上半场；replace_entry_id≥0 为替换（仅点选路径会发）；seat_index≥0 为指定空座。
 signal recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int)
+## 招募：候选人拖到非法落点（如已占座）；reason 如 occupied_seat。
+signal recruit_drop_rejected(reason: StringName)
 signal recruit_candidate_pressed(candidate_index: int)
 signal recruit_team_pressed(entry_id: int)
 ## 招募：上区队伍成员拖到出售落点松手。
@@ -2322,9 +2324,9 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
 	var seat_i := _find_recruit_team_seat_at(cell)
-	## 拖到已占座：始终替换（旧人不退金）；不要求总拥有已满。
+	## 候选人不可拖到已上场友方（避免误替换致旧人消失）；替换仅点选路径。
 	if replace_id >= 0:
-		recruit_drop.emit(index, replace_id, -1)
+		recruit_drop_rejected.emit("occupied_seat")
 		queue_redraw()
 		return
 	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先上场）。
@@ -2770,8 +2772,9 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 			return
 		var replace_id := _find_recruit_team_entry_at(cell)
 		var seat_i := _find_recruit_team_seat_at(cell)
+		## 与 _finish_recruit_drag 一致：已占座拒绝，不静默替换。
 		if replace_id >= 0:
-			recruit_drop.emit(index, replace_id, -1)
+			recruit_drop_rejected.emit("occupied_seat")
 			return
 		if seat_i < 0 and recruit_team_slots != null:
 			seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
@@ -3653,9 +3656,8 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	if cell.y >= mid:
 		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
 		return
-	var ok := true
-	if recruit_needs_replace:
-		ok = _find_recruit_team_entry_at(cell) >= 0
+	## 已上场友方格：非法（候选人不可直接盖上去）；仅空座 / 空地上半场可绿。
+	var ok := _find_recruit_team_entry_at(cell) < 0
 	draw_rect(cell_rect, Color(0.35, 0.95, 0.45, 0.35) if ok else Color(1.0, 0.25, 0.2, 0.3))
 	if _drag_visual_alive:
 		return

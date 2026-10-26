@@ -351,7 +351,12 @@ func step(dt: float) -> void:
 			## 时停切入：丢弃本帧尚未执行的步，避免恢复时瞬间追帧。
 			_input_seconds = fixed_step_count * FIXED_DT
 			return
+		var steps_before := fixed_step_count
 		advance_fixed_step()
+		if fixed_step_count == steps_before and not _finished:
+			## 待结算技能等门闩：本步无进展，勿同帧忙等（否则主线程卡死）。
+			_input_seconds = fixed_step_count * FIXED_DT
+			break
 
 
 ## 技能播报时停：打断后续固定步；队列清空后由控制器 release。
