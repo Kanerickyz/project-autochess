@@ -250,6 +250,12 @@ func get_armor_block() -> int:
 	return maxi(0, armor_block)
 
 
+func get_linked_deck_entry() -> DeckEntry:
+	if _deck_entry_ref == null:
+		return null
+	return _deck_entry_ref.get_ref() as DeckEntry
+
+
 ## 护甲抵消后的最终扣血；≤0 表示本次未扣血（不算受伤）。
 ## 有剩余护甲时本次伤害不扣血（含伤害大于护甲：护甲归零、溢出也不扣血）；仅消耗护甲。
 ## 耗尽后回写队伍（装备保留，下一场战斗节点开战回满）。

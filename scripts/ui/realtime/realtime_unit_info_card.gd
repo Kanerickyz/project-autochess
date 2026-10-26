@@ -158,6 +158,7 @@ func show_info(
 	foot: Vector2,
 	bounds: Rect2,
 	slide_dir: float = 0.0,
+	stack_below: bool = false,
 ) -> void:
 	var was_open := _open and visible
 	_apply_content(info)
@@ -165,7 +166,7 @@ func show_info(
 	var card_size := get_combined_minimum_size()
 	size = card_size
 	pivot_offset = card_size * 0.5
-	var target := _compute_position(anchor, foot, bounds, card_size)
+	var target := _compute_position(anchor, foot, bounds, card_size, stack_below)
 	_rest_position = target
 	_follow_offset = Vector2.ZERO
 	visible = true
@@ -211,9 +212,29 @@ func hide_info() -> void:
 func _apply_content(info: Dictionary) -> void:
 	var is_player := bool(info.get("side_player", true))
 	var is_item := bool(info.get("is_item", false))
+	var is_attachment := bool(info.get("is_attachment", false))
 	_portrait.texture = info.get("texture") as Texture2D
-	_portrait.visible = _portrait.texture != null
+	_portrait.visible = not is_attachment and _portrait.texture != null
 	_name_label.text = String(info.get("name", "未知"))
+	if is_attachment:
+		var kind_label := String(info.get("attachment_kind_label", "附属"))
+		_side_label.text = kind_label
+		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT)
+		_style.border_color = INK
+		_attack_badge.visible = false
+		_hp_badge.visible = false
+		if _gold_badge != null:
+			_gold_badge.visible = false
+		var armor_att := int(info.get("armor", 0))
+		var armor_tex_att := UiStatIcons.armor_texture()
+		if _armor_badge != null:
+			_armor_badge.texture = armor_tex_att
+			_armor_badge.value = armor_att
+			_armor_badge.visible = armor_att > 0 and armor_tex_att != null
+			_armor_badge.queue_redraw()
+		_skills_label.clear()
+		_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), false))
+		return
 	if is_item:
 		var kind := String(info.get("kind_label", "物品"))
 		var cost := int(info.get("cost", 0))
@@ -255,10 +276,20 @@ func _apply_content(info: Dictionary) -> void:
 	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), is_item))
 
 
-func _compute_position(anchor: Vector2, foot: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
-	var pos := Vector2(anchor.x - card_size.x * 0.5, anchor.y - card_size.y - MARGIN_PX)
-	if pos.y < bounds.position.y + MARGIN_PX:
-		pos.y = foot.y + MARGIN_PX
+func _compute_position(
+	anchor: Vector2,
+	foot: Vector2,
+	bounds: Rect2,
+	card_size: Vector2,
+	stack_below: bool = false,
+) -> Vector2:
+	var pos: Vector2
+	if stack_below:
+		pos = Vector2(anchor.x - card_size.x * 0.5, anchor.y + MARGIN_PX)
+	else:
+		pos = Vector2(anchor.x - card_size.x * 0.5, anchor.y - card_size.y - MARGIN_PX)
+		if pos.y < bounds.position.y + MARGIN_PX:
+			pos.y = foot.y + MARGIN_PX
 	pos.x = clampf(
 		pos.x,
 		bounds.position.x + MARGIN_PX,

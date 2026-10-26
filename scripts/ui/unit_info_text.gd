@@ -1,6 +1,9 @@
 class_name UnitInfoText
 extends RefCounted
 
+## 长按信息卡附属类型（`attachments[]` 顺序即叠放顺序；v1 仅 equipment）。
+const INFO_ATTACHMENT_KIND_EQUIPMENT := &"equipment"
+
 ## 技能介绍卡内联攻/血/金币图标占位；RichTextLabel 再换成脚下同款贴图。
 const STAT_ICON_ATK := "⟦ATK⟧"
 const STAT_ICON_HP := "⟦HP⟧"
@@ -128,8 +131,6 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	if entry.equipment != null:
-		lines.append(format_equipment(entry.equipment, with_stat_icons))
 	var main_ab := entry.get_main_ability()
 	if main_ab != null:
 		var scale := 1
@@ -162,17 +163,94 @@ static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = f
 	return "【装备】%s — 护甲 %d" % [title, block]
 
 
+static func get_equipment_attachment_skills_block(
+	equipment: EquipmentData,
+	current_armor: int,
+	max_armor: int,
+	with_stat_icons: bool = false,
+) -> String:
+	if equipment == null:
+		return ""
+	var block := equipment.get_armor_block()
+	var lines: PackedStringArray = []
+	if with_stat_icons:
+		lines.append("受伤时抵挡最多 %d 点伤害；有剩余护甲时本次攻击不扣血。" % block)
+	else:
+		lines.append("护甲抵挡 %d 点伤害。" % block)
+	if max_armor > 0 and current_armor != max_armor:
+		lines.append("本场护甲：%d / %d" % [maxi(0, current_armor), max_armor])
+	elif max_armor > 0:
+		lines.append("护甲：%d" % maxi(0, current_armor))
+	return "\n".join(lines)
+
+
+static func build_equipment_attachment_info(
+	equipment: EquipmentData,
+	current_armor: int,
+	max_armor: int,
+	with_stat_icons: bool = true,
+) -> Dictionary:
+	if equipment == null:
+		return {}
+	if max_armor <= 0:
+		max_armor = equipment.get_armor_block()
+	return {
+		"is_attachment": true,
+		"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
+		"attachment_kind_label": "装备",
+		"name": equipment.get_display_name(),
+		"side_player": true,
+		"tier": 0,
+		"attack": 0,
+		"hp": 0,
+		"armor": maxi(0, current_armor),
+		"skills": get_equipment_attachment_skills_block(
+			equipment, current_armor, max_armor, with_stat_icons
+		),
+		"recruit_cost": -1,
+	}
+
+
+static func collect_info_attachments_from_entry(
+	entry: DeckEntry, with_stat_icons: bool = true
+) -> Array:
+	var out: Array = []
+	if entry == null or entry.equipment == null:
+		return out
+	var max_armor := entry.equipment_armor_max
+	if max_armor <= 0:
+		max_armor = entry.equipment.get_armor_block()
+	var info := build_equipment_attachment_info(
+		entry.equipment, entry.get_armor_block(), max_armor, with_stat_icons
+	)
+	if not info.is_empty():
+		out.append(info)
+	return out
+
+
+static func collect_info_attachments_from_unit(
+	unit: UnitInstance, with_stat_icons: bool = true
+) -> Array:
+	if unit == null:
+		return []
+	var entry := unit.get_linked_deck_entry()
+	if entry != null and entry.equipment != null:
+		var max_armor := entry.equipment_armor_max
+		if max_armor <= 0:
+			max_armor = entry.equipment.get_armor_block()
+		var info := build_equipment_attachment_info(
+			entry.equipment, unit.get_armor_block(), max_armor, with_stat_icons
+		)
+		if not info.is_empty():
+			return [info]
+	return []
+
+
 static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
 
 	var lines: PackedStringArray = []
-	var armor := unit.get_armor_block()
-	if armor > 0:
-		if with_stat_icons:
-			lines.append("【装备】护甲 — 有护甲时不扣血，最多消耗 %d 点护甲" % armor)
-		else:
-			lines.append("【装备】护甲 %d" % armor)
 	if unit.unit_data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(
