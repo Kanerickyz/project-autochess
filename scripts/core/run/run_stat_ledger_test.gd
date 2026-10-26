@@ -7,6 +7,8 @@ static func run_all() -> bool:
 	var ok := true
 	ok = _test_ledger_sums() and ok
 	ok = _test_collector_damage_heal() and ok
+	ok = _test_collector_heal_on_player_target() and ok
+	ok = _test_deck_max_hp_gained_tracking() and ok
 	ok = _test_collector_summon_from_bus() and ok
 	ok = _test_orphan_entry_counts_in_sums() and ok
 	ok = _test_duplicate_ledger_isolates_reset() and ok
@@ -167,8 +169,11 @@ static func _test_collector_damage_heal() -> bool:
 	dmg.target = target
 	dmg.amount = 4
 	bus.emit_event(CombatEvents.ON_DEAL_DAMAGE, dmg)
+	var healed := UnitInstance.new("ally", Vector2i.ZERO, UnitInstance.Team.PLAYER)
+	healed.deck_entry_id = 9
 	var heal := CombatEventPayload.new()
 	heal.effect_owner = attacker
+	heal.target = healed
 	heal.amount = 3
 	bus.emit_event(CombatEvents.ON_HEAL_APPLIED, heal)
 	collector.unbind_bus()
@@ -177,6 +182,44 @@ static func _test_collector_damage_heal() -> bool:
 		return false
 	if ledger.get_entry_totals(9).healing_done != 3:
 		push_error("collector: heal attribution")
+		return false
+	return true
+
+
+static func _test_collector_heal_on_player_target() -> bool:
+	var ledger := RunStatLedger.new()
+	var collector := RunCombatStatCollector.new()
+	collector.configure(ledger)
+	var bus := CombatEventBus.new()
+	collector.bind_bus(bus)
+	var ally := UnitInstance.new("ally", Vector2i.ZERO, UnitInstance.Team.PLAYER)
+	ally.deck_entry_id = 2
+	var enemy := UnitInstance.new("skel", Vector2i.ZERO, UnitInstance.Team.ENEMY)
+	var heal := CombatEventPayload.new()
+	heal.effect_owner = enemy
+	heal.target = ally
+	heal.amount = 4
+	bus.emit_event(CombatEvents.ON_HEAL_APPLIED, heal)
+	collector.unbind_bus()
+	if ledger.sum_healing_done() != 4:
+		push_error("collector: heal on player target should count")
+		return false
+	return true
+
+
+static func _test_deck_max_hp_gained_tracking() -> bool:
+	const ARCHER := preload("res://resources/units/realtime/archer.tres")
+	var ledger := RunStatLedger.new()
+	var deck := DeckState.new()
+	var cfg := DeckConfig.new()
+	cfg.max_size = 5
+	deck.configure(cfg)
+	deck.set_run_stat_ledger(ledger)
+	deck.add_entry(ARCHER)
+	var entry := deck.get_entries()[0]
+	deck.add_bonus_max_hp(entry, 3)
+	if ledger.sum_max_hp_gained() != 3:
+		push_error("deck: max_hp_gained expected 3")
 		return false
 	return true
 
@@ -240,6 +283,11 @@ static func _test_duplicate_ledger_isolates_reset() -> bool:
 		return false
 	if snap.sum_damage_dealt() != 10 or snap.sum_healing_done() != 4 or snap.sum_summons() != 1:
 		push_error("duplicate: snapshot totals should survive live.reset")
+		return false
+	live.record_max_hp_gained(5)
+	snap = live.duplicate_ledger()
+	if snap.sum_max_hp_gained() != 5:
+		push_error("duplicate: max_hp_gained should copy")
 		return false
 	return true
 

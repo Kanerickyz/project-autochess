@@ -20,6 +20,23 @@ var _next_seat_seq: int = 0
 var _seat_cap_override: int = -1
 ## 三合一装备冲突等随机；可注入以便测试。
 var _rng: RandomNumberGenerator
+var _run_stat_ledger: RunStatLedger
+
+
+func set_run_stat_ledger(ledger: RunStatLedger) -> void:
+	_run_stat_ledger = ledger
+
+
+func notify_max_hp_gained(delta: int) -> void:
+	if _run_stat_ledger != null and delta > 0:
+		_run_stat_ledger.record_max_hp_gained(delta)
+
+
+func add_bonus_max_hp(entry: DeckEntry, delta: int) -> void:
+	if entry == null or delta <= 0:
+		return
+	entry.bonus_max_hp += delta
+	notify_max_hp_gained(delta)
 
 
 func configure(config: DeckConfig) -> void:
@@ -233,8 +250,8 @@ func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dic
 	if target == null:
 		return result
 
-	target.bonus_max_hp += shop_bonus_max_hp
-	var leveled := DeckUpgradeService.add_experience(target, _level_config)
+	add_bonus_max_hp(target, shop_bonus_max_hp)
+	var leveled := DeckUpgradeService.add_experience(target, _level_config, self)
 	result["ok"] = true
 	result["level_up"] = leveled
 	result["entry"] = target
@@ -320,7 +337,7 @@ func add_entry(
 	if not can_add() and not would_complete_triple_on_add(unit_data, 1):
 		return null
 	var entry := _create_entry(unit_data)
-	entry.bonus_max_hp += shop_bonus_max_hp
+	add_bonus_max_hp(entry, shop_bonus_max_hp)
 	_entries.append(entry)
 	_place_new_entry(entry, preferred_seat, prefer_bench)
 	var survivor := _resolve_after_auto_merge(entry)
@@ -341,7 +358,7 @@ func replace_entry(
 	var old := _entries[index]
 	var inherit_seat := old.seat_index if old != null else -1
 	var entry := _create_entry(unit_data)
-	entry.bonus_max_hp += shop_bonus_max_hp
+	add_bonus_max_hp(entry, shop_bonus_max_hp)
 	## 满员替换：新人继承被替者座位，并刷新落座时间。
 	if inherit_seat >= 0:
 		_set_seat(entry, inherit_seat, true)
@@ -367,7 +384,7 @@ func attach_buff(entry_id: int, buff: BuffCardData) -> bool:
 	if entry == null:
 		return false
 	entry.attached_buffs.append(buff)
-	BuffApplicator.apply_on_attach(entry, buff)
+	BuffApplicator.apply_on_attach(entry, buff, self)
 	deck_changed.emit()
 	return true
 

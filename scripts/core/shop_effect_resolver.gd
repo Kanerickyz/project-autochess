@@ -134,7 +134,7 @@ func _execute_action(
 			if action.stat_name == &"attack":
 				target_entry.bonus_attack += stat_value
 			elif action.stat_name == &"max_hp":
-				target_entry.bonus_max_hp += stat_value
+				_deck.add_bonus_max_hp(target_entry, stat_value)
 			_deck.deck_changed.emit()
 		EffectAction.Type.STOCK_FREE_BUFF:
 			if _shop != null and action.buff_card != null:

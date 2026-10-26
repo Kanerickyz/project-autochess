@@ -975,7 +975,7 @@ func _execute_action(
 					if stat_unit.deck_entry_id >= 0 and _deck_state != null:
 						var hp_entry := _deck_state.get_entry(stat_unit.deck_entry_id)
 						if hp_entry != null:
-							hp_entry.bonus_max_hp += stat_value
+							_deck_state.add_bonus_max_hp(hp_entry, stat_value)
 							_deck_state.deck_changed.emit()
 					stat_unit.stats.max_hp += stat_value
 					stat_unit.current_hp += stat_value

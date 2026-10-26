@@ -49,7 +49,7 @@ static func get_xp_to_next_level(entry: DeckEntry, config: LevelConfig) -> int:
 	return 0
 
 
-static func add_experience(entry: DeckEntry, config: LevelConfig) -> bool:
+static func add_experience(entry: DeckEntry, config: LevelConfig, deck: DeckState = null) -> bool:
 	if entry == null or config == null or is_max_level(entry, config):
 		return false
 
@@ -60,7 +60,7 @@ static func add_experience(entry: DeckEntry, config: LevelConfig) -> bool:
 		if needed <= 0 or entry.experience < needed:
 			break
 		entry.experience -= needed
-		_apply_level_up(entry, config)
+		_apply_level_up(entry, config, deck)
 		leveled = true
 	return leveled
 
@@ -91,7 +91,10 @@ static func get_display_max_hp(entry: DeckEntry) -> int:
 	return entry.unit.stats.max_hp + entry.bonus_max_hp
 
 
-static func _apply_level_up(entry: DeckEntry, config: LevelConfig) -> void:
+static func _apply_level_up(entry: DeckEntry, config: LevelConfig, deck: DeckState = null) -> void:
 	entry.level += 1
 	entry.bonus_attack += config.bonus_attack_per_level_up
-	entry.bonus_max_hp += config.bonus_max_hp_per_level_up
+	if deck != null:
+		deck.add_bonus_max_hp(entry, config.bonus_max_hp_per_level_up)
+	else:
+		entry.bonus_max_hp += config.bonus_max_hp_per_level_up
