@@ -178,3 +178,11 @@ custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "继续"
+
+[node name="FinalTrialButton" type="Button" parent="ResultOverlay/ResultBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "最终试炼"

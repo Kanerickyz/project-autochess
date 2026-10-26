@@ -7,6 +7,8 @@ signal encounter_completed(won: bool)
 signal phase_changed(phase: Phase)
 ## 战斗刚分出胜负（结算遮罩出现时）；encounter_completed 在玩家点“继续”后才发出
 signal combat_resolved(won: bool)
+## 最终试炼结束：已通过层数（失败时 = 本场胜利波数）。
+signal final_trial_floors_recorded(floors: int)
 ## 招募阶段结束（完成/跳过）；由 Run 接线回地图。
 signal recruit_finished(kept_changes: bool)
 signal enchant_finished(did_fuse: bool)
@@ -62,6 +64,18 @@ func set_forward_tier_unlock(enabled: bool) -> void:
 
 func get_forward_tier_unlock() -> bool:
 	return _forward_tier_unlock
+
+
+func reset_final_trial_state() -> void:
+	_final_trial_active = false
+	_final_trial_wave_index = 0
+	_final_trial_floors_cleared = 0
+	_boss_final_trial_offer = false
+	_update_result_action_buttons()
+
+
+func get_final_trial_floors_cleared() -> int:
+	return _final_trial_floors_cleared
 
 
 var _spawn_budget_config: SpawnBudgetConfig = null
@@ -138,6 +152,11 @@ var _tape_stats_disabled: bool = false
 ## 时停/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
 const PRESENTATION_STUCK_SECONDS := 3.5
 var _presentation_block_elapsed: float = 0.0
+## Boss 胜后可选最终试炼；进行中阵容锁定、连续波次。
+var _final_trial_active: bool = false
+var _final_trial_wave_index: int = 0
+var _final_trial_floors_cleared: int = 0
+var _boss_final_trial_offer: bool = false
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -151,6 +170,7 @@ var _presentation_block_elapsed: float = 0.0
 @onready var _result_label: Label = %ResultLabel
 @onready var _result_detail: Label = %ResultDetail
 @onready var _continue_button: Button = %ContinueButton
+@onready var _final_trial_button: Button = %FinalTrialButton
 @onready var _dock: Control = $Layout/Dock
 @onready var _hud: Control = $Layout/Hud
 @onready var _solid_bg: CanvasItem = $Background
@@ -185,6 +205,7 @@ var _tape_play_speed_button: Button
 var _tape_next_button: Button
 const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
+const FINAL_TRIAL_DEV_UNIT := preload("res://resources/units/enemies/enemy_final_trial_dev.tres")
 ## 准备横排：开战相对复制/粘贴的宽度比。
 const _PREPARE_START_STRETCH := 2.0
 const _PREPARE_SECONDARY_STRETCH := 1.0
@@ -214,6 +235,9 @@ func _ready() -> void:
 	_arena.bench_empty_pressed.connect(_on_bench_empty_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
+	if _final_trial_button != null:
+		_final_trial_button.pressed.connect(_on_final_trial_pressed)
+		_final_trial_button.visible = false
 	_ensure_refresh_button()
 	_ensure_prepare_action_row()
 	_ensure_layout_clipboard_buttons()
@@ -557,6 +581,8 @@ func try_assign_to_slot(entry_id: int, cell: Vector2i) -> String:
 
 ## 准备换座：将 from 座成员移到 to 座（空则移入，有人则互换）；写回 DeckState。
 func try_swap_prepare_seats(from_slot: int, to_slot: int) -> bool:
+	if _final_trial_active:
+		return false
 	if _phase != Phase.PREPARE or _deck_state == null:
 		return false
 	if from_slot < 0 or to_slot < 0 or from_slot == to_slot:
@@ -575,6 +601,8 @@ func try_swap_prepare_seats(from_slot: int, to_slot: int) -> bool:
 
 ## 备战 → 空座位（准备/招募）。
 func try_move_bench_to_seat(entry_id: int, target_seat: int) -> bool:
+	if _final_trial_active:
+		return false
 	if _deck_state == null:
 		return false
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
@@ -616,6 +644,8 @@ func try_auto_deploy_bench(entry_id: int) -> bool:
 
 ## 已入座 → 备战（准备/招募）；备战满失败。战斗观战不可用。
 func try_move_seat_to_bench(entry_id: int) -> bool:
+	if _final_trial_active:
+		return false
 	if _deck_state == null:
 		return false
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
@@ -668,6 +698,8 @@ func _is_pointer_over_bench_row() -> bool:
 
 ## 准备：拖角色落到目标座（空座移入 / 占座互换）。
 func _on_prepare_team_seat_drop(entry_id: int, target_seat: int) -> void:
+	if _final_trial_active:
+		return
 	if _phase != Phase.PREPARE or _deck_state == null:
 		return
 	if _is_bench_entry(entry_id):
@@ -684,6 +716,8 @@ func _on_prepare_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 ## 准备：拖已入座角色松手落在备战格 → 入备战。
 func _on_prepare_team_bench_drop(entry_id: int) -> void:
+	if _final_trial_active:
+		return
 	if _phase != Phase.PREPARE or _deck_state == null:
 		return
 	if not _is_seated_entry(entry_id):
@@ -938,6 +972,17 @@ func restart_sandbox_prepare() -> void:
 func continue_after_result() -> void:
 	if _phase != Phase.RESULT:
 		return
+	if _boss_final_trial_offer:
+		_boss_final_trial_offer = false
+		_update_result_action_buttons()
+		_complete_continue(true)
+		return
+	if _final_trial_active:
+		if _won:
+			_advance_final_trial_after_wave_win()
+		else:
+			_finish_final_trial_after_loss()
+		return
 	var won := _won
 	_result_overlay.visible = false
 	_preserve_half_slide_for_recruit = won
@@ -1010,6 +1055,122 @@ func _play_half_field_exit_then_continue(won: bool, seconds: float) -> void:
 func _redraw_arena_half_slide(_t: float) -> void:
 	if _arena != null:
 		_arena.queue_redraw()
+
+
+func _on_final_trial_pressed() -> void:
+	if _phase != Phase.RESULT or not _boss_final_trial_offer:
+		return
+	_boss_final_trial_offer = false
+	_update_result_action_buttons()
+	_result_overlay.visible = false
+	_begin_final_trial_from_boss()
+
+
+func _begin_final_trial_from_boss() -> void:
+	_final_trial_active = true
+	_final_trial_wave_index = 0
+	_final_trial_floors_cleared = 0
+	_preserve_half_slide_for_recruit = false
+	_teardown_sim()
+	_reset_tape_state()
+	_prepare_final_trial_wave()
+	call_deferred("try_start_combat")
+
+
+func _prepare_final_trial_wave() -> void:
+	_enemy_spawns = _build_final_trial_enemy_spawns(_final_trial_wave_index)
+	if _arena != null:
+		_arena.sim = null
+		_arena.enemy_previews = _build_enemy_previews(_enemy_spawns)
+		_arena.prepare_slots = _slots
+		_arena.enemy_slots = _enemy_slots
+		_arena.placement_active = false
+		_arena.bench_interactive = false
+		_arena.bench_visible = false
+		_arena.reset_half_slide()
+	_load_persistent_seats_into_prepare()
+	_set_phase(Phase.PREPARE)
+	_refresh_hud()
+
+
+func _build_final_trial_enemy_spawns(wave_index: int) -> Array:
+	var spawns: Array = []
+	if _enemy_slots == null or FINAL_TRIAL_DEV_UNIT == null:
+		return spawns
+	var stat := FinalTrialBalance.stat_for_wave(wave_index)
+	var seat_fill := SeatLayout.iter_seats_center_out(
+		_enemy_slots.seat_rows, _enemy_slots.seat_cols
+	)
+	var placed := 0
+	for seat_i in seat_fill:
+		if placed >= FinalTrialBalance.ENEMY_COUNT:
+			break
+		if seat_i < 0 or seat_i >= _enemy_slots.slot_count:
+			continue
+		var cell := _enemy_slots.get_cell(seat_i)
+		var unit := UnitInstance.from_unit_data(
+			FINAL_TRIAL_DEV_UNIT, cell, UnitInstance.Team.ENEMY
+		)
+		if unit == null or unit.stats == null:
+			continue
+		unit.stats.attack = stat
+		unit.stats.max_hp = stat
+		unit.current_hp = stat
+		unit.level = 1
+		spawns.append({
+			"unit": unit,
+			"position": _enemy_spawn_visual_position(unit, cell),
+			"seat_index": seat_i,
+		})
+		placed += 1
+	return spawns
+
+
+func _advance_final_trial_after_wave_win() -> void:
+	_final_trial_floors_cleared = _final_trial_wave_index + 1
+	_final_trial_wave_index += 1
+	_result_overlay.visible = false
+	_teardown_sim()
+	_reset_tape_state()
+	_prepare_final_trial_wave()
+	call_deferred("try_start_combat")
+
+
+func _finish_final_trial_after_loss() -> void:
+	_final_trial_floors_cleared = _final_trial_wave_index
+	final_trial_floors_recorded.emit(_final_trial_floors_cleared)
+	_final_trial_active = false
+	_result_overlay.visible = false
+	_complete_continue(true)
+
+
+func _should_offer_final_trial_after_boss() -> bool:
+	if _combat_sandbox_mode or _final_trial_active:
+		return false
+	if not _won or _encounter == null or not _encounter.is_boss:
+		return false
+	return _node_type == MapNodeType.Type.BOSS
+
+
+func _update_result_action_buttons() -> void:
+	if _final_trial_button == null or _continue_button == null:
+		return
+	_final_trial_button.visible = _boss_final_trial_offer
+	if _boss_final_trial_offer:
+		_continue_button.text = "继续"
+		_final_trial_button.text = "最终试炼"
+	elif _final_trial_active and _phase == Phase.RESULT:
+		if _won:
+			_continue_button.text = "下一层"
+		else:
+			_continue_button.text = "继续"
+		_final_trial_button.visible = false
+	elif _combat_sandbox_mode:
+		_continue_button.text = "再来一局"
+		_final_trial_button.visible = false
+	else:
+		_continue_button.text = "继续"
+		_final_trial_button.visible = false
 
 
 func _half_slide_travel() -> float:
@@ -3406,11 +3567,29 @@ func _on_combat_finished(won: bool) -> void:
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	_floor_gold = 0
-	if won and _economy != null and not _combat_sandbox_mode:
+	if (
+		won
+		and _economy != null
+		and not _combat_sandbox_mode
+		and not _final_trial_active
+	):
 		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
 		_floor_gold = _economy.grant_floor_gold(_floor_index)
+	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
-	if _combat_sandbox_mode:
+	if _final_trial_active:
+		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
+		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
+		if won:
+			_result_detail.text = (
+				"试炼第 %d 层通过  敌方 %d/%d" % [layer, stat, stat]
+			)
+		else:
+			_result_detail.text = (
+				"试炼结束  通过 %d 层" % _final_trial_wave_index
+			)
+		_update_result_action_buttons()
+	elif _combat_sandbox_mode:
 		_result_detail.text = (
 			"沙盒·用时 %s" % _format_time(_sim.elapsed_seconds)
 			if won else "沙盒·用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
@@ -3422,8 +3601,11 @@ func _on_combat_finished(won: bool) -> void:
 			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
 			if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
 		)
+		if _boss_final_trial_offer:
+			_result_detail.text += "\n可继续通关，或挑战最终试炼"
 		if _continue_button != null:
 			_continue_button.text = "继续"
+		_update_result_action_buttons()
 	_result_overlay.visible = true
 	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
 	_set_phase(Phase.RESULT)
@@ -3602,7 +3784,10 @@ func _sync_arena_bench() -> void:
 		or _phase == Phase.COMBAT
 	)
 	_arena.bench_visible = show_bench
-	_arena.bench_interactive = _phase == Phase.PREPARE or _phase == Phase.RECRUIT
+	_arena.bench_interactive = (
+		not _final_trial_active
+		and (_phase == Phase.PREPARE or _phase == Phase.RECRUIT)
+	)
 	_arena.bench_slots = _bench_slots if show_bench else null
 	if _phase == Phase.PREPARE or _phase == Phase.RECRUIT:
 		_arena.bench_slide_y = 0.0
@@ -3637,7 +3822,7 @@ func _refresh_cards() -> void:
 		card.status_text = ""
 		if not in_prepare and card.selected:
 			_set_selected(-1)
-	var show_prepare_actions := in_prepare and not in_recruit
+	var show_prepare_actions := in_prepare and not in_recruit and not _final_trial_active
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = show_prepare_actions
 	if _start_button != null:
@@ -3681,11 +3866,18 @@ func _refresh_hud() -> void:
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
 		return
-	var encounter_name := _encounter.display_name if _encounter != null else "实时战斗"
-	if _floor_index > 0:
-		_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+	if _final_trial_active:
+		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
+		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
+		_encounter_label.text = "最终试炼 · 第 %d 层（%d/%d）" % [layer, stat, stat]
+	elif _encounter != null:
+		var encounter_name := _encounter.display_name
+		if _floor_index > 0:
+			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+		else:
+			_encounter_label.text = encounter_name
 	else:
-		_encounter_label.text = encounter_name
+		_encounter_label.text = "实时战斗"
 	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
@@ -3709,7 +3901,9 @@ func _refresh_hud() -> void:
 	_phase_label.modulate = Color.WHITE
 	match _phase:
 		Phase.PREPARE:
-			if _selected_entry_id >= 0 and _is_bench_entry(_selected_entry_id):
+			if _final_trial_active:
+				_phase_label.text = "最终试炼·阵容锁定"
+			elif _selected_entry_id >= 0 and _is_bench_entry(_selected_entry_id):
 				_phase_label.text = "上场已满：拖到空座或先腾位"
 			elif _selected_entry_id >= 0 and _is_seated_entry(_selected_entry_id):
 				_phase_label.text = "拖换座，或点备战格下阵"
