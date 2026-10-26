@@ -14,6 +14,13 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_layers()
+	_update_viewport_aspect()
+	resized.connect(_update_viewport_aspect)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_update_viewport_aspect()
 
 
 func _build_layers() -> void:
@@ -27,6 +34,15 @@ func _build_layers() -> void:
 	_bg.material = _material
 	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_bg)
+
+
+func _update_viewport_aspect() -> void:
+	if _material == null:
+		return
+	var size := get_viewport_rect().size
+	if size.y <= 1.0:
+		return
+	_material.set_shader_parameter("viewport_aspect", size.x / size.y)
 
 
 func _process(_delta: float) -> void:
