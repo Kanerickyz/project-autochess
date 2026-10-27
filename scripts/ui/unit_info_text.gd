@@ -198,6 +198,7 @@ static func build_equipment_attachment_info(
 	return {
 		"is_attachment": true,
 		"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
+		"equipment_id": equipment.id,
 		"attachment_kind_label": "装备",
 		"name": equipment.get_display_name(),
 		"side_player": true,

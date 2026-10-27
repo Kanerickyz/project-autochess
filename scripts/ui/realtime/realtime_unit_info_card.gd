@@ -30,10 +30,11 @@ const FINGER_TILT := 0.035
 const FINGER_MAX_OFFSET := 28.0
 const SHADOW_REST := 6
 const SHADOW_LIFT := 14
-## 结算 Reel：技能/装备/buff 正文轻抖（COMBAT_FEEDBACK §5.3）。
-const REEL_SHAKE_ROT_DEG := 3.2
-const REEL_SHAKE_OFFSET_PX := 5.0
-const REEL_SHAKE_STEP_SEC := 0.045
+## 结算 Reel：整张介绍卡轻抖（COMBAT_FEEDBACK §5.3）。
+const REEL_SHAKE_ROT_DEG := 2.8
+const REEL_SHAKE_PUNCH_SCALE := 1.06
+const REEL_SHAKE_OFFSET_PX := 4.0
+const REEL_SHAKE_STEP_SEC := 0.05
 
 
 class StatBadge:
@@ -264,24 +265,37 @@ func follow_finger(finger_local: Vector2) -> void:
 	scale = Vector2.ONE * _base_scale
 
 
-## 结算拍：抖动技能/附属正文区（不打断弹出动画用的 _motion）。
+## 结算拍：整张介绍卡 Tween（技能/增益主卡或装备/状态附属卡；不打断 _motion 弹出）。
 func play_settlement_reel_shake(speed_scale: float = 1.0) -> void:
 	if not _open or not visible:
 		return
 	_kill_reel_tween()
 	var speed := maxf(0.25, speed_scale)
+	var rot0 := rotation_degrees
+	var scale0 := scale.x
+	var pos0 := position
 	var rot := REEL_SHAKE_ROT_DEG
 	var off := REEL_SHAKE_OFFSET_PX
-	_skills_label.rotation_degrees = 0.0
-	_skills_label.position = Vector2.ZERO
+	var punch := REEL_SHAKE_PUNCH_SCALE
 	_reel_tween = create_tween()
 	_reel_tween.set_speed_scale(speed)
-	_reel_tween.tween_property(_skills_label, "rotation_degrees", rot, REEL_SHAKE_STEP_SEC)
-	_reel_tween.parallel().tween_property(_skills_label, "position:x", off, REEL_SHAKE_STEP_SEC)
-	_reel_tween.tween_property(_skills_label, "rotation_degrees", -rot * 0.55, REEL_SHAKE_STEP_SEC)
-	_reel_tween.parallel().tween_property(_skills_label, "position:x", -off * 0.45, REEL_SHAKE_STEP_SEC)
-	_reel_tween.tween_property(_skills_label, "rotation_degrees", 0.0, REEL_SHAKE_STEP_SEC * 1.35)
-	_reel_tween.parallel().tween_property(_skills_label, "position", Vector2.ZERO, REEL_SHAKE_STEP_SEC * 1.35)
+	_reel_tween.tween_property(self, "rotation_degrees", rot0 + rot, REEL_SHAKE_STEP_SEC).set_trans(
+		Tween.TRANS_SINE
+	)
+	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0 * punch, REEL_SHAKE_STEP_SEC)
+	_reel_tween.parallel().tween_property(self, "position", pos0 + Vector2(off, 0.0), REEL_SHAKE_STEP_SEC)
+	_reel_tween.tween_property(self, "rotation_degrees", rot0 - rot * 0.55, REEL_SHAKE_STEP_SEC)
+	_reel_tween.parallel().tween_property(
+		self, "scale", Vector2.ONE * scale0 * (2.0 - punch * 0.5), REEL_SHAKE_STEP_SEC
+	)
+	_reel_tween.parallel().tween_property(
+		self, "position", pos0 + Vector2(-off * 0.4, 0.0), REEL_SHAKE_STEP_SEC
+	)
+	_reel_tween.tween_property(self, "rotation_degrees", rot0, REEL_SHAKE_STEP_SEC * 1.35).set_trans(
+		Tween.TRANS_SINE
+	)
+	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0, REEL_SHAKE_STEP_SEC * 1.35)
+	_reel_tween.parallel().tween_property(self, "position", pos0, REEL_SHAKE_STEP_SEC * 1.35)
 
 
 func hide_info() -> void:
@@ -528,9 +542,11 @@ func _kill_reel_tween() -> void:
 	if _reel_tween != null and _reel_tween.is_valid():
 		_reel_tween.kill()
 	_reel_tween = null
-	if _skills_label != null:
-		_skills_label.rotation_degrees = 0.0
-		_skills_label.position = Vector2.ZERO
+	if not _open:
+		return
+	rotation_degrees = _base_rotation + _follow_offset.x * FINGER_TILT
+	scale = Vector2.ONE * _base_scale
+	position = _rest_position + _follow_offset
 
 
 ## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标。
