@@ -31,6 +31,7 @@ const BUTTON_TARGET_WIDTH := 328.0
 @onready var _exit_button: Button = %ExitButton
 @onready var _version_label: Label = %VersionLabel
 @onready var _settings_panel: SettingsPanel = %SettingsPanel
+@onready var _safe_margin: MarginContainer = $SafeMargin
 
 
 func _ready() -> void:
@@ -129,23 +130,45 @@ func _refresh_version_label() -> void:
 
 
 func _on_start_pressed() -> void:
-	get_tree().change_scene_to_file(GAME_SCENE_PATH)
+	_navigate_to_scene(GAME_SCENE_PATH)
 
 
 func _on_endless_pressed() -> void:
-	get_tree().change_scene_to_file(ENDLESS_SCENE_PATH)
+	_navigate_to_scene(ENDLESS_SCENE_PATH)
 
 
 func _on_codex_pressed() -> void:
-	get_tree().change_scene_to_file(CODEX_SCENE_PATH)
+	_navigate_to_scene(CODEX_SCENE_PATH)
 
 
 func _on_combat_sandbox_pressed() -> void:
-	get_tree().change_scene_to_file(COMBAT_SANDBOX_PATH)
+	_navigate_to_scene(COMBAT_SANDBOX_PATH)
 
 
 func _on_enchant_sandbox_pressed() -> void:
-	get_tree().change_scene_to_file(ENCHANT_SANDBOX_PATH)
+	_navigate_to_scene(ENCHANT_SANDBOX_PATH)
+
+
+func _navigate_to_scene(scene_path: String) -> void:
+	if SceneTransition.is_busy():
+		return
+	_set_menu_interactive(false)
+	await SceneTransition.change_scene_to_file(scene_path, _safe_margin)
+
+
+func _set_menu_interactive(enabled: bool) -> void:
+	var buttons: Array[Button] = [
+		_start_button,
+		_endless_button,
+		_codex_button,
+		_combat_sandbox_button,
+		_enchant_sandbox_button,
+		_settings_button,
+		_exit_button,
+	]
+	for button: Button in buttons:
+		if button != null:
+			button.disabled = not enabled
 
 
 func _on_settings_pressed() -> void:

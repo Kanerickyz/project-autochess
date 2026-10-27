@@ -57,6 +57,7 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
 @onready var _arena: RealtimeArenaView = %CodexArena
+@onready var _content_root: Control = $Root
 
 var _all_units: Array[UnitData] = []
 ## 0 = 全部；1–6 = 对应 tier
@@ -452,6 +453,9 @@ func _format_count(count: int) -> String:
 
 
 func _on_back_pressed() -> void:
+	if SceneTransition.is_busy():
+		return
 	if _arena != null:
 		_arena.clear_catalog_mode()
-	get_tree().change_scene_to_file(MAIN_MENU_PATH)
+	_back_button.disabled = true
+	await SceneTransition.change_scene_to_file(MAIN_MENU_PATH, _content_root)

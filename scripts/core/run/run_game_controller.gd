@@ -443,6 +443,6 @@ func _on_run_end_action(action: StringName) -> void:
 	_run_stats_overlay.hide_overlay()
 	_pending_end_snapshot = null
 	if action == &"menu":
-		get_tree().change_scene_to_file("res://scenes/main/main_menu.tscn")
+		await SceneTransition.change_scene_to_file("res://scenes/main/main_menu.tscn")
 		return
 	_start_new_run()
