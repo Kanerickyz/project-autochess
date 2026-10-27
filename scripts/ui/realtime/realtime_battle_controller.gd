@@ -3514,6 +3514,7 @@ func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = 
 func _present_effect_result(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
+	CombatSettlementReel.play_resolve(_arena, payload)
 	var pops := RealtimeEffectFeedback.build_popups(payload)
 	var callout_center := Vector2.ZERO
 	var callout_player := true
