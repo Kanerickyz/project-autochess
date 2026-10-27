@@ -1363,10 +1363,8 @@ func _on_combat_event_for_economy(
 	## 击杀敌方不掉金（愿景定稿）；不再调用 grant_kill_gold。
 	## 友方 death_grant_gold（增益亡者遗金）若仍挂载则保留。
 	if event_type == CombatEvents.ON_DEATH:
-		if payload.target.team != UnitInstance.Team.PLAYER:
-			return
-		if payload.target.death_grant_gold > 0:
-			run_economy.grant(payload.target.death_grant_gold)
+		## 亡者遗金等由 EffectResolver 队列播报后 GRANT_GOLD 结算（与 realtime 主路径一致）。
+		pass
 
 
 func _resolve_shop_abilities(trigger: StringName, owner_entry: DeckEntry) -> void:

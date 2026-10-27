@@ -29,6 +29,7 @@ static func build_popups(payload: CombatEventPayload) -> Array:
 		entries = [{"action": payload.effect_action, "target": payload.target}]
 	var tip := _ability_short_tip(owner)
 	var rare_tip := not _is_high_freq(payload.effect_spec)
+	var from_buff := payload.effect_buff != null
 	for entry in entries:
 		if not (entry is Dictionary):
 			continue
@@ -36,7 +37,7 @@ static func build_popups(payload: CombatEventPayload) -> Array:
 		var target: UnitInstance = entry.get("target")
 		if action == null:
 			continue
-		var popup := _map_action(action, target, owner, tip, rare_tip)
+		var popup := _map_action(action, target, owner, tip, rare_tip, from_buff)
 		if not popup.is_empty():
 			result.append(popup)
 	return result
@@ -48,6 +49,7 @@ static func _map_action(
 	owner: UnitInstance,
 	tip: String,
 	rare_tip: bool,
+	from_buff: bool = false,
 ) -> Dictionary:
 	var anchor := target if target != null else owner
 	var is_player := true
@@ -161,7 +163,7 @@ static func _map_action(
 			}
 		EffectAction.Type.GRANT_GOLD:
 			## 产金：结果数字 + 战场金币纸片（高频受伤产金也要有可读反馈）。
-			var gold := _scaled_value(owner, action.value)
+			var gold := action.value if from_buff else _scaled_value(owner, action.value)
 			if gold <= 0:
 				return {}
 			return {
@@ -172,6 +174,37 @@ static func _map_action(
 				"is_player": is_player,
 				"unit_id": unit_id,
 				"merge_key": "%d|gold" % unit_id,
+				"show_tip": false,
+				"tip": "",
+			}
+		EffectAction.Type.APPLY_COMBAT_STATUS:
+			var add_stacks := _scaled_value(owner, action.value)
+			if add_stacks <= 0:
+				return {}
+			var status_name := CombatStatusStack.get_display_name(action.stat_name)
+			return {
+				"kind": KIND_LABEL,
+				"text": "%s+%d" % [status_name, add_stacks],
+				"amount": add_stacks,
+				"target": anchor,
+				"is_player": is_player,
+				"unit_id": unit_id,
+				"merge_key": "%d|status|%s" % [unit_id, String(action.stat_name)],
+				"show_tip": false,
+				"tip": "",
+			}
+		EffectAction.Type.REMOVE_COMBAT_STATUS:
+			var remove_stacks := _scaled_value(owner, action.value)
+			var status_name := CombatStatusStack.get_display_name(action.stat_name)
+			var remove_text := status_name if remove_stacks <= 0 else "%s-%d" % [status_name, remove_stacks]
+			return {
+				"kind": KIND_LABEL,
+				"text": remove_text,
+				"amount": 0,
+				"target": anchor,
+				"is_player": is_player,
+				"unit_id": unit_id,
+				"merge_key": "%d|status_clear|%s" % [unit_id, String(action.stat_name)],
 				"show_tip": false,
 				"tip": "",
 			}

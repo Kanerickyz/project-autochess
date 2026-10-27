@@ -306,6 +306,11 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 		if attached != null:
 			var ascale := UnitInstance.ability_value_multiplier_for(attached, unit.level)
 			lines.append(format_ability("移植", attached, ascale, with_stat_icons))
+	var entry := unit.get_linked_deck_entry()
+	if entry != null:
+		for buff in entry.attached_buffs:
+			if buff != null:
+				lines.append(format_buff(buff, with_stat_icons))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)

@@ -135,6 +135,19 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(int(gold_pops[0]["amount"]) == 2, "mapper: gold amount 2")
 		_expect(String(gold_pops[0]["text"]).find("金") >= 0, "mapper: gold text has 金")
 
+	var status_action := EffectAction.new()
+	status_action.action_type = EffectAction.Type.APPLY_COMBAT_STATUS
+	status_action.stat_name = CombatStatusStack.ID_WEAK
+	status_action.value = 1
+	var status_payload := CombatEventPayload.new()
+	status_payload.effect_owner = unit
+	status_payload.target = unit
+	status_payload.effect_entries = [{"action": status_action, "target": unit}]
+	var status_pops := RealtimeEffectFeedback.build_popups(status_payload)
+	_expect(status_pops.size() == 1, "mapper: APPLY_COMBAT_STATUS yields popup")
+	if status_pops.size() >= 1:
+		_expect(String(status_pops[0]["text"]).find("虚弱") >= 0, "mapper: weak label")
+
 	var arena := RealtimeArenaView.new()
 	arena.board_size = Vector2i(5, 8)
 	arena.size = Vector2(393, 700)

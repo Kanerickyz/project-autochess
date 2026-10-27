@@ -3268,12 +3268,9 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 	if event_type == CombatEvents.ON_EFFECT_RESOLVED:
 		_on_effect_resolved_feedback(payload)
 		return
-	if event_type != CombatEvents.ON_DEATH or payload.target == null or _economy == null:
+	if event_type != CombatEvents.ON_DEATH:
 		return
-	## 击杀敌方不掉金（愿景定稿）；胜利结算走 grant_floor_gold。
-	## 友方 death_grant_gold（增益亡者遗金）若仍挂载则保留。
-	if payload.target.team == UnitInstance.Team.PLAYER and payload.target.death_grant_gold > 0:
-		_economy.grant(payload.target.death_grant_gold)
+	## 亡者遗金等增益卡战斗结算走 EffectResolver 播报队列（先卡再结算）。
 
 
 ## 锁阵：立刻播动画/UI。战斗内：由「先卡再结算」拍捕获；其它路径入结果拍。
@@ -3420,7 +3417,10 @@ func _start_next_skill_card() -> void:
 	_combo_tracker.register_skill_intro_card(batch.owner)
 	_refresh_combo_hud_from_tracker()
 	_presentation_block_elapsed = 0.0
-	_show_skill_trigger_info_for_owner(batch.owner)
+	if batch.display_buff != null:
+		_show_buff_trigger_info(batch.owner, batch.display_buff)
+	else:
+		_show_skill_trigger_info_for_owner(batch.owner)
 
 
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
@@ -3574,6 +3574,23 @@ func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
 		return
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
 	_show_skill_trigger_info_for_owner(owner)
+
+
+func _show_buff_trigger_info(owner: UnitInstance, buff: BuffCardData) -> void:
+	if _arena == null or owner == null or buff == null:
+		return
+	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
+	var atk := owner.get_effective_attack()
+	var hp := owner.current_hp
+	if _sim != null:
+		var rt := _sim.find_unit(owner)
+		if rt != null:
+			atk = rt.get_effective_attack()
+			hp = rt.get_current_hp()
+			tile = rt.position
+	_arena.show_buff_trigger_info(
+		owner, buff, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile
+	)
 
 
 func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
