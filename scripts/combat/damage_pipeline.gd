@@ -39,8 +39,12 @@ func apply_damage(
 	if target == null or not target.is_alive():
 		return
 
+	var adjusted := amount
+	if from_attack and source != null:
+		adjusted = CombatStatusStack.adjust_attack_damage(adjusted, source)
+	adjusted = CombatStatusStack.adjust_incoming_before_armor(adjusted, target)
 	## MAP_SHOP §5.1：护甲抵消后最终扣血为 0 → 不扣血、不发受伤类触发。
-	var final_amount := target.mitigate_incoming_damage(amount)
+	var final_amount := target.mitigate_incoming_damage(adjusted)
 	if final_amount <= 0:
 		return
 

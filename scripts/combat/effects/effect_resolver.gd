@@ -914,6 +914,44 @@ func _execute_action(
 			executed = _spawn_unit(action, payload, depth, owner)
 		EffectAction.Type.SPLIT_SELF:
 			executed = not _split_self(owner, action, payload, depth).is_empty()
+		EffectAction.Type.APPLY_COMBAT_STATUS:
+			if target == null or not target.is_alive():
+				return false
+			if not CombatStatusStack.is_valid_id(action.stat_name):
+				return false
+			var add_stacks := _scaled_action_value(owner, action.value)
+			if add_stacks <= 0:
+				return false
+			target.combat_statuses.add_stacks(action.stat_name, add_stacks)
+			print(
+				"[Effect] %s +%d %s (now %d)"
+				% [
+					target.id,
+					add_stacks,
+					action.stat_name,
+					target.combat_statuses.get_stacks(action.stat_name),
+				]
+			)
+			executed = true
+		EffectAction.Type.REMOVE_COMBAT_STATUS:
+			if target == null:
+				return false
+			if not CombatStatusStack.is_valid_id(action.stat_name):
+				return false
+			var remove_stacks := _scaled_action_value(owner, action.value)
+			if remove_stacks <= 0:
+				target.combat_statuses.remove_stacks(action.stat_name, 0)
+			else:
+				target.combat_statuses.remove_stacks(action.stat_name, remove_stacks)
+			print(
+				"[Effect] %s removed %s (now %d)"
+				% [
+					target.id,
+					action.stat_name,
+					target.combat_statuses.get_stacks(action.stat_name),
+				]
+			)
+			executed = true
 		EffectAction.Type.DEAL_DAMAGE:
 			if _pipeline == null or target == null or not target.is_alive():
 				return false

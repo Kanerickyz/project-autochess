@@ -31,6 +31,9 @@ enum Type {
 	CONSUME_BANKED_TURN_REFRESH_FOR_BONUS_TURN,
 	## 按持有者星级（1★1 / 2★2 / 3★3 枪）对随机敌人各造成固定点伤（走升星倍率；不连锁 OnDealDamage）。
 	DEAL_DAMAGE_BONUS_SHOTS_BY_STAR,
+	## 战斗内状态叠层（stat_name = CombatStatusStack 状态 id；value = 层数）。
+	APPLY_COMBAT_STATUS,
+	REMOVE_COMBAT_STATUS,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }
@@ -80,6 +83,18 @@ func validate_config() -> PackedStringArray:
 		Type.APPLY_CELL_EFFECT:
 			if cell_effect == null:
 				issues.append("APPLY_CELL_EFFECT requires cell_effect")
+		Type.APPLY_COMBAT_STATUS:
+			if not CombatStatusStack.is_valid_id(stat_name):
+				issues.append(
+					"combat status stat_name '%s' is not weak/berserk/poison" % String(stat_name)
+				)
+			if value <= 0:
+				issues.append("APPLY_COMBAT_STATUS requires value > 0")
+		Type.REMOVE_COMBAT_STATUS:
+			if not CombatStatusStack.is_valid_id(stat_name):
+				issues.append(
+					"combat status stat_name '%s' is not weak/berserk/poison" % String(stat_name)
+				)
 		_:
 			pass
 	return issues

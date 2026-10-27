@@ -1844,6 +1844,7 @@ func _clear_all_stat_modifiers() -> void:
 	for unit in board_grid.get_all_units():
 		var inst: UnitInstance = unit as UnitInstance
 		inst.stat_modifiers.clear()
+		inst.combat_statuses.clear()
 	if board_grid.cell_effects != null:
 		board_grid.cell_effects.clear()
 
