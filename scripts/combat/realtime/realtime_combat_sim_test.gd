@@ -60,6 +60,10 @@ static func run_all() -> bool:
 		"deferred_mirror_warden_convert_before_death_finalize",
 		_test_deferred_mirror_warden_convert_before_death_finalize(),
 	) and ok
+	ok = _check(
+		"defer_warden_convert_defers_player_wipe_loss",
+		_test_defer_warden_convert_defers_player_wipe_loss(),
+	) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -2025,5 +2029,70 @@ static func _test_deferred_mirror_warden_convert_before_death_finalize() -> bool
 	sim.flush_idle_death_presentations()
 	if died[0] != 0:
 		push_error("defer_warden: converted unit must not emit unit_died")
+		return false
+	return true
+
+
+static func _test_defer_warden_convert_defers_player_wipe_loss() -> bool:
+	var data := load("res://resources/units/realtime/mirror_warden.tres") as UnitData
+	if data == null:
+		push_error("warden_wipe: data")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 995)
+	sim.defer_effect_resolve = true
+	var warden := sim.add_unit(
+		UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER),
+		Vector2(4.5, 20.5),
+	)
+	warden.unit.current_hp = 3
+	var victim := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 4, "attack": 0, "id": "victim"}),
+		Vector2(4.5, 10.5),
+	)
+	var bystander := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 8, "attack": 0, "id": "bystander"}),
+		Vector2(2.5, 10.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while sim.has_pending_effects() and guard < 48:
+		sim.resolve_next_pending_effect()
+		guard += 1
+	var atk := warden.get_effective_attack()
+	sim._resolve_hit(warden, victim, atk, 0.0)
+	if not sim.has_pending_effects():
+		push_error("warden_wipe: convert should be queued")
+		return false
+	## 模拟对砍后禁卫已阵亡、策反尚未结算（defer 队列仍挂着 OnKill）。
+	warden.unit.current_hp = 0
+	warden.state = RtUnit.State.DEAD
+	if sim.count_alive(UnitInstance.Team.PLAYER) != 0:
+		push_error("warden_wipe: setup player wipe before convert")
+		return false
+	sim._check_finished()
+	if sim.is_finished():
+		push_error("warden_wipe: must not lose before convert resolves")
+		return false
+	var resolve_guard := 0
+	while sim.has_pending_effects() and resolve_guard < 48:
+		sim.resolve_next_pending_effect()
+		resolve_guard += 1
+	sim.flush_idle_death_presentations()
+	if sim.count_alive(UnitInstance.Team.PLAYER) != 1:
+		push_error("warden_wipe: converted ally should be sole player survivor")
+		return false
+	if warden.is_alive():
+		push_error("warden_wipe: warden should stay dead after convert")
+		return false
+	if victim.get_team() != UnitInstance.Team.PLAYER:
+		push_error("warden_wipe: victim team")
+		return false
+	sim._check_finished()
+	if sim.is_finished():
+		push_error("warden_wipe: fight should continue with enemy bystander")
+		return false
+	if sim.count_alive(UnitInstance.Team.ENEMY) != 1:
+		push_error("warden_wipe: bystander enemy expected")
 		return false
 	return true
