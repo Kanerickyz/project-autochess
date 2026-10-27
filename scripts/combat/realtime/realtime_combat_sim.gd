@@ -389,7 +389,7 @@ func resolve_next_pending_effect() -> bool:
 	_effect_resolver.process_next_step()
 	_sync_rt_positions_from_effect_grid()
 	_sync_effect_spawns_from_grid()
-	_flush_pending_death_presentations()
+	_flush_pending_death_presentations_if_queue_idle()
 	_sync_deaths_from_hp()
 	_seed_action_queue_if_ready()
 	return true
@@ -426,7 +426,7 @@ func advance_fixed_step() -> void:
 	_sync_unit_grid_pos()
 	_drain_effects()
 	if defer_effect_resolve:
-		_flush_pending_death_presentations()
+		_flush_pending_death_presentations_if_queue_idle()
 	_remove_dead()
 
 	fixed_step_count += 1
@@ -759,7 +759,6 @@ func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: fl
 	_pipeline.resolve_hit(source, target, damage, splash_radius, _units)
 	## defer 观战：命中触发的技能须入队，由控制器 FIFO「先卡再结算」；不可在此强排空。
 	_drain_effects_unless_deferred()
-	_flush_pending_death_presentations()
 
 
 func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
@@ -1473,7 +1472,19 @@ func _drain_effects(force: bool = false) -> void:
 			break
 
 
-## defer 观战：致死后仍须立刻发 unit_died 播侧倒淡出；ON_DEATH 与技能队列可稍后排空。
+## 观战 defer：待结算队列为空后再 finalize 死亡（OnKill 策反等可先撤销致死）。
+func flush_idle_death_presentations() -> void:
+	if not defer_effect_resolve:
+		return
+	_flush_pending_death_presentations_if_queue_idle()
+
+
+func _flush_pending_death_presentations_if_queue_idle() -> void:
+	if _effect_resolver != null and _effect_resolver.has_pending_steps():
+		return
+	_flush_pending_death_presentations()
+
+
 func _flush_pending_death_presentations() -> void:
 	while _finalize_pending_deaths():
 		pass
