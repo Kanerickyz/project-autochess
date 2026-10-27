@@ -17,7 +17,7 @@ const MOUNT_TABLE := {
 	"skeleton": "death_heal_random_ally_2",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
-	"apothecary": "turn_start_nearby_hp_small",
+	"apothecary": "turn_start_nearby_enemies_apply_poison",
 }
 
 const EMPTY_ABILITY_IDS := ["giant_knight"]
@@ -57,7 +57,8 @@ static func run_all() -> bool:
 	_check("hunter_friend_summoned_buff", _test_hunter_friend_summoned_buff())
 	_check("hunter_friend_summoned_buff_star2", _test_hunter_friend_summoned_buff_star2())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
-	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
+	_check("turn_start_nearby_enemies_poison", _test_turn_start_nearby_enemies_poison())
+	_check("turn_start_nearby_enemies_poison_star2", _test_turn_start_nearby_enemies_poison_star2())
 	_check("wardrum_turn_start_nearby_atk_star2", _test_wardrum_turn_start_nearby_atk_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
@@ -1232,28 +1233,42 @@ static func _test_deal_damage_adj_splash_small() -> bool:
 	return true
 
 
-## 药师固脉：附近=周围一格；距 1 受益、距 2 不受益。
-static func _test_turn_start_nearby_hp_radius_1() -> bool:
-	if EffectSpec.NEARBY_ALLY_RADIUS != 1:
+## 药师：自己回合开始周围一格敌军中毒 1 层；距 2 不受益。
+static func _test_turn_start_nearby_enemies_poison() -> bool:
+	return _turn_start_nearby_enemies_poison_expect(1, 1)
+
+
+static func _test_turn_start_nearby_enemies_poison_star2() -> bool:
+	return _turn_start_nearby_enemies_poison_expect(2, 3)
+
+
+static func _turn_start_nearby_enemies_poison_expect(star_level: int, expected_poison: int) -> bool:
+	if EffectSpec.NEARBY_ENEMY_RADIUS != 1:
 		push_error(
-			"nearby_hp_radius: NEARBY_ALLY_RADIUS=%d expected 1"
-			% EffectSpec.NEARBY_ALLY_RADIUS
+			"nearby_poison: NEARBY_ENEMY_RADIUS=%d expected 1" % EffectSpec.NEARBY_ENEMY_RADIUS
 		)
 		return false
 	var data := _load_unit("res://resources/units/realtime/apothecary.tres")
-	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_hp_small":
-		push_error("nearby_hp_radius: apothecary must mount turn_start_nearby_hp_small")
+	if data == null or data.ability == null:
+		push_error("nearby_poison: apothecary ability missing")
+		return false
+	if data.ability.id != "turn_start_nearby_enemies_apply_poison":
+		push_error("nearby_poison: wrong ability id %s" % data.ability.id)
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("nearby_poison: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
-	sim.configure(ARENA, 510)
+	sim.configure(ARENA, 510 + star_level)
 	var medic := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	medic.unit.level = star_level
 	medic.unit.stats.steps_per_turn = 0
-	var near := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+	var near_enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "sight_range": 0.0, "id": "near_foe"}),
 		Vector2(10.5, 20.5),
 	)
-	var far := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+	var far_enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 50, {"steps_per_turn": 0, "sight_range": 0.0, "id": "far_foe"}),
 		Vector2(11.5, 20.5),
 	)
 	sim.add_unit(
@@ -1261,24 +1276,21 @@ static func _test_turn_start_nearby_hp_radius_1() -> bool:
 		Vector2(9.5, 8.5),
 	)
 	sim.begin_combat()
-	var near_max_before := near.unit.get_effective_max_hp()
-	var far_max_before := far.unit.get_effective_max_hp()
 	var payload := CombatEventPayload.new()
 	payload.source = medic.unit
 	payload.target = medic.unit
 	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
-	sim._drain_effects()
-	if near.unit.get_effective_max_hp() != near_max_before + 2:
+	sim._drain_effects(true)
+	var near_p := near_enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	var far_p := far_enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if near_p != expected_poison:
 		push_error(
-			"nearby_hp_radius: near max_hp=%d expected %d"
-			% [near.unit.get_effective_max_hp(), near_max_before + 2]
+			"nearby_poison %d★: near poison=%d expected %d"
+			% [star_level, near_p, expected_poison]
 		)
 		return false
-	if far.unit.get_effective_max_hp() != far_max_before:
-		push_error(
-			"nearby_hp_radius: far max_hp=%d expected unchanged %d (2 cells)"
-			% [far.unit.get_effective_max_hp(), far_max_before]
-		)
+	if far_p != 0:
+		push_error("nearby_poison: far enemy poison=%d expected 0" % far_p)
 		return false
 	return true
 
