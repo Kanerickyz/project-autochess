@@ -6,6 +6,7 @@ static func run_all() -> bool:
 	var passed := true
 	passed = _check("entry_skills_exclude_equipment", _test_entry_skills_exclude_equipment()) and passed
 	passed = _check("entry_equipment_attachment", _test_entry_equipment_attachment()) and passed
+	passed = _check("bold_skill_trigger_bbcode", _test_bold_skill_trigger_bbcode()) and passed
 	return passed
 
 
@@ -51,3 +52,13 @@ static func _test_entry_equipment_attachment() -> bool:
 		return false
 	var body := String(info.get("skills", ""))
 	return body.contains("2 / 6")
+
+
+static func _test_bold_skill_trigger_bbcode() -> bool:
+	var out := UnitInfoText.bold_skill_trigger_bbcode("击杀时 对全场 造成 2 点伤害")
+	if out != "[b]击杀时[/b] 对全场 造成 2 点伤害":
+		return false
+	var multi := UnitInfoText.bold_skill_trigger_bbcode(
+		"攻击击杀时 对随机敌人造成 1 点伤害；死亡时 对全场造成 2 点伤害"
+	)
+	return multi.begins_with("[b]攻击击杀时[/b]") and multi.contains("；[b]死亡时[/b]")

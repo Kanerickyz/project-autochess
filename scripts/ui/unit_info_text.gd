@@ -677,6 +677,88 @@ static func format_action(
 	return ""
 
 
+## 介绍卡 RichText：将每条技能描述开头的触发时机加粗（按分号分句）。
+static func bold_skill_trigger_bbcode(plain: String) -> String:
+	if plain.is_empty():
+		return plain
+	var lines_out: PackedStringArray = []
+	for line in plain.split("\n"):
+		lines_out.append(_bold_triggers_in_skill_line(line))
+	return "\n".join(lines_out)
+
+
+static func escape_richtext_literal_brackets(text: String) -> String:
+	if text.is_empty():
+		return text
+	var out := ""
+	var i := 0
+	while i < text.length():
+		if text.substr(i).begins_with("[b]"):
+			out += "[b]"
+			i += 3
+		elif text.substr(i).begins_with("[/b]"):
+			out += "[/b]"
+			i += 4
+		elif text[i] == "[":
+			out += "[lb]"
+			i += 1
+		else:
+			out += text[i]
+			i += 1
+	return out
+
+
+static func _trigger_prefixes_for_bold() -> PackedStringArray:
+	var seen: Dictionary = {}
+	var out: PackedStringArray = []
+	for label in TRIGGER_LABELS.values():
+		var t := String(label)
+		if seen.has(t):
+			continue
+		seen[t] = true
+		out.append(t)
+	var extra: PackedStringArray = [
+		"攻击击杀时",
+		"友方角色死亡时",
+		"友方随从被召唤时",
+		"友方受伤且该友方未满血时",
+		"自己一动结束且仍存活时",
+	]
+	for t in extra:
+		if not seen.has(t):
+			seen[t] = true
+			out.append(t)
+	var sorted: Array = out.duplicate()
+	sorted.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
+	var ordered: PackedStringArray = []
+	for t in sorted:
+		ordered.append(String(t))
+	return ordered
+
+
+static func _bold_triggers_in_skill_line(line: String) -> String:
+	var text := line.strip_edges()
+	if text.is_empty():
+		return text
+	var triggers := _trigger_prefixes_for_bold()
+	var pieces: PackedStringArray = []
+	for segment in text.split("；"):
+		var seg := segment.strip_edges()
+		if seg.is_empty():
+			continue
+		var matched := false
+		for t in triggers:
+			if seg.begins_with(t):
+				var rest := seg.substr(t.length())
+				seg = "[b]%s[/b]%s" % [t, rest]
+				matched = true
+				break
+		pieces.append(seg)
+	if pieces.is_empty():
+		return text
+	return "；".join(pieces)
+
+
 static func _strike_weakest_skill_damage(unit_level: int) -> int:
 	return 2 if unit_level <= 1 else 7
 

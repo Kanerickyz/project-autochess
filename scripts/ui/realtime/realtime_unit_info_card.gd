@@ -563,8 +563,8 @@ func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 			text = text.trim_prefix("【技能】")
 		lines.append(text)
 	var plain := "\n".join(lines)
-	## BBCode 字面量方括号。
-	var escaped := plain.replace("[", "[lb]")
+	plain = UnitInfoText.bold_skill_trigger_bbcode(plain)
+	var escaped := UnitInfoText.escape_richtext_literal_brackets(plain)
 	var icon_h := 16.0
 	var atk_tex: Texture2D = RealtimeArenaView.STAT_ATTACK_TEX
 	var hp_tex: Texture2D = RealtimeArenaView.STAT_HP_TEX
