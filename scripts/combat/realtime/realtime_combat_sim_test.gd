@@ -54,6 +54,7 @@ static func run_all() -> bool:
 	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
 	ok = _check("windup_advances_under_presentation_hold", _test_windup_advances_under_presentation_hold()) and ok
 	ok = _check("step_breaks_on_pending_defer", _test_step_breaks_on_pending_defer()) and ok
+	ok = _check("deferred_hit_keeps_chained_skill_batches", _test_deferred_hit_keeps_chained_skill_batches()) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -1890,5 +1891,58 @@ static func _test_step_breaks_on_pending_defer() -> bool:
 			"step_pending: step(2s) progressed %d fixed steps while blocked (busy loop?)"
 			% progressed
 		)
+		return false
+	return true
+
+
+## defer 观战：命中后不得强排空队，否则「A 击杀触发 B 技能」会跟 A 同帧结算且跳过 B 的介绍卡。
+static func _test_deferred_hit_keeps_chained_skill_batches() -> bool:
+	var ash_data := load("res://resources/units/realtime/aftershock.tres") as UnitData
+	var scatter_data := load("res://resources/units/realtime/scatter_hex.tres") as UnitData
+	if ash_data == null or scatter_data == null:
+		push_error("defer_hit: unit data missing")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 994)
+	sim.defer_effect_resolve = true
+	var killer_rt := sim.add_unit(
+		UnitInstance.from_unit_data(ash_data, Vector2i(9, 20), UnitInstance.Team.PLAYER),
+		Vector2(9.5, 20.5),
+	)
+	sim.add_unit(
+		UnitInstance.from_unit_data(scatter_data, Vector2i(10, 20), UnitInstance.Team.PLAYER),
+		Vector2(10.5, 20.5),
+	)
+	var foe_rt := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1, "attack": 0, "id": "fodder"}),
+		Vector2(9.5, 10.5),
+	)
+	sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 20, "attack": 0, "id": "fodder_b"}),
+		Vector2(11.5, 10.5),
+	)
+	sim.begin_combat()
+	var drain_guard := 0
+	while sim.has_pending_effects() and drain_guard < 48:
+		sim.resolve_next_pending_effect()
+		drain_guard += 1
+	if killer_rt == null or foe_rt == null:
+		push_error("defer_hit: missing rt")
+		return false
+	sim._resolve_hit(killer_rt, foe_rt, 5, 0.0)
+	if not sim.has_pending_effects():
+		push_error("defer_hit: expected pending batches after lethal hit")
+		return false
+	var first := sim.peek_pending_effect_batch()
+	if first == null or first.owner != killer_rt.unit:
+		push_error("defer_hit: first batch should be killer on-kill")
+		return false
+	sim.resolve_next_pending_effect()
+	if not sim.has_pending_effects():
+		push_error("defer_hit: expected ally trigger batch still queued")
+		return false
+	var second := sim.peek_pending_effect_batch()
+	if second == null or second.owner == killer_rt.unit:
+		push_error("defer_hit: second batch should be another ally's skill")
 		return false
 	return true

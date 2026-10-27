@@ -199,7 +199,7 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	## 锁阵生成与战中补人：每体生成当下发部署类事件并排空效果（开战事件仍由 begin_combat）。
 	if not _adding_effect_spawn:
 		_emit_spawn_events(unit, rt.get_cell())
-		_drain_effects(true)
+		_drain_effects_unless_deferred()
 	return rt
 
 
@@ -754,7 +754,8 @@ func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: fl
 	if splash_radius > 0.0:
 		splash_triggered.emit(target.position, splash_radius)
 	_pipeline.resolve_hit(source, target, damage, splash_radius, _units)
-	_drain_effects(true)
+	## defer 观战：命中触发的技能须入队，由控制器 FIFO「先卡再结算」；不可在此强排空。
+	_drain_effects_unless_deferred()
 
 
 func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
@@ -1438,6 +1439,13 @@ func _emit_spawn_events(unit: UnitInstance, cell: Vector2i) -> void:
 	payload.to_cell = cell
 	_bus_emit(CombatEvents.ON_FRIEND_SUMMONED, payload)
 	_bus_emit(CombatEvents.ON_SUMMONED, payload)
+
+
+## 命中/召唤等路径：defer 时只入队，留给观战逐条播报。
+func _drain_effects_unless_deferred() -> void:
+	if defer_effect_resolve:
+		return
+	_drain_effects(true)
 
 
 ## force=true：无视 defer（锁阵生成 / 开战广播须当下排空）。
