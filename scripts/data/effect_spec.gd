@@ -35,6 +35,8 @@ enum TargetSelector {
 	ORTHOGONAL_LEFT_RIGHT_ALLIES,
 	## 随机一名存活单位（敌我双方）；须追加在枚举末尾。可 exclude_owner。
 	RANDOM_ANY_UNIT,
+	## 持有者附近敌方（切比雪夫 ≤ NEARBY_ENEMY_RADIUS）。
+	NEARBY_ENEMIES,
 }
 
 
