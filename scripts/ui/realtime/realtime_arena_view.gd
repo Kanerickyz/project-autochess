@@ -294,6 +294,8 @@ var _inspect_kick_dir: float = 0.0
 var _inspect_finger := Vector2.ZERO
 ## 技能触发自动弹出的信息卡：到期自动收起（长按中不抢收）。
 var _auto_info_until_clock: float = -1.0
+## 战斗技能播报期间禁止 SKILL_INFO 定时收卡（见 RealtimeBattleController）。
+var _combat_skill_info_pin: int = 0
 const SKILL_INFO_SECONDS := 1.35
 
 ## 战场与商店不再铺半透明格和线框。角色库仍用卡牌底板；出售/锁定只在拖到格子上时加高亮。
@@ -322,7 +324,7 @@ func _process(delta: float) -> void:
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
-	if _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
+	if _combat_skill_info_pin <= 0 and _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
 		if not _press_active:
 			_hide_all_info_cards()
 			_info_shown = false
@@ -1895,16 +1897,43 @@ func _bring_inspect_rt_to_front(ordered: Array) -> void:
 	ordered.append(moved)
 
 
+func pin_combat_skill_info() -> void:
+	_combat_skill_info_pin = 1
+
+
+func unpin_combat_skill_info() -> void:
+	_combat_skill_info_pin = 0
+
+
+func bump_combat_skill_info_visibility(extra_seconds: float) -> void:
+	if extra_seconds <= 0.0:
+		return
+	var until := _fx_clock + extra_seconds
+	if until > _auto_info_until_clock:
+		_auto_info_until_clock = until
+
+
 ## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
-func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, hp: int, tile_pos: Vector2) -> void:
+## skills_override 非空时只展示本条触发（RichText / BBCode）。
+func show_skill_trigger_info(
+	unit: UnitInstance,
+	is_player: bool,
+	attack: int,
+	hp: int,
+	tile_pos: Vector2,
+	skills_override: String = "",
+) -> void:
 	if unit == null:
 		return
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
-	_show_info_card(_info_from_instance(unit, is_player, attack, hp, center))
+	var info := _info_from_instance(unit, is_player, attack, hp, center)
+	if not skills_override.is_empty():
+		info["skills"] = skills_override
+	_show_info_card(info)
 	play_combat_skill_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
-	_auto_info_until_clock = _fx_clock + life
+	bump_combat_skill_info_visibility(life)
 
 
 ## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
@@ -2028,7 +2057,7 @@ func show_buff_trigger_info(
 	_show_info_card(info)
 	play_combat_buff_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
-	_auto_info_until_clock = _fx_clock + life
+	bump_combat_skill_info_visibility(life)
 
 
 ## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
