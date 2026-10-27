@@ -10,6 +10,7 @@ static var _created: Array[RealtimeCombatSim] = []
 static func run_all() -> bool:
 	var ok := true
 	ok = _check("action_queue_interleave", _test_action_queue_interleave()) and ok
+	ok = _check("action_queue_spatial_sort", _test_action_queue_spatial_sort()) and ok
 	ok = _check("actors_act_sequentially", _test_actors_act_sequentially()) and ok
 	ok = _check("melee_approach_hit_once_per_turn", _test_melee_approach_hit_once_per_turn()) and ok
 	ok = _check("eight_dir_diagonal_step", _test_eight_dir_diagonal_step()) and ok
@@ -180,6 +181,44 @@ static func _test_action_queue_interleave() -> bool:
 	if sim.get_round_index() != 1:
 		push_error("queue: round_index expected 1")
 		return false
+	return true
+
+
+## 子序按落点格前→后、左→右，与 add_unit 先后无关。
+static func _test_action_queue_spatial_sort() -> bool:
+	var sim := _new_sim()
+	sim.configure(Vector2i(5, 8), 1)
+	var mid := 4
+	## 后排右先 add、前排左后 add；队列仍应前排左友方优先。
+	var f_back_right := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_r"}),
+		Vector2(4.5, float(mid + 3) + 0.5),
+	)
+	var f_front_left := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_front_l"}),
+		Vector2(0.5, float(mid) + 0.5),
+	)
+	var e_back := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back"}),
+		Vector2(2.5, float(mid - 3) + 0.5),
+	)
+	var e_front := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_front"}),
+		Vector2(1.5, float(mid - 1) + 0.5),
+	)
+	sim.begin_combat()
+	var q: Array = sim.get_action_queue()
+	var expected: Array[RtUnit] = [f_front_left, e_front, f_back_right, e_back]
+	if q.size() != expected.size():
+		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
+		return false
+	for i in expected.size():
+		if q[i] != expected[i]:
+			push_error(
+				"spatial queue: index %d got %s expected %s"
+				% [i, (q[i] as RtUnit).unit.id, expected[i].unit.id]
+			)
+			return false
 	return true
 
 
