@@ -11,7 +11,7 @@ const MOUNT_TABLE := {
 	"musketeer": "deal_damage_extra_2",
 	"valkyrie": "friend_summon_nearby_ally_atk_hp_1",
 	"barbarian": "ally_death_self_atk_mid",
-	"archer": "ally_deploy_self_atk_small",
+	"archer": "deal_damage_apply_weak",
 	"goblin": "death_spawn_pack",
 	"spear_goblin": "hurt_heal_self_2",
 	"skeleton": "death_heal_random_ally_2",
@@ -50,7 +50,7 @@ static func run_all() -> bool:
 	_check("deal_damage_extra_2", _test_deal_damage_extra_2())
 	_check("kill_gain_atk_mid", _test_kill_gain_atk_mid())
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
-	_check("ally_deploy_self_atk_small", _test_ally_deploy_self_atk_small())
+	_check("archer_deal_apply_weak", _test_archer_deal_apply_weak())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
 	_check("first_hurt_harden_star2", _test_first_hurt_harden_star2())
 	_check("hunter_friend_summoned_buff", _test_hunter_friend_summoned_buff())
@@ -961,29 +961,36 @@ static func _test_ally_death_self_atk_mid() -> bool:
 	return true
 
 
-## 游侠：其他友方生成时自身攻击 +1；自己上场不触发。
-static func _test_ally_deploy_self_atk_small() -> bool:
+## 游侠：造成伤害时对目标施加 1 层虚弱。
+static func _test_archer_deal_apply_weak() -> bool:
 	var data := _load_unit("res://resources/units/realtime/archer.tres")
-	if data == null or data.ability == null or data.ability.id != "ally_deploy_self_atk_small":
-		push_error("ally_deploy: archer ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "deal_damage_apply_weak":
+		push_error("archer_weak: archer ability not mounted")
 		return false
-	var expected_base := data.stats.attack if data.stats != null else 0
 	var sim := _new_sim()
-	sim.configure(ARENA, 19)
+	sim.configure(ARENA, 55)
 	var archer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
-	if archer.unit.get_effective_attack() != expected_base:
-		push_error(
-			"ally_deploy: self spawn should not buff (atk %d, base %d)"
-			% [archer.unit.get_effective_attack(), expected_base]
-		)
-		return false
-	sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 50, {"id": "ally_roster"}), Vector2(10.5, 24.5))
-	var after := archer.unit.get_effective_attack()
-	if after != expected_base + 1:
-		push_error(
-			"ally_deploy: archer atk %d, expected base %d +1 on OnFriendSummoned"
-			% [after, expected_base]
-		)
+	archer.unit.stats.attack_windup = 0.0
+	archer.unit.stats.attack_interval = 0.4
+	var enemy := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 22.5),
+	)
+	var guard := 0
+	while (
+		enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK) < 1
+		and guard < 400
+	):
+		sim.advance_fixed_step()
+		guard += 1
+	sim._drain_effects()
+	var weak_stacks := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	if weak_stacks < 1:
+		push_error("archer_weak: expected weak on target, got %d stacks" % weak_stacks)
 		return false
 	return true
 
