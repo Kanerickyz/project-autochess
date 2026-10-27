@@ -58,7 +58,8 @@ static func run_all() -> bool:
 	_check("hunter_friend_summoned_buff_star2", _test_hunter_friend_summoned_buff_star2())
 	_check("deal_damage_adj_splash_small", _test_deal_damage_adj_splash_small())
 	_check("turn_start_nearby_hp_radius_1", _test_turn_start_nearby_hp_radius_1())
-	_check("wardrum_turn_start_nearby_atk_star2", _test_wardrum_turn_start_nearby_atk_star2())
+	_check("wardrum_turn_start_nearby_berserk", _test_wardrum_turn_start_nearby_berserk())
+	_check("wardrum_turn_start_nearby_berserk_star2", _test_wardrum_turn_start_nearby_berserk_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
@@ -1283,40 +1284,57 @@ static func _test_turn_start_nearby_hp_radius_1() -> bool:
 	return true
 
 
-## 鼓手 2★：自己回合开始周围一格其他友方攻击 +6（merge_value_mult=3）。
-static func _test_wardrum_turn_start_nearby_atk_star2() -> bool:
+## 鼓手：自己回合开始周围一格友方狂暴 1 层（不含自身）；2★ 三合一倍率后 3 层。
+static func _test_wardrum_turn_start_nearby_berserk() -> bool:
+	return _wardrum_nearby_berserk_expect(1, 1)
+
+
+static func _test_wardrum_turn_start_nearby_berserk_star2() -> bool:
+	return _wardrum_nearby_berserk_expect(2, 3)
+
+
+static func _wardrum_nearby_berserk_expect(star_level: int, expected_berserk: int) -> bool:
 	var data := _load_unit("res://resources/units/realtime/wardrum.tres")
-	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_atk_small":
-		push_error("wardrum_atk: ability not mounted")
+	if data == null or data.ability == null:
+		push_error("wardrum_berserk: ability missing")
+		return false
+	if data.ability.id != "turn_start_nearby_allies_apply_berserk":
+		push_error("wardrum_berserk: wrong ability id %s" % data.ability.id)
 		return false
 	if data.ability.merge_value_mult != 3:
-		push_error("wardrum_atk: merge_value_mult expected 3")
+		push_error("wardrum_berserk: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
-	sim.configure(ARENA, 511)
+	sim.configure(ARENA, 511 + star_level)
 	var drum := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	drum.unit.level = 2
+	drum.unit.level = star_level
 	drum.unit.stats.steps_per_turn = 0
 	var near := sim.add_unit(
 		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
 		Vector2(10.5, 20.5),
 	)
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(11.5, 20.5),
+	)
 	sim.begin_combat()
-	var self_atk_before := drum.unit.get_effective_attack()
-	var near_atk_before := near.unit.get_effective_attack()
 	var payload := CombatEventPayload.new()
 	payload.source = drum.unit
 	payload.target = drum.unit
 	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
-	sim._drain_effects()
-	if drum.unit.get_effective_attack() != self_atk_before:
-		push_error("wardrum_atk: owner must not buff self")
+	sim._drain_effects(true)
+	if drum.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK) != 0:
+		push_error("wardrum_berserk: owner must not buff self")
 		return false
-	if near.unit.get_effective_attack() != near_atk_before + 6:
+	var near_b := near.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK)
+	if near_b != expected_berserk:
 		push_error(
-			"wardrum_atk 2★: near atk=%d expected %d"
-			% [near.unit.get_effective_attack(), near_atk_before + 6]
+			"wardrum_berserk %d★: near berserk=%d expected %d"
+			% [star_level, near_b, expected_berserk]
 		)
+		return false
+	if far.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK) != 0:
+		push_error("wardrum_berserk: far ally should have 0 berserk")
 		return false
 	return true
 
