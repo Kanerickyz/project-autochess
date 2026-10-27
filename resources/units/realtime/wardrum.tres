@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Resource" uid="uid://bturnstartatksml" path="res://resources/abilities/turn_start_nearby_atk_small.tres" id="3_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/turn_start_nearby_allies_apply_berserk.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_wardrum"]
 script = ExtResource("2_stats")
