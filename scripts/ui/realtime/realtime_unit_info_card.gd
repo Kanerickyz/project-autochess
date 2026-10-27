@@ -31,8 +31,8 @@ const FINGER_MAX_OFFSET := 28.0
 const SHADOW_REST := 6
 const SHADOW_LIFT := 14
 ## 结算 Reel：小丑牌式记分晃卡（COMBAT_FEEDBACK §5.3）— 绕卡心轻摆 + 微缩放。
-const REEL_SHAKE_ROT_DEG := 1.9
-const REEL_SCALE_PEAK_ADD := 0.02
+const REEL_SHAKE_ROT_DEG := 2.5
+const REEL_SCALE_PEAK_ADD := 0.026
 const REEL_ATTACHMENT_AMP_MULT := 0.85
 const REEL_BEAT1_SEC := 0.06
 const REEL_BEAT2_SEC := 0.06
