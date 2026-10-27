@@ -46,12 +46,13 @@
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_blood_wage.tres" id="u_bloodwage"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_scatter_hex.tres" id="u_scatter"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_funeral_pyre.tres" id="u_pyre"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_boomling.tres" id="u_boomling"]
 
 [resource]
 script = ExtResource("1")
 board_width = 5
 board_height = 8
-enemy_pool = Array[ExtResource("1_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker"), ExtResource("u_devour"), ExtResource("u_blade_mender"), ExtResource("u_aftershock"), ExtResource("u_edge_hex"), ExtResource("u_shield_boon"), ExtResource("u_paymaster"), ExtResource("u_wergild"), ExtResource("u_coffer"), ExtResource("u_bloodwage"), ExtResource("u_scatter"), ExtResource("u_pyre")])
+enemy_pool = Array[ExtResource("1_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker"), ExtResource("u_devour"), ExtResource("u_blade_mender"), ExtResource("u_aftershock"), ExtResource("u_edge_hex"), ExtResource("u_shield_boon"), ExtResource("u_paymaster"), ExtResource("u_wergild"), ExtResource("u_coffer"), ExtResource("u_bloodwage"), ExtResource("u_scatter"), ExtResource("u_pyre"), ExtResource("u_boomling")])
 generate_terrain = false
 terrain_tileset = ExtResource("2_nqghs")
 terrain_seed = 42

@@ -75,6 +75,8 @@ static func run_all() -> bool:
 	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
 	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
 	_check("aftershock_attack_kill_only", _test_aftershock_attack_kill_only())
+	_check("boomling_kill_damage_all_except_self", _test_boomling_kill_damage_all_except_self())
+	_check("boomling_kill_damage_all_star2", _test_boomling_kill_damage_all_star2())
 	_check("mirror_warden_kill_convert", _test_mirror_warden_kill_convert())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
@@ -1935,6 +1937,74 @@ static func _test_aftershock_attack_kill_only() -> bool:
 	## 非攻击击杀不触发；普攻打死 1 个后再点残 1 个，应剩 1 个。
 	if alive != 1:
 		push_error("aftershock: expected 1 foe left, alive=%d" % alive)
+		return false
+	return true
+
+
+static func _test_boomling_kill_damage_all_except_self() -> bool:
+	return _boomling_kill_aoe_expect(1, 2)
+
+
+static func _test_boomling_kill_damage_all_star2() -> bool:
+	return _boomling_kill_aoe_expect(2, 6)
+
+
+static func _boomling_kill_aoe_expect(star_level: int, expected_dmg: int) -> bool:
+	var data := _load_unit("res://resources/units/realtime/boomling.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_damage_all_except_self_2":
+		push_error("boomling: ability mount")
+		return false
+	if data.tier != 3:
+		push_error("boomling: expected tier 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 880 + star_level)
+	var boom := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	boom.unit.level = star_level
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_near", "steps_per_turn": 0}),
+		Vector2(10.5, 20.5),
+	)
+	var fodder_a := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 1, {"id": "fodder_a", "attack": 0, "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	var fodder_b := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 1, {"id": "fodder_b", "attack": 0, "steps_per_turn": 0}),
+		Vector2(11.5, 8.5),
+	)
+	var bystander := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "bystander", "attack": 0, "steps_per_turn": 0}),
+		Vector2(7.5, 8.5),
+	)
+	sim.begin_combat()
+	sim.flush_combat_start_lock()
+	var ally_hp0 := ally.unit.current_hp
+	var by_hp0 := bystander.unit.current_hp
+	var boom_hp0 := boom.unit.current_hp
+	if not sim._pipeline.apply_damage(boom.unit, fodder_a, 5):
+		push_error("boomling: skill damage should kill fodder_a")
+		return false
+	sim._drain_effects(true)
+	if ally.unit.current_hp != ally_hp0 or bystander.unit.current_hp != by_hp0:
+		push_error("boomling: non-attack kill must not shockwave")
+		return false
+	var killed := sim._pipeline.resolve_hit(boom, fodder_b, boom.get_effective_attack(), 0.0, sim.get_units())
+	if killed.is_empty():
+		push_error("boomling: attack should kill fodder_b")
+		return false
+	sim._drain_effects(true)
+	if boom.unit.current_hp != boom_hp0:
+		push_error("boomling: self must not take shockwave")
+		return false
+	if ally.unit.current_hp != ally_hp0 - expected_dmg:
+		push_error(
+			"boomling: ally hp %d expected %d"
+			% [ally.unit.current_hp, ally_hp0 - expected_dmg]
+		)
+		return false
+	if bystander.unit.current_hp != by_hp0 - expected_dmg:
+		push_error("boomling: bystander expected -%d dmg" % expected_dmg)
 		return false
 	return true
 
