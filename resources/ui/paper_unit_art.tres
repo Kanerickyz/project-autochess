@@ -85,6 +85,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_wage_blue.png" id="b_blood_wage"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_scatter_hex_blue.png" id="b_scatter_hex"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_blue.png" id="b_funeral_pyre"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_boomling_blue.png" id="b_boomling"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shinobi_red.png" id="r_shinobi"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_devour_red.png" id="r_devour"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blade_mender_red.png" id="r_blade_mender"]
@@ -97,6 +98,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blood_wage_red.png" id="r_blood_wage"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_scatter_hex_red.png" id="r_scatter_hex"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_red.png" id="r_funeral_pyre"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_boomling_red.png" id="r_boomling"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="dev_enemy"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="dev_player"]
 
@@ -114,6 +116,7 @@ archetype_by_unit_id = {
 "berserker": &"berserker",
 "blood_acolyte": &"blood_acolyte",
 "blood_wage": &"blood_wage",
+"boomling": &"boomling",
 "funeral_pyre": &"funeral_pyre",
 "scatter_hex": &"scatter_hex",
 "boss_minion_t4": &"boss_minion_t4",
@@ -176,6 +179,7 @@ player_textures = {
 
 &"blood_acolyte": ExtResource("b_blood_acolyte"),
 &"blood_wage": ExtResource("b_blood_wage"),
+&"boomling": ExtResource("b_boomling"),
 &"funeral_pyre": ExtResource("b_funeral_pyre"),
 &"scatter_hex": ExtResource("b_scatter_hex"),
 &"boss_minion_t4": ExtResource("b_captain"),
@@ -230,6 +234,7 @@ enemy_textures = {
 
 &"blood_acolyte": ExtResource("r_blood_acolyte"),
 &"blood_wage": ExtResource("r_blood_wage"),
+&"boomling": ExtResource("r_boomling"),
 &"funeral_pyre": ExtResource("r_funeral_pyre"),
 &"scatter_hex": ExtResource("r_scatter_hex"),
 &"boss_minion_t4": ExtResource("r_captain"),

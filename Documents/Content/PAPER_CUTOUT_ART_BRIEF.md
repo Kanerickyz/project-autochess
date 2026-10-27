@@ -235,6 +235,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `blood_wage` | 额带绷带 + 短刀钱袋 | blood_wage 血饷 |
 | `scatter_hex` | 骷髅兜帽 + 紫宝珠 | scatter_hex 散咒 |
 | `funeral_pyre` | 背负柴捆火把 + 炭盆 | funeral_pyre 葬焰 |
+| `boomling` | 蓝袍兜帽 + 背桶炸药与火把 | boomling 爆爆 |
 
 召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 

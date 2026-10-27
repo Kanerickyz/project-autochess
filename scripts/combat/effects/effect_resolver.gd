@@ -363,7 +363,14 @@ func _resolve_targets(
 			if picked != null:
 				result.append(picked)
 		EffectSpec.TargetSelector.ALL_UNITS:
-			result.append_array(_grid.get_alive_units())
+			for unit in _grid.get_alive_units():
+				if (
+					spec.exclude_owner
+					and owner != null
+					and unit.instance_id == owner.instance_id
+				):
+					continue
+				result.append(unit)
 		EffectSpec.TargetSelector.RANDOM_ENEMY:
 			var enemy := _pick_random_enemy(owner)
 			if enemy != null:
