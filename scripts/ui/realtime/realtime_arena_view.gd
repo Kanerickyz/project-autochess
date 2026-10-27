@@ -296,7 +296,7 @@ var _inspect_finger := Vector2.ZERO
 var _auto_info_until_clock: float = -1.0
 ## 战斗技能播报期间禁止 SKILL_INFO 定时收卡（见 RealtimeBattleController）。
 var _combat_skill_info_pin: int = 0
-## 观战技能播报卡（右下角）；与长按 _info_shown 分离，避免棋盘压暗/抬起。
+## 观战技能播报卡（触发者脚下向下）；与长按 _info_shown 分离，但仍复用焦点抬起/压暗。
 var _combat_broadcast_info := false
 const SKILL_INFO_SECONDS := 1.35
 
@@ -1789,16 +1789,20 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	queue_redraw()
 
 
-## 战斗内技能/增益播报：主卡固定战场右下角，不跟单位头顶、不拉附属卡栈。
+## 战斗内技能/增益播报：详卡贴在棋盘区底边、触发者列内；不拉附属卡栈。
 func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
 	_combat_broadcast_info = true
 	_shown_info = info
+	_begin_inspect_focus(info, slide_dir)
 	_hide_info_attachments()
 	_info_card.top_level = false
-	var bounds := Rect2(Vector2.ZERO, size)
-	_info_card.show_info_combat_corner(info, bounds, slide_dir)
+	var center: Vector2 = info.get("center", Vector2.ZERO)
+	var px := get_cell_px()
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	var bounds := get_board_rect()
+	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
 	queue_redraw()
 
 
@@ -1841,9 +1845,13 @@ func _clear_inspect_focus() -> void:
 	_inspect_finger = Vector2.ZERO
 
 
+func _info_focus_visual_active() -> bool:
+	return (_info_shown or _combat_broadcast_info) and not _shown_info.is_empty()
+
+
 ## 长按焦点视觉：焦点单位抬起倾斜，其余略压暗缩小。
 func _sample_inspect_visual(sprite_center: Vector2) -> Dictionary:
-	if not _info_shown or _shown_info.is_empty():
+	if not _info_focus_visual_active():
 		return {}
 	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
 	var hit_r := get_cell_px() * 0.55
@@ -1871,7 +1879,7 @@ func _bring_inspect_slot_to_front(
 	slots: PrepareSlotBoard,
 	half_off: Vector2,
 ) -> void:
-	if not _info_shown or slots == null or indices.is_empty():
+	if not _info_focus_visual_active() or slots == null or indices.is_empty():
 		return
 	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
 	var hit_r2 := _inspect_focus_hit_r2()
@@ -1893,7 +1901,7 @@ func _bring_inspect_slot_to_front(
 
 
 func _bring_inspect_rt_to_front(ordered: Array) -> void:
-	if not _info_shown or ordered.is_empty():
+	if not _info_focus_visual_active() or ordered.is_empty():
 		return
 	var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
 	var hit_r2 := _inspect_focus_hit_r2()

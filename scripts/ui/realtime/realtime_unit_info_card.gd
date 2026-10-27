@@ -8,8 +8,6 @@ const CARD_WIDTH := 236.0
 const PORTRAIT_SIZE := Vector2(56.0, 64.0)
 const BADGE_HEIGHT := 22.0
 const MARGIN_PX := 6.0
-## 观战技能播报：主卡贴在战场区右下角的内边距。
-const COMBAT_CORNER_INSET_PX := 10.0
 const PAPER := Color(0.97, 0.92, 0.79, 0.98)
 const INK := Color(0.13, 0.10, 0.08, 1.0)
 const INK_SOFT := Color(0.32, 0.27, 0.21, 1.0)
@@ -252,15 +250,17 @@ func show_info(
 		_play_pop_in(target)
 
 
-## 观战技能/增益播报：固定在战场区域右下角，不挡棋盘中央。
-func show_info_combat_corner(info: Dictionary, bounds: Rect2, slide_dir: float = 0.0) -> void:
+## 观战技能/增益播报：在触发者列内贴战斗区底边展示详卡（水平居中；不压住脚下剪影）。
+func show_info_combat_below_unit(
+	info: Dictionary, unit_foot: Vector2, bounds: Rect2, slide_dir: float = 0.0
+) -> void:
 	var was_open := _open and visible
 	_apply_content(info)
 	reset_size()
 	var card_size := get_combined_minimum_size()
 	size = card_size
 	pivot_offset = card_size * 0.5
-	var target := _corner_bottom_right_top_left(bounds, card_size)
+	var target := _compute_position_combat_column_bottom(unit_foot, bounds, card_size)
 	_rest_position = target
 	_follow_offset = Vector2.ZERO
 	visible = true
@@ -271,14 +271,6 @@ func show_info_combat_corner(info: Dictionary, bounds: Rect2, slide_dir: float =
 		_snap_rest(target)
 	else:
 		_play_pop_in(target)
-
-
-static func _corner_bottom_right_top_left(bounds: Rect2, card_size: Vector2) -> Vector2:
-	var inset := COMBAT_CORNER_INSET_PX
-	return Vector2(
-		bounds.end.x - card_size.x - inset,
-		bounds.end.y - card_size.y - inset,
-	)
 
 
 ## 按住滑动时：卡面轻跟手指并微倾，类似小丑牌悬停跟手。
@@ -427,6 +419,16 @@ func _compute_position(
 		if pos.y < bounds.position.y + MARGIN_PX:
 			pos.y = foot.y + MARGIN_PX
 	return _clamp_card_top_left(pos, bounds, card_size)
+
+
+## 角色脚下到战斗区底边之间的竖带：详卡底边对齐区底（空间不足则上移，且不盖住 foot）。
+func _compute_position_combat_column_bottom(
+	unit_foot: Vector2, bounds: Rect2, card_size: Vector2
+) -> Vector2:
+	var y := bounds.end.y - card_size.y - MARGIN_PX
+	y = maxf(y, unit_foot.y + MARGIN_PX)
+	var x := unit_foot.x - card_size.x * 0.5
+	return _clamp_card_top_left(Vector2(x, y), bounds, card_size)
 
 
 func _clamp_card_top_left(pos: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
