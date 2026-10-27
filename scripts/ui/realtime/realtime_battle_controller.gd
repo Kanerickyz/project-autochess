@@ -3421,8 +3421,6 @@ func _start_next_skill_card() -> void:
 		_show_buff_trigger_info(batch.owner, batch.display_buff)
 	else:
 		_show_skill_trigger_info_for_owner(batch.owner)
-	if _arena != null:
-		_arena.play_settlement_intro(batch.owner)
 
 
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
@@ -3516,7 +3514,6 @@ func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = 
 func _present_effect_result(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
-	_arena.play_settlement_resolve(payload)
 	var pops := RealtimeEffectFeedback.build_popups(payload)
 	var callout_center := Vector2.ZERO
 	var callout_player := true
