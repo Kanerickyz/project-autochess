@@ -262,8 +262,6 @@ var _prepare_team_press_id: int = -1
 var _bench_press_id: int = -1
 var _bench_empty_press: int = -1
 var _motion := RealtimeUnitMotion.new()
-## instance_id → chip_key → 像素偏移（结算 Reel 词条抖）。
-var _entry_chip_shakes: Dictionary = {}
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
 ## 主卡下方的附属信息卡（装备等）；顺序与 info.attachments 一致。
@@ -867,52 +865,6 @@ func play_unit_death(rt: RtUnit) -> void:
 		return
 	var half := _resolve_visual_half(rt.get_visual_half_height(), rt.get_radius(), 1.6)
 	_motion.play_death(rt, _rt_unit_id(rt), half)
-
-
-func play_settlement_intro(owner: UnitInstance) -> void:
-	if sim == null or owner == null:
-		return
-	CombatSettlementReel.play_intro(_motion, self, owner, sim)
-
-
-func play_settlement_resolve(payload: CombatEventPayload) -> void:
-	if sim == null or payload == null:
-		return
-	CombatSettlementReel.play_resolve(_motion, self, sim, payload)
-
-
-func pulse_entry_chip(rt: RtUnit, chip_key: StringName) -> void:
-	if rt == null or chip_key == StringName():
-		return
-	var unit_id := rt.get_instance_id()
-	if not _entry_chip_shakes.has(unit_id):
-		_entry_chip_shakes[unit_id] = {}
-	var by_chip: Dictionary = _entry_chip_shakes[unit_id]
-	var amp := 3.5
-	var speed := maxf(0.25, presentation_time_scale)
-	var step := 0.04 / speed
-	var tween := create_tween()
-	tween.set_speed_scale(speed)
-	by_chip[chip_key] = Vector2(amp, 0.0)
-	queue_redraw()
-	tween.tween_interval(step)
-	tween.tween_callback(
-		func() -> void:
-			by_chip[chip_key] = Vector2(-amp * 0.7, amp * 0.35)
-			queue_redraw()
-	)
-	tween.tween_interval(step)
-	tween.tween_callback(
-		func() -> void:
-			by_chip[chip_key] = Vector2(amp * 0.45, -amp * 0.25)
-			queue_redraw()
-	)
-	tween.tween_interval(step * 1.2)
-	tween.tween_callback(
-		func() -> void:
-			by_chip.erase(chip_key)
-			queue_redraw()
-	)
 
 
 func _feedback_duration_for_scale(scale: float) -> float:
@@ -3996,9 +3948,6 @@ func _draw_units(px: float) -> void:
 		var silhouette_r_px := maxf(vwx, vhy) * scale * px
 		if is_actor:
 			draw_arc(center, silhouette_r_px + 5.0, 0.0, TAU, 28, Color(1.0, 0.92, 0.35, 0.95), 2.5)
-		if started and rt.unit != null:
-			var chip_shakes: Dictionary = _entry_chip_shakes.get(rt.get_instance_id(), {})
-			CombatEntryStrip.draw_strip(self, center, rt.unit, px, alpha, chip_shakes)
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
@@ -4191,9 +4140,9 @@ func _draw_unit_sprite(
 		offset += Vector2(0.0, wv.y * px)
 		rot += wv.x
 	if pose != null:
-		offset += (pose.offset + pose.idle_offset + pose.reel_offset) * px
-		rot += pose.rotation + pose.reel_rotation
-		scl = pose.scale * pose.idle_scale * pose.reel_scale * scl
+		offset += (pose.offset + pose.idle_offset) * px
+		rot += pose.rotation
+		scl = pose.scale * pose.idle_scale * scl
 		flash = pose.flash
 		a *= pose.alpha
 		shadow_mul = maxf(shadow_mul, pose.shadow_mul)
