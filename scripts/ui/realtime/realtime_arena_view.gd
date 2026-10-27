@@ -1924,15 +1924,25 @@ func _schedule_settlement_reel_shake(card: RealtimeUnitInfoCard) -> void:
 	get_tree().create_timer(delay).timeout.connect(
 		func() -> void:
 			if card != null and card.visible:
-				card.play_settlement_reel_shake(presentation_time_scale),
+				card.play_settlement_reel_shake(
+					presentation_time_scale, _settlement_reel_amplitude_for_card(card)
+				),
 		CONNECT_ONE_SHOT,
 	)
+
+
+func _settlement_reel_amplitude_for_card(card: RealtimeUnitInfoCard) -> float:
+	if card == _info_card:
+		return 1.0
+	return RealtimeUnitInfoCard.REEL_ATTACHMENT_AMP_MULT
 
 
 func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
 	var card := _pick_reel_info_card(payload)
 	if card != null:
-		card.play_settlement_reel_shake(presentation_time_scale)
+		card.play_settlement_reel_shake(
+			presentation_time_scale, _settlement_reel_amplitude_for_card(card)
+		)
 
 
 func _pick_reel_info_card(payload: CombatEventPayload) -> RealtimeUnitInfoCard:
@@ -1979,7 +1989,9 @@ func _find_status_attachment_card(status_id: StringName) -> RealtimeUnitInfoCard
 func play_combat_equipment_info_reel_shake(equipment_id: StringName) -> void:
 	var card := _find_equipment_attachment_card(equipment_id)
 	if card != null:
-		card.play_settlement_reel_shake(presentation_time_scale)
+		card.play_settlement_reel_shake(
+			presentation_time_scale, _settlement_reel_amplitude_for_card(card)
+		)
 
 
 func _find_equipment_attachment_card(equipment_id: StringName) -> RealtimeUnitInfoCard:

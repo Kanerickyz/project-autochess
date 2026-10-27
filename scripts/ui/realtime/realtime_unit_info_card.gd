@@ -30,11 +30,13 @@ const FINGER_TILT := 0.035
 const FINGER_MAX_OFFSET := 28.0
 const SHADOW_REST := 6
 const SHADOW_LIFT := 14
-## 结算 Reel：整张介绍卡轻抖（COMBAT_FEEDBACK §5.3）。
-const REEL_SHAKE_ROT_DEG := 2.8
-const REEL_SHAKE_PUNCH_SCALE := 1.06
-const REEL_SHAKE_OFFSET_PX := 4.0
-const REEL_SHAKE_STEP_SEC := 0.05
+## 结算 Reel：小丑牌式记分晃卡（COMBAT_FEEDBACK §5.3）— 绕卡心轻摆 + 微缩放。
+const REEL_SHAKE_ROT_DEG := 1.9
+const REEL_SCALE_PEAK_ADD := 0.02
+const REEL_ATTACHMENT_AMP_MULT := 0.85
+const REEL_BEAT1_SEC := 0.06
+const REEL_BEAT2_SEC := 0.06
+const REEL_BEAT3_SEC := 0.08
 
 
 class StatBadge:
@@ -266,36 +268,36 @@ func follow_finger(finger_local: Vector2) -> void:
 
 
 ## 结算拍：整张介绍卡 Tween（技能/增益主卡或装备/状态附属卡；不打断 _motion 弹出）。
-func play_settlement_reel_shake(speed_scale: float = 1.0) -> void:
+func play_settlement_reel_shake(speed_scale: float = 1.0, amplitude_mult: float = 1.0) -> void:
 	if not _open or not visible:
 		return
 	_kill_reel_tween()
 	var speed := maxf(0.25, speed_scale)
+	var amp := clampf(amplitude_mult, 0.5, 1.0)
 	var rot0 := rotation_degrees
 	var scale0 := scale.x
-	var pos0 := position
-	var rot := REEL_SHAKE_ROT_DEG
-	var off := REEL_SHAKE_OFFSET_PX
-	var punch := REEL_SHAKE_PUNCH_SCALE
+	var rot_peak := REEL_SHAKE_ROT_DEG * amp
+	var scale_peak := scale0 * (1.0 + REEL_SCALE_PEAK_ADD * amp)
 	_reel_tween = create_tween()
 	_reel_tween.set_speed_scale(speed)
-	_reel_tween.tween_property(self, "rotation_degrees", rot0 + rot, REEL_SHAKE_STEP_SEC).set_trans(
+	_reel_tween.tween_property(self, "rotation_degrees", rot0 + rot_peak, REEL_BEAT1_SEC).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale_peak, REEL_BEAT1_SEC).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	_reel_tween.tween_property(self, "rotation_degrees", rot0 - rot_peak * 0.6, REEL_BEAT2_SEC).set_trans(
 		Tween.TRANS_SINE
-	)
-	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0 * punch, REEL_SHAKE_STEP_SEC)
-	_reel_tween.parallel().tween_property(self, "position", pos0 + Vector2(off, 0.0), REEL_SHAKE_STEP_SEC)
-	_reel_tween.tween_property(self, "rotation_degrees", rot0 - rot * 0.55, REEL_SHAKE_STEP_SEC)
-	_reel_tween.parallel().tween_property(
-		self, "scale", Vector2.ONE * scale0 * (2.0 - punch * 0.5), REEL_SHAKE_STEP_SEC
-	)
-	_reel_tween.parallel().tween_property(
-		self, "position", pos0 + Vector2(-off * 0.4, 0.0), REEL_SHAKE_STEP_SEC
-	)
-	_reel_tween.tween_property(self, "rotation_degrees", rot0, REEL_SHAKE_STEP_SEC * 1.35).set_trans(
+	).set_ease(Tween.EASE_IN_OUT)
+	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0, REEL_BEAT2_SEC).set_trans(
 		Tween.TRANS_SINE
-	)
-	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0, REEL_SHAKE_STEP_SEC * 1.35)
-	_reel_tween.parallel().tween_property(self, "position", pos0, REEL_SHAKE_STEP_SEC * 1.35)
+	).set_ease(Tween.EASE_IN_OUT)
+	_reel_tween.tween_property(self, "rotation_degrees", rot0, REEL_BEAT3_SEC).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_OUT)
+	_reel_tween.parallel().tween_property(self, "scale", Vector2.ONE * scale0, REEL_BEAT3_SEC).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_OUT)
 
 
 func hide_info() -> void:
