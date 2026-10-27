@@ -106,6 +106,8 @@ var _lock_phase_active: bool = false
 var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
 var _combo_tracker: CombatComboTracker = CombatComboTracker.new()
 var _combo_hud: ComboCounterHud
+## 一动已结束但技能尾巴未播完：等待结算队列排空后再清零连击。
+var _combo_reset_after_skill_tail: bool = false
 ## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
 var _resolving_presented_skill: bool = false
 var _last_resolved_payload: CombatEventPayload = null
@@ -528,6 +530,7 @@ func _ensure_combo_hud() -> void:
 		return
 	_combo_hud = ComboCounterHud.new()
 	_combo_hud.name = "ComboCounterHud"
+	_combo_hud.z_index = 24
 	_arena.add_child(_combo_hud)
 
 
@@ -541,6 +544,51 @@ func _refresh_combo_hud_from_tracker() -> void:
 	if _combo_hud == null:
 		return
 	_combo_hud.set_combo_count(_combo_tracker.get_display_value())
+
+
+func _register_combo_for_skill_intro(owner: UnitInstance) -> void:
+	_combo_tracker.register_skill_intro_card(owner)
+	_refresh_combo_hud_from_tracker()
+
+
+func _schedule_combo_reset_after_actor_turn() -> void:
+	if _sim != null and _sim.has_pending_effects():
+		_combo_reset_after_skill_tail = true
+	else:
+		_combo_reset_after_skill_tail = false
+		_reset_combo_display()
+
+
+func _finish_combo_reset_after_skill_tail_if_needed() -> void:
+	if not _combo_reset_after_skill_tail:
+		return
+	if _sim != null and _sim.has_pending_effects():
+		return
+	_combo_reset_after_skill_tail = false
+	_reset_combo_display()
+
+
+func _combat_skill_info_presentation_seconds() -> float:
+	var scale := maxf(0.25, time_scale)
+	return (
+		RealtimeTimestopQueue.CARD_PAUSE_SECONDS
+		+ RealtimeTimestopQueue.RESULT_PAUSE_SECONDS
+		+ RealtimeUnitInfoCard.POP_IN_SEC
+		+ 0.35
+	) / scale
+
+
+func _arm_combat_skill_info_visibility() -> void:
+	if _arena == null:
+		return
+	_arena.pin_combat_skill_info()
+	_arena.bump_combat_skill_info_visibility(_combat_skill_info_presentation_seconds())
+
+
+func _release_combat_skill_info_visibility() -> void:
+	if _arena == null:
+		return
+	_arena.unpin_combat_skill_info()
 
 
 func is_timestop_blocking() -> bool:
@@ -2293,7 +2341,7 @@ func _on_actor_turn_ended(completed_turns: int) -> void:
 	if _tape_rewinding:
 		_tape_completed_turns = completed_turns
 		return
-	_reset_combo_display()
+	_schedule_combo_reset_after_actor_turn()
 	_tape_completed_turns = completed_turns
 	if _tape_step_once or _tape_pause_requested:
 		_tape_boundary_pending = true
@@ -3414,13 +3462,13 @@ func _start_next_skill_card() -> void:
 		_sim.release_presentation()
 		return
 	_timestop_queue.begin_card(batch.owner, batch.spec, time_scale)
-	_combo_tracker.register_skill_intro_card(batch.owner)
-	_refresh_combo_hud_from_tracker()
+	_register_combo_for_skill_intro(batch.owner)
 	_presentation_block_elapsed = 0.0
+	_arm_combat_skill_info_visibility()
 	if batch.display_buff != null:
 		_show_buff_trigger_info(batch.owner, batch.display_buff)
 	else:
-		_show_skill_trigger_info_for_owner(batch.owner)
+		_show_skill_trigger_info_for_owner(batch.owner, batch.spec)
 
 
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
@@ -3437,6 +3485,11 @@ func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(payload, time_scale)
+	if _arena != null:
+		var scale := maxf(0.25, time_scale)
+		_arena.bump_combat_skill_info_visibility(
+			RealtimeTimestopQueue.RESULT_PAUSE_SECONDS / scale + 0.15
+		)
 	if payload != null:
 		_present_effect_result(payload, true)
 
@@ -3451,6 +3504,8 @@ func _on_skill_result_done() -> void:
 		_drain_pending_effects_silent()
 		_timestop_queue.clear()
 		_presentation_block_elapsed = 0.0
+		_finish_combo_reset_after_skill_tail_if_needed()
+		_release_combat_skill_info_visibility()
 		_sim.try_seed_action_queue()
 		_sim.release_presentation()
 		return
@@ -3461,6 +3516,8 @@ func _on_skill_result_done() -> void:
 		_sim.try_seed_action_queue()
 	_timestop_queue.clear()
 	_presentation_block_elapsed = 0.0
+	_finish_combo_reset_after_skill_tail_if_needed()
+	_release_combat_skill_info_visibility()
 	if _sim != null:
 		_sim.release_presentation()
 
@@ -3471,6 +3528,7 @@ func _unstick_combat_presentation() -> void:
 		if _arena.has_active_combat_action_tween():
 			_arena.finish_combat_action_tweens()
 		_arena.hide_unit_info()
+		_release_combat_skill_info_visibility()
 	if _timestop_queue != null and _timestop_queue.is_blocking():
 		var phase := _timestop_queue.get_phase()
 		if (
@@ -3506,8 +3564,12 @@ func _drain_pending_effects_silent() -> void:
 
 ## 锁阵等：介绍卡 + 结果数字（已结算）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
+	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	_register_combo_for_skill_intro(owner)
+	_arm_combat_skill_info_visibility()
 	_show_skill_trigger_info_card(payload)
 	_present_effect_result(payload, with_callout)
+	_release_combat_skill_info_visibility()
 
 
 ## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
@@ -3574,7 +3636,7 @@ func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
 	if payload == null:
 		return
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
-	_show_skill_trigger_info_for_owner(owner)
+	_show_skill_trigger_info_for_owner(owner, payload.effect_spec)
 
 
 func _show_buff_trigger_info(owner: UnitInstance, buff: BuffCardData) -> void:
@@ -3594,7 +3656,7 @@ func _show_buff_trigger_info(owner: UnitInstance, buff: BuffCardData) -> void:
 	)
 
 
-func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
+func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: EffectSpec = null) -> void:
 	if _arena == null or owner == null:
 		return
 	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
@@ -3606,13 +3668,20 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance) -> void:
 			atk = rt.get_effective_attack()
 			hp = rt.get_current_hp()
 			tile = rt.position
-	_arena.show_skill_trigger_info(owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile)
+	var skills := ""
+	if trigger_spec != null:
+		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
+	_arena.show_skill_trigger_info(
+		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills
+	)
 
 
 func _on_combat_finished(won: bool) -> void:
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
 	_timestop_queue.clear()
+	_combo_reset_after_skill_tail = false
+	_release_combat_skill_info_visibility()
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	_floor_gold = 0

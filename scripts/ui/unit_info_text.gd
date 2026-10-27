@@ -318,6 +318,40 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 	return "\n".join(lines)
 
 
+## 战斗介绍卡：只展示本次触发的 spec 一行（含触发加粗 BBCode）。
+static func format_trigger_spec_line(
+	unit: UnitInstance, spec: EffectSpec, with_stat_icons: bool = true
+) -> String:
+	if unit == null or spec == null:
+		return ""
+	var candidates: Array[AbilityData] = []
+	if unit.unit_data != null:
+		if unit.unit_data.ability != null:
+			candidates.append(unit.unit_data.ability)
+		for passive in unit.unit_data.passives:
+			if passive != null:
+				candidates.append(passive)
+		for attached in unit.unit_data.attached_abilities:
+			if attached != null:
+				candidates.append(attached)
+	for ability in candidates:
+		if ability == null:
+			continue
+		for owned in ability.effect_specs:
+			if owned == spec:
+				var scale := UnitInstance.ability_value_multiplier_for(ability, unit.level)
+				var line := format_effect_spec(
+					spec, scale, with_stat_icons, ability, unit.level
+				)
+				if line.is_empty():
+					break
+				return bold_skill_trigger_bbcode(line) if with_stat_icons else line
+	var fallback := format_effect_spec(spec, 1, with_stat_icons, null, unit.level)
+	if fallback.is_empty():
+		return ""
+	return bold_skill_trigger_bbcode(fallback) if with_stat_icons else fallback
+
+
 static func format_buff(buff: BuffCardData, with_stat_icons: bool = false) -> String:
 	var title: String = (
 		buff.display_name if not buff.display_name.is_empty() else buff.id
