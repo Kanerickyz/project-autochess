@@ -1907,11 +1907,26 @@ func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, h
 	_auto_info_until_clock = _fx_clock + life
 
 
+## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
 func play_combat_skill_info_reel_intro() -> void:
-	if not _info_card.visible:
+	_schedule_settlement_reel_shake(_info_card)
+
+
+## 展示步 ①：整张**增益介绍卡**（主卡承载增益文案）。
+func play_combat_buff_info_reel_intro() -> void:
+	_schedule_settlement_reel_shake(_info_card)
+
+
+func _schedule_settlement_reel_shake(card: RealtimeUnitInfoCard) -> void:
+	if card == null or not card.visible:
 		return
-	## 等介绍卡弹出后再抖正文，避免与 pop-in 同帧叠满。
-	_info_card.call_deferred("play_settlement_reel_shake", presentation_time_scale)
+	var delay := RealtimeUnitInfoCard.POP_IN_SEC / maxf(0.25, presentation_time_scale)
+	get_tree().create_timer(delay).timeout.connect(
+		func() -> void:
+			if card != null and card.visible:
+				card.play_settlement_reel_shake(presentation_time_scale),
+		CONNECT_ONE_SHOT,
+	)
 
 
 func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
@@ -1960,6 +1975,29 @@ func _find_status_attachment_card(status_id: StringName) -> RealtimeUnitInfoCard
 	return null
 
 
+## 展示步 ①②：整张**装备附属介绍卡**（与主技能卡分卡时）。
+func play_combat_equipment_info_reel_shake(equipment_id: StringName) -> void:
+	var card := _find_equipment_attachment_card(equipment_id)
+	if card != null:
+		card.play_settlement_reel_shake(presentation_time_scale)
+
+
+func _find_equipment_attachment_card(equipment_id: StringName) -> RealtimeUnitInfoCard:
+	var attachments: Array = _shown_info.get("attachments", [])
+	for i in attachments.size():
+		var att: Variant = attachments[i]
+		if not (att is Dictionary):
+			continue
+		var dict: Dictionary = att
+		if dict.get("attachment_kind") != UnitInfoText.INFO_ATTACHMENT_KIND_EQUIPMENT:
+			continue
+		if dict.get("equipment_id", &"") == equipment_id and i < _info_attachment_cards.size():
+			var c := _info_attachment_cards[i]
+			if c.visible:
+				return c
+	return null
+
+
 ## 增益卡战斗结算：与技能相同的信息卡节拍，正文为增益说明。
 func show_buff_trigger_info(
 	unit: UnitInstance,
@@ -1976,7 +2014,7 @@ func show_buff_trigger_info(
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
 	info["skills"] = UnitInfoText.format_buff(buff, true)
 	_show_info_card(info)
-	play_combat_skill_info_reel_intro()
+	play_combat_buff_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
 	_auto_info_until_clock = _fx_clock + life
 
