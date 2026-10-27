@@ -996,19 +996,27 @@ func _check_finished() -> void:
 			_finish(true)
 			return
 		if count_alive(UnitInstance.Team.PLAYER) == 0 and not suppress_player_wipe_loss:
-			_finish(false)
+			if not _defer_wipe_check_for_pending_effects():
+				_finish(false)
 		return
 	var player_alive := count_alive(UnitInstance.Team.PLAYER)
 	var enemy_alive := count_alive(UnitInstance.Team.ENEMY)
 	## 对砍同归于尽：同帧双方清空 → 清敌胜（见 COMBAT §7.2）
 	if enemy_alive == 0 and player_alive == 0:
-		_finish(true)
+		if not _defer_wipe_check_for_pending_effects():
+			_finish(true)
 		return
 	if player_alive == 0:
 		if not suppress_player_wipe_loss:
-			_finish(false)
+			if not _defer_wipe_check_for_pending_effects():
+				_finish(false)
 	elif enemy_alive == 0:
 		_finish(true)
+
+
+## defer 观战：队首仍有待结算技能（如禁卫 OnKill 策反）时勿判胜负。
+func _defer_wipe_check_for_pending_effects() -> bool:
+	return has_pending_effects()
 
 
 func _has_alive_boss_leader() -> bool:
