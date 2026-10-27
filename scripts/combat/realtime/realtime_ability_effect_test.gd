@@ -69,6 +69,7 @@ static func run_all() -> bool:
 	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
 	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
 	_check("aftershock_attack_kill_only", _test_aftershock_attack_kill_only())
+	_check("mirror_warden_kill_convert", _test_mirror_warden_kill_convert())
 	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
 	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
@@ -1742,6 +1743,65 @@ static func _test_aftershock_attack_kill_only() -> bool:
 	## 非攻击击杀不触发；普攻打死 1 个后再点残 1 个，应剩 1 个。
 	if alive != 1:
 		push_error("aftershock: expected 1 foe left, alive=%d" % alive)
+		return false
+	return true
+
+
+static func _test_mirror_warden_kill_convert() -> bool:
+	var data := _load_unit("res://resources/units/realtime/mirror_warden.tres")
+	if data == null or data.ability == null or data.ability.id != "kill_convert_event_target_to_ally":
+		push_error("mirror_warden: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 901)
+	var warden := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(4.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 4, {"id": "fodder", "attack": 0}),
+		Vector2(4.5, 8.5),
+	)
+	if warden == null or foe == null:
+		push_error("mirror_warden: spawn failed")
+		return false
+	sim.begin_combat()
+	sim.flush_combat_start_lock()
+	var atk := warden.get_effective_attack()
+	if atk < 4:
+		push_error("mirror_warden: atk too low %d" % atk)
+		return false
+	sim._pipeline.resolve_hit(warden, foe, atk, 0.0, sim.get_units())
+	sim._drain_effects(true)
+	if not foe.is_alive():
+		push_error("mirror_warden: foe should survive as ally")
+		return false
+	if foe.get_team() != UnitInstance.Team.PLAYER:
+		push_error("mirror_warden: foe team not player")
+		return false
+	if foe.unit.current_hp != foe.unit.get_effective_max_hp():
+		push_error("mirror_warden: foe not at max hp")
+		return false
+	if not foe.unit.is_battle_converted:
+		push_error("mirror_warden: missing battle_converted flag")
+		return false
+	var fodder2 := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 3, {"id": "fodder2", "attack": 0}),
+		Vector2(3.5, 8.5),
+	)
+	sim._pipeline.apply_damage(warden.unit, fodder2, 99)
+	sim._drain_effects(true)
+	if fodder2.is_alive():
+		push_error("mirror_warden: skill-like kill should not convert")
+		return false
+	var boss := sim.add_unit(
+		RealtimeCombatSimTest.make_unit(
+			UnitInstance.Team.ENEMY,
+			{"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2},
+		),
+		Vector2(6.5, 6.5),
+	)
+	sim._pipeline.resolve_hit(warden, boss, 9999, 0.0, sim.get_units())
+	sim._drain_effects(true)
+	if boss.is_alive() or boss.get_team() == UnitInstance.Team.PLAYER:
+		push_error("mirror_warden: boss should die, not convert")
 		return false
 	return true
 

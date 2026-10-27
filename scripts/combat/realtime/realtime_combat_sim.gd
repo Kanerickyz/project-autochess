@@ -753,10 +753,8 @@ func _advance_projectiles() -> void:
 func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: float) -> void:
 	if splash_radius > 0.0:
 		splash_triggered.emit(target.position, splash_radius)
-	var killed := _pipeline.resolve_hit(source, target, damage, splash_radius, _units)
-	for rt in killed:
-		unit_died.emit(rt)
-	_drain_effects()
+	_pipeline.resolve_hit(source, target, damage, splash_radius, _units)
+	_drain_effects(true)
 
 
 func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
@@ -1382,6 +1380,7 @@ func _setup_effect_resolver() -> void:
 	_effect_pipeline.set_rng(_rng)
 	_effect_pipeline.defer_death_removal = true
 	_effect_resolver = EffectResolver.new(_effect_grid, _bus, _effect_pipeline, _rng)
+	_effect_resolver.set_battle_convert_handler(_battle_convert_kill_target)
 	_bus.combat_event.connect(_effect_resolver.on_event)
 	## economy 由外部 set_economy 注入；重建 resolver 后需再调一次。
 	for rt in _units:
@@ -1447,14 +1446,64 @@ func _drain_effects(force: bool = false) -> void:
 		return
 	if defer_effect_resolve and not force:
 		return
-	var guard := EFFECT_DRAIN_GUARD
-	while _effect_resolver.has_pending_steps() and guard > 0:
-		_sync_effect_grid_from_rt_positions()
-		_effect_resolver.process_next_step()
-		_sync_rt_positions_from_effect_grid()
-		_sync_effect_spawns_from_grid()
-		_sync_deaths_from_hp()
-		guard -= 1
+	var outer := 8
+	while outer > 0:
+		outer -= 1
+		var guard := EFFECT_DRAIN_GUARD
+		while _effect_resolver.has_pending_steps() and guard > 0:
+			_sync_effect_grid_from_rt_positions()
+			_effect_resolver.process_next_step()
+			_sync_rt_positions_from_effect_grid()
+			_sync_effect_spawns_from_grid()
+			_sync_deaths_from_hp()
+			guard -= 1
+		if not _finalize_pending_deaths():
+			break
+
+
+func _finalize_pending_deaths() -> bool:
+	if _pipeline == null:
+		return false
+	var entries := _pipeline.take_pending_death_finalizations()
+	if entries.is_empty():
+		return false
+	for entry in entries:
+		var rt: RtUnit = entry.get("target")
+		if rt != null and rt.is_alive():
+			continue
+		_pipeline.emit_post_kill_death_events(entry)
+		if rt != null:
+			unit_died.emit(rt)
+	return true
+
+
+func _battle_convert_kill_target(owner: UnitInstance, target: UnitInstance) -> bool:
+	if owner == null or target == null or target.is_boss_leader():
+		return false
+	if owner.team == target.team:
+		return false
+	var rt := _find_rt_for_unit(target)
+	if rt == null:
+		return false
+	target.team = owner.team
+	target.deck_entry_id = -1
+	target.is_battle_converted = true
+	target.combat_statuses.clear()
+	target.current_hp = target.get_effective_max_hp()
+	rt.state = RtUnit.State.MOVING
+	rt.target = null
+	rt.skip_deploy()
+	var cell := rt.get_cell()
+	_occupy_footprint(rt, cell)
+	target.grid_pos = cell
+	_register_on_effect_grid(target, cell)
+	var payload := CombatEventPayload.new()
+	payload.source = owner
+	payload.target = target
+	payload.to_cell = cell
+	_bus_emit(CombatEvents.ON_FRIEND_SUMMONED, payload)
+	_bus_emit(CombatEvents.ON_SUMMONED, payload)
+	return true
 
 
 ## 实时战场走位后，效果格仍可能是开战落点；技能选目标/瞬移前须与 RtUnit 对齐。

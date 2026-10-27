@@ -21,6 +21,8 @@ var stat_modifiers: StatModifierStack = StatModifierStack.new()
 var combat_statuses: CombatStatusStack = CombatStatusStack.new()
 ## 战中召唤随从（技能生成 / Boss 衍生小兵等）；溃散与上限计数用。
 var is_combat_summon: bool = false
+## 本场由策反等效果转入友方阵营的敌方单位；无 DeckEntry，遭遇结束清场。
+var is_battle_converted: bool = false
 ## 本场已成功生成的随从只数（统计用；不设每角色上限）。
 var combat_summons_spawned: int = 0
 ## 本场经 EffectResolver HEAL 累计受疗量（计在受疗单位上；含友方疗己）。
