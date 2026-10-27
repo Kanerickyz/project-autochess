@@ -296,6 +296,8 @@ var _inspect_finger := Vector2.ZERO
 var _auto_info_until_clock: float = -1.0
 ## 战斗技能播报期间禁止 SKILL_INFO 定时收卡（见 RealtimeBattleController）。
 var _combat_skill_info_pin: int = 0
+## 观战技能播报卡（右下角）；与长按 _info_shown 分离，避免棋盘压暗/抬起。
+var _combat_broadcast_info := false
 const SKILL_INFO_SECONDS := 1.35
 
 ## 战场与商店不再铺半透明格和线框。角色库仍用卡牌底板；出售/锁定只在拖到格子上时加高亮。
@@ -328,6 +330,7 @@ func _process(delta: float) -> void:
 		if not _press_active:
 			_hide_all_info_cards()
 			_info_shown = false
+			_combat_broadcast_info = false
 			_shown_info = {}
 			_clear_inspect_focus()
 		_auto_info_until_clock = -1.0
@@ -1706,6 +1709,7 @@ func is_info_card_visible() -> bool:
 func _hide_all_info_cards() -> void:
 	_info_card.hide_info()
 	_info_card.top_level = false
+	_combat_broadcast_info = false
 	_hide_info_attachments()
 
 
@@ -1782,6 +1786,19 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 		var bounds := Rect2(Vector2.ZERO, size)
 		_info_card.show_info(info, head, foot, bounds, slide_dir)
 		_show_info_attachments(attachments, bounds, slide_dir, false)
+	queue_redraw()
+
+
+## 战斗内技能/增益播报：主卡固定战场右下角，不跟单位头顶、不拉附属卡栈。
+func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
+	if info.is_empty():
+		return
+	_combat_broadcast_info = true
+	_shown_info = info
+	_hide_info_attachments()
+	_info_card.top_level = false
+	var bounds := Rect2(Vector2.ZERO, size)
+	_info_card.show_info_combat_corner(info, bounds, slide_dir)
 	queue_redraw()
 
 
@@ -1928,9 +1945,10 @@ func show_skill_trigger_info(
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
+	info.erase("attachments")
 	if not skills_override.is_empty():
 		info["skills"] = skills_override
-	_show_info_card(info)
+	_show_combat_broadcast_info_card(info)
 	play_combat_skill_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
 	bump_combat_skill_info_visibility(life)
@@ -2053,8 +2071,9 @@ func show_buff_trigger_info(
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
+	info.erase("attachments")
 	info["skills"] = UnitInfoText.format_buff(buff, true)
-	_show_info_card(info)
+	_show_combat_broadcast_info_card(info)
 	play_combat_buff_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
 	bump_combat_skill_info_visibility(life)
