@@ -36,6 +36,10 @@ static func run_all() -> bool:
 	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
 	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
 	_check("enemy_death_nearby_allies_atk_hp_small", _test_enemy_death_nearby_allies_atk_hp_small())
+	_check("mend_friar_enemy_death_lr_allies", _test_mend_friar_enemy_death_lr_allies())
+	_check("mend_friar_enemy_death_lr_allies_star2", _test_mend_friar_enemy_death_lr_allies_star2())
+	_check("dirge_horn_friend_summon_lr_allies", _test_dirge_horn_friend_summon_lr_allies())
+	_check("dirge_horn_friend_summon_lr_allies_star2", _test_dirge_horn_friend_summon_lr_allies_star2())
 	_check("survive_turn_end_bank_turn_refresh", _test_survive_turn_end_bank_turn_refresh())
 	_check("scatter_hex_friend_kill_damage", _test_scatter_hex_friend_kill_damage())
 	_check("scatter_hex_friend_kill_damage_star2", _test_scatter_hex_friend_kill_damage_star2())
@@ -421,6 +425,9 @@ static func _test_valkyrie_friend_summon_nearby_atk_hp() -> bool:
 	if data.ability.id != "friend_summon_nearby_ally_atk_hp_1" or data.ability.merge_value_mult != 3:
 		push_error("valkyrie: ability not mounted")
 		return false
+	if data.tier != 3:
+		push_error("valkyrie: expected tier 3")
+		return false
 	var sim: RealtimeCombatSim = built["sim"]
 	var holder: RtUnit = built["holder"]
 	var near: RtUnit = built["near"]
@@ -676,6 +683,9 @@ static func _test_enemy_death_nearby_allies_atk_hp_small() -> bool:
 	if data == null or data.ability == null or data.ability.id != "enemy_death_nearby_allies_atk_hp_small":
 		push_error("blade_mender: ability not mounted")
 		return false
+	if data.tier != 3:
+		push_error("blade_mender: expected tier 3")
+		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 46)
 	var mender := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
@@ -704,6 +714,158 @@ static func _test_enemy_death_nearby_allies_atk_hp_small() -> bool:
 		return false
 	if far_ally.unit.get_effective_attack() != far_atk0:
 		push_error("blade_mender: far ally should not be buffed")
+		return false
+	return true
+
+
+static func _test_mend_friar_enemy_death_lr_allies() -> bool:
+	return _mend_friar_enemy_death_lr_expect(1, 1)
+
+
+static func _test_mend_friar_enemy_death_lr_allies_star2() -> bool:
+	return _mend_friar_enemy_death_lr_expect(2, 3)
+
+
+static func _mend_friar_enemy_death_lr_expect(star_level: int, expected_delta: int) -> bool:
+	var data := _load_unit("res://resources/units/realtime/mend_friar.tres")
+	if data == null or data.ability == null:
+		push_error("mend_friar_lr: ability missing")
+		return false
+	if data.ability.id != "enemy_death_lr_allies_atk_hp_small":
+		push_error("mend_friar_lr: wrong ability id %s" % data.ability.id)
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("mend_friar_lr: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 461 + star_level)
+	var friar := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	friar.unit.level = star_level
+	var left := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_left", "steps_per_turn": 0}),
+		Vector2(8.5, 24.5),
+	)
+	var right := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_right", "steps_per_turn": 0}),
+		Vector2(10.5, 24.5),
+	)
+	var up := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_up", "steps_per_turn": 0}),
+		Vector2(9.5, 23.5),
+	)
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_mf", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.begin_combat()
+	var left_atk0 := left.unit.get_effective_attack()
+	var right_atk0 := right.unit.get_effective_attack()
+	var up_atk0 := up.unit.get_effective_attack()
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("mend_friar_lr: failed to kill enemy")
+		return false
+	sim._drain_effects()
+	if left.unit.get_effective_attack() != left_atk0 + expected_delta:
+		push_error(
+			"mend_friar_lr %d★: left atk %d expected %d"
+			% [star_level, left.unit.get_effective_attack(), left_atk0 + expected_delta]
+		)
+		return false
+	if right.unit.get_effective_attack() != right_atk0 + expected_delta:
+		push_error("mend_friar_lr: right ally expected +%d atk" % expected_delta)
+		return false
+	if up.unit.get_effective_attack() != up_atk0:
+		push_error("mend_friar_lr: up ally should not be buffed")
+		return false
+	return true
+
+
+static func _setup_summon_lr(unit_path: String, level: int, seed: int) -> Dictionary:
+	var data := _load_unit(unit_path)
+	if data == null or data.ability == null:
+		return {}
+	var sim := _new_sim()
+	sim.configure(ARENA, seed)
+	var holder := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
+	holder.unit.level = level
+	var left := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_left", "attack": 3}),
+		Vector2(8.5, 22.5),
+	)
+	var right := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_right", "attack": 3}),
+		Vector2(10.5, 22.5),
+	)
+	var up := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "lr_up", "attack": 3}),
+		Vector2(9.5, 21.5),
+	)
+	var far := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "far_ally", "attack": 3}),
+		Vector2(12.5, 22.5),
+	)
+	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(9.5, 4.5))
+	sim.begin_combat()
+	return {
+		"data": data,
+		"sim": sim,
+		"holder": holder,
+		"left": left,
+		"right": right,
+		"up": up,
+		"far": far,
+	}
+
+
+static func _test_dirge_horn_friend_summon_lr_allies() -> bool:
+	var built := _setup_summon_lr("res://resources/units/realtime/dirge_horn.tres", 1, 95)
+	if built.is_empty():
+		push_error("dirge_horn_lr: setup failed")
+		return false
+	var data: UnitData = built["data"]
+	if data.ability.id != "friend_summon_lr_allies_atk_hp_1" or data.ability.merge_value_mult != 3:
+		push_error("dirge_horn_lr: ability not mounted")
+		return false
+	var sim: RealtimeCombatSim = built["sim"]
+	var holder: RtUnit = built["holder"]
+	var left: RtUnit = built["left"]
+	var right: RtUnit = built["right"]
+	var up: RtUnit = built["up"]
+	var far: RtUnit = built["far"]
+	var holder_atk := holder.unit.get_effective_attack()
+	var left_atk := left.unit.get_effective_attack()
+	var right_atk := right.unit.get_effective_attack()
+	var up_atk := up.unit.get_effective_attack()
+	var far_atk := far.unit.get_effective_attack()
+	_spawn_combat_minion(sim)
+	sim._drain_effects(true)
+	if holder.unit.get_effective_attack() != holder_atk:
+		push_error("dirge_horn_lr: holder should not buff self")
+		return false
+	if left.unit.get_effective_attack() != left_atk + 1 or right.unit.get_effective_attack() != right_atk + 1:
+		push_error("dirge_horn_lr: left/right expected +1 atk")
+		return false
+	if up.unit.get_effective_attack() != up_atk or far.unit.get_effective_attack() != far_atk:
+		push_error("dirge_horn_lr: up or far should stay unchanged")
+		return false
+	return true
+
+
+static func _test_dirge_horn_friend_summon_lr_allies_star2() -> bool:
+	var built := _setup_summon_lr("res://resources/units/realtime/dirge_horn.tres", 2, 96)
+	if built.is_empty():
+		return false
+	var left: RtUnit = built["left"]
+	var left_atk := left.unit.get_effective_attack()
+	var left_max := left.unit.get_effective_max_hp()
+	_spawn_combat_minion(built["sim"])
+	built["sim"]._drain_effects(true)
+	if left.unit.get_effective_attack() != left_atk + 3:
+		push_error("dirge_horn_lr 2★: atk expected +3")
+		return false
+	if left.unit.get_effective_max_hp() != left_max + 3:
+		push_error("dirge_horn_lr 2★: max_hp expected +3")
 		return false
 	return true
 
