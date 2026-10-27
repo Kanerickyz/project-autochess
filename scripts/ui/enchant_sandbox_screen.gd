@@ -56,7 +56,7 @@ func _on_enchant_session_finished(did_fuse: bool) -> void:
 	if _leaving or _battle == null:
 		return
 	if not did_fuse:
-		get_tree().change_scene_to_file(MAIN_MENU_PATH)
+		await SceneTransition.change_scene_to_file(MAIN_MENU_PATH)
 		return
 	await get_tree().process_frame
 	await _battle.enter_enchant(0.0, true)
@@ -66,4 +66,4 @@ func _on_back_pressed() -> void:
 	_leaving = true
 	if _battle != null and _battle.get_phase() == RealtimeBattleController.Phase.ENCHANT:
 		_battle.exit_enchant()
-	get_tree().change_scene_to_file(MAIN_MENU_PATH)
+	await SceneTransition.change_scene_to_file(MAIN_MENU_PATH)
