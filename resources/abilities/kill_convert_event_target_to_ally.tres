@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 23
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnKill"
+target_selector = 1
+condition = 5
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "kill_convert_event_target_to_ally"
+display_name = "击杀时 策反目标满血加入（仅本场）"
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

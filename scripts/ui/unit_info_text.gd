@@ -613,6 +613,8 @@ static func format_action(
 		EffectAction.Type.SPLIT_SELF:
 			var split_hp := maxi(1, action.spawn_hp_override if action.spawn_hp_override > 0 else 1)
 			return "按当前生命分裂为等量分身（继承攻击，%d 血）" % split_hp
+		EffectAction.Type.CONVERT_KILL_TARGET_TO_ALLY:
+			return "策反击杀目标满血加入（仅本场）"
 		EffectAction.Type.DEAL_DAMAGE:
 			if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 				return "造成 %d%% 攻击力伤害" % action.percent

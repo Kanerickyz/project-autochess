@@ -5,6 +5,8 @@ extends RefCounted
 
 var _bus: CombatEventBus
 var _rng: RandomNumberGenerator
+## 致死但未发 OnDeath 的条目；须在 OnKill 效果排空后由模拟层 finalize（策反等可撤销死亡）。
+var _pending_death_finalizations: Array[Dictionary] = []
 
 
 func _init(bus: CombatEventBus, rng: RandomNumberGenerator = null) -> void:
@@ -94,19 +96,41 @@ func resolve_hit(
 		var tgt2: RtUnit = death["target"]
 		if tgt2.state == RtUnit.State.DEAD:
 			continue
-		var src2: UnitInstance = death["source"]
-		var rolled2: int = int(death["rolled"])
-		var hp_before2: int = int(death.get("hp_before", -1))
-		tgt2.state = RtUnit.State.DEAD
-		tgt2.target = null
-		_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, hp_before2)
-		_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2)
-		_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2)
-		if src2 != null:
-			_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2, true)
-			_emit(CombatEvents.ON_FRIEND_KILL, src2, tgt2.unit, rolled2, hp_before2, true)
+		_stage_lethal_kill(death, true)
 		killed.append(tgt2)
 	return killed
+
+
+func take_pending_death_finalizations() -> Array[Dictionary]:
+	var out := _pending_death_finalizations.duplicate()
+	_pending_death_finalizations.clear()
+	return out
+
+
+func emit_post_kill_death_events(death: Dictionary) -> void:
+	var tgt2: RtUnit = death.get("target")
+	if tgt2 == null:
+		return
+	var src2: UnitInstance = death.get("source")
+	var rolled2: int = int(death.get("rolled", 0))
+	var hp_before2: int = int(death.get("hp_before", -1))
+	_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+	_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+	_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+
+
+func _stage_lethal_kill(death: Dictionary, from_attack: bool) -> void:
+	var tgt2: RtUnit = death["target"]
+	var src2: UnitInstance = death["source"]
+	var rolled2: int = int(death["rolled"])
+	var hp_before2: int = int(death.get("hp_before", -1))
+	tgt2.state = RtUnit.State.DEAD
+	tgt2.target = null
+	if src2 != null:
+		_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack)
+		_emit(CombatEvents.ON_FRIEND_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack)
+	death["from_attack"] = from_attack
+	_pending_death_finalizations.append(death)
 
 
 ## 防守方能否对行动者反打：双方存活、防守方未在部署、行动者在其攻距内。
@@ -167,14 +191,15 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if target.unit.is_alive():
 		return false
 
-	target.state = RtUnit.State.DEAD
-	target.target = null
-	_emit(CombatEvents.ON_DEATH, source, target.unit, final_amount, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, final_amount, hp_before)
-	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, final_amount, hp_before)
-	if source != null:
-		_emit(CombatEvents.ON_KILL, source, target.unit, final_amount, hp_before)
-		_emit(CombatEvents.ON_FRIEND_KILL, source, target.unit, final_amount, hp_before)
+	_stage_lethal_kill(
+		{
+			"source": source,
+			"target": target,
+			"rolled": final_amount,
+			"hp_before": hp_before,
+		},
+		false,
+	)
 	return true
 
 
@@ -190,14 +215,15 @@ func apply_direct_hp_loss(source: UnitInstance, target: RtUnit, amount: int) -> 
 	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, amount, hp_before)
 	if target.unit.is_alive():
 		return false
-	target.state = RtUnit.State.DEAD
-	target.target = null
-	_emit(CombatEvents.ON_DEATH, source, target.unit, amount, hp_before)
-	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, amount, hp_before)
-	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, amount, hp_before)
-	if source != null:
-		_emit(CombatEvents.ON_KILL, source, target.unit, amount, hp_before)
-		_emit(CombatEvents.ON_FRIEND_KILL, source, target.unit, amount, hp_before)
+	_stage_lethal_kill(
+		{
+			"source": source,
+			"target": target,
+			"rolled": amount,
+			"hp_before": hp_before,
+		},
+		false,
+	)
 	return true
 
 

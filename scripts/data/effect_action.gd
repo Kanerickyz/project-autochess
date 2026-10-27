@@ -34,6 +34,8 @@ enum Type {
 	## 战斗内状态叠层（stat_name = CombatStatusStack 状态 id；value = 层数）。
 	APPLY_COMBAT_STATUS,
 	REMOVE_COMBAT_STATUS,
+	## 击杀策反：将事件目标改为持有者同队、满血并清空本场战斗状态（首领免疫；见 UNIT_ABILITIES §6.1）。
+	CONVERT_KILL_TARGET_TO_ALLY,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

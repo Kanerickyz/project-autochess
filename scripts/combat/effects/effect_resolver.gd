@@ -15,6 +15,7 @@ var _economy: RunEconomy
 var _spec_trigger_counts: Dictionary = {}
 ## 技能 DEAL_DAMAGE 执行期间抑制 OnDealDamage 再入队，避免捎带伤连环刷触发。
 var _suppress_deal_damage_triggers: int = 0
+var _battle_convert_handler: Callable = Callable()
 
 
 func _init(
@@ -37,6 +38,10 @@ func set_deck_state(deck_state: DeckState) -> void:
 
 func set_economy(economy: RunEconomy) -> void:
 	_economy = economy
+
+
+func set_battle_convert_handler(handler: Callable) -> void:
+	_battle_convert_handler = handler
 
 
 func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
@@ -1033,6 +1038,14 @@ func _execute_action(
 				]
 			)
 			executed = true
+		EffectAction.Type.CONVERT_KILL_TARGET_TO_ALLY:
+			if owner == null or target == null or target.is_boss_leader():
+				return false
+			if owner.team == target.team:
+				return false
+			if not _battle_convert_handler.is_valid():
+				return false
+			executed = bool(_battle_convert_handler.call(owner, target))
 		EffectAction.Type.DEAL_DAMAGE:
 			if _pipeline == null or target == null or not target.is_alive():
 				return false

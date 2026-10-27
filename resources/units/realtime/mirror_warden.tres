@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Resource" uid="uid://vqgnuthvdwk16" path="res://resources/abilities/death_spawn_strong_copy.tres" id="3_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/kill_convert_event_target_to_ally.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_mirror_warden"]
 script = ExtResource("2_stats")
