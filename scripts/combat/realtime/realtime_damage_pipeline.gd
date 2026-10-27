@@ -62,6 +62,9 @@ func resolve_hit(
 		if tgt == null or not tgt.is_alive() or amount <= 0:
 			continue
 		var rolled := amount
+		if src != null:
+			rolled = CombatStatusStack.adjust_attack_damage(rolled, src)
+		rolled = CombatStatusStack.adjust_incoming_before_armor(rolled, tgt.unit)
 		## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
 		var final_amount := tgt.unit.mitigate_incoming_damage(rolled)
 		if final_amount <= 0:
@@ -149,7 +152,7 @@ static func collect_splash_victims(
 func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if target == null or not target.is_alive() or amount <= 0:
 		return false
-	var rolled := amount
+	var rolled := CombatStatusStack.adjust_incoming_before_armor(amount, target.unit)
 	## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
 	var final_amount := target.unit.mitigate_incoming_damage(rolled)
 	if final_amount <= 0:
@@ -172,6 +175,29 @@ func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if source != null:
 		_emit(CombatEvents.ON_KILL, source, target.unit, final_amount, hp_before)
 		_emit(CombatEvents.ON_FRIEND_KILL, source, target.unit, final_amount, hp_before)
+	return true
+
+
+## 中毒等：直扣生命，不走护甲与虚弱。
+func apply_direct_hp_loss(source: UnitInstance, target: RtUnit, amount: int) -> bool:
+	if target == null or not target.is_alive() or amount <= 0:
+		return false
+	var hp_before := target.unit.current_hp
+	target.unit.current_hp = maxi(0, target.unit.current_hp - amount)
+	if target.unit.is_alive():
+		_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, amount, hp_before)
+		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, amount, hp_before)
+	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, amount, hp_before)
+	if target.unit.is_alive():
+		return false
+	target.state = RtUnit.State.DEAD
+	target.target = null
+	_emit(CombatEvents.ON_DEATH, source, target.unit, amount, hp_before)
+	_emit(CombatEvents.ON_FRIEND_DEATH, source, target.unit, amount, hp_before)
+	_emit(CombatEvents.ON_ENEMY_DEATH, source, target.unit, amount, hp_before)
+	if source != null:
+		_emit(CombatEvents.ON_KILL, source, target.unit, amount, hp_before)
+		_emit(CombatEvents.ON_FRIEND_KILL, source, target.unit, amount, hp_before)
 	return true
 
 

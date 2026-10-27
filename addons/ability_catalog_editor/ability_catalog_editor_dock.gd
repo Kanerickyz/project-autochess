@@ -43,6 +43,8 @@ const ACTION_TYPE_ENTRIES: Array[Dictionary] = [
 	{"id": EffectAction.Type.HEAL, "label": "治疗"},
 	{"id": EffectAction.Type.SPAWN_UNIT, "label": "召唤单位"},
 	{"id": EffectAction.Type.DEAL_DAMAGE, "label": "造成伤害"},
+	{"id": EffectAction.Type.APPLY_COMBAT_STATUS, "label": "施加战斗状态"},
+	{"id": EffectAction.Type.REMOVE_COMBAT_STATUS, "label": "驱散战斗状态"},
 	{"id": EffectAction.Type.SET_HP_FROM_ALLY_PERCENT, "label": "复制生命%"},
 	{"id": EffectAction.Type.GRANT_GOLD, "label": "获得金币"},
 	{"id": EffectAction.Type.PERMANENT_DECK_STAT, "label": "永久牌库属性"},

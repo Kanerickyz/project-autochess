@@ -1,7 +1,7 @@
 # 战斗
 
 > 功能规格 · 只谈一场遭遇内的流程与职责，不写具体数值 · 2026-10-16  
-> 相关文档：[游戏基础循环](./GAME_LOOP.md) · [地图与节点](./MAP.md) · [战斗关卡](./COMBATLEVEL.md) · [队伍强度抽阵](./ENEMY_SPAWN_BUDGET.md) · [Boss](./BOSS.md) · [游戏愿景](../GAME_VISION.md) · [玩家](./PLAYER.md) · [角色单位](./UNITS.md) · [角色技能](./UNIT_ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
+> 相关文档：[游戏基础循环](./GAME_LOOP.md) · [地图与节点](./MAP.md) · [战斗关卡](./COMBATLEVEL.md) · [队伍强度抽阵](./ENEMY_SPAWN_BUDGET.md) · [Boss](./BOSS.md) · [游戏愿景](../GAME_VISION.md) · [玩家](./PLAYER.md) · [角色单位](./UNITS.md) · [角色技能](./UNIT_ABILITIES.md) · [战斗状态](./COMBAT_STATUS.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
 > **本版不写**：攻防点数、敌方占座具体名单、单动秒数定死；技能积木全表；商店购买细则；地图选路；出手条 / 速度条 UI。  
 > **【玩家准备 To-Be】** 准备：按**持久占位**载入队伍 → 可换座（写回持久占位）→ 点开战；开战**完全不能改阵**。无号令；无遭遇内抽牌 / 手牌刷新。席位上限本版固定 5。见 [玩家](./PLAYER.md)。  
 > **【胜后】** 普通 / 精英胜 → **招募**再回地图；Boss 胜直接通关。见 [招募](./RECRUIT.md) / [循环](./GAME_LOOP.md)。本篇不写招募操作细则。  

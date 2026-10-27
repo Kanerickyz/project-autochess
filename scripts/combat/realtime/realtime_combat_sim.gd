@@ -506,6 +506,20 @@ func _tick_all_deploying() -> void:
 			rt.state = RtUnit.State.MOVING
 
 
+## 中毒在 ON_ROUND_START 之前；致死则本动不进入回合开始技能。
+func _apply_poison_tick_before_round_start(actor: RtUnit) -> bool:
+	if actor == null or actor.unit == null or not actor.is_alive():
+		return false
+	var poison_stacks := actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if poison_stacks <= 0:
+		return true
+	if _pipeline == null:
+		return actor.is_alive()
+	_pipeline.apply_direct_hp_loss(null, actor, poison_stacks)
+	_sync_deaths_from_hp()
+	return actor.is_alive()
+
+
 func _begin_next_actor_turn() -> void:
 	_current_actor = null
 	_actor_turn_active = false
@@ -533,8 +547,12 @@ func _begin_next_actor_turn() -> void:
 			## 首领召唤冷却按「自己的行动次数」递减。
 			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
 				candidate.boss_summon_cooldown_left -= 1
-			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
 			_sync_effect_grid_from_rt_positions()
+			if not _apply_poison_tick_before_round_start(candidate):
+				_queue_cursor += 1
+				scanned += 1
+				continue
+			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
 			var payload := CombatEventPayload.new()
 			payload.source = candidate.unit
 			payload.target = candidate.unit

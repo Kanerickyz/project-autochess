@@ -1,8 +1,9 @@
 class_name UnitInfoText
 extends RefCounted
 
-## 长按信息卡附属类型（`attachments[]` 顺序即叠放顺序；v1 仅 equipment）。
+## 长按信息卡附属类型（`attachments[]` 顺序即叠放顺序：装备 → 战斗状态）。
 const INFO_ATTACHMENT_KIND_EQUIPMENT := &"equipment"
+const INFO_ATTACHMENT_KIND_STATUS := &"status"
 
 ## 技能介绍卡内联攻/血/金币图标占位；RichTextLabel 再换成脚下同款贴图。
 const STAT_ICON_ATK := "⟦ATK⟧"
@@ -228,22 +229,63 @@ static func collect_info_attachments_from_entry(
 	return out
 
 
+static func build_status_attachment_info(
+	status_id: StringName, stacks: int, with_stat_icons: bool = true
+) -> Dictionary:
+	if stacks <= 0 or not CombatStatusStack.is_valid_id(status_id):
+		return {}
+	var summary := CombatStatusStack.get_rule_summary(status_id)
+	var body := "%s\n%d 层" % [summary, stacks]
+	return {
+		"is_attachment": true,
+		"attachment_kind": INFO_ATTACHMENT_KIND_STATUS,
+		"attachment_kind_label": "状态",
+		"name": CombatStatusStack.get_display_name(status_id),
+		"side_player": true,
+		"tier": 0,
+		"attack": 0,
+		"hp": 0,
+		"armor": 0,
+		"skills": body,
+		"recruit_cost": -1,
+	}
+
+
+static func collect_combat_status_attachments(
+	unit: UnitInstance, _with_stat_icons: bool = true
+) -> Array:
+	var out: Array = []
+	if unit == null:
+		return out
+	for status_id in CombatStatusStack.DISPLAY_ORDER:
+		var stacks := unit.combat_statuses.get_stacks(status_id)
+		if stacks <= 0:
+			continue
+		var info := build_status_attachment_info(status_id, stacks, _with_stat_icons)
+		if not info.is_empty():
+			out.append(info)
+	return out
+
+
 static func collect_info_attachments_from_unit(
 	unit: UnitInstance, with_stat_icons: bool = true
 ) -> Array:
 	if unit == null:
 		return []
+	var out: Array = []
 	var entry := unit.get_linked_deck_entry()
 	if entry != null and entry.equipment != null:
 		var max_armor := entry.equipment_armor_max
 		if max_armor <= 0:
 			max_armor = entry.equipment.get_armor_block()
-		var info := build_equipment_attachment_info(
+		var eq_info := build_equipment_attachment_info(
 			entry.equipment, unit.get_armor_block(), max_armor, with_stat_icons
 		)
-		if not info.is_empty():
-			return [info]
-	return []
+		if not eq_info.is_empty():
+			out.append(eq_info)
+	for status_info in collect_combat_status_attachments(unit, with_stat_icons):
+		out.append(status_info)
+	return out
 
 
 static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) -> String:
@@ -611,6 +653,18 @@ static func format_action(
 		EffectAction.Type.FUSE_EXPLODE:
 			var round := maxi(1, action.threshold)
 			return "第%d回合开始时，对剩余血量范围内敌人造成当前攻击伤害并自身死亡" % round
+		EffectAction.Type.APPLY_COMBAT_STATUS:
+			return "施加 %s %d 层" % [
+				CombatStatusStack.get_display_name(action.stat_name),
+				scaled_value,
+			]
+		EffectAction.Type.REMOVE_COMBAT_STATUS:
+			if scaled_value <= 0:
+				return "驱散 %s" % CombatStatusStack.get_display_name(action.stat_name)
+			return "驱散 %s %d 层" % [
+				CombatStatusStack.get_display_name(action.stat_name),
+				scaled_value,
+			]
 	return ""
 
 
