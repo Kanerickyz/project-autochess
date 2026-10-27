@@ -239,6 +239,7 @@ static func build_status_attachment_info(
 	return {
 		"is_attachment": true,
 		"attachment_kind": INFO_ATTACHMENT_KIND_STATUS,
+		"status_id": status_id,
 		"attachment_kind_label": "状态",
 		"name": CombatStatusStack.get_display_name(status_id),
 		"side_player": true,

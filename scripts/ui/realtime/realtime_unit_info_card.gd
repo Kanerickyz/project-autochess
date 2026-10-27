@@ -30,6 +30,10 @@ const FINGER_TILT := 0.035
 const FINGER_MAX_OFFSET := 28.0
 const SHADOW_REST := 6
 const SHADOW_LIFT := 14
+## 结算 Reel：技能/装备/buff 正文轻抖（COMBAT_FEEDBACK §5.3）。
+const REEL_SHAKE_ROT_DEG := 3.2
+const REEL_SHAKE_OFFSET_PX := 5.0
+const REEL_SHAKE_STEP_SEC := 0.045
 
 
 class StatBadge:
@@ -63,6 +67,7 @@ var _gold_badge: StatBadge
 var _skills_label: RichTextLabel
 var _style: StyleBoxFlat
 var _motion: Tween
+var _reel_tween: Tween
 var _rest_position := Vector2.ZERO
 var _follow_offset := Vector2.ZERO
 var _base_rotation := 0.0
@@ -259,8 +264,29 @@ func follow_finger(finger_local: Vector2) -> void:
 	scale = Vector2.ONE * _base_scale
 
 
+## 结算拍：抖动技能/附属正文区（不打断弹出动画用的 _motion）。
+func play_settlement_reel_shake(speed_scale: float = 1.0) -> void:
+	if not _open or not visible:
+		return
+	_kill_reel_tween()
+	var speed := maxf(0.25, speed_scale)
+	var rot := REEL_SHAKE_ROT_DEG
+	var off := REEL_SHAKE_OFFSET_PX
+	_skills_label.rotation_degrees = 0.0
+	_skills_label.position = Vector2.ZERO
+	_reel_tween = create_tween()
+	_reel_tween.set_speed_scale(speed)
+	_reel_tween.tween_property(_skills_label, "rotation_degrees", rot, REEL_SHAKE_STEP_SEC)
+	_reel_tween.parallel().tween_property(_skills_label, "position:x", off, REEL_SHAKE_STEP_SEC)
+	_reel_tween.tween_property(_skills_label, "rotation_degrees", -rot * 0.55, REEL_SHAKE_STEP_SEC)
+	_reel_tween.parallel().tween_property(_skills_label, "position:x", -off * 0.45, REEL_SHAKE_STEP_SEC)
+	_reel_tween.tween_property(_skills_label, "rotation_degrees", 0.0, REEL_SHAKE_STEP_SEC * 1.35)
+	_reel_tween.parallel().tween_property(_skills_label, "position", Vector2.ZERO, REEL_SHAKE_STEP_SEC * 1.35)
+
+
 func hide_info() -> void:
 	_kill_motion()
+	_kill_reel_tween()
 	_open = false
 	_follow_offset = Vector2.ZERO
 	_base_rotation = 0.0
@@ -496,6 +522,15 @@ func _kill_motion() -> void:
 	if _motion != null and _motion.is_valid():
 		_motion.kill()
 	_motion = null
+
+
+func _kill_reel_tween() -> void:
+	if _reel_tween != null and _reel_tween.is_valid():
+		_reel_tween.kill()
+	_reel_tween = null
+	if _skills_label != null:
+		_skills_label.rotation_degrees = 0.0
+		_skills_label.position = Vector2.ZERO
 
 
 ## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标。

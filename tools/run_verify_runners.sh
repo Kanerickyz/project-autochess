@@ -25,6 +25,7 @@ runners=(
   "res://scripts/ui/realtime/combat_combo_tracker_test_runner.gd"
   "res://scripts/ui/realtime/unit_art_catalog_test_runner.gd"
   "res://scripts/ui/realtime/realtime_unit_motion_test_runner.gd"
+  "res://scripts/ui/realtime/combat_settlement_reel_test_runner.gd"
   "res://scripts/ui/realtime/combat_tape_rewind_test_runner.gd"
   "res://scripts/core/board_grid_distance_test_runner.gd"
   "res://scripts/core/draw_service_test_runner.gd"

@@ -1902,8 +1902,62 @@ func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, h
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	_show_info_card(_info_from_instance(unit, is_player, attack, hp, center))
+	play_combat_skill_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
 	_auto_info_until_clock = _fx_clock + life
+
+
+func play_combat_skill_info_reel_intro() -> void:
+	if not _info_card.visible:
+		return
+	## 等介绍卡弹出后再抖正文，避免与 pop-in 同帧叠满。
+	_info_card.call_deferred("play_settlement_reel_shake", presentation_time_scale)
+
+
+func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
+	var card := _pick_reel_info_card(payload)
+	if card != null:
+		card.play_settlement_reel_shake(presentation_time_scale)
+
+
+func _pick_reel_info_card(payload: CombatEventPayload) -> RealtimeUnitInfoCard:
+	if payload.effect_buff != null and _info_card.visible:
+		return _info_card
+	var entries: Array = payload.effect_entries
+	if entries.is_empty() and payload.effect_action != null:
+		entries = [{"action": payload.effect_action, "target": payload.target}]
+	for entry in entries:
+		if not (entry is Dictionary):
+			continue
+		var action: EffectAction = entry.get("action")
+		if action == null:
+			continue
+		if (
+			action.action_type == EffectAction.Type.APPLY_COMBAT_STATUS
+			or action.action_type == EffectAction.Type.REMOVE_COMBAT_STATUS
+		):
+			var att := _find_status_attachment_card(action.stat_name)
+			if att != null:
+				return att
+	if _info_card.visible:
+		return _info_card
+	return null
+
+
+func _find_status_attachment_card(status_id: StringName) -> RealtimeUnitInfoCard:
+	var attachments: Array = _shown_info.get("attachments", [])
+	for i in attachments.size():
+		var att: Variant = attachments[i]
+		if not (att is Dictionary):
+			continue
+		var dict: Dictionary = att
+		if dict.get("attachment_kind") != UnitInfoText.INFO_ATTACHMENT_KIND_STATUS:
+			continue
+		if dict.get("status_id", &"") == status_id and i < _info_attachment_cards.size():
+			var card := _info_attachment_cards[i]
+			if card.visible:
+				return card
+	return null
 
 
 ## 增益卡战斗结算：与技能相同的信息卡节拍，正文为增益说明。
@@ -1922,6 +1976,7 @@ func show_buff_trigger_info(
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
 	info["skills"] = UnitInfoText.format_buff(buff, true)
 	_show_info_card(info)
+	play_combat_skill_info_reel_intro()
 	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
 	_auto_info_until_clock = _fx_clock + life
 
