@@ -3507,6 +3507,7 @@ func _on_skill_result_done() -> void:
 		_finish_combo_reset_after_skill_tail_if_needed()
 		_release_combat_skill_info_visibility()
 		_sim.try_seed_action_queue()
+		_sim.flush_idle_death_presentations()
 		_sim.release_presentation()
 		return
 	if _sim != null and _sim.has_pending_effects():
@@ -3514,6 +3515,7 @@ func _on_skill_result_done() -> void:
 		return
 	if _sim != null:
 		_sim.try_seed_action_queue()
+		_sim.flush_idle_death_presentations()
 	_timestop_queue.clear()
 	_presentation_block_elapsed = 0.0
 	_finish_combo_reset_after_skill_tail_if_needed()
@@ -3541,6 +3543,7 @@ func _unstick_combat_presentation() -> void:
 		_drain_pending_effects_silent()
 	if _sim != null:
 		_sim.try_seed_action_queue()
+		_sim.flush_idle_death_presentations()
 		_sim.release_presentation()
 	_presentation_block_elapsed = 0.0
 

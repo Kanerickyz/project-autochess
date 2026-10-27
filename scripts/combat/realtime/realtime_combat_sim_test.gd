@@ -56,6 +56,10 @@ static func run_all() -> bool:
 	ok = _check("step_breaks_on_pending_defer", _test_step_breaks_on_pending_defer()) and ok
 	ok = _check("deferred_hit_keeps_chained_skill_batches", _test_deferred_hit_keeps_chained_skill_batches()) and ok
 	ok = _check("deferred_hit_emits_unit_died_for_death_fx", _test_deferred_hit_emits_unit_died_for_death_fx()) and ok
+	ok = _check(
+		"deferred_mirror_warden_convert_before_death_finalize",
+		_test_deferred_mirror_warden_convert_before_death_finalize(),
+	) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -1972,7 +1976,54 @@ static func _test_deferred_hit_emits_unit_died_for_death_fx() -> bool:
 	if foe_rt.unit.current_hp > 0:
 		push_error("defer_death_fx: hit should kill fodder")
 		return false
+	if died[0] != 0:
+		push_error("defer_death_fx: unit_died must wait until skill queue idle")
+		return false
+	sim.flush_idle_death_presentations()
 	if died[0] != 1:
-		push_error("defer_death_fx: expected unit_died on lethal hit, got %d" % died[0])
+		push_error("defer_death_fx: expected unit_died after idle flush, got %d" % died[0])
+		return false
+	return true
+
+
+static func _test_deferred_mirror_warden_convert_before_death_finalize() -> bool:
+	var data := load("res://resources/units/realtime/mirror_warden.tres") as UnitData
+	if data == null:
+		push_error("defer_warden: data")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 996)
+	sim.defer_effect_resolve = true
+	var warden := sim.add_unit(
+		UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER),
+		Vector2(9.5, 20.5),
+	)
+	var foe := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 4, "attack": 0, "id": "fodder"}),
+		Vector2(9.5, 10.5),
+	)
+	sim.begin_combat()
+	var drain_guard := 0
+	while sim.has_pending_effects() and drain_guard < 48:
+		sim.resolve_next_pending_effect()
+		drain_guard += 1
+	var died: Array[int] = [0]
+	sim.unit_died.connect(func(_rt: RtUnit) -> void: died[0] += 1)
+	var atk := warden.get_effective_attack()
+	sim._resolve_hit(warden, foe, atk, 0.0)
+	if not sim.has_pending_effects():
+		push_error("defer_warden: convert batch should be queued")
+		return false
+	sim.flush_idle_death_presentations()
+	if died[0] != 0:
+		push_error("defer_warden: must not finalize death before convert")
+		return false
+	sim.resolve_next_pending_effect()
+	if not foe.is_alive() or foe.get_team() != UnitInstance.Team.PLAYER:
+		push_error("defer_warden: convert failed under defer")
+		return false
+	sim.flush_idle_death_presentations()
+	if died[0] != 0:
+		push_error("defer_warden: converted unit must not emit unit_died")
 		return false
 	return true
