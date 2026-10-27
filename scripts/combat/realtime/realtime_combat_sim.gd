@@ -48,7 +48,7 @@ var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
-## 开战锁阵生成序（友入座序 + 敌配置序，按 add_unit 先后）；用于交错混排。
+## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
 var _lock_spawn_order: Array[RtUnit] = []
 ## 敌我混排固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
 var _action_queue: Array[RtUnit] = []
@@ -462,6 +462,15 @@ func _build_action_queue_from_lock_order() -> void:
 			friends.append(rt)
 		else:
 			enemies.append(rt)
+	var board_h := int(_arena_size.y)
+	friends.sort_custom(
+		func(a: RtUnit, b: RtUnit) -> bool:
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
+	)
+	enemies.sort_custom(
+		func(a: RtUnit, b: RtUnit) -> bool:
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
+	)
 	_action_queue.clear()
 	var boss: RtUnit = null
 	for e in enemies:
