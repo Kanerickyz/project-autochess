@@ -55,6 +55,7 @@ static func run_all() -> bool:
 	ok = _check("windup_advances_under_presentation_hold", _test_windup_advances_under_presentation_hold()) and ok
 	ok = _check("step_breaks_on_pending_defer", _test_step_breaks_on_pending_defer()) and ok
 	ok = _check("deferred_hit_keeps_chained_skill_batches", _test_deferred_hit_keeps_chained_skill_batches()) and ok
+	ok = _check("deferred_hit_emits_unit_died_for_death_fx", _test_deferred_hit_emits_unit_died_for_death_fx()) and ok
 
 	for sim in _created:
 		sim.dispose()
@@ -1944,5 +1945,34 @@ static func _test_deferred_hit_keeps_chained_skill_batches() -> bool:
 	var second := sim.peek_pending_effect_batch()
 	if second == null or second.owner == killer_rt.unit:
 		push_error("defer_hit: second batch should be another ally's skill")
+		return false
+	return true
+
+
+static func _test_deferred_hit_emits_unit_died_for_death_fx() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 995)
+	sim.defer_effect_resolve = true
+	var killer_rt := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {"attack": 5, "id": "atk"}),
+		Vector2(9.5, 20.5),
+	)
+	var foe_rt := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 1, "attack": 0, "id": "fodder"}),
+		Vector2(9.5, 10.5),
+	)
+	sim.begin_combat()
+	var drain_guard := 0
+	while sim.has_pending_effects() and drain_guard < 48:
+		sim.resolve_next_pending_effect()
+		drain_guard += 1
+	var died: Array[int] = [0]
+	sim.unit_died.connect(func(_rt: RtUnit) -> void: died[0] += 1)
+	sim._resolve_hit(killer_rt, foe_rt, 5, 0.0)
+	if foe_rt.unit.current_hp > 0:
+		push_error("defer_death_fx: hit should kill fodder")
+		return false
+	if died[0] != 1:
+		push_error("defer_death_fx: expected unit_died on lethal hit, got %d" % died[0])
 		return false
 	return true
