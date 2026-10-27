@@ -1906,6 +1906,26 @@ func show_skill_trigger_info(unit: UnitInstance, is_player: bool, attack: int, h
 	_auto_info_until_clock = _fx_clock + life
 
 
+## 增益卡战斗结算：与技能相同的信息卡节拍，正文为增益说明。
+func show_buff_trigger_info(
+	unit: UnitInstance,
+	buff: BuffCardData,
+	is_player: bool,
+	attack: int,
+	hp: int,
+	tile_pos: Vector2,
+) -> void:
+	if unit == null or buff == null:
+		return
+	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
+	var center := tile_to_local(tile_pos) + off
+	var info := _info_from_instance(unit, is_player, attack, hp, center)
+	info["skills"] = UnitInfoText.format_buff(buff, true)
+	_show_info_card(info)
+	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
+	_auto_info_until_clock = _fx_clock + life
+
+
 ## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
 func inspect_at(local_pos: Vector2) -> Dictionary:
 	if enchant_active:
