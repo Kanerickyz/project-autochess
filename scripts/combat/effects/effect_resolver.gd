@@ -124,6 +124,21 @@ func clear_pending() -> void:
 	_pending_batches.clear()
 
 
+## 战斗状态等仅对存活单位入队；击杀当次 ON_DEAL_DAMAGE 不再播「破甲箭」叠虚弱。
+static func _can_enqueue_action_on_target(
+	action: EffectAction,
+	target: UnitInstance,
+	_event_type: StringName,
+) -> bool:
+	if target == null or action == null:
+		return false
+	match action.action_type:
+		EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
+			return target.is_alive()
+		_:
+			return true
+
+
 func _enqueue_for_event(
 	event_type: StringName,
 	payload: CombatEventPayload,
@@ -163,6 +178,8 @@ func _enqueue_for_event(
 					continue
 				for action in spec.actions:
 					if action == null:
+						continue
+					if not _can_enqueue_action_on_target(action, target, event_type):
 						continue
 					var step := QueuedEffectStep.new()
 					step.action = action

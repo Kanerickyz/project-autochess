@@ -11,6 +11,7 @@ static func run_all() -> bool:
 	_check("berserk_attack_only", _test_berserk_attack_only())
 	_check("poison_tick_lethal", _test_poison_tick_lethal())
 	_check("apply_status_via_resolver", _test_apply_via_resolver())
+	_check("weak_skip_dead_on_deal_damage", _test_weak_skip_dead_on_deal_damage())
 	_check("status_attachments_ui", _test_status_attachments())
 	if _failures == 0:
 		print("CombatStatusTest: all tests passed")
@@ -84,6 +85,35 @@ static func _test_poison_tick_lethal() -> bool:
 	var still_alive := sim._apply_poison_tick_before_round_start(rt)
 	sim.dispose()
 	return not still_alive and not unit.is_alive()
+
+
+static func _test_weak_skip_dead_on_deal_damage() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var archer_data := load("res://resources/units/realtime/archer.tres") as UnitData
+	if archer_data == null or archer_data.ability == null:
+		return false
+	var archer := UnitInstance.from_unit_data(archer_data, Vector2i(0, 0), UnitInstance.Team.PLAYER)
+	var enemy := UnitInstance.new("e", Vector2i(1, 0), UnitInstance.Team.ENEMY)
+	enemy.stats = UnitStats.new()
+	enemy.stats.max_hp = 1
+	enemy.current_hp = 0
+	grid.place(archer, Vector2i(0, 0))
+	grid.place(enemy, Vector2i(1, 0))
+	var payload := CombatEventPayload.new()
+	payload.source = archer
+	payload.target = enemy
+	payload.amount = 3
+	resolver.on_event(CombatEvents.ON_DEAL_DAMAGE, payload)
+	if resolver.has_pending_steps():
+		return false
+	resolver.clear_pending()
+	enemy.current_hp = 1
+	resolver.on_event(CombatEvents.ON_DEAL_DAMAGE, payload)
+	return resolver.has_pending_steps()
 
 
 static func _test_apply_via_resolver() -> bool:
