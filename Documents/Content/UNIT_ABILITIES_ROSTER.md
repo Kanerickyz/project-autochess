@@ -64,7 +64,8 @@
 | `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己**攻击**击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`）。不含本技能伤害造成的击杀 | **偏弱** | 余震 | 收割·点残；`OnKill` + `KILL_FROM_ATTACK` + `RANDOM_ENEMY` |
 | `combat_start_nearby_ally_atk_1` | 咒刃点锋 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 咒刃 | 开场·惠攻；`OnCombatStart`；附近=1 格；`exclude_owner` |
 | `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart`；附近=1 格；`exclude_owner` |
-| `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | 掘墓 | 见 §4 |
+| `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | （未挂载） | 资源保留 |
+| `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | 鼓手 | 节奏；附近=1 格；`exclude_owner`；非全场回合开始 |
 | `turn_start_nearby_hp_small` | 固脉一剂 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时生命上限与当前各 **+2**（三合一后 **+8**；`merge_value_mult=4`） | **中庸** | 药师 | 医疗·加厚；附近=持有者周围 1 格 |
 | `turn_start_strike_weakest` | 影袭落刃 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，瞬移至**当前生命最低**敌人邻格并对其造成技能伤害（1★ **2**；三合一升星后 **7**；不触发普攻连击） | **中庸～偏强** | 影刺 | 刺杀·斩后；**【新】** |

@@ -43,7 +43,8 @@ static func run_all() -> bool:
 	_check("arcane_friend_summon_nearby_hp_star2", _test_arcane_friend_summon_nearby_hp_star2())
 	_check("valkyrie_friend_summon_nearby_atk_hp", _test_valkyrie_friend_summon_nearby_atk_hp())
 	_check("valkyrie_friend_summon_nearby_atk_hp_star2", _test_valkyrie_friend_summon_nearby_atk_hp_star2())
-	_check("gravewright_kill_spawn_star2", _test_gravewright_kill_spawn_star2())
+	_check("gravewright_hurt_nearby_weak", _test_gravewright_hurt_nearby_weak())
+	_check("gravewright_hurt_nearby_weak_star2", _test_gravewright_hurt_nearby_weak_star2())
 	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
@@ -486,10 +487,22 @@ static func _test_valkyrie_friend_summon_nearby_atk_hp_star2() -> bool:
 	return true
 
 
-static func _test_gravewright_kill_spawn_star2() -> bool:
+## 掘墓：受伤时对周围一格敌军施加虚弱（1★ 1 层 / 2★+ 3 层）。
+static func _test_gravewright_hurt_nearby_weak() -> bool:
+	return _gravewright_hurt_nearby_weak_expect(1, 1)
+
+
+static func _test_gravewright_hurt_nearby_weak_star2() -> bool:
+	return _gravewright_hurt_nearby_weak_expect(2, 3)
+
+
+static func _gravewright_hurt_nearby_weak_expect(star_level: int, expected_weak: int) -> bool:
 	var data := _load_unit("res://resources/units/realtime/gravewright.tres")
-	if data == null or data.ability == null or data.ability.id != "kill_spawn_weak":
-		push_error("grave spawn: ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "hurt_nearby_enemies_apply_weak":
+		push_error("gravewright_weak: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("gravewright_weak: merge_value_mult expected 3")
 		return false
 	var bus := CombatEventBus.new()
 	var grid := BoardGrid.new()
@@ -497,34 +510,43 @@ static func _test_gravewright_kill_spawn_star2() -> bool:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var digger := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
-	digger.level = 2
-	var victim := UnitInstance.from_unit_data(
+	digger.level = star_level
+	var adjacent := UnitInstance.from_unit_data(
 		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
-		Vector2i(6, 18),
+		Vector2i(5, 20),
 		UnitInstance.Team.ENEMY,
 	)
-	victim.current_hp = 0
+	var far := UnitInstance.from_unit_data(
+		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
+		Vector2i(7, 20),
+		UnitInstance.Team.ENEMY,
+	)
+	var attacker := UnitInstance.from_unit_data(
+		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
+		Vector2i(5, 21),
+		UnitInstance.Team.ENEMY,
+	)
 	grid.place(digger, Vector2i(4, 20))
-	grid.place(victim, Vector2i(6, 18))
+	grid.place(adjacent, Vector2i(5, 20))
+	grid.place(far, Vector2i(7, 20))
+	grid.place(attacker, Vector2i(5, 21))
 	var payload := CombatEventPayload.new()
-	payload.source = digger
-	payload.target = victim
-	resolver.on_event(CombatEvents.ON_KILL, payload)
+	payload.source = attacker
+	payload.target = digger
+	payload.amount = 1
+	resolver.on_event(CombatEvents.ON_DAMAGE_TAKEN, payload)
 	while resolver.has_pending_steps():
 		resolver.process_next_step()
-	var token: UnitInstance = null
-	for u in grid.get_all_units():
-		if u != null and u.id == "token_weak" and u.is_alive():
-			token = u
-			break
-	if token == null or token.stats == null:
-		push_error("grave spawn 2★: missing token_weak")
-		return false
-	if token.stats.attack != 6 or token.stats.max_hp != 6 or token.current_hp != 6:
+	var adj_weak := adjacent.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	var far_weak := far.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	if adj_weak != expected_weak:
 		push_error(
-			"grave spawn 2★: token %d/%d expected 6/6"
-			% [token.stats.attack, token.stats.max_hp]
+			"gravewright_weak %d★: adjacent weak %d expected %d"
+			% [star_level, adj_weak, expected_weak]
 		)
+		return false
+	if far_weak != 0:
+		push_error("gravewright_weak: far enemy should have 0 weak, got %d" % far_weak)
 		return false
 	return true
 
