@@ -1789,7 +1789,7 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	queue_redraw()
 
 
-## 战斗内技能/增益播报：主卡在触发者脚下向下排布（至战场底边内），不拉附属卡栈。
+## 战斗内技能/增益播报：详卡贴在棋盘区底边、触发者列内；不拉附属卡栈。
 func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
@@ -1801,7 +1801,7 @@ func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) 
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
-	var bounds := Rect2(Vector2.ZERO, size)
+	var bounds := get_board_rect()
 	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
 	queue_redraw()
 

@@ -250,7 +250,7 @@ func show_info(
 		_play_pop_in(target)
 
 
-## 观战技能/增益播报：锚在触发者脚下，向下展开至战场区底边内（水平居中于角色）。
+## 观战技能/增益播报：在触发者列内贴战斗区底边展示详卡（水平居中；不压住脚下剪影）。
 func show_info_combat_below_unit(
 	info: Dictionary, unit_foot: Vector2, bounds: Rect2, slide_dir: float = 0.0
 ) -> void:
@@ -260,7 +260,7 @@ func show_info_combat_below_unit(
 	var card_size := get_combined_minimum_size()
 	size = card_size
 	pivot_offset = card_size * 0.5
-	var target := _compute_position(unit_foot, unit_foot, bounds, card_size, true)
+	var target := _compute_position_combat_column_bottom(unit_foot, bounds, card_size)
 	_rest_position = target
 	_follow_offset = Vector2.ZERO
 	visible = true
@@ -419,6 +419,16 @@ func _compute_position(
 		if pos.y < bounds.position.y + MARGIN_PX:
 			pos.y = foot.y + MARGIN_PX
 	return _clamp_card_top_left(pos, bounds, card_size)
+
+
+## 角色脚下到战斗区底边之间的竖带：详卡底边对齐区底（空间不足则上移，且不盖住 foot）。
+func _compute_position_combat_column_bottom(
+	unit_foot: Vector2, bounds: Rect2, card_size: Vector2
+) -> Vector2:
+	var y := bounds.end.y - card_size.y - MARGIN_PX
+	y = maxf(y, unit_foot.y + MARGIN_PX)
+	var x := unit_foot.x - card_size.x * 0.5
+	return _clamp_card_top_left(Vector2(x, y), bounds, card_size)
 
 
 func _clamp_card_top_left(pos: Vector2, bounds: Rect2, card_size: Vector2) -> Vector2:
