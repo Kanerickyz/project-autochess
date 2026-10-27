@@ -277,7 +277,7 @@
 | 单位程序动画（§7.1） | 功能已存在 | `realtime_unit_motion.gd`；`realtime_unit_motion_test_runner.gd` 覆盖 |
 | 长按信息卡（§7.2）场上 / 招募（含道具·锁定·卖出） | 功能已存在 | `realtime_unit_info_card.gd` + 战场视图长按；滑动切换带抬起/倾斜 |
 | 长按信息卡 · 准备卡面 / 未入座条 | **未实现**（To-Be） | §7.2 扩覆盖；与场上同卡同手感 |
-| 战场词条带 + 结算 Reel（§5.3） | **未实现**（To-Be） | 小丑牌式结算 Tween；P0 角标 + 词条抖动 |
+| 战场词条带 + 结算 Reel（§5.3） | **部分实现** | 主技能/状态角标、展示步 ①② Reel；`combat_settlement_reel_test_runner` |
 
 ---
 

@@ -63,6 +63,12 @@ const DEATH_SECONDS := 0.55
 const DEATH_KICK_TILT := 0.55
 const DEATH_TILT := 1.45
 const DEATH_SHADOW_MUL := 2.1
+## 结算 Reel：缩放回弹 + 轻晃（随 speed_scale 缩短）。
+const SETTLEMENT_INTRO_SEC := 0.22
+const SETTLEMENT_PUNCH_SEC := 0.18
+const SETTLEMENT_SCALE_DIP := 0.94
+const SETTLEMENT_SCALE_PEAK := 1.08
+const SETTLEMENT_WOBBLE := 0.05
 
 
 class Pose:
@@ -85,6 +91,11 @@ class Pose:
 	var idle_requested := false
 	## 冲刺途中受击（反伤等同帧结算）只闪白震屏，不打断冲撞位移。
 	var lunging := false
+	## 结算 Reel（COMBAT_FEEDBACK §5.3）：与出手 tween 分离，避免打断对撞。
+	var reel_offset := Vector2.ZERO
+	var reel_scale := Vector2.ONE
+	var reel_rotation := 0.0
+	var reel_tween: Tween
 
 
 class Tracked:
@@ -352,6 +363,16 @@ func walk_pose(rt: RtUnit) -> Dictionary:
 	}
 
 
+## 技能展示步 ①：介绍卡同拍缩放回弹。
+func play_settlement_intro(rt: RtUnit) -> void:
+	_play_settlement_reel(rt, 1.0, true)
+
+
+## 技能展示步 ② / 无卡规则拍：结算 punch（strength 受益方可 < 1）。
+func play_settlement_punch(rt: RtUnit, strength: float = 1.0) -> void:
+	_play_settlement_reel(rt, clampf(strength, 0.2, 1.0), false)
+
+
 func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	if rt == null:
 		return
@@ -395,6 +416,36 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 		corpse.done = true
 		corpse.pose.alpha = 0.0
 	)
+
+
+func _play_settlement_reel(rt: RtUnit, strength: float, intro: bool) -> void:
+	if rt == null or not rt.is_alive():
+		return
+	var tracked: Tracked = _tracked.get(rt.get_instance_id())
+	if tracked == null:
+		return
+	var pose := tracked.pose
+	if pose.reel_tween != null and pose.reel_tween.is_valid():
+		pose.reel_tween.kill()
+		pose.reel_tween = null
+	var base_dur := SETTLEMENT_INTRO_SEC if intro else SETTLEMENT_PUNCH_SEC
+	var dur := base_dur / maxf(0.25, speed_scale)
+	var dip := lerpf(1.0, SETTLEMENT_SCALE_DIP, strength)
+	var peak := lerpf(1.0, SETTLEMENT_SCALE_PEAK, strength)
+	var wobble := SETTLEMENT_WOBBLE * strength
+	pose.reel_scale = Vector2(dip, dip) if intro else Vector2.ONE
+	pose.reel_rotation = 0.0
+	pose.reel_offset = Vector2.ZERO
+	pose.reel_tween = create_tween()
+	pose.reel_tween.set_speed_scale(maxf(0.25, speed_scale))
+	pose.reel_tween.tween_property(
+		pose, "reel_scale", Vector2(peak, peak), dur * 0.42
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pose.reel_tween.parallel().tween_property(pose, "reel_rotation", wobble, dur * 0.42)
+	pose.reel_tween.tween_property(
+		pose, "reel_scale", Vector2.ONE, dur * 0.58
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pose.reel_tween.parallel().tween_property(pose, "reel_rotation", 0.0, dur * 0.58)
 
 
 func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
@@ -664,9 +715,21 @@ func _is_busy(pose: Pose) -> bool:
 func _kill_all(pose: Pose) -> void:
 	_kill(pose)
 	_stop_idle(pose)
+	_kill_reel(pose)
 	if pose != null and pose.flash_tween != null:
 		pose.flash_tween.kill()
 		pose.flash_tween = null
+
+
+func _kill_reel(pose: Pose) -> void:
+	if pose == null:
+		return
+	if pose.reel_tween != null and pose.reel_tween.is_valid():
+		pose.reel_tween.kill()
+	pose.reel_tween = null
+	pose.reel_offset = Vector2.ZERO
+	pose.reel_scale = Vector2.ONE
+	pose.reel_rotation = 0.0
 
 
 func _prune_corpses() -> void:
