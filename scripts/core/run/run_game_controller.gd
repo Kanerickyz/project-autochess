@@ -397,6 +397,8 @@ func _present_run_end_result(snapshot: RunStatsSnapshot) -> void:
 
 func _present_run_end_stats(snapshot: RunStatsSnapshot) -> void:
 	_run_end_overlay.hide_overlay()
+	if snapshot != null:
+		RunMatchHistoryStore.append_snapshot(snapshot)
 	_run_stats_overlay.show_snapshot(snapshot)
 
 

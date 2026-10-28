@@ -11,6 +11,7 @@ const SCENES: PackedStringArray = [
 	"res://scenes/main/combat_sandbox.tscn",
 	"res://scenes/main/enchant_sandbox.tscn",
 	"res://scenes/ui/codex/unit_codex_screen.tscn",
+	"res://scenes/ui/match_history/match_history_screen.tscn",
 	"res://scenes/combat/realtime/realtime_battle.tscn",
 	"res://scenes/combat/realtime/realtime_battle_demo.tscn",
 ]
