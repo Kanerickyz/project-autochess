@@ -16,6 +16,8 @@ var equipment: EquipmentData = null
 var equipment_armor_max: int = 0
 ## 友方持久占位：座位下标（0 .. seat_grid-1）；-1 表示未入座。
 var seat_index: int = -1
+## 备战区格位（0 .. DeckState.BENCH_CAPACITY-1）；仅 seat_index < 0 时有效；-1 表示未分配。
+var bench_slot_index: int = -1
 ## 落座时间序：越大越晚；0 表示从未成功落座。开战生成序 / 三合一最早座用。
 var seat_assign_seq: int = 0
 ## 附魔熔印者等 runtime 主技能；优先于 unit.ability。

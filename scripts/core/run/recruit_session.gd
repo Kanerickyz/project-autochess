@@ -331,13 +331,13 @@ func try_swap_seat(entry_id: int, target_seat: int) -> bool:
 	return true
 
 
-## 招募：已入座 → 备战；备战满失败。
-func try_move_to_bench(entry_id: int) -> bool:
+## 招募：入座↔备战 / 备战换格；备战满且无交换目标时失败。
+func try_move_to_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 	if not is_active or deck == null:
 		return false
 	if deck.get_entry(entry_id) == null:
 		return false
-	if not deck.try_move_seat_to_bench(entry_id):
+	if not deck.try_place_on_bench(entry_id, target_bench_slot):
 		return false
 	session_changed.emit()
 	return true
