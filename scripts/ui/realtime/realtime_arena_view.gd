@@ -35,9 +35,9 @@ signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
 signal prepare_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备：拖已入座角色松手落在备战格。
-signal prepare_team_bench_drop(entry_id: int)
+signal prepare_team_bench_drop(entry_id: int, bench_slot: int)
 ## 招募：拖上区/备战成员松手落在备战格（或未落座时由控制器兼容）。
-signal recruit_team_bench_drop(entry_id: int)
+signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 ## 点备战已占格（选中 / 药水等）。
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
@@ -1789,13 +1789,14 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	queue_redraw()
 
 
-## 战斗内技能/增益播报：详卡贴在棋盘区底边、触发者列内；不拉附属卡栈。
+## 战斗内技能播报：详卡贴在棋盘区底边、触发者列内；可叠状态/装备附属卡栈。
 func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
 	_combat_broadcast_info = true
 	_shown_info = info
 	_begin_inspect_focus(info, slide_dir)
+	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
@@ -1803,6 +1804,7 @@ func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) 
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
 	var bounds := get_board_rect()
 	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
+	_show_info_attachments(attachments, bounds, slide_dir, false)
 	queue_redraw()
 
 
@@ -1947,13 +1949,14 @@ func show_skill_trigger_info(
 	hp: int,
 	tile_pos: Vector2,
 	skills_override: String = "",
+	attachments: Array = [],
 ) -> void:
 	if unit == null:
 		return
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
-	info.erase("attachments")
+	info["attachments"] = attachments
 	if not skills_override.is_empty():
 		info["skills"] = skills_override
 	_show_combat_broadcast_info_card(info)
@@ -1964,11 +1967,6 @@ func show_skill_trigger_info(
 
 ## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
 func play_combat_skill_info_reel_intro() -> void:
-	_schedule_settlement_reel_shake(_info_card)
-
-
-## 展示步 ①：整张**增益介绍卡**（主卡承载增益文案）。
-func play_combat_buff_info_reel_intro() -> void:
 	_schedule_settlement_reel_shake(_info_card)
 
 
@@ -2001,8 +1999,6 @@ func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
 
 
 func _pick_reel_info_card(payload: CombatEventPayload) -> RealtimeUnitInfoCard:
-	if payload.effect_buff != null and _info_card.visible:
-		return _info_card
 	var entries: Array = payload.effect_entries
 	if entries.is_empty() and payload.effect_action != null:
 		entries = [{"action": payload.effect_action, "target": payload.target}]
@@ -2063,28 +2059,6 @@ func _find_equipment_attachment_card(equipment_id: StringName) -> RealtimeUnitIn
 			if c.visible:
 				return c
 	return null
-
-
-## 增益卡战斗结算：与技能相同的信息卡节拍，正文为增益说明。
-func show_buff_trigger_info(
-	unit: UnitInstance,
-	buff: BuffCardData,
-	is_player: bool,
-	attack: int,
-	hp: int,
-	tile_pos: Vector2,
-) -> void:
-	if unit == null or buff == null:
-		return
-	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
-	var center := tile_to_local(tile_pos) + off
-	var info := _info_from_instance(unit, is_player, attack, hp, center)
-	info.erase("attachments")
-	info["skills"] = UnitInfoText.format_buff(buff, true)
-	_show_combat_broadcast_info_card(info)
-	play_combat_buff_info_reel_intro()
-	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
-	bump_combat_skill_info_visibility(life)
 
 
 ## 命中测试：返回该位置单位的信息字典（含 center 本地坐标）；未命中返回空字典。
@@ -2637,7 +2611,8 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		recruit_team_bench_drop.emit(entry_id)
+		var bench_i := find_bench_slot_at_local(release_pos)
+		recruit_team_bench_drop.emit(entry_id, bench_i)
 	elif recruit_team_slots != null:
 		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
@@ -2798,7 +2773,8 @@ func _finish_prepare_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		prepare_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		prepare_team_bench_drop.emit(entry_id)
+		var bench_i := find_bench_slot_at_local(release_pos)
+		prepare_team_bench_drop.emit(entry_id, bench_i)
 	elif prepare_slots != null:
 		seat_i = prepare_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:

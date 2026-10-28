@@ -371,7 +371,9 @@ func _test_prepare_bench_drag_deploy() -> void:
 		await process_frame
 		return
 	var bench_drops: Array = []
-	arena.prepare_team_bench_drop.connect(func(id: int) -> void: bench_drops.append(id))
+	arena.prepare_team_bench_drop.connect(
+		func(id: int, _slot: int) -> void: bench_drops.append(id)
+	)
 	var seat_center := _slot_center(arena, slots, empty_seat)
 	_press(arena, seat_center, true)
 	var move2 := InputEventMouseMotion.new()
@@ -643,7 +645,9 @@ func _test_recruit_team_bench_drag() -> void:
 	arena.recruit_lock_cell = Vector2i(0, mid_y + 2)
 	var bench_drops: Array[int] = []
 	var seat_drops: Array = []
-	arena.recruit_team_bench_drop.connect(func(id: int) -> void: bench_drops.append(id))
+	arena.recruit_team_bench_drop.connect(
+		func(id: int, _slot: int) -> void: bench_drops.append(id)
+	)
 	arena.recruit_team_seat_drop.connect(func(id: int, seat: int) -> void: seat_drops.append([id, seat]))
 	var team_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
 	var bench_center := arena.bench_slot_center_local(0)

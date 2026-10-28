@@ -79,7 +79,6 @@ BuffCardData (Resource)
 |------|------|------|
 | `PERMANENT_STAT` | 写入 `DeckEntry.bonus_attack` / `bonus_max_hp` | 力量祝福 +1 攻 |
 | `RULE_FLAG` | 条目规则标记，战斗逻辑读取 | 沉重脚步：禁止移动 |
-| `COMBAT_TRIGGER` | 战斗事件触发，可接 Run 经济 | 亡者遗金：死亡 +1 金 |
 
 ### 3.3 DeckEntry（修订）
 
@@ -93,7 +92,7 @@ DeckEntry
 
 ### 3.4 与 AbilityData 的关系（框架边界）
 
-- **不**将增益卡并入 `UnitInstance.get_all_effect_specs()` 的默认列表（除非 `COMBAT_TRIGGER` 类增益在实现时注册为隐藏监听）
+- **不**将增益卡并入 `UnitInstance.get_all_effect_specs()` 的默认列表
 - **永久属性类**增益在 `from_deck_entry` 时合并进 `stats` / `bonus_*`
 - **无法行走** 在 `UnitBrain.decide` 或实例 flag 上短路 MOVE，仍可 ATTACK
 - **双轨约定（As-Is）**：商店/事件的非战斗永久改写走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`）。凡会进入战斗触发的效果必须挂 `EffectSpec`，禁止再长出第三套隐式 DSL。
@@ -116,7 +115,6 @@ DeckEntry
 | `buff_perm_atk` | 苹果（攻击） | `PERMANENT_STAT` | **永久 +1** 攻击 | Run → 战斗 |
 | `buff_perm_hp` | 苹果（生命） | `PERMANENT_STAT` | **永久 +1** 生命上限 | Run → 战斗 |
 | `buff_no_move` | 沉重脚步 | `RULE_FLAG` | **无法行走**（不执行 MOVE，仍可攻击） | 战斗 |
-| `buff_death_gold` | 亡者遗金 | `COMBAT_TRIGGER` | **死亡时** Run **+1 金**（友方单位，`ON_DEATH`） | 战斗 → `RunEconomy` |
 | `buff_meat_bone` | 肉骨 | `PERMANENT_STAT` | **永久 +3** 攻击（SAP 攻击加伤弱化） | Run → 战斗 |
 | `buff_garlic` | 大蒜 | `PERMANENT_STAT` | **永久 +2** 生命上限（SAP 减伤弱化） | Run → 战斗 |
 | `buff_pear_atk` | 梨（攻击） | `PERMANENT_STAT` | **永久 +2** 攻击 | Run → 战斗 |
@@ -132,12 +130,6 @@ DeckEntry
 
 - 购买并附加瞬间写入 `DeckEntry.bonus_attack` / `bonus_max_hp`（数值见上表 `value`）
 - UI 手牌/牌库卡面显示合并后的攻血；可与牌库升级 `bonus_*` 叠加
-
-### 4.3 亡者遗金
-
-- 战斗内：持有者死亡时（`ON_DEATH`，`team == PLAYER`）调用 `RunEconomy.grant(1)`
-- **不**依赖击杀敌人；与波次结算金独立（击杀本就不掉金）
-- 实现注意：仅在战斗进行中生效，商店阶段无单位实例
 
 ---
 
@@ -181,7 +173,6 @@ DeckEntry
 | 同 id 增益叠加上限 | 是否允许无限叠同一张卡 |
 | 增益卸载 | 不出售角色时能否移除单张增益 |
 | 条目增益数量上限 | 单角色最多 N 张增益 |
-| `COMBAT_TRIGGER` 实现方式 | 独立监听器 vs 注入临时 AbilityData |
 | 敌方单位 | 增益仅玩家牌库；敌人不适用 |
 
 ---

@@ -718,7 +718,7 @@ func try_auto_deploy_bench(entry_id: int) -> bool:
 
 
 ## 已入座 → 备战（准备/招募）；备战满失败。战斗观战不可用。
-func try_move_seat_to_bench(entry_id: int) -> bool:
+func try_move_seat_to_bench(entry_id: int, bench_slot: int = -1) -> bool:
 	if _final_trial_active:
 		return false
 	if _deck_state == null:
@@ -726,13 +726,13 @@ func try_move_seat_to_bench(entry_id: int) -> bool:
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return false
 	var entry := _deck_state.get_entry(entry_id)
-	if entry == null or entry.seat_index < 0:
+	if entry == null:
 		return false
 	var ok := false
 	if _phase == Phase.RECRUIT and _recruit_session != null:
-		ok = _recruit_session.try_move_to_bench(entry_id)
+		ok = _recruit_session.try_move_to_bench(entry_id, bench_slot)
 	else:
-		ok = _deck_state.try_move_seat_to_bench(entry_id)
+		ok = _deck_state.try_place_on_bench(entry_id, bench_slot)
 	if not ok:
 		return false
 	_set_selected(-1)
@@ -790,17 +790,15 @@ func _on_prepare_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 ## 准备：拖已入座角色松手落在备战格 → 入备战。
-func _on_prepare_team_bench_drop(entry_id: int) -> void:
+func _on_prepare_team_bench_drop(entry_id: int, bench_slot: int) -> void:
 	if _final_trial_active:
 		return
 	if _phase != Phase.PREPARE or _deck_state == null:
 		return
-	if not _is_seated_entry(entry_id):
+	if try_move_seat_to_bench(entry_id, bench_slot):
+		_show_hint("备战位置已更新")
 		return
-	if try_move_seat_to_bench(entry_id):
-		_show_hint("已移入备战")
-		return
-	_show_hint("备战已满")
+	_show_hint("备战已满或无法放置")
 
 
 ## 点备战已占格：有空位则自动上阵；上场满则选中（可再拖/点空座）；招募药水可点备战结算。
@@ -849,14 +847,23 @@ func _on_bench_pressed(entry_id: int) -> void:
 
 
 ## 点备战空格：接收已选入座角色下阵。
-func _on_bench_empty_pressed(_slot_index: int) -> void:
+func _on_bench_empty_pressed(slot_index: int) -> void:
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return
 	if _phase == Phase.RECRUIT and _recruit_animating:
 		return
-	if _selected_entry_id < 0 or not _is_seated_entry(_selected_entry_id):
+	if _selected_entry_id < 0:
 		return
-	if try_move_seat_to_bench(_selected_entry_id):
+	if _is_bench_entry(_selected_entry_id):
+		if try_move_seat_to_bench(_selected_entry_id, slot_index):
+			if _phase == Phase.PREPARE:
+				_show_hint("已调整备战位置")
+			elif _recruit_hint != null:
+				_recruit_hint.text = "已调整备战位置"
+		return
+	if not _is_seated_entry(_selected_entry_id):
+		return
+	if try_move_seat_to_bench(_selected_entry_id, slot_index):
 		if _phase == Phase.PREPARE:
 			_show_hint("已移入备战")
 		elif _recruit_hint != null:
@@ -2954,18 +2961,19 @@ func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 ## 招募：拖上区已入座成员松手落在备战格 → 入备战。
-func _on_recruit_team_bench_drop(entry_id: int) -> void:
+func _on_recruit_team_bench_drop(entry_id: int, bench_slot: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	if not _is_seated_entry(entry_id):
-		return
-	if try_move_seat_to_bench(entry_id):
+	if try_move_seat_to_bench(entry_id, bench_slot):
 		_recruit_selected_replace_id = -1
 		if _recruit_hint != null:
-			_recruit_hint.text = "已移入备战"
+			if _is_bench_entry(entry_id):
+				_recruit_hint.text = "已调整备战位置"
+			else:
+				_recruit_hint.text = "已移入备战"
 		return
 	if _recruit_hint != null:
-		_recruit_hint.text = "备战已满"
+		_recruit_hint.text = "备战已满或无法放置"
 
 
 func _on_recruit_empty_seat_pressed(seat_index: int) -> void:
@@ -3318,8 +3326,6 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 		return
 	if event_type != CombatEvents.ON_DEATH:
 		return
-	## 亡者遗金等增益卡战斗结算走 EffectResolver 播报队列（先卡再结算）。
-
 
 ## 锁阵：立刻播动画/UI。战斗内：由「先卡再结算」拍捕获；其它路径入结果拍。
 func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
@@ -3329,32 +3335,13 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 		_last_resolved_payload = payload
 		return
 	if _lock_phase_active or _phase != Phase.COMBAT:
-		if payload.effect_buff != null:
-			var buff_owner := (
-				payload.effect_owner if payload.effect_owner != null else payload.source
-			)
-			_register_combo_for_skill_intro(buff_owner)
-			_arm_combat_skill_info_visibility()
-			_show_buff_trigger_info(buff_owner, payload.effect_buff)
-			_present_effect_result(payload, true)
-			_release_combat_skill_info_visibility()
-		else:
-			_present_effect_feedback(payload, true)
+		_present_effect_feedback(payload, true)
 		return
 	## 非门控路径（兼容）：已结算则只播结果拍。
 	if _timestop_queue.is_blocking():
 		return
 	if _sim != null:
 		_sim.hold_for_presentation()
-	## 增益卡战斗结算应走 FIFO 先卡；若仍落到此路径则补介绍卡再播结果。
-	if payload.effect_buff != null:
-		var buff_owner := payload.effect_owner if payload.effect_owner != null else payload.source
-		_arm_combat_skill_info_visibility()
-		_show_buff_trigger_info(buff_owner, payload.effect_buff)
-		_timestop_queue.begin_result(payload, time_scale)
-		_present_effect_result(payload, true)
-		_release_combat_skill_info_visibility()
-		return
 	if _timestop_queue.enqueue_resolved(payload, time_scale):
 		_present_effect_result(payload, true)
 
@@ -3484,10 +3471,7 @@ func _start_next_skill_card() -> void:
 	_register_combo_for_skill_intro(batch.owner)
 	_presentation_block_elapsed = 0.0
 	_arm_combat_skill_info_visibility()
-	if batch.display_buff != null:
-		_show_buff_trigger_info(batch.owner, batch.display_buff)
-	else:
-		_show_skill_trigger_info_for_owner(batch.owner, batch.spec)
+	_show_skill_trigger_info_for_owner(batch.owner, batch.spec)
 
 
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
@@ -3535,7 +3519,6 @@ func _on_skill_result_done() -> void:
 	if _sim != null:
 		_sim.try_seed_action_queue()
 		_sim.flush_idle_death_presentations()
-	## finalize 死亡会 ON_DEATH 入队增益卡（亡者遗金等）；须接着走「先卡再结算」。
 	if _sim != null and _sim.has_pending_effects():
 		_presentation_block_elapsed = 0.0
 		_start_next_skill_card()
@@ -3666,23 +3649,6 @@ func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
 	_show_skill_trigger_info_for_owner(owner, payload.effect_spec)
 
 
-func _show_buff_trigger_info(owner: UnitInstance, buff: BuffCardData) -> void:
-	if _arena == null or owner == null or buff == null:
-		return
-	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
-	var atk := owner.get_effective_attack()
-	var hp := owner.current_hp
-	if _sim != null:
-		var rt := _sim.find_unit(owner)
-		if rt != null:
-			atk = rt.get_effective_attack()
-			hp = rt.get_current_hp()
-			tile = rt.position
-	_arena.show_buff_trigger_info(
-		owner, buff, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile
-	)
-
-
 func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: EffectSpec = null) -> void:
 	if _arena == null or owner == null:
 		return
@@ -3696,10 +3662,12 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: Effec
 			hp = rt.get_current_hp()
 			tile = rt.position
 	var skills := ""
+	var attachments: Array = []
 	if trigger_spec != null:
 		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
+		attachments = UnitInfoText.attachments_for_effect_spec(owner, trigger_spec, true)
 	_arena.show_skill_trigger_info(
-		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills
+		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, attachments
 	)
 
 
@@ -3912,9 +3880,9 @@ func _rebuild_bench_slots() -> void:
 	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
 		return
-	var bench := _deck_state.get_bench_entries()
-	for i in mini(bench.size(), _bench_slots.slot_count):
-		var entry := bench[i]
+	_deck_state.get_bench_entries()
+	for i in _bench_slots.slot_count:
+		var entry := _deck_state.get_entry_at_bench_slot(i)
 		if entry != null:
 			_bench_slots.try_assign(i, entry)
 

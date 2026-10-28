@@ -29,7 +29,6 @@ static func build_popups(payload: CombatEventPayload) -> Array:
 		entries = [{"action": payload.effect_action, "target": payload.target}]
 	var tip := _ability_short_tip(owner)
 	var rare_tip := not _is_high_freq(payload.effect_spec)
-	var from_buff := payload.effect_buff != null
 	for entry in entries:
 		if not (entry is Dictionary):
 			continue
@@ -37,7 +36,7 @@ static func build_popups(payload: CombatEventPayload) -> Array:
 		var target: UnitInstance = entry.get("target")
 		if action == null:
 			continue
-		var popup := _map_action(action, target, owner, tip, rare_tip, from_buff)
+		var popup := _map_action(action, target, owner, tip, rare_tip)
 		if not popup.is_empty():
 			result.append(popup)
 	return result
@@ -49,7 +48,6 @@ static func _map_action(
 	owner: UnitInstance,
 	tip: String,
 	rare_tip: bool,
-	from_buff: bool = false,
 ) -> Dictionary:
 	var anchor := target if target != null else owner
 	var is_player := true
@@ -163,7 +161,7 @@ static func _map_action(
 			}
 		EffectAction.Type.GRANT_GOLD:
 			## 产金：结果数字 + 战场金币纸片（高频受伤产金也要有可读反馈）。
-			var gold := action.value if from_buff else _scaled_value(owner, action.value)
+			var gold := _scaled_value(owner, action.value)
 			if gold <= 0:
 				return {}
 			return {
