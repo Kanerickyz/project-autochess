@@ -48,6 +48,17 @@ class BattleLayoutPayload extends RefCounted:
 		return kind == KIND_LAYOUT or has_enemies()
 
 
+## 供对局记录等 JSON 序列化：与剪贴板友方行同 schema。
+static func deck_entries_to_ally_rows(entries: Array[DeckEntry]) -> Array:
+	return _entries_to_ally_rows(entries)
+
+
+static func deck_entries_from_ally_rows(rows: Array) -> Array[DeckEntry]:
+	var payload := BattleLayoutPayload.new()
+	payload.allies = rows
+	return build_deck_entries(payload)
+
+
 static func encode_roster(
 	entries: Array[DeckEntry],
 	seat_cap: int,

@@ -192,3 +192,26 @@ func sum_summons() -> int:
 	for v in _entries.values():
 		n += (v as EntryTotals).summons
 	return n
+
+
+## 从持久化恢复展示用合计（单桶汇总 + 巅峰条目）；不恢复 per-entry 分桶。
+func apply_persisted_display_totals(
+	damage_dealt: int,
+	healing_done: int,
+	max_hp_gained: int,
+	kills: int,
+	summons: int,
+	peak_combat_sum: int,
+	peak_entries: Array[DeckEntry],
+) -> void:
+	reset()
+	var orphan := _bucket(ORPHAN_ENTRY_ID)
+	orphan.damage_dealt = maxi(0, damage_dealt)
+	orphan.kills = maxi(0, kills)
+	orphan.summons = maxi(0, summons)
+	healing_done_total = maxi(0, healing_done)
+	max_hp_gained_total = maxi(0, max_hp_gained)
+	peak_combat_atk_hp_sum = maxi(0, peak_combat_sum)
+	for entry in peak_entries:
+		if entry != null:
+			peak_combat_entries.append(_clone_peak_entry(entry))

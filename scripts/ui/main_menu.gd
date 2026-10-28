@@ -5,6 +5,10 @@ const ENDLESS_SCENE_PATH := "res://scenes/main/endless_game.tscn"
 const CODEX_SCENE_PATH := "res://scenes/ui/codex/unit_codex_screen.tscn"
 const COMBAT_SANDBOX_PATH := "res://scenes/main/combat_sandbox.tscn"
 const ENCHANT_SANDBOX_PATH := "res://scenes/main/enchant_sandbox.tscn"
+const MATCH_HISTORY_PATH := "res://scenes/ui/match_history/match_history_screen.tscn"
+
+const MENU_GROUP_GAP_PX := 22
+const MENU_GROUP_INNER_SEPARATION := 12
 
 # 单按钮竖条精灵图：自上而下为常态 / 悬停 / 按下 / …（见 menu_button_sheet.jpg）
 const MENU_BUTTON_NORMAL := "res://assets/ui/main_menu/menu_button_0.jpg"
@@ -24,6 +28,7 @@ const BUTTON_TARGET_WIDTH := 328.0
 @onready var _title_logo: TextureRect = $SafeMargin/MainVBox/TitleRow/TitleLogo
 @onready var _start_button: Button = %StartButton
 @onready var _endless_button: Button = %EndlessButton
+@onready var _match_history_button: Button = %MatchHistoryButton
 @onready var _codex_button: Button = %CodexButton
 @onready var _combat_sandbox_button: Button = %CombatSandboxButton
 @onready var _enchant_sandbox_button: Button = %EnchantSandboxButton
@@ -39,8 +44,10 @@ func _ready() -> void:
 	if not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
 	_apply_menu_button_styles()
+	_configure_menu_groups()
 	_start_button.pressed.connect(_on_start_pressed)
 	_endless_button.pressed.connect(_on_endless_pressed)
+	_match_history_button.pressed.connect(_on_match_history_pressed)
 	_codex_button.pressed.connect(_on_codex_pressed)
 	_combat_sandbox_button.pressed.connect(_on_combat_sandbox_pressed)
 	_enchant_sandbox_button.pressed.connect(_on_enchant_sandbox_pressed)
@@ -78,16 +85,32 @@ func _menu_button_pixel_size() -> Vector2:
 	return Vector2(button_w, button_h)
 
 
-func _apply_menu_button_styles() -> void:
-	var buttons: Array[Button] = [
+func _configure_menu_groups() -> void:
+	var menu_vbox := _start_button.get_parent().get_parent() as VBoxContainer
+	if menu_vbox == null:
+		return
+	menu_vbox.add_theme_constant_override("separation", MENU_GROUP_GAP_PX)
+	for group_name in ["PrimaryGroup", "MetaGroup", "ToolsGroup", "SystemGroup"]:
+		var group := menu_vbox.get_node_or_null(group_name) as VBoxContainer
+		if group != null:
+			group.add_theme_constant_override("separation", MENU_GROUP_INNER_SEPARATION)
+
+
+func _all_menu_buttons() -> Array[Button]:
+	return [
 		_start_button,
 		_endless_button,
+		_match_history_button,
 		_codex_button,
 		_combat_sandbox_button,
 		_enchant_sandbox_button,
 		_settings_button,
 		_exit_button,
 	]
+
+
+func _apply_menu_button_styles() -> void:
+	var buttons := _all_menu_buttons()
 	var pixel_size := _menu_button_pixel_size()
 	for button: Button in buttons:
 		button.flat = true
@@ -101,6 +124,7 @@ func _apply_menu_button_styles() -> void:
 		button.add_theme_color_override("font_hover_color", Color(1, 1, 0.95, 1))
 		button.add_theme_color_override("font_pressed_color", Color(0.9, 0.88, 0.82, 1))
 		button.add_theme_font_size_override("font_size", 21)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 
 func _make_menu_button_stylebox(texture_path: String) -> StyleBoxTexture:
@@ -141,6 +165,10 @@ func _on_codex_pressed() -> void:
 	_navigate_to_scene(CODEX_SCENE_PATH)
 
 
+func _on_match_history_pressed() -> void:
+	_navigate_to_scene(MATCH_HISTORY_PATH)
+
+
 func _on_combat_sandbox_pressed() -> void:
 	_navigate_to_scene(COMBAT_SANDBOX_PATH)
 
@@ -157,16 +185,7 @@ func _navigate_to_scene(scene_path: String) -> void:
 
 
 func _set_menu_interactive(enabled: bool) -> void:
-	var buttons: Array[Button] = [
-		_start_button,
-		_endless_button,
-		_codex_button,
-		_combat_sandbox_button,
-		_enchant_sandbox_button,
-		_settings_button,
-		_exit_button,
-	]
-	for button: Button in buttons:
+	for button in _all_menu_buttons():
 		if button != null:
 			button.disabled = not enabled
 

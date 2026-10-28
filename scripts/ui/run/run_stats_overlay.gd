@@ -94,6 +94,7 @@ func show_snapshot(snapshot: RunStatsSnapshot) -> void:
 func hide_overlay() -> void:
 	visible = false
 	_last_snapshot = null
+	_continue_button.text = "继续"
 	_clear_arena(_roster_arena)
 	_clear_arena(_peak_attack_arena)
 	_clear_arena(_peak_hp_arena)
@@ -222,6 +223,12 @@ func _fit_all_arenas() -> void:
 
 func _on_continue_pressed() -> void:
 	continue_pressed.emit()
+
+
+## 对局记录等局外复用：改主按钮文案（hide 时恢复「继续」）。
+func set_continue_button_text(text: String) -> void:
+	if _continue_button != null and not text.is_empty():
+		_continue_button.text = text
 
 
 func _on_copy_roster_pressed() -> void:
