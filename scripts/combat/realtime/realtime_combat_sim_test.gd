@@ -1465,7 +1465,7 @@ static func _test_boss_teleport_to_empty_cell() -> bool:
 	return true
 
 
-## Boss 遭遇行动队列：友方全体 → 敌方（含首领）。
+## Boss 遭遇行动队列：友0、Boss、友1、Boss…
 static func _test_boss_queue_after_each_ally() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 57)
@@ -1494,11 +1494,11 @@ static func _test_boss_queue_after_each_ally() -> bool:
 		return false
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	if q.size() != 3:
-		push_error("boss_queue: expected 3 slots, got %d" % q.size())
+	if q.size() < 4:
+		push_error("boss_queue: expected at least 4 slots, got %d" % q.size())
 		return false
-	if q[0] != a0 or q[1] != a1 or q[2] != boss:
-		push_error("boss_queue: expected allies then boss")
+	if q[0] != a0 or q[1] != boss or q[2] != a1 or q[3] != boss:
+		push_error("boss_queue: expected F0,Boss,F1,Boss pattern")
 		return false
 	return true
 

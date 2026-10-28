@@ -457,7 +457,7 @@ func _seed_action_queue_if_ready() -> void:
 	_actor_turn_active = false
 
 
-## COMBAT §7.1：友方全体按空间子序排完，再敌方全体（各自前→后、左→右）。
+## COMBAT §7.1：普通遭遇先友后敌；Boss 遭遇见 BOSS §4.5（友→Boss 交错，小兵队尾）。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
@@ -478,6 +478,22 @@ func _build_action_queue_from_lock_order() -> void:
 			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
 	)
 	_action_queue.clear()
+	var boss: RtUnit = null
+	for e in enemies:
+		if e != null and e.is_boss_leader():
+			boss = e
+			break
+	if boss != null:
+		for f in friends:
+			if f != null:
+				_action_queue.append(f)
+				_action_queue.append(boss)
+		for e2 in enemies:
+			if e2 != null and e2 != boss:
+				_action_queue.append(e2)
+		if friends.is_empty():
+			_action_queue.append(boss)
+		return
 	for f in friends:
 		if f != null:
 			_action_queue.append(f)
