@@ -1,6 +1,6 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 回合制自动战纯逻辑模拟：敌我混排行动队列 + 一动靠近并出手 + 落格顿步。
+## 回合制自动战纯逻辑模拟：先友后敌行动队列 + 一动靠近并出手 + 落格顿步。
 ## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
 ## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
 
@@ -50,7 +50,7 @@ var suppress_player_wipe_loss: bool = false
 
 ## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
 var _lock_spawn_order: Array[RtUnit] = []
-## 敌我混排固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
+## 先友后敌固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
 var _action_queue: Array[RtUnit] = []
 var _queue_cursor: int = 0
 var _round_index: int = 0
@@ -272,7 +272,7 @@ func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
 	return _boss_try_teleport(rt, origin)
 
 
-## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出敌我混排行动队列。
+## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出先友后敌行动队列。
 ## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵/时停播报后再结算并排队列。
 func begin_combat() -> void:
 	if _started or _finished:
@@ -457,8 +457,7 @@ func _seed_action_queue_if_ready() -> void:
 	_actor_turn_active = false
 
 
-## COMBAT §7.1：友入座序与敌配置序交错（友0敌0友1敌1…）；一侧用尽续另一侧。
-## Boss 遭遇：每名友方行动后插入首领一次（友0、Boss、友1、Boss…）；其余敌方小兵队尾。
+## COMBAT §7.1：友方全体按空间子序排完，再敌方全体（各自前→后、左→右）。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
@@ -479,28 +478,12 @@ func _build_action_queue_from_lock_order() -> void:
 			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
 	)
 	_action_queue.clear()
-	var boss: RtUnit = null
-	for e in enemies:
-		if e != null and e.is_boss_leader():
-			boss = e
-			break
-	if boss != null:
-		for f in friends:
+	for f in friends:
+		if f != null:
 			_action_queue.append(f)
-			_action_queue.append(boss)
-		for e2 in enemies:
-			if e2 != null and e2 != boss:
-				_action_queue.append(e2)
-		if friends.is_empty():
-			_action_queue.append(boss)
-		return
-	var i := 0
-	while i < friends.size() or i < enemies.size():
-		if i < friends.size():
-			_action_queue.append(friends[i])
-		if i < enemies.size():
-			_action_queue.append(enemies[i])
-		i += 1
+	for e in enemies:
+		if e != null:
+			_action_queue.append(e)
 
 
 ## 中途召唤：入队尾；本回合不行动（见 action_eligible_from_round）。

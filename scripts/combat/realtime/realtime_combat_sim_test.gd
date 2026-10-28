@@ -9,7 +9,7 @@ static var _created: Array[RealtimeCombatSim] = []
 
 static func run_all() -> bool:
 	var ok := true
-	ok = _check("action_queue_interleave", _test_action_queue_interleave()) and ok
+	ok = _check("action_queue_player_then_enemy", _test_action_queue_player_then_enemy()) and ok
 	ok = _check("action_queue_spatial_sort", _test_action_queue_spatial_sort()) and ok
 	ok = _check("actors_act_sequentially", _test_actors_act_sequentially()) and ok
 	ok = _check("melee_approach_hit_once_per_turn", _test_melee_approach_hit_once_per_turn()) and ok
@@ -174,7 +174,7 @@ static func _run_until(sim: RealtimeCombatSim, seconds: float) -> void:
 		sim.advance_fixed_step()
 
 
-static func _test_action_queue_interleave() -> bool:
+static func _test_action_queue_player_then_enemy() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 1)
 	var f0 := sim.add_unit(make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f0"}), Vector2(1.5, 28.5))
@@ -184,7 +184,7 @@ static func _test_action_queue_interleave() -> bool:
 	var e2 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e2"}), Vector2(3.5, 3.5))
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	var expected: Array[RtUnit] = [f0, e0, f1, e1, e2]
+	var expected: Array[RtUnit] = [f0, f1, e0, e1, e2]
 	if q.size() != expected.size():
 		push_error("queue: size %d expected %d" % [q.size(), expected.size()])
 		return false
@@ -222,7 +222,7 @@ static func _test_action_queue_spatial_sort() -> bool:
 	)
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	var expected: Array[RtUnit] = [f_front_left, e_front, f_back_right, e_back]
+	var expected: Array[RtUnit] = [f_front_left, f_back_right, e_front, e_back]
 	if q.size() != expected.size():
 		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
 		return false
@@ -1465,7 +1465,7 @@ static func _test_boss_teleport_to_empty_cell() -> bool:
 	return true
 
 
-## Boss 遭遇行动队列：友0、Boss、友1、Boss…
+## Boss 遭遇行动队列：友方全体 → 敌方（含首领）。
 static func _test_boss_queue_after_each_ally() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 57)
@@ -1494,11 +1494,11 @@ static func _test_boss_queue_after_each_ally() -> bool:
 		return false
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	if q.size() < 4:
-		push_error("boss_queue: expected at least 4 slots, got %d" % q.size())
+	if q.size() != 3:
+		push_error("boss_queue: expected 3 slots, got %d" % q.size())
 		return false
-	if q[0] != a0 or q[1] != boss or q[2] != a1 or q[3] != boss:
-		push_error("boss_queue: expected F0,Boss,F1,Boss pattern")
+	if q[0] != a0 or q[1] != a1 or q[2] != boss:
+		push_error("boss_queue: expected allies then boss")
 		return false
 	return true
 
