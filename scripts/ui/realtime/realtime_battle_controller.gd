@@ -718,7 +718,7 @@ func try_auto_deploy_bench(entry_id: int) -> bool:
 
 
 ## 已入座 → 备战（准备/招募）；备战满失败。战斗观战不可用。
-func try_move_seat_to_bench(entry_id: int) -> bool:
+func try_move_seat_to_bench(entry_id: int, bench_slot: int = -1) -> bool:
 	if _final_trial_active:
 		return false
 	if _deck_state == null:
@@ -726,13 +726,13 @@ func try_move_seat_to_bench(entry_id: int) -> bool:
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return false
 	var entry := _deck_state.get_entry(entry_id)
-	if entry == null or entry.seat_index < 0:
+	if entry == null:
 		return false
 	var ok := false
 	if _phase == Phase.RECRUIT and _recruit_session != null:
-		ok = _recruit_session.try_move_to_bench(entry_id)
+		ok = _recruit_session.try_move_to_bench(entry_id, bench_slot)
 	else:
-		ok = _deck_state.try_move_seat_to_bench(entry_id)
+		ok = _deck_state.try_place_on_bench(entry_id, bench_slot)
 	if not ok:
 		return false
 	_set_selected(-1)
@@ -790,17 +790,15 @@ func _on_prepare_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 ## 准备：拖已入座角色松手落在备战格 → 入备战。
-func _on_prepare_team_bench_drop(entry_id: int) -> void:
+func _on_prepare_team_bench_drop(entry_id: int, bench_slot: int) -> void:
 	if _final_trial_active:
 		return
 	if _phase != Phase.PREPARE or _deck_state == null:
 		return
-	if not _is_seated_entry(entry_id):
+	if try_move_seat_to_bench(entry_id, bench_slot):
+		_show_hint("备战位置已更新")
 		return
-	if try_move_seat_to_bench(entry_id):
-		_show_hint("已移入备战")
-		return
-	_show_hint("备战已满")
+	_show_hint("备战已满或无法放置")
 
 
 ## 点备战已占格：有空位则自动上阵；上场满则选中（可再拖/点空座）；招募药水可点备战结算。
@@ -849,14 +847,23 @@ func _on_bench_pressed(entry_id: int) -> void:
 
 
 ## 点备战空格：接收已选入座角色下阵。
-func _on_bench_empty_pressed(_slot_index: int) -> void:
+func _on_bench_empty_pressed(slot_index: int) -> void:
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return
 	if _phase == Phase.RECRUIT and _recruit_animating:
 		return
-	if _selected_entry_id < 0 or not _is_seated_entry(_selected_entry_id):
+	if _selected_entry_id < 0:
 		return
-	if try_move_seat_to_bench(_selected_entry_id):
+	if _is_bench_entry(_selected_entry_id):
+		if try_move_seat_to_bench(_selected_entry_id, slot_index):
+			if _phase == Phase.PREPARE:
+				_show_hint("已调整备战位置")
+			elif _recruit_hint != null:
+				_recruit_hint.text = "已调整备战位置"
+		return
+	if not _is_seated_entry(_selected_entry_id):
+		return
+	if try_move_seat_to_bench(_selected_entry_id, slot_index):
 		if _phase == Phase.PREPARE:
 			_show_hint("已移入备战")
 		elif _recruit_hint != null:
@@ -2954,18 +2961,19 @@ func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 ## 招募：拖上区已入座成员松手落在备战格 → 入备战。
-func _on_recruit_team_bench_drop(entry_id: int) -> void:
+func _on_recruit_team_bench_drop(entry_id: int, bench_slot: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	if not _is_seated_entry(entry_id):
-		return
-	if try_move_seat_to_bench(entry_id):
+	if try_move_seat_to_bench(entry_id, bench_slot):
 		_recruit_selected_replace_id = -1
 		if _recruit_hint != null:
-			_recruit_hint.text = "已移入备战"
+			if _is_bench_entry(entry_id):
+				_recruit_hint.text = "已调整备战位置"
+			else:
+				_recruit_hint.text = "已移入备战"
 		return
 	if _recruit_hint != null:
-		_recruit_hint.text = "备战已满"
+		_recruit_hint.text = "备战已满或无法放置"
 
 
 func _on_recruit_empty_seat_pressed(seat_index: int) -> void:
@@ -3912,9 +3920,9 @@ func _rebuild_bench_slots() -> void:
 	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
 		return
-	var bench := _deck_state.get_bench_entries()
-	for i in mini(bench.size(), _bench_slots.slot_count):
-		var entry := bench[i]
+	_deck_state.get_bench_entries()
+	for i in _bench_slots.slot_count:
+		var entry := _deck_state.get_entry_at_bench_slot(i)
 		if entry != null:
 			_bench_slots.try_assign(i, entry)
 

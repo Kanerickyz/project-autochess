@@ -120,13 +120,18 @@ func get_bench_count() -> int:
 	return get_bench_entries().size()
 
 
-## 未入座成员（备战），按 entry_id 升序便于 UI 稳定占格。
+## 未入座成员（备战），按持久 bench_slot_index 排序。
 func get_bench_entries() -> Array[DeckEntry]:
+	_ensure_bench_slot_layout()
 	var out: Array[DeckEntry] = []
 	for entry in _entries:
 		if entry != null and entry.seat_index < 0:
 			out.append(entry)
 	out.sort_custom(func(a: DeckEntry, b: DeckEntry) -> bool:
+		var sa := a.bench_slot_index if a.bench_slot_index >= 0 else BENCH_CAPACITY
+		var sb := b.bench_slot_index if b.bench_slot_index >= 0 else BENCH_CAPACITY
+		if sa != sb:
+			return sa < sb
 		return a.entry_id < b.entry_id
 	)
 	return out
@@ -483,19 +488,73 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 	return true
 
 
-## 已入座 → 备战。备战满（5）返回 false。已在备战视为成功。
-func try_move_seat_to_bench(entry_id: int) -> bool:
+## 备战格：入座↔备战、备战↔备战换位；target_bench_slot < 0 时落到首个空格。
+func try_place_on_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
+	var entry := get_entry(entry_id)
+	if entry == null:
+		return false
+	_ensure_bench_slot_layout()
+	if target_bench_slot < 0 or target_bench_slot >= BENCH_CAPACITY:
+		target_bench_slot = _find_first_empty_bench_slot()
+		if target_bench_slot < 0:
+			return false
+	var occupant := get_entry_at_bench_slot(target_bench_slot)
+	if entry.seat_index >= 0:
+		if occupant == null:
+			if not can_bench_more():
+				return false
+			var seat := entry.seat_index
+			entry.seat_index = -1
+			entry.seat_assign_seq = 0
+			entry.bench_slot_index = target_bench_slot
+		else:
+			if occupant.entry_id == entry_id:
+				return true
+			var seat := entry.seat_index
+			_set_seat(occupant, seat, true)
+			entry.seat_index = -1
+			entry.seat_assign_seq = 0
+			entry.bench_slot_index = target_bench_slot
+		deck_changed.emit()
+		return true
+	## 已在备战：换格 / 与邻格互换。
+	var from_slot := entry.bench_slot_index
+	if from_slot == target_bench_slot:
+		return true
+	if occupant == null:
+		entry.bench_slot_index = target_bench_slot
+		deck_changed.emit()
+		return true
+	if occupant.entry_id == entry_id:
+		return true
+	var other_slot := from_slot
+	if other_slot < 0:
+		other_slot = _find_first_empty_bench_slot_excluding(entry_id)
+	entry.bench_slot_index = target_bench_slot
+	occupant.bench_slot_index = other_slot
+	deck_changed.emit()
+	return true
+
+
+## 已入座 → 备战（首空格）。备战满且无交换目标时失败。
+func try_move_seat_to_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
 		return false
 	if entry.seat_index < 0:
+		if target_bench_slot >= 0:
+			return try_place_on_bench(entry_id, target_bench_slot)
 		return true
-	if not can_bench_more():
-		return false
-	entry.seat_index = -1
-	entry.seat_assign_seq = 0
-	deck_changed.emit()
-	return true
+	return try_place_on_bench(entry_id, target_bench_slot)
+
+
+func get_entry_at_bench_slot(bench_slot: int) -> DeckEntry:
+	if bench_slot < 0 or bench_slot >= BENCH_CAPACITY:
+		return null
+	for entry in _entries:
+		if entry != null and entry.seat_index < 0 and entry.bench_slot_index == bench_slot:
+			return entry
+	return null
 
 
 ## 卸座入备战（出售前/遗留收回）；备战满时失败。
@@ -672,6 +731,10 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	if earliest != null and earliest.seat_index >= 0:
 		product.seat_index = earliest.seat_index
 		product.seat_assign_seq = earliest.seat_assign_seq
+	else:
+		var bench_slot := _earliest_bench_slot_among([a, b, c])
+		if bench_slot >= 0:
+			product.bench_slot_index = bench_slot
 	var consumed_seats: Array = []
 	for src in [a, b, c]:
 		consumed_seats.append(src.seat_index if src != null else -1)
@@ -811,6 +874,7 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	else:
 		entry.equipment = null
 	entry.seat_index = source.seat_index
+	entry.bench_slot_index = source.bench_slot_index
 	entry.seat_assign_seq = source.seat_assign_seq
 	if source.runtime_main_ability != null:
 		entry.runtime_main_ability = source.runtime_main_ability.duplicate(true) as AbilityData
@@ -845,13 +909,86 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 	if seat >= 0 and can_seat_more():
 		_set_seat(entry, seat, true)
 		return
-	## 上场已满：留在备战（调用方应已用 can_add 保证有空）。
+	## 上场已满：落在首个空备战格。
+	_claim_first_empty_bench_slot(entry)
+
+
+func _ensure_bench_slot_layout() -> void:
+	var taken: Dictionary = {}
+	for entry in _entries:
+		if entry == null or entry.seat_index >= 0:
+			if entry != null:
+				entry.bench_slot_index = -1
+			continue
+		var slot := entry.bench_slot_index
+		if slot >= 0 and slot < BENCH_CAPACITY and not taken.has(slot):
+			taken[slot] = entry.entry_id
+		else:
+			entry.bench_slot_index = -1
+	var unassigned: Array[DeckEntry] = []
+	for entry in _entries:
+		if entry == null or entry.seat_index >= 0:
+			continue
+		if entry.bench_slot_index < 0:
+			unassigned.append(entry)
+	unassigned.sort_custom(func(a: DeckEntry, b: DeckEntry) -> bool:
+		return a.entry_id < b.entry_id
+	)
+	for entry in unassigned:
+		for i in BENCH_CAPACITY:
+			if not taken.has(i):
+				entry.bench_slot_index = i
+				taken[i] = entry.entry_id
+				break
+
+
+func _find_first_empty_bench_slot() -> int:
+	_ensure_bench_slot_layout()
+	for i in BENCH_CAPACITY:
+		if get_entry_at_bench_slot(i) == null:
+			return i
+	return -1
+
+
+func _find_first_empty_bench_slot_excluding(entry_id: int) -> int:
+	for i in BENCH_CAPACITY:
+		var occ := get_entry_at_bench_slot(i)
+		if occ == null or occ.entry_id == entry_id:
+			return i
+	return -1
+
+
+func _claim_first_empty_bench_slot(entry: DeckEntry) -> void:
+	if entry == null or entry.seat_index >= 0:
+		return
+	_ensure_bench_slot_layout()
+	if entry.bench_slot_index >= 0:
+		return
+	var slot := _find_first_empty_bench_slot()
+	if slot >= 0:
+		entry.bench_slot_index = slot
+
+
+func _earliest_bench_slot_among(group: Array) -> int:
+	var best := -1
+	for item in group:
+		var entry := item as DeckEntry
+		if entry == null or entry.seat_index >= 0:
+			continue
+		var slot := entry.bench_slot_index
+		if slot < 0:
+			continue
+		if best < 0 or slot < best:
+			best = slot
+	return best
 
 
 func _set_seat(entry: DeckEntry, seat_index: int, refresh_seq: bool) -> void:
 	if entry == null:
 		return
 	entry.seat_index = seat_index
+	if seat_index >= 0:
+		entry.bench_slot_index = -1
 	if refresh_seq:
 		_next_seat_seq += 1
 		entry.seat_assign_seq = _next_seat_seq

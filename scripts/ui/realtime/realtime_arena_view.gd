@@ -35,9 +35,9 @@ signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
 signal prepare_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备：拖已入座角色松手落在备战格。
-signal prepare_team_bench_drop(entry_id: int)
+signal prepare_team_bench_drop(entry_id: int, bench_slot: int)
 ## 招募：拖上区/备战成员松手落在备战格（或未落座时由控制器兼容）。
-signal recruit_team_bench_drop(entry_id: int)
+signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 ## 点备战已占格（选中 / 药水等）。
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
@@ -2637,7 +2637,8 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		recruit_team_bench_drop.emit(entry_id)
+		var bench_i := find_bench_slot_at_local(release_pos)
+		recruit_team_bench_drop.emit(entry_id, bench_i)
 	elif recruit_team_slots != null:
 		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
@@ -2798,7 +2799,8 @@ func _finish_prepare_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		prepare_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		prepare_team_bench_drop.emit(entry_id)
+		var bench_i := find_bench_slot_at_local(release_pos)
+		prepare_team_bench_drop.emit(entry_id, bench_i)
 	elif prepare_slots != null:
 		seat_i = prepare_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
