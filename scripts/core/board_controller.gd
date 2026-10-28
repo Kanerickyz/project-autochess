@@ -1360,10 +1360,8 @@ func _on_combat_event_for_economy(
 ) -> void:
 	if payload.target == null:
 		return
-	## 击杀敌方不掉金（愿景定稿）；不再调用 grant_kill_gold。
-	## 友方 death_grant_gold（增益亡者遗金）若仍挂载则保留。
+	## 击杀敌方不掉金（愿景定稿）；友方产金走技能 GRANT_GOLD（如殓金），不经增益卡。
 	if event_type == CombatEvents.ON_DEATH:
-		## 亡者遗金等由 EffectResolver 队列播报后 GRANT_GOLD 结算（与 realtime 主路径一致）。
 		pass
 
 

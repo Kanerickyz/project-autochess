@@ -1,7 +1,7 @@
 class_name BuffCardData
 extends Resource
 
-enum EffectType { PERMANENT_ATTACK, PERMANENT_MAX_HP, CANNOT_MOVE, DEATH_GOLD }
+enum EffectType { PERMANENT_ATTACK, PERMANENT_MAX_HP, CANNOT_MOVE }
 
 @export var id: String = ""
 @export var display_name: String = ""
