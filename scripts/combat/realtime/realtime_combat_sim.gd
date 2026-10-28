@@ -250,6 +250,10 @@ func count_alive(team: UnitInstance.Team) -> int:
 	return count
 
 
+func is_death_presentation_pending(rt: RtUnit) -> bool:
+	return _pipeline != null and _pipeline.has_pending_death_presentation(rt)
+
+
 ## 占格查询（测试 / 调试）。
 func is_cell_occupied(cell: Vector2i) -> bool:
 	return _occupancy_owner(cell) != null
@@ -976,7 +980,7 @@ func _footprint_fits(origin: Vector2i, size: Vector2i, ignore: RtUnit) -> bool:
 func _remove_dead() -> void:
 	var alive: Array[RtUnit] = []
 	for rt in _units:
-		if rt.is_alive():
+		if rt.is_alive() or is_death_presentation_pending(rt):
 			alive.append(rt)
 		else:
 			rt.state = RtUnit.State.DEAD
@@ -1613,6 +1617,8 @@ func _sync_deaths_from_hp() -> void:
 		if rt.state == RtUnit.State.DEAD:
 			continue
 		if rt.unit.is_alive():
+			continue
+		if is_death_presentation_pending(rt):
 			continue
 		rt.state = RtUnit.State.DEAD
 		rt.target = null

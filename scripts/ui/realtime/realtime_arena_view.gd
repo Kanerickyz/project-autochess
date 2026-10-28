@@ -4083,9 +4083,10 @@ func _draw_units(px: float) -> void:
 		var is_actor := actor != null and rt == actor
 		if started and actor != null and not is_actor:
 			alpha = 0.72
-		## 已死单位只走残影；本体不再绘制，避免淡出后仍留在场上。
+		## 已死单位走残影；defer 致死待 finalize 前仍绘活体，避免先消失再侧倒。
 		if not rt.is_alive():
-			continue
+			if sim == null or not sim.is_death_presentation_pending(rt):
+				continue
 		if started and rt.is_deploying():
 			alpha = mini(alpha, 0.55)
 		if now - rt.last_attack_time < ATTACK_FLASH_SECONDS:

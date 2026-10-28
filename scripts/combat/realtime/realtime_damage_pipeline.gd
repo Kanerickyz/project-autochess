@@ -107,6 +107,16 @@ func take_pending_death_finalizations() -> Array[Dictionary]:
 	return out
 
 
+## 致死已 staging、OnKill/策反尚未 finalize：表现层仍应绘制活体剪影。
+func has_pending_death_presentation(rt: RtUnit) -> bool:
+	if rt == null:
+		return false
+	for entry in _pending_death_finalizations:
+		if entry.get("target") == rt:
+			return true
+	return false
+
+
 func emit_post_kill_death_events(death: Dictionary) -> void:
 	var tgt2: RtUnit = death.get("target")
 	if tgt2 == null:
