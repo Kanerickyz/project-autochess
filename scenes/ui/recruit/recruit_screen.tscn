@@ -148,12 +148,6 @@ custom_minimum_size = Vector2(140, 40)
 layout_mode = 2
 text = "刷新（1 金）"
 
-[node name="ResetButton" type="Button" parent="RootPanel/RecruitPanel/RecruitInner/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 40)
-layout_mode = 2
-text = "重置"
-
 [node name="SkipButton" type="Button" parent="RootPanel/RecruitPanel/RecruitInner/Actions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 40)

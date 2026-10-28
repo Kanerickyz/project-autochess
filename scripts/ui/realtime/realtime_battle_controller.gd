@@ -123,7 +123,6 @@ var _recruit_hint: Label
 var _recruit_gold: Label
 var _recruit_seat: Label
 var _recruit_refresh_btn: Button
-var _recruit_reset_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
@@ -2578,11 +2577,6 @@ func _ensure_recruit_hud() -> void:
 	_recruit_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_recruit_refresh_btn.pressed.connect(_on_recruit_refresh_pressed)
 	row.add_child(_recruit_refresh_btn)
-	_recruit_reset_btn = Button.new()
-	_recruit_reset_btn.text = "重置"
-	_recruit_reset_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_recruit_reset_btn.pressed.connect(_on_recruit_reset_pressed)
-	row.add_child(_recruit_reset_btn)
 	_recruit_skip_btn = Button.new()
 	_recruit_skip_btn.text = "跳过"
 	_recruit_skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2899,8 +2893,6 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
-	if _recruit_reset_btn != null:
-		_recruit_reset_btn.disabled = _recruit_animating
 	if _recruit_skip_btn != null:
 		## 开局隐藏跳过；胜后显示。
 		_recruit_skip_btn.visible = not _recruit_session.require_nonempty_roster
@@ -3187,17 +3179,6 @@ func _on_recruit_candidate_lock(candidate_index: int) -> void:
 			_recruit_hint.text = "已解锁 %s" % unit.display_name
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
-
-
-func _on_recruit_reset_pressed() -> void:
-	if _recruit_animating or _recruit_session == null:
-		return
-	_recruit_session.reset()
-	_recruit_selected_candidate = -1
-	_recruit_selected_replace_id = -1
-	_recruit_pending_item_slot = -1
-	if _recruit_shop != null and _recruit_shop.is_open():
-		_recruit_shop.restore_snapshot()
 
 
 func _on_recruit_skip_pressed() -> void:

@@ -147,7 +147,7 @@ func _test_recruit_arena_transition() -> void:
 		var cand_cy := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5)).y
 		_expect(bench_cy > team_by and bench_cy < cand_cy, "recruit bench between team and candidates")
 
-	## 规则：刷新 / 重置仍可用
+	## 规则：刷新仍可用；进门快照仍由 session.reset() 供跳过/测试
 	var gold_before := economy.gold
 	_expect(session.can_refresh(), "can refresh")
 	_expect(session.try_refresh(), "refresh ok")

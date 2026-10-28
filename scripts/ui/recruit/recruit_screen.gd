@@ -18,7 +18,6 @@ const UNIT_CARD_SCENE := preload("res://scenes/ui/unit_card_display.tscn")
 @onready var _team_row: HBoxContainer = %TeamRow
 @onready var _candidate_row: HBoxContainer = %CandidateRow
 @onready var _refresh_button: Button = %RefreshButton
-@onready var _reset_button: Button = %ResetButton
 @onready var _skip_button: Button = %SkipButton
 @onready var _finish_button: Button = %FinishButton
 @onready var _ghost_layer: Control = %GhostLayer
@@ -38,7 +37,6 @@ var _animating: bool = false
 func _ready() -> void:
 	visible = false
 	_refresh_button.pressed.connect(_on_refresh_pressed)
-	_reset_button.pressed.connect(_on_reset_pressed)
 	_skip_button.pressed.connect(_on_skip_pressed)
 	_finish_button.pressed.connect(_on_finish_pressed)
 	_ensure_ghost()
@@ -217,14 +215,6 @@ func _on_refresh_pressed() -> void:
 		_hint_label.text = "金币不足，无法刷新"
 
 
-func _on_reset_pressed() -> void:
-	if _animating or _session == null:
-		return
-	_session.reset()
-	_selected_candidate = -1
-	_selected_replace_id = -1
-
-
 func _on_skip_pressed() -> void:
 	if _animating or _session == null:
 		return
@@ -272,7 +262,6 @@ func _play_enter_animation() -> void:
 
 func _set_action_buttons_enabled(enabled: bool) -> void:
 	_refresh_button.disabled = not enabled or (_session != null and not _session.can_refresh())
-	_reset_button.disabled = not enabled
 	_skip_button.disabled = not enabled
 	_finish_button.disabled = not enabled
 
