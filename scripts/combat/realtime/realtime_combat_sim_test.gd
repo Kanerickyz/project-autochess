@@ -57,6 +57,10 @@ static func run_all() -> bool:
 	ok = _check("deferred_hit_keeps_chained_skill_batches", _test_deferred_hit_keeps_chained_skill_batches()) and ok
 	ok = _check("deferred_hit_emits_unit_died_for_death_fx", _test_deferred_hit_emits_unit_died_for_death_fx()) and ok
 	ok = _check(
+		"deferred_lethal_keeps_unit_until_death_finalize",
+		_test_deferred_lethal_keeps_unit_until_death_finalize(),
+	) and ok
+	ok = _check(
 		"deferred_mirror_warden_convert_before_death_finalize",
 		_test_deferred_mirror_warden_convert_before_death_finalize(),
 	) and ok
@@ -1953,6 +1957,49 @@ static func _test_deferred_hit_keeps_chained_skill_batches() -> bool:
 	var second := sim.peek_pending_effect_batch()
 	if second == null or second.owner == killer_rt.unit:
 		push_error("defer_hit: second batch should be another ally's skill")
+		return false
+	return true
+
+
+static func _test_deferred_lethal_keeps_unit_until_death_finalize() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 994)
+	sim.defer_effect_resolve = true
+	var ally := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {"max_hp": 6, "attack": 9, "id": "striker"}),
+		Vector2(4.5, 20.5),
+	)
+	var foe := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {"max_hp": 3, "attack": 0, "id": "fodder"}),
+		Vector2(4.5, 10.5),
+	)
+	sim.begin_combat()
+	var guard := 0
+	while sim.has_pending_effects() and guard < 48:
+		sim.resolve_next_pending_effect()
+		guard += 1
+	sim._resolve_hit(ally, foe, ally.get_effective_attack(), 0.0)
+	if not sim.is_death_presentation_pending(foe):
+		push_error("defer_draw: foe should await death finalize")
+		return false
+	var still_listed := false
+	for rt in sim.get_units():
+		if rt == foe:
+			still_listed = true
+			break
+	if not still_listed:
+		push_error("defer_draw: foe must stay in unit list until finalize")
+		return false
+	sim._remove_dead()
+	for rt in sim.get_units():
+		if rt == foe:
+			still_listed = true
+	if not still_listed:
+		push_error("defer_draw: remove_dead must keep pending presentation unit")
+		return false
+	sim.flush_idle_death_presentations()
+	if sim.is_death_presentation_pending(foe):
+		push_error("defer_draw: pending should clear after flush")
 		return false
 	return true
 

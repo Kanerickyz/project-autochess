@@ -113,6 +113,7 @@ var shake_strength := 0.0
 
 var _tracked: Dictionary = {}
 var _corpses: Array[Corpse] = []
+var _death_played_ids: Dictionary = {}
 var _shake_tween: Tween
 
 
@@ -355,6 +356,10 @@ func walk_pose(rt: RtUnit) -> Dictionary:
 func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	if rt == null:
 		return
+	var inst_id := rt.get_instance_id()
+	if _death_played_ids.has(inst_id):
+		return
+	_death_played_ids[inst_id] = true
 	var corpse := Corpse.new()
 	corpse.unit_id = unit_id
 	corpse.is_player = rt.is_player()
@@ -394,6 +399,7 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	tween.tween_callback(func() -> void:
 		corpse.done = true
 		corpse.pose.alpha = 0.0
+		_death_played_ids.erase(inst_id)
 	)
 
 
