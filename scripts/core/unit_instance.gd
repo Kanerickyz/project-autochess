@@ -13,7 +13,6 @@ var unit_data: UnitData
 var deck_entry_id: int = -1
 var level: int = 1
 var cannot_move: bool = false
-var death_grant_gold: int = 0
 var attached_abilities: Array[AbilityData] = []
 var stats: UnitStats
 var current_hp: int
@@ -78,7 +77,6 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 		unit.current_hp += new_max - old_max
 	unit.current_hp = clampi(unit.current_hp, 0, new_max)
 	unit.cannot_move = entry.rule_flags.get("cannot_move", false)
-	unit.death_grant_gold = 0
 	unit.armor_block = entry.get_armor_block()
 	unit._deck_entry_ref = weakref(entry)
 	unit.attached_abilities = entry.attached_abilities.duplicate()
@@ -86,12 +84,6 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	else:
 		unit.main_ability_override = null
-	for buff in entry.attached_buffs:
-		if buff == null:
-			continue
-		if buff.effect_type == BuffCardData.EffectType.DEATH_GOLD:
-			unit.death_grant_gold += buff.value
-
 
 static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> UnitInstance:
 	if entry == null or entry.unit == null:

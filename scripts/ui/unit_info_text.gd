@@ -253,6 +253,59 @@ static func build_status_attachment_info(
 	}
 
 
+## 战斗介绍卡：本拍 spec 内叠层/驱散动作 → 状态附属卡（去重按 status_id）。
+static func attachments_for_effect_spec(
+	unit: UnitInstance, spec: EffectSpec, with_stat_icons: bool = true
+) -> Array:
+	var out: Array = []
+	if spec == null:
+		return out
+	var scale := 1
+	if unit != null:
+		scale = _value_scale_for_spec_on_unit(unit, spec)
+	var seen: Dictionary = {}
+	for action in spec.actions:
+		if action == null:
+			continue
+		match action.action_type:
+			EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
+				var status_id: StringName = action.stat_name
+				if seen.has(status_id):
+					continue
+				seen[status_id] = true
+				var stacks := action.value * scale
+				if stacks <= 0:
+					stacks = 1
+				var info := build_status_attachment_info(status_id, stacks, with_stat_icons)
+				if not info.is_empty():
+					out.append(info)
+	return out
+
+
+static func _value_scale_for_spec_on_unit(unit: UnitInstance, spec: EffectSpec) -> int:
+	if unit == null or spec == null:
+		return 1
+	var candidates: Array[AbilityData] = []
+	if unit.main_ability_override != null:
+		candidates.append(unit.main_ability_override)
+	if unit.unit_data != null:
+		if unit.unit_data.ability != null:
+			candidates.append(unit.unit_data.ability)
+		for passive in unit.unit_data.passives:
+			if passive != null:
+				candidates.append(passive)
+	for attached in unit.attached_abilities:
+		if attached != null:
+			candidates.append(attached)
+	for ability in candidates:
+		if ability == null:
+			continue
+		for owned in ability.effect_specs:
+			if owned == spec:
+				return UnitInstance.ability_value_multiplier_for(ability, unit.level)
+	return 1
+
+
 static func collect_combat_status_attachments(
 	unit: UnitInstance, _with_stat_icons: bool = true
 ) -> Array:
@@ -374,8 +427,6 @@ static func _buff_effect_description(buff: BuffCardData, with_stat_icons: bool =
 			return "永久 +%d 生命上限" % buff.value
 		BuffCardData.EffectType.CANNOT_MOVE:
 			return "无法行走，仍可攻击"
-		BuffCardData.EffectType.DEATH_GOLD:
-			return "死亡时为 Run +%d 金" % buff.value
 	return ""
 
 
