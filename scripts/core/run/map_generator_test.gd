@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	passed = _test_max_nodes_per_floor() and passed
 	passed = _test_sts_constraints() and passed
 	passed = _test_edges_do_not_cross() and passed
+	passed = _test_no_redundant_sibling_branches() and passed
 	if passed:
 		print("MapGeneratorTest: all passed")
 	else:
@@ -324,6 +325,58 @@ static func _test_edges_do_not_cross() -> bool:
 						)
 						return false
 	return true
+
+
+static func _test_no_redundant_sibling_branches() -> bool:
+	var config := _make_test_config()
+	config.path_count = 5
+	for seed in 80:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		var state := MapGenerator.generate(config, rng)
+		for parent in state.nodes:
+			var child_ids := parent.get_outgoing_ids()
+			if child_ids.size() < 2:
+				continue
+			for i in child_ids.size():
+				var sig_a := MapGeneratorTest._forward_sig_for_test(state, int(child_ids[i]))
+				for j in range(i + 1, child_ids.size()):
+					var sig_b := MapGeneratorTest._forward_sig_for_test(state, int(child_ids[j]))
+					if sig_a == sig_b:
+						push_error(
+							"MapGeneratorTest: seed %d parent %d siblings %d/%d share forward sig"
+							% [seed, parent.get_id(), child_ids[i], child_ids[j]]
+						)
+						return false
+	return true
+
+
+static func _forward_sig_for_test(state: MapState, start_id: int) -> String:
+	var horizon := 2
+	var seen: Dictionary = {}
+	var queue: Array = [[start_id, 0]]
+	while not queue.is_empty():
+		var item: Array = queue.pop_front()
+		var node_id: int = int(item[0])
+		var depth: int = int(item[1])
+		if seen.has(node_id):
+			continue
+		if depth > horizon:
+			continue
+		seen[node_id] = true
+		if depth >= horizon:
+			continue
+		var node := state.get_node(node_id)
+		if node == null:
+			continue
+		for outgoing_id in node.get_outgoing_ids():
+			queue.append([outgoing_id, depth + 1])
+	var keys: Array = seen.keys()
+	keys.sort()
+	var parts: PackedStringArray = []
+	for key in keys:
+		parts.append(str(int(key)))
+	return ",".join(parts)
 
 
 static func _can_reach_boss(state: MapState) -> bool:

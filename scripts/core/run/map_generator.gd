@@ -23,6 +23,9 @@ const _MYSTERY_RESOLVE_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.ENCHANT,
 ]
 
+## 拓扑剪枝：同父兄弟若在该层数内前向可达集合相同，视为无信息分叉。
+const _PRUNE_FORWARD_HORIZON := 2
+
 
 static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapState:
 	if config == null:
@@ -125,10 +128,12 @@ static func _make_node(
 	return node
 
 
-static func _resolve_path_count(config: RunMapConfig) -> int:
+static func _resolve_path_count(config: RunMapConfig, rng: RandomNumberGenerator = null) -> int:
 	if config.path_count > 0:
 		return clampi(config.path_count, 1, config.column_count)
-	return mini(6, config.column_count)
+	if rng != null:
+		return clampi(rng.randi_range(4, 5), 1, config.column_count)
+	return mini(5, config.column_count)
 
 
 static func _resolve_elite_min_floor(config: RunMapConfig) -> int:
@@ -153,7 +158,7 @@ static func _build_path_network(
 ) -> Dictionary:
 	var column_count := config.column_count
 	var floor_count := config.floor_count
-	var path_count := _resolve_path_count(config)
+	var path_count := _resolve_path_count(config, rng)
 
 	## key: Vector2i(floor, column) -> MapNodeData
 	var cell_nodes: Dictionary = {}
@@ -189,6 +194,8 @@ static func _build_path_network(
 				)
 			prev = node_data
 
+	_prune_redundant_topology(cell_nodes, floor_count, column_count)
+
 	var floor_nodes: Array = []
 	for floor_index in range(1, floor_count + 1):
 		var floor_list: Array[MapNodeData] = []
@@ -210,6 +217,135 @@ static func _build_path_network(
 		floor_nodes.append(floor_list)
 
 	return {"floor_nodes": floor_nodes, "next_id": next_id}
+
+
+static func _index_cell_nodes_by_id(cell_nodes: Dictionary) -> Dictionary:
+	var by_id: Dictionary = {}
+	for node_data in cell_nodes.values():
+		var data: MapNodeData = node_data
+		by_id[data.id] = data
+	return by_id
+
+
+static func _forward_reach_signature(by_id: Dictionary, start_id: int, max_depth: int) -> String:
+	var seen: Dictionary = {}
+	var queue: Array = [[start_id, 0]]
+	while not queue.is_empty():
+		var item: Array = queue.pop_front()
+		var node_id: int = int(item[0])
+		var depth: int = int(item[1])
+		if seen.has(node_id):
+			continue
+		if depth > max_depth:
+			continue
+		seen[node_id] = true
+		if depth >= max_depth:
+			continue
+		var node: MapNodeData = by_id.get(node_id)
+		if node == null:
+			continue
+		for outgoing_id in node.outgoing_ids:
+			queue.append([outgoing_id, depth + 1])
+	var keys: Array = seen.keys()
+	keys.sort()
+	var parts: PackedStringArray = []
+	for key in keys:
+		parts.append(str(int(key)))
+	return ",".join(parts)
+
+
+static func _pick_redundant_child_to_drop(
+	by_id: Dictionary,
+	child_a: int,
+	child_b: int,
+	column_count: int,
+) -> int:
+	var center := column_count / 2
+	var node_a: MapNodeData = by_id.get(child_a)
+	var node_b: MapNodeData = by_id.get(child_b)
+	if node_a == null:
+		return child_a
+	if node_b == null:
+		return child_b
+	var dist_a := absi(node_a.column - center)
+	var dist_b := absi(node_b.column - center)
+	if dist_a != dist_b:
+		return child_a if dist_a > dist_b else child_b
+	return maxi(child_a, child_b)
+
+
+static func _prune_redundant_topology(
+	cell_nodes: Dictionary,
+	floor_count: int,
+	column_count: int,
+) -> void:
+	var changed := true
+	while changed:
+		changed = false
+		var by_id := _index_cell_nodes_by_id(cell_nodes)
+		for node_data in by_id.values():
+			var parent: MapNodeData = node_data
+			if parent.outgoing_ids.size() < 2:
+				continue
+			var drop_ids: Array[int] = []
+			var children: Array = parent.outgoing_ids.duplicate()
+			for i in children.size():
+				var child_a: int = int(children[i])
+				if child_a in drop_ids:
+					continue
+				for j in range(i + 1, children.size()):
+					var child_b: int = int(children[j])
+					if child_b in drop_ids:
+						continue
+					var sig_a := _forward_reach_signature(by_id, child_a, _PRUNE_FORWARD_HORIZON)
+					var sig_b := _forward_reach_signature(by_id, child_b, _PRUNE_FORWARD_HORIZON)
+					if sig_a != sig_b:
+						continue
+					drop_ids.append(
+						_pick_redundant_child_to_drop(by_id, child_a, child_b, column_count)
+					)
+					changed = true
+			for drop_id in drop_ids:
+				parent.outgoing_ids.erase(drop_id)
+	_remove_unreachable_cell_nodes(cell_nodes, floor_count)
+
+
+static func _remove_unreachable_cell_nodes(cell_nodes: Dictionary, floor_count: int) -> void:
+	var by_id := _index_cell_nodes_by_id(cell_nodes)
+	var roots: Array[int] = []
+	for key in cell_nodes.keys():
+		var cell: Vector2i = key
+		if cell.x == 1:
+			roots.append(cell_nodes[key].id)
+	var visited: Dictionary = {}
+	var queue: Array[int] = []
+	for root_id in roots:
+		queue.append(int(root_id))
+	while not queue.is_empty():
+		var current_id: int = queue.pop_front()
+		if current_id in visited:
+			continue
+		visited[current_id] = true
+		var node: MapNodeData = by_id.get(current_id)
+		if node == null:
+			continue
+		for outgoing_id in node.outgoing_ids:
+			if outgoing_id not in visited:
+				queue.append(outgoing_id)
+	var dead_keys: Array[Vector2i] = []
+	for key in cell_nodes.keys():
+		var data: MapNodeData = cell_nodes[key]
+		if data.id not in visited:
+			dead_keys.append(key)
+	for key in dead_keys:
+		var dead_id: int = cell_nodes[key].id
+		cell_nodes.erase(key)
+		by_id.erase(dead_id)
+	for node_data in by_id.values():
+		var node: MapNodeData = node_data
+		for outgoing_id in node.outgoing_ids.duplicate():
+			if outgoing_id not in by_id:
+				node.outgoing_ids.erase(outgoing_id)
 
 
 static func _pick_path_start_columns(
