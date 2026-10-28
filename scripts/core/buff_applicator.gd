@@ -15,5 +15,3 @@ static func apply_on_attach(entry: DeckEntry, buff: BuffCardData, deck: DeckStat
 				entry.bonus_max_hp += buff.value
 		BuffCardData.EffectType.CANNOT_MOVE:
 			entry.rule_flags["cannot_move"] = true
-		BuffCardData.EffectType.DEATH_GOLD:
-			pass

@@ -64,8 +64,6 @@ func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	var start_depth := 0
 	if payload != null:
 		start_depth = maxi(0, payload.chain_depth)
-	if event_type == CombatEvents.ON_DEATH:
-		_enqueue_death_buff_batches(payload, start_depth)
 	_enqueue_for_event(event_type, payload, start_depth)
 
 
@@ -129,68 +127,6 @@ func process_next_step() -> bool:
 
 func clear_pending() -> void:
 	_pending_batches.clear()
-
-
-func _enqueue_death_buff_batches(payload: CombatEventPayload, depth: int) -> void:
-	if payload == null or payload.target == null:
-		return
-	var dead: UnitInstance = payload.target
-	if dead.team != UnitInstance.Team.PLAYER or dead.death_grant_gold <= 0:
-		return
-	var entry := dead.get_linked_deck_entry()
-	if entry != null:
-		for buff in entry.attached_buffs:
-			if buff == null or buff.effect_type != BuffCardData.EffectType.DEATH_GOLD:
-				continue
-			if buff.value <= 0:
-				continue
-			_enqueue_buff_combat_batch(dead, buff, payload, depth)
-		return
-	## 无牌库条目时仍按聚合值播一条（沙盒等）。
-	var fallback := BuffCardData.new()
-	fallback.id = "buff_death_gold"
-	fallback.display_name = "亡者遗金"
-	fallback.effect_type = BuffCardData.EffectType.DEATH_GOLD
-	fallback.value = dead.death_grant_gold
-	_enqueue_buff_combat_batch(dead, fallback, payload, depth)
-
-
-func _enqueue_buff_combat_batch(
-	owner: UnitInstance,
-	buff: BuffCardData,
-	event_payload: CombatEventPayload,
-	depth: int,
-) -> void:
-	if owner == null or buff == null:
-		return
-	var action := EffectAction.new()
-	match buff.effect_type:
-		BuffCardData.EffectType.DEATH_GOLD:
-			action.action_type = EffectAction.Type.GRANT_GOLD
-			action.value = buff.value
-		_:
-			return
-	var batch := QueuedEffectBatch.new()
-	batch.owner = owner
-	batch.depth = depth
-	batch.display_buff = buff
-	var batch_payload := CombatEventPayload.new()
-	if event_payload != null:
-		batch_payload.source = event_payload.source
-		batch_payload.target = event_payload.target
-		batch_payload.target_hp_before = event_payload.target_hp_before
-		batch_payload.amount = event_payload.amount
-		batch_payload.chain_depth = depth
-	batch_payload.effect_buff = buff
-	batch.payload = batch_payload
-	var step := QueuedEffectStep.new()
-	step.action = action
-	step.target = owner
-	step.owner = owner
-	step.payload = batch_payload
-	step.depth = depth
-	batch.entries.append(step)
-	_pending_batches.append(batch)
 
 
 ## 战斗状态等仅对存活单位入队；击杀当次 ON_DEAL_DAMAGE 不再播「破甲箭」叠虚弱。
@@ -1251,9 +1187,7 @@ func _execute_action(
 				return false
 			if _economy == null:
 				return false
-			var gold_amount := action.value
-			if payload == null or payload.effect_buff == null:
-				gold_amount = _scaled_action_value(owner, action.value)
+			var gold_amount := _scaled_action_value(owner, action.value)
 			if gold_amount <= 0:
 				return false
 			_economy.grant(gold_amount)
@@ -1339,7 +1273,6 @@ func _emit_effect_batch_resolved(batch: QueuedEffectBatch, executed: Array) -> v
 	resolved.effect_action = first_action
 	resolved.effect_owner = batch.owner
 	resolved.effect_spec = batch.spec
-	resolved.effect_buff = batch.display_buff
 	resolved.effect_entries = executed.duplicate()
 	if batch.payload != null:
 		resolved.from_cell = batch.payload.from_cell
