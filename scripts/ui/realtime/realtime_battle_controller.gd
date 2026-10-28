@@ -3329,13 +3329,32 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 		_last_resolved_payload = payload
 		return
 	if _lock_phase_active or _phase != Phase.COMBAT:
-		_present_effect_feedback(payload, true)
+		if payload.effect_buff != null:
+			var buff_owner := (
+				payload.effect_owner if payload.effect_owner != null else payload.source
+			)
+			_register_combo_for_skill_intro(buff_owner)
+			_arm_combat_skill_info_visibility()
+			_show_buff_trigger_info(buff_owner, payload.effect_buff)
+			_present_effect_result(payload, true)
+			_release_combat_skill_info_visibility()
+		else:
+			_present_effect_feedback(payload, true)
 		return
 	## 非门控路径（兼容）：已结算则只播结果拍。
 	if _timestop_queue.is_blocking():
 		return
 	if _sim != null:
 		_sim.hold_for_presentation()
+	## 增益卡战斗结算应走 FIFO 先卡；若仍落到此路径则补介绍卡再播结果。
+	if payload.effect_buff != null:
+		var buff_owner := payload.effect_owner if payload.effect_owner != null else payload.source
+		_arm_combat_skill_info_visibility()
+		_show_buff_trigger_info(buff_owner, payload.effect_buff)
+		_timestop_queue.begin_result(payload, time_scale)
+		_present_effect_result(payload, true)
+		_release_combat_skill_info_visibility()
+		return
 	if _timestop_queue.enqueue_resolved(payload, time_scale):
 		_present_effect_result(payload, true)
 
@@ -3516,6 +3535,11 @@ func _on_skill_result_done() -> void:
 	if _sim != null:
 		_sim.try_seed_action_queue()
 		_sim.flush_idle_death_presentations()
+	## finalize 死亡会 ON_DEATH 入队增益卡（亡者遗金等）；须接着走「先卡再结算」。
+	if _sim != null and _sim.has_pending_effects():
+		_presentation_block_elapsed = 0.0
+		_start_next_skill_card()
+		return
 	_timestop_queue.clear()
 	_presentation_block_elapsed = 0.0
 	_finish_combo_reset_after_skill_tail_if_needed()
