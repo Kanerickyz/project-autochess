@@ -31,3 +31,37 @@ static func recruit_state(
 		var cost := maxi(1, session.get_recruit_cost(unit))
 		parts.append("%d/%d" % [unit.stats.attack + unit.stats.max_hp, cost])
 	return "|".join(parts)
+
+
+static func roster_team_signature(deck: DeckState) -> String:
+	if deck == null:
+		return ""
+	var parts: PackedStringArray = PackedStringArray()
+	for entry in deck.get_entries():
+		if entry == null:
+			continue
+		var uid := entry.get_unit_id()
+		if uid.is_empty():
+			continue
+		parts.append("%s#%d" % [uid, maxi(1, entry.level)])
+	parts.sort()
+	return "|".join(parts)
+
+
+## v4：当前队伍 + 本店可选 unit_id；动作为 unit_id。
+static func recruit_state_v4(
+	floor: int,
+	gold: int,
+	deck: DeckState,
+	shop_unit_ids: PackedStringArray,
+) -> String:
+	var gold_bucket := (maxi(0, gold) / 5) * 5
+	var team := roster_team_signature(deck)
+	var shop := shop_unit_ids.duplicate()
+	shop.sort()
+	return "recruit4|f%d|g%d|team=%s|shop=%s" % [
+		maxi(0, floor),
+		gold_bucket,
+		team if not team.is_empty() else "-",
+		"|".join(shop) if shop.size() > 0 else "-",
+	]

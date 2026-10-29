@@ -1,18 +1,25 @@
 class_name BanditRunAI
 extends HeuristicRunAI
-## v1：选路+招募均吃下一场遭遇胜负。v2：选路吃胜负；招募吃 Run 终局（见 on_run_finished）。
+## v1：选路+招募均吃下一场遭遇胜负。v2：选路吃胜负；招募 Run 终局。v4：选路启发式；招募按 unit_id + 队伍 state。
 
 const REWARD_V1 := "v1"
 const REWARD_V2 := "v2"
+const REWARD_V4 := "v4"
 const K_COMPLETE := 2
+const K_COMPLETE_V4 := 3
 const K_DEPTH := 3
+const K_DEPTH_V4_W := 4
+const K_DEPTH_V4_L := 3
+const EVAL_MIN_SAMPLES := 3
 
 var bandit_table: SimBanditTable
 var learning_enabled: bool = false
+var explore_enabled: bool = true
 var reward_mode: String = REWARD_V1
 
 var _pending_map: Array[Dictionary] = []
 var _recruit_log: Array[Dictionary] = []
+var _run_recruit_picks: Array[Dictionary] = []
 var _combats_fought: int = 0
 
 
@@ -29,6 +36,14 @@ func _init(
 	_reset_run_state()
 
 
+func set_explore_enabled(enabled: bool) -> void:
+	explore_enabled = enabled
+
+
+func get_run_recruit_picks() -> Array:
+	return _run_recruit_picks.duplicate(true)
+
+
 func begin_run() -> void:
 	_reset_run_state()
 
@@ -36,11 +51,15 @@ func begin_run() -> void:
 func _reset_run_state() -> void:
 	_pending_map = []
 	_recruit_log = []
+	_run_recruit_picks = []
 	_combats_fought = 0
 
 
 func on_encounter_resolved(won: bool) -> void:
 	_combats_fought += 1
+	if reward_mode == REWARD_V4:
+		_pending_map.clear()
+		return
 	if reward_mode == REWARD_V2:
 		for item in _pending_map:
 			bandit_table.record_outcome(
@@ -62,7 +81,7 @@ func on_encounter_resolved(won: bool) -> void:
 
 
 func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> void:
-	if not learning_enabled or reward_mode != REWARD_V2:
+	if not learning_enabled or not _recruit_reward_on_run_end():
 		return
 	if _combats_fought < 1:
 		return
@@ -74,7 +93,16 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 		var sk := str(item.get("state_key", ""))
 		var ak := str(item.get("action_key", ""))
 		if outcome == "RUN_COMPLETE":
-			bandit_table.record_weighted(sk, ak, K_COMPLETE, 0, true)
+			var w_win := K_COMPLETE_V4 if reward_mode == REWARD_V4 else K_COMPLETE
+			bandit_table.record_weighted(sk, ak, w_win, 0, true)
+		elif reward_mode == REWARD_V4:
+			var depth_ratio := float(d) / float(f_max)
+			var shallow_ratio := float(f_max - d) / float(f_max)
+			var w_add := int(round(pow(depth_ratio, 0.75) * float(K_DEPTH_V4_W)))
+			var l_add := int(round(pow(shallow_ratio, 1.25) * float(K_DEPTH_V4_L)))
+			if d >= 4:
+				l_add = maxi(0, l_add - 1)
+			bandit_table.record_weighted(sk, ak, w_add, l_add, true)
 		else:
 			var w_add := int(round(float(d) / float(f_max) * float(K_DEPTH)))
 			var l_add := int(round(float(f_max - d) / float(f_max) * float(K_DEPTH)))
@@ -82,6 +110,8 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 
 
 func pick_map_node(run_controller: RunController) -> MapNodeRuntime:
+	if reward_mode == REWARD_V4:
+		return super.pick_map_node(run_controller)
 	var ranked := enumerate_map_candidates(run_controller)
 	if ranked.is_empty():
 		return null
@@ -91,18 +121,15 @@ func pick_map_node(run_controller: RunController) -> MapNodeRuntime:
 	var floor := _current_map_floor(run_controller)
 	var state_key := SimBanditKeys.map_state(floor, options)
 	var heuristic_arm := 0
-	var arm := bandit_table.select_arm(
-		state_key,
-		options.size(),
-		heuristic_arm,
-		learning_enabled,
-	)
+	var arm := _select_bandit_arm_index(state_key, options.size(), heuristic_arm)
 	arm = clampi(arm, 0, options.size() - 1)
 	_queue_map_decision(state_key, str(arm))
 	return options[arm]
 
 
 func _try_best_recruit(session: RecruitSession) -> bool:
+	if reward_mode == REWARD_V4:
+		return _try_best_recruit_v4(session)
 	var candidates: Array[int] = []
 	for i in session.get_candidate_slot_count():
 		var unit := session.get_candidate(i)
@@ -125,12 +152,7 @@ func _try_best_recruit(session: RecruitSession) -> bool:
 		if score > best_score:
 			best_score = score
 			heuristic_arm = j
-	var arm_idx := bandit_table.select_arm(
-		state_key,
-		candidates.size(),
-		heuristic_arm,
-		learning_enabled,
-	)
+	var arm_idx := _select_bandit_arm_index(state_key, candidates.size(), heuristic_arm)
 	arm_idx = clampi(arm_idx, 0, candidates.size() - 1)
 	var pick: int = candidates[arm_idx]
 	if session.is_roster_full() and not session.can_recruit_via_merge(session.get_candidate(pick)):
@@ -143,6 +165,75 @@ func _try_best_recruit(session: RecruitSession) -> bool:
 	elif reward_mode == REWARD_V1:
 		_queue_map_decision(state_key, str(arm_idx))
 	return true
+
+
+func _try_best_recruit_v4(session: RecruitSession) -> bool:
+	var action_keys: PackedStringArray = PackedStringArray()
+	var slot_for_unit: Dictionary = {}
+	for i in session.get_candidate_slot_count():
+		var unit := session.get_candidate(i)
+		if unit == null or unit.id.is_empty():
+			continue
+		if not _can_try_recruit(session, unit):
+			continue
+		if slot_for_unit.has(unit.id):
+			continue
+		slot_for_unit[unit.id] = i
+		action_keys.append(unit.id)
+	if action_keys.is_empty():
+		return false
+	action_keys.sort()
+	var floor := maxi(0, session.map_floor)
+	var gold := session.economy.gold if session.economy != null else 0
+	var state_key := SimBanditKeys.recruit_state_v4(floor, gold, session.deck, action_keys)
+	var heuristic_key := action_keys[0]
+	var best_score := -1.0
+	for uid in action_keys:
+		var idx: int = int(slot_for_unit.get(uid, -1))
+		if idx < 0:
+			continue
+		var score := _score_recruit_candidate(session, session.get_candidate(idx))
+		if score > best_score:
+			best_score = score
+			heuristic_key = uid
+	var picked_id := _select_bandit_unit_id(state_key, action_keys, heuristic_key)
+	if picked_id.is_empty() or not slot_for_unit.has(picked_id):
+		return false
+	var pick: int = int(slot_for_unit[picked_id])
+	if session.is_roster_full() and not session.can_recruit_via_merge(session.get_candidate(pick)):
+		_free_weakest_roster_slot(session)
+	var result := session.try_recruit(pick)
+	if not bool(result.get("ok", false)):
+		return false
+	_recruit_log.append({"state_key": state_key, "action_key": picked_id})
+	_run_recruit_picks.append({"unit_id": picked_id, "floor": floor})
+	return true
+
+
+func _select_bandit_arm_index(state_key: String, arm_count: int, heuristic_arm: int) -> int:
+	var explore := learning_enabled and explore_enabled
+	var min_samples := 0 if learning_enabled else EVAL_MIN_SAMPLES
+	return bandit_table.select_arm(state_key, arm_count, heuristic_arm, explore, min_samples)
+
+
+func _select_bandit_unit_id(
+	state_key: String,
+	action_keys: PackedStringArray,
+	heuristic_key: String,
+) -> String:
+	var explore := learning_enabled and explore_enabled
+	var min_samples := 0 if learning_enabled else EVAL_MIN_SAMPLES
+	return bandit_table.select_arm_by_action_keys(
+		state_key,
+		action_keys,
+		heuristic_key,
+		explore,
+		min_samples,
+	)
+
+
+func _recruit_reward_on_run_end() -> bool:
+	return reward_mode == REWARD_V2 or reward_mode == REWARD_V4
 
 
 func enumerate_map_candidates(run_controller: RunController) -> Array:

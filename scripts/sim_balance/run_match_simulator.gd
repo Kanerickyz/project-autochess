@@ -234,7 +234,7 @@ func _build_run_record(seed: int, run_controller: RunController, encounters: Arr
 	var death_floor := 0
 	if outcome == "RUN_DEFEAT":
 		death_floor = maxi(0, run_controller.defeat_reached_floor)
-	return {
+	var record := {
 		"seed": seed,
 		"outcome": outcome,
 		"death_floor": death_floor,
@@ -242,6 +242,11 @@ func _build_run_record(seed: int, run_controller: RunController, encounters: Arr
 		"encounters": encounters,
 		"profile_id": _report_profile_id(),
 	}
+	if _ai is BanditRunAI:
+		var picks := (_ai as BanditRunAI).get_run_recruit_picks()
+		if not picks.is_empty():
+			record["recruit_picks"] = picks
+	return record
 
 
 func _report_profile_id() -> String:
@@ -279,3 +284,14 @@ func get_bandit_update_count() -> int:
 	if _ai is BanditRunAI:
 		return (_ai as BanditRunAI).bandit_table.get_total_updates()
 	return 0
+
+
+func set_bandit_explore_enabled(enabled: bool) -> void:
+	if _ai is BanditRunAI:
+		(_ai as BanditRunAI).set_explore_enabled(enabled)
+
+
+func get_bandit_coverage_summary() -> Dictionary:
+	if _ai is BanditRunAI:
+		return (_ai as BanditRunAI).bandit_table.get_coverage_summary()
+	return {"keys": 0, "median_wl": 0, "pct_keys_ge5": 0.0}
