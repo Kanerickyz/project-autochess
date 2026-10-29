@@ -8,15 +8,80 @@
     render(JSON.parse(await f.text()));
   });
 
-  fetch("summary.json")
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => {
-      if (d) render(d);
-      else document.getElementById("loadWarn").hidden = false;
-    })
-    .catch(() => {
-      document.getElementById("loadWarn").hidden = false;
+  const runSelect = document.getElementById("runSelect");
+  if (runSelect) {
+    runSelect.addEventListener("change", () => {
+      const path = runSelect.value;
+      if (path) loadSummaryPath(path);
     });
+  }
+
+  init();
+
+  async function init() {
+    const manifest = await fetchJson("manifest.json");
+    if (manifest && Array.isArray(manifest.runs) && manifest.runs.length > 0) {
+      populateRunSelect(manifest);
+      const latestId = manifest.latest_run_id;
+      const entry =
+        manifest.runs.find((r) => r.id === latestId) || manifest.runs[0];
+      if (entry && entry.path) {
+        runSelect.value = entry.path;
+        const data = await fetchJson(entry.path);
+        if (data) {
+          render(data);
+          return;
+        }
+      }
+    }
+    const fallback = await fetchJson("summary.json");
+    if (fallback) {
+      render(fallback);
+      return;
+    }
+    document.getElementById("loadWarn").hidden = false;
+  }
+
+  async function loadSummaryPath(path) {
+    const data = await fetchJson(path);
+    if (data) render(data);
+  }
+
+  async function fetchJson(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function populateRunSelect(manifest) {
+    if (!runSelect) return;
+    runSelect.innerHTML = manifest.runs
+      .map((r) => {
+        const label = [
+          r.generated_at_utc || r.id,
+          "v" + (r.game_version || "?"),
+          r.run_count ? r.run_count + " runs" : "",
+          r.git_ref ? "@" + r.git_ref : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          '<option value="' +
+          escapeHtml(r.path) +
+          '">' +
+          escapeHtml(label) +
+          "</option>"
+        );
+      })
+      .join("");
+    runSelect.hidden = false;
+    const label = document.getElementById("runSelectLabel");
+    if (label) label.hidden = false;
+  }
 
   function formatKpi(kpi) {
     if (!kpi) return "—";

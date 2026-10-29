@@ -25,6 +25,8 @@
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
     th, td { border-bottom: 1px solid #2a2f3a; padding: 0.4rem 0.5rem; text-align: left; }
     input[type=file] { margin: 0.5rem 0 1rem; }
+    .run-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; font-size: 0.88rem; }
+    .run-picker select { flex: 1; min-width: 12rem; max-width: 100%; padding: 0.35rem 0.5rem; background: #1a1d24; color: inherit; border: 1px solid #2a2f3a; border-radius: 6px; }
     .hint, .warn { font-size: 0.8rem; opacity: 0.65; }
     .warn { color: #f0ad4e; }
     #chartMount { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -36,8 +38,12 @@
     <span class="badge" id="gameVersionBadge">游戏版本 <strong>—</strong></span>
     <span class="badge" id="schemaBadge">Schema <strong>—</strong></span>
   </header>
-  <p class="hint">Pages：<code>/project-autochess/balancereport/</code> · 数据规范见 <code>summary.json</code> 的 <code>charts[]</code> · CI 分支 <code>balance-eval</code></p>
-  <p id="loadWarn" class="warn" hidden>未找到 summary.json：请推送 balance-eval 或手动选择 JSON。</p>
+  <p class="hint">Pages：<code>/project-autochess/balancereport/</code> · 历史报告保存在 <code>runs/</code> · 推 <code>main</code> 后由 Deploy Web 发布</p>
+  <p id="loadWarn" class="warn" hidden>未找到报告数据：请先跑 CI 归档到 main，或手动选择 JSON。</p>
+  <div class="run-picker">
+    <label id="runSelectLabel" for="runSelect" hidden>历史报告</label>
+    <select id="runSelect" hidden aria-label="历史报告"></select>
+  </div>
   <input type="file" id="file" accept="application/json,.json" />
   <div id="root" hidden>
     <div class="meta" id="meta"></div>

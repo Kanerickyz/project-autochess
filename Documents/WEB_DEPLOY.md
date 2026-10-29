@@ -90,14 +90,16 @@ godot --headless --path . --export-release "Web" build/web/index.html
 静态页：`docs/balancereport/index.html`  
 线上：**https://kanerickyz.github.io/project-autochess/balancereport/**
 
+历史报告保存在 `docs/balancereport/runs/<run_id>/summary.json`；`manifest.json` 索引全部跑局，`summary.json` 始终指向最新一次。
+
 | 触发 | 工作流 | 行为 |
 |------|--------|------|
-| 推 **`balance-eval`** | **Balance Report Pages** → **Balance Report Deploy** | 跑局（默认 100）→ `summary.json` → 打包 `pages-site` artifact；**Deploy** 在 **main** 上下文发布（满足 `github-pages` 环境仅允许 **main** 部署分支） |
-| 推 **`main`** | **Deploy Web** | 导出 Web + 静态 `balancereport/`（无 CI 生成 `summary.json` 时线上图表为空） |
+| 推 **`balance-eval`** 或手动 **Balance Report Pages** | 跑局（默认 100）→ **归档到 `runs/`** → **commit + push `main`** |
+| 推 **`main`** | **Deploy Web** | 导出 Web + 打包完整 `balancereport/`（含全部历史） |
 
-若 `Environments → github-pages → Deployment branches` 仅含 **main**，不要在 `balance-eval` 上直接 `deploy-pages`（deploy job 会无步骤失败）。也可把 **`balance-eval`** 加入允许列表后改回单 workflow 部署。
+不再使用单独的 Balance Report Deploy（避免与 Deploy Web 争抢 `pages-deploy`）。
 
-专用评估分支用法：
+专用评估分支：
 
 ```bash
 git fetch origin
@@ -108,4 +110,4 @@ git push -u origin balance-eval
 
 手动重跑：Actions → **Balance Report Pages** → Run workflow（可改 runs / seed_start）。
 
-与 Deploy Web 共用 `concurrency.group: pages-deploy`，避免两个部署互相覆盖 Pages 站点。
+与 Deploy Web 共用 `concurrency.group: pages-deploy`；报告归档 push 到 `main` 后会自动触发 Deploy Web。
