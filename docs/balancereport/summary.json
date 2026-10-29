@@ -10,22 +10,22 @@
 		{
 			"attempts": 90,
 			"floor": 2,
-			"loss_rate": 0.566666666666667,
-			"win_rate": 0.433333333333333,
-			"wins": 39
+			"loss_rate": 0.577777777777778,
+			"win_rate": 0.422222222222222,
+			"wins": 38
 		},
 		{
-			"attempts": 44,
+			"attempts": 43,
 			"floor": 3,
-			"loss_rate": 0.75,
-			"win_rate": 0.25,
-			"wins": 11
+			"loss_rate": 0.767441860465116,
+			"win_rate": 0.232558139534884,
+			"wins": 10
 		},
 		{
-			"attempts": 12,
+			"attempts": 11,
 			"floor": 4,
-			"loss_rate": 0.666666666666667,
-			"win_rate": 0.333333333333333,
+			"loss_rate": 0.636363636363636,
+			"win_rate": 0.363636363636364,
 			"wins": 4
 		},
 		{
@@ -80,9 +80,9 @@
 					"series_id": "win_rate_pct",
 					"values": [
 						100.0,
-						43.3,
-						25.0,
-						33.3,
+						42.2,
+						23.3,
+						36.4,
 						33.3,
 						50.0,
 						100.0,
@@ -118,9 +118,9 @@
 					"series_id": "loss_rate_pct",
 					"values": [
 						0.0,
-						56.7,
-						75.0,
-						66.7,
+						57.8,
+						76.7,
+						63.6,
 						66.7,
 						50.0,
 						0.0,
@@ -157,8 +157,8 @@
 					"values": [
 						100,
 						90,
-						44,
-						12,
+						43,
+						11,
 						6,
 						4,
 						2,
@@ -193,9 +193,9 @@
 					"label": "败局 Run 数",
 					"series_id": "defeat_runs",
 					"values": [
-						51,
+						52,
 						33,
-						8,
+						7,
 						4,
 						2,
 						1,
@@ -249,13 +249,13 @@
 					"values": [
 						73.7,
 						73.7,
-						69.2,
-						67.6,
-						65.3,
+						68.4,
+						67.1,
+						65.2,
 						64.1,
 						60.0,
-						57.6,
-						48.3,
+						58.3,
+						50.0,
 						40.4
 					]
 				}
@@ -281,16 +281,16 @@
 	],
 	"death_floor_histogram": {
 		"11": 1,
-		"2": 51,
+		"2": 52,
 		"3": 33,
-		"4": 8,
+		"4": 7,
 		"5": 4,
 		"6": 2,
 		"8": 1
 	},
 	"death_floor_mode": 2,
-	"death_floor_mode_count": 51,
-	"encounter_count": 262,
+	"death_floor_mode_count": 52,
+	"encounter_count": 260,
 	"game_version": "0.5.255",
 	"kpis": [
 		{
@@ -315,13 +315,13 @@
 			"format": "integer",
 			"id": "encounter_count",
 			"label": "战斗遭遇次数",
-			"value": 262
+			"value": 260
 		},
 		{
 			"format": "floor",
 			"id": "death_floor_mode",
 			"label": "败局众数层",
-			"note": "51 次",
+			"note": "52 次",
 			"value": 2
 		},
 		{
@@ -339,14 +339,14 @@
 	],
 	"meta": {
 		"ai_profile_id": "bandit-v4.1",
-		"elapsed_ms": 3106,
+		"elapsed_ms": 3594,
 		"game_version": "0.5.255",
-		"generated_at_utc": "2026-10-29T15:17:27",
+		"generated_at_utc": "2026-10-29T15:28:06",
 		"report_schema_version": "1.0",
 		"runs_requested": 100,
 		"seed_start": 1,
 		"git_ref": "balance-eval",
-		"github_sha": "d7b7822"
+		"github_sha": "7dd7172"
 	},
 	"report_schema_version": "1.0",
 	"roster_unit_encounter_stats": [
@@ -411,16 +411,16 @@
 			"wins": 5
 		},
 		{
-			"attempts": 39,
+			"attempts": 38,
 			"unit_id": "shield_boon",
-			"win_rate": 0.692307692307692,
-			"wins": 27
+			"win_rate": 0.684210526315789,
+			"wins": 26
 		},
 		{
-			"attempts": 71,
+			"attempts": 70,
 			"unit_id": "spear_goblin",
-			"win_rate": 0.676056338028169,
-			"wins": 48
+			"win_rate": 0.671428571428571,
+			"wins": 47
 		},
 		{
 			"attempts": 3,
@@ -429,10 +429,10 @@
 			"wins": 2
 		},
 		{
-			"attempts": 75,
+			"attempts": 66,
 			"unit_id": "edge_hex",
-			"win_rate": 0.653333333333333,
-			"wins": 49
+			"win_rate": 0.651515151515151,
+			"wins": 43
 		},
 		{
 			"attempts": 78,
@@ -441,10 +441,10 @@
 			"wins": 50
 		},
 		{
-			"attempts": 35,
+			"attempts": 40,
 			"unit_id": "spike_shield",
 			"win_rate": 0.6,
-			"wins": 21
+			"wins": 24
 		},
 		{
 			"attempts": 5,
@@ -453,10 +453,16 @@
 			"wins": 3
 		},
 		{
-			"attempts": 85,
+			"attempts": 84,
 			"unit_id": "knight",
-			"win_rate": 0.576470588235294,
+			"win_rate": 0.583333333333333,
 			"wins": 49
+		},
+		{
+			"attempts": 32,
+			"unit_id": "rune_plate",
+			"win_rate": 0.5,
+			"wins": 16
 		},
 		{
 			"attempts": 2,
@@ -481,12 +487,6 @@
 			"unit_id": "shinobi",
 			"win_rate": 0.5,
 			"wins": 1
-		},
-		{
-			"attempts": 29,
-			"unit_id": "rune_plate",
-			"win_rate": 0.482758620689655,
-			"wins": 14
 		},
 		{
 			"attempts": 94,
@@ -581,8 +581,8 @@
 			"unit_id": "wergild"
 		},
 		{
-			"f4_plus_rate": 0.75,
-			"f4_plus_runs": 9,
+			"f4_plus_rate": 0.666666666666667,
+			"f4_plus_runs": 8,
 			"runs_present": 12,
 			"unit_id": "shield_boon"
 		},
@@ -605,9 +605,9 @@
 			"unit_id": "aftershock"
 		},
 		{
-			"f4_plus_rate": 0.269230769230769,
-			"f4_plus_runs": 7,
-			"runs_present": 26,
+			"f4_plus_rate": 0.260869565217391,
+			"f4_plus_runs": 6,
+			"runs_present": 23,
 			"unit_id": "edge_hex"
 		},
 		{
@@ -623,22 +623,22 @@
 			"unit_id": "goblin"
 		},
 		{
-			"f4_plus_rate": 0.194444444444444,
+			"f4_plus_rate": 0.2,
 			"f4_plus_runs": 7,
-			"runs_present": 36,
+			"runs_present": 35,
 			"unit_id": "knight"
 		},
 		{
-			"f4_plus_rate": 0.142857142857143,
-			"f4_plus_runs": 2,
-			"runs_present": 14,
-			"unit_id": "spike_shield"
+			"f4_plus_rate": 0.1875,
+			"f4_plus_runs": 3,
+			"runs_present": 16,
+			"unit_id": "rune_plate"
 		},
 		{
-			"f4_plus_rate": 0.133333333333333,
+			"f4_plus_rate": 0.125,
 			"f4_plus_runs": 2,
-			"runs_present": 15,
-			"unit_id": "rune_plate"
+			"runs_present": 16,
+			"unit_id": "spike_shield"
 		},
 		{
 			"f4_plus_rate": 0.0892857142857143,
