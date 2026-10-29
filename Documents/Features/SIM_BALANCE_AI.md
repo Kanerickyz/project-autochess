@@ -17,7 +17,7 @@
 | **M-B（主目标）** | **到达 F4+ 的 Run 占比** | 败局 `death_floor≥4` + 通关 Run |
 | **M-C** | Boss 通关率 | 参考项 |
 
-固定协议：冻结 checkpoint、`seed_start=1`、**100 局**批跑，`meta.ai_profile_id` = `policy_id`。
+固定协议：冻结 checkpoint、`seed_start=1`、**100 局**批跑，`meta.ai_profile_id` = checkpoint 的 `policy_id`（当前 v4 实现为 **`bandit-v4.1`**，与旧报告里的 `bandit-v4` 同代不同标签）。
 
 ## 策略代数（摘要）
 

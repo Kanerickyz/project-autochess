@@ -105,7 +105,7 @@ func _initialize() -> void:
 func _policy_id_for_mode(mode: String) -> String:
 	match mode:
 		BanditRunAI.REWARD_V4:
-			return "bandit-v4"
+			return "bandit-v4.1"
 		BanditRunAI.REWARD_V2:
 			return "bandit-v2"
 		_:

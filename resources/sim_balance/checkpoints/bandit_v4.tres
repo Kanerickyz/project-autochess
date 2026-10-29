@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_mbsri")
-policy_id = "bandit-v4"
+policy_id = "bandit-v4.1"
 reward_mode = "v4"
 stats_json = "{
 	\"global|recruit|aftershock\": {
