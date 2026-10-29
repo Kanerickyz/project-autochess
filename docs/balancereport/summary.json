@@ -328,7 +328,7 @@
 			"format": "string",
 			"id": "ai_profile_id",
 			"label": "Sim AI Profile",
-			"value": "bandit-v4"
+			"value": "bandit-v4.1"
 		},
 		{
 			"format": "string",
@@ -338,15 +338,15 @@
 		}
 	],
 	"meta": {
-		"ai_profile_id": "bandit-v4",
-		"elapsed_ms": 3080,
+		"ai_profile_id": "bandit-v4.1",
+		"elapsed_ms": 3106,
 		"game_version": "0.5.255",
-		"generated_at_utc": "2026-10-29T15:15:29",
+		"generated_at_utc": "2026-10-29T15:17:27",
 		"report_schema_version": "1.0",
 		"runs_requested": 100,
 		"seed_start": 1,
 		"git_ref": "balance-eval",
-		"github_sha": "2037c2f"
+		"github_sha": "d7b7822"
 	},
 	"report_schema_version": "1.0",
 	"roster_unit_encounter_stats": [
