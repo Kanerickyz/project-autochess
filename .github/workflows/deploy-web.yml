@@ -17,11 +17,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Balance Report Pages"]
+    types: [completed]
+    branches: [balance-eval, main]
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 # Allow one concurrent deployment; skip runs queued between in-progress and
 # the latest queued. Do NOT cancel in-progress production deploys.
@@ -34,11 +39,16 @@ env:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'workflow_run'
+      || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -125,6 +135,9 @@ jobs:
           path: build/web
 
   deploy:
+    if: >-
+      github.event_name != 'workflow_run'
+      || github.event.workflow_run.conclusion == 'success'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
