@@ -110,4 +110,4 @@ git push -u origin balance-eval
 
 手动重跑：Actions → **Balance Report Pages** → Run workflow（可改 runs / seed_start）。
 
-与 Deploy Web 共用 `concurrency.group: pages-deploy`；报告归档 push 到 `main` 后会自动触发 Deploy Web。
+报告归档 push 到 `main` 后会自动触发 Deploy Web（`workflow_run`；bot 的 `GITHUB_TOKEN` push 不会触发普通 `push` 事件）。
