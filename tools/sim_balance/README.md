@@ -14,12 +14,19 @@
 bash tools/sim_balance/run_batch.sh 100 1
 ```
 
-输出：`.artifacts/sim_balance/latest/{runs,encounters,summary}.json`
+输出：`.artifacts/sim_balance/latest/summary.json`（含 **`game_version`**、**`charts[]`** Schema 1.0，见 `docs/balancereport/README.md`）
 
 烟测（1 局）：
 
 ```bash
-godot --headless --path . --script res://scripts/sim_balance/sim_balance_smoke_test_runner.gd
+bash tools/run_sim_balance_verify.sh
+```
+
+100 局批跑 + JSON：
+
+```bash
+bash tools/sim_balance/run_batch.sh 100 1
+# 或 SIM_BALANCE_BATCH=1 bash tools/run_sim_balance_verify.sh
 ```
 
 ## 可视化

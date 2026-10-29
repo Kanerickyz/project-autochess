@@ -7,92 +7,47 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0f1115; color: #e8eaed; }
-    body { margin: 0 auto; max-width: 960px; padding: 1.5rem; }
-    h1 { font-size: 1.35rem; font-weight: 600; }
-    .meta { opacity: 0.85; font-size: 0.9rem; margin-bottom: 1rem; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
-    .card { background: #1a1d24; border-radius: 8px; padding: 0.75rem 1rem; }
-    .card .label { font-size: 0.75rem; opacity: 0.7; }
-    .card .value { font-size: 1.4rem; font-weight: 600; }
-    canvas { background: #1a1d24; border-radius: 8px; padding: 0.5rem; margin: 1rem 0; max-height: 320px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    body { margin: 0 auto; max-width: 980px; padding: 1.5rem; }
+    header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0; }
+    .badge { font-size: 0.8rem; padding: 0.2rem 0.55rem; border-radius: 6px; background: #2a3142; color: #b8c5e0; }
+    .badge strong { color: #fff; }
+    .meta { opacity: 0.85; font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.65rem; margin: 1rem 0; }
+    .card { background: #1a1d24; border-radius: 8px; padding: 0.65rem 0.85rem; }
+    .card .label { font-size: 0.72rem; opacity: 0.7; }
+    .card .value { font-size: 1.25rem; font-weight: 600; }
+    .chart-block { margin: 1.5rem 0; }
+    .chart-block h2 { font-size: 1.05rem; margin: 0 0 0.25rem; }
+    .chart-desc { font-size: 0.82rem; opacity: 0.72; margin: 0 0 0.5rem; }
+    .axis-hint { font-size: 0.75rem; opacity: 0.55; margin-bottom: 0.35rem; }
+    canvas { background: #1a1d24; border-radius: 8px; padding: 0.5rem; max-height: 300px; width: 100%; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
     th, td { border-bottom: 1px solid #2a2f3a; padding: 0.4rem 0.5rem; text-align: left; }
     input[type=file] { margin: 0.5rem 0 1rem; }
-    .hint { font-size: 0.8rem; opacity: 0.65; }
-    .warn { color: #f0ad4e; font-size: 0.85rem; margin: 0.5rem 0; }
+    .hint, .warn { font-size: 0.8rem; opacity: 0.65; }
+    .warn { color: #f0ad4e; }
+    #chartMount { display: flex; flex-direction: column; gap: 0.5rem; }
   </style>
 </head>
 <body>
-  <h1>自动跑局 · 平衡报告</h1>
-  <p class="hint">GitHub Pages 子路径：<code>/project-autochess/balancereport/</code> · 数据由 <code>balance-eval</code> 分支 CI 生成。</p>
-  <p id="loadWarn" class="warn" hidden>未找到 summary.json：请推送 <code>balance-eval</code> 触发 Actions，或手动选择本地 JSON。</p>
+  <header>
+    <h1>自动跑局 · 平衡报告</h1>
+    <span class="badge" id="gameVersionBadge">游戏版本 <strong>—</strong></span>
+    <span class="badge" id="schemaBadge">Schema <strong>—</strong></span>
+  </header>
+  <p class="hint">Pages：<code>/project-autochess/balancereport/</code> · 数据规范见 <code>summary.json</code> 的 <code>charts[]</code> · CI 分支 <code>balance-eval</code></p>
+  <p id="loadWarn" class="warn" hidden>未找到 summary.json：请推送 balance-eval 或手动选择 JSON。</p>
   <input type="file" id="file" accept="application/json,.json" />
   <div id="root" hidden>
     <div class="meta" id="meta"></div>
-    <div class="cards">
-      <div class="card"><div class="label">Run 数</div><div class="value" id="runCount">—</div></div>
-      <div class="card"><div class="label">通关率</div><div class="value" id="completeRate">—</div></div>
-      <div class="card"><div class="label">遭遇总数</div><div class="value" id="encCount">—</div></div>
-      <div class="card"><div class="label">最多死在层</div><div class="value" id="deathMode">—</div></div>
-    </div>
-    <h2>按层遭遇胜率</h2>
-    <canvas id="winChart"></canvas>
-    <h2>败局死亡层分布</h2>
-    <canvas id="deathChart"></canvas>
-    <h2>分层表</h2>
-    <table><thead><tr><th>层</th><th>尝试</th><th>胜</th><th>胜率</th></tr></thead><tbody id="floorTable"></tbody></table>
+    <div class="cards" id="kpiCards"></div>
+    <div id="chartMount"></div>
+    <h2>分层数据表</h2>
+    <table><thead><tr><th>层</th><th>尝试</th><th>胜</th><th>胜率</th><th>失败率</th></tr></thead><tbody id="floorTable"></tbody></table>
+    <h2>图表规格（机器可读）</h2>
+    <table><thead><tr><th>id</th><th>类型</th><th>标题</th><th>说明</th></tr></thead><tbody id="chartSpecTable"></tbody></table>
   </div>
-  <script>
-    let winChart, deathChart;
-    document.getElementById("file").addEventListener("change", async (e) => {
-      const f = e.target.files[0];
-      if (!f) return;
-      const data = JSON.parse(await f.text());
-      render(data);
-    });
-    fetch("summary.json").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) render(d);
-      else document.getElementById("loadWarn").hidden = false;
-    }).catch(() => { document.getElementById("loadWarn").hidden = false; });
-
-    function render(s) {
-      document.getElementById("loadWarn").hidden = true;
-      document.getElementById("root").hidden = false;
-      const meta = s.meta || {};
-      document.getElementById("meta").textContent =
-        `runs=${s.run_count} · complete=${(s.run_complete_rate * 100).toFixed(1)}% · seeds from ${meta.seed_start ?? "?"} · ${meta.generated_at_utc ?? ""} · ref=${meta.git_ref ?? "?"}`;
-      document.getElementById("runCount").textContent = s.run_count ?? "—";
-      document.getElementById("completeRate").textContent =
-        s.run_complete_rate != null ? (s.run_complete_rate * 100).toFixed(1) + "%" : "—";
-      document.getElementById("encCount").textContent = s.encounter_count ?? "—";
-      document.getElementById("deathMode").textContent =
-        (s.death_floor_mode ?? "—") + (s.death_floor_mode_count ? ` (${s.death_floor_mode_count}次)` : "");
-
-      const floors = s.by_floor || [];
-      const labels = floors.map(r => "F" + r.floor);
-      const winRates = floors.map(r => (r.win_rate * 100).toFixed(1));
-      const tbody = document.getElementById("floorTable");
-      tbody.innerHTML = floors.map(r =>
-        `<tr><td>${r.floor}</td><td>${r.attempts}</td><td>${r.wins}</td><td>${(r.win_rate * 100).toFixed(1)}%</td></tr>`
-      ).join("");
-
-      if (winChart) winChart.destroy();
-      winChart = new Chart(document.getElementById("winChart"), {
-        type: "bar",
-        data: { labels, datasets: [{ label: "胜率 %", data: winRates, backgroundColor: "#5b8def" }] },
-        options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } }
-      });
-
-      const hist = s.death_floor_histogram || {};
-      const dLabels = Object.keys(hist).sort((a,b) => Number(a)-Number(b));
-      const dData = dLabels.map(k => hist[k]);
-      if (deathChart) deathChart.destroy();
-      deathChart = new Chart(document.getElementById("deathChart"), {
-        type: "bar",
-        data: { labels: dLabels.map(x => "F"+x), datasets: [{ label: "败局次数", data: dData, backgroundColor: "#e57373" }] },
-        options: { plugins: { legend: { display: false } } }
-      });
-    }
-  </script>
+  <script src="report.js"></script>
 </body>
 </html>

@@ -107,6 +107,7 @@ jobs:
           touch build/web/.nojekyll
           mkdir -p build/web/balancereport
           cp docs/balancereport/index.html build/web/balancereport/
+          cp docs/balancereport/report.js build/web/balancereport/
           cp docs/balancereport/summary.json build/web/balancereport/
           ls -lah build/web/balancereport
 

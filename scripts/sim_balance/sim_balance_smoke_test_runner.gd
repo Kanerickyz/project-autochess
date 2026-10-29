@@ -18,6 +18,11 @@ func _initialize() -> void:
 	if summary.get("encounter_count", 0) <= 0:
 		push_error("SimBalanceSmoke: summary missing encounters")
 		ok = false
+	if not summary.has("charts") or (summary.get("charts") as Array).size() < 5:
+		push_error("SimBalanceSmoke: summary.charts incomplete")
+		ok = false
+	if str(summary.get("game_version", "")).is_empty() or summary.get("game_version") == "unknown":
+		push_warning("SimBalanceSmoke: game_version missing (import project?)")
 	if ok:
 		print("SimBalanceSmoke: OK outcome=%s encounters=%d" % [record.get("outcome"), enc.size()])
 	quit(0 if ok else 1)
