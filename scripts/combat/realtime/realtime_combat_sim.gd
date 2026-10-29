@@ -293,6 +293,33 @@ func flush_combat_start_lock() -> void:
 	_flush_combat_start_lock()
 
 
+## Headless / 批跑：同步推进直到结束或步数上限；不依赖 presentation 时停。
+func run_until_finished(max_steps: int = 500_000) -> Dictionary:
+	var steps := 0
+	while not _finished and steps < max_steps:
+		if has_pending_effects():
+			resolve_next_pending_effect()
+			steps += 1
+			continue
+		if presentation_hold:
+			release_presentation()
+		if has_started() and not is_action_queue_seeded() and not has_pending_effects():
+			try_seed_action_queue()
+		var before := fixed_step_count
+		advance_fixed_step()
+		if fixed_step_count == before and not _finished:
+			## 门闩无进展：避免忙等卡死。
+			break
+		steps += 1
+	return {
+		"finished": is_finished(),
+		"won": did_player_win(),
+		"steps": steps,
+		"fixed_steps": fixed_step_count,
+		"timed_out": not is_finished(),
+	}
+
+
 func try_seed_action_queue() -> void:
 	_seed_action_queue_if_ready()
 

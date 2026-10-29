@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sim Balance 报告</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0f1115; color: #e8eaed; }
+    body { margin: 0 auto; max-width: 960px; padding: 1.5rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; }
+    .meta { opacity: 0.85; font-size: 0.9rem; margin-bottom: 1rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+    .card { background: #1a1d24; border-radius: 8px; padding: 0.75rem 1rem; }
+    .card .label { font-size: 0.75rem; opacity: 0.7; }
+    .card .value { font-size: 1.4rem; font-weight: 600; }
+    canvas { background: #1a1d24; border-radius: 8px; padding: 0.5rem; margin: 1rem 0; max-height: 320px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { border-bottom: 1px solid #2a2f3a; padding: 0.4rem 0.5rem; text-align: left; }
+    input[type=file] { margin: 0.5rem 0 1rem; }
+    .hint { font-size: 0.8rem; opacity: 0.65; }
+  </style>
+</head>
+<body>
+  <h1>自动跑局 · 平衡报告</h1>
+  <p class="hint">加载 <code>summary.json</code>（批跑输出）。遭遇胜率按<strong>地图层号</strong>聚合。</p>
+  <input type="file" id="file" accept="application/json,.json" />
+  <div id="root" hidden>
+    <div class="meta" id="meta"></div>
+    <div class="cards">
+      <div class="card"><div class="label">Run 数</div><div class="value" id="runCount">—</div></div>
+      <div class="card"><div class="label">通关率</div><div class="value" id="completeRate">—</div></div>
+      <div class="card"><div class="label">遭遇总数</div><div class="value" id="encCount">—</div></div>
+      <div class="card"><div class="label">最多死在层</div><div class="value" id="deathMode">—</div></div>
+    </div>
+    <h2>按层遭遇胜率</h2>
+    <canvas id="winChart"></canvas>
+    <h2>败局死亡层分布</h2>
+    <canvas id="deathChart"></canvas>
+    <h2>分层表</h2>
+    <table><thead><tr><th>层</th><th>尝试</th><th>胜</th><th>胜率</th></tr></thead><tbody id="floorTable"></tbody></table>
+  </div>
+  <script>
+    let winChart, deathChart;
+    document.getElementById("file").addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const data = JSON.parse(await f.text());
+      render(data);
+    });
+    fetch("summary.json").then(r => r.ok ? r.json() : null).then(d => { if (d) render(d); }).catch(() => {});
+
+    function render(s) {
+      document.getElementById("root").hidden = false;
+      const meta = s.meta || {};
+      document.getElementById("meta").textContent =
+        `runs=${s.run_count} · complete=${(s.run_complete_rate * 100).toFixed(1)}% · seeds from ${meta.seed_start ?? "?"} · ${meta.generated_at_utc ?? ""}`;
+      document.getElementById("runCount").textContent = s.run_count ?? "—";
+      document.getElementById("completeRate").textContent =
+        s.run_complete_rate != null ? (s.run_complete_rate * 100).toFixed(1) + "%" : "—";
+      document.getElementById("encCount").textContent = s.encounter_count ?? "—";
+      document.getElementById("deathMode").textContent =
+        (s.death_floor_mode ?? "—") + (s.death_floor_mode_count ? ` (${s.death_floor_mode_count}次)` : "");
+
+      const floors = s.by_floor || [];
+      const labels = floors.map(r => "F" + r.floor);
+      const winRates = floors.map(r => (r.win_rate * 100).toFixed(1));
+      const tbody = document.getElementById("floorTable");
+      tbody.innerHTML = floors.map(r =>
+        `<tr><td>${r.floor}</td><td>${r.attempts}</td><td>${r.wins}</td><td>${(r.win_rate * 100).toFixed(1)}%</td></tr>`
+      ).join("");
+
+      if (winChart) winChart.destroy();
+      winChart = new Chart(document.getElementById("winChart"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "胜率 %", data: winRates, backgroundColor: "#5b8def" }] },
+        options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } }
+      });
+
+      const hist = s.death_floor_histogram || {};
+      const dLabels = Object.keys(hist).sort((a,b) => Number(a)-Number(b));
+      const dData = dLabels.map(k => hist[k]);
+      if (deathChart) deathChart.destroy();
+      deathChart = new Chart(document.getElementById("deathChart"), {
+        type: "bar",
+        data: { labels: dLabels.map(x => "F"+x), datasets: [{ label: "败局次数", data: dData, backgroundColor: "#e57373" }] },
+        options: { plugins: { legend: { display: false } } }
+      });
+    }
+  </script>
+</body>
+</html>
