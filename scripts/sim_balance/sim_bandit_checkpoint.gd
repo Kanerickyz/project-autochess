@@ -6,7 +6,7 @@ const SCHEMA_VERSION := 2
 
 @export var policy_id: String = "bandit-v1"
 @export var schema_version: int = SCHEMA_VERSION
-## v1 = 招募也吃下一场胜负；v2 = 选路吃胜负，招募吃 Run 终局（death_floor / 通关）
+## v1 = 招募也吃下一场胜负；v2 = 选路吃胜负、招募 Run 终局；v4 = 选路启发式、招募 unit_id + 队伍 state
 @export var reward_mode: String = "v1"
 @export var stats_json: String = "{}"
 

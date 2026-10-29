@@ -13,10 +13,10 @@ description: Sync balance-eval with main, ask run count, archive sim batch under
 
 1. **确认分支**：工作在 **`balance-eval`**（首次：`git fetch origin && git checkout -B balance-eval origin/main`）。
 2. **询问局数**：「要跑几次？」默认 **100**；未回答则用 100。
-3. **必须询问 Sim 策略**（三选一，未回答则停步再问）：
+3. **必须询问 Sim 策略**（未回答则停步再问）：
    - **默认启发式**（`default`，不传 checkpoint）
-   - **bandit-v1**（`checkpoints/bandit_v1.tres`，遭遇胜负更新选路+招募）
-   - **bandit-v2**（`checkpoints/bandit_v2.tres`，选路吃胜负、招募吃 Run 终局/死亡层）
+   - **bandit-v1** / **bandit-v2**（旧：槽位 bandit + 选路 bandit）
+   - **bandit-v4**（推荐：`bandit_v4.tres`，**按 unit_id 招募** + 当前队伍 state；选路启发式）
 4. **可选询问**（用户未提则不主动拖长）：起始 seed，默认 **1**（与 CI `BALANCE_SEED_START` 一致）。
 5. **验收方式**：本技能默认 **轻量**（跑批 + 归档 + 部署）；不代做 GUI 图表审美验收。
 
@@ -39,12 +39,15 @@ git merge origin/main
 ```bash
 RUNS=100          # 来自用户回答，默认 100
 SEED_START=1
-# SIM_POLICY: default | bandit-v1 | bandit-v2
-SIM_POLICY=bandit-v2
+# SIM_POLICY: default | bandit-v1 | bandit-v2 | bandit-v4
+SIM_POLICY=bandit-v4
 BATCH_OUT="$(mktemp -d)/sim_balance_batch"
 mkdir -p "$BATCH_OUT"
 
-if [ "$SIM_POLICY" = "bandit-v2" ]; then
+if [ "$SIM_POLICY" = "bandit-v4" ]; then
+  CKPT="res://resources/sim_balance/checkpoints/bandit_v4.tres"
+  bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT" --checkpoint "$CKPT"
+elif [ "$SIM_POLICY" = "bandit-v2" ]; then
   CKPT="res://resources/sim_balance/checkpoints/bandit_v2.tres"
   bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT" --checkpoint "$CKPT"
 elif [ "$SIM_POLICY" = "bandit-v1" ]; then
