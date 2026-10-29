@@ -1,6 +1,4 @@
-# balance-eval：headless 跑局 → summary.json → 与 Web 一并部署到 Pages /balancereport/
-# 与 deploy-web.yml 共用 concurrency group pages-deploy（同一 Pages 站点，避免互相覆盖根路径游戏包）。
-
+# balance-eval 跑局 + 打包 Pages 站点 artifact；部署见 balance-report-deploy.yml（须在 main 上执行以满足 github-pages 分支策略）。
 name: Balance Report Pages
 
 on:
@@ -19,11 +17,10 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  actions: write
 
 concurrency:
-  group: pages-deploy
+  group: balance-report-build
   cancel-in-progress: false
 
 env:
@@ -38,9 +35,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
 
       - name: Cache Godot editor + export templates
         uses: actions/cache@v4
@@ -118,19 +112,10 @@ jobs:
           path: docs/balancereport/summary.json
           retention-days: 30
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload pages-site Artifact (for deploy workflow on main)
+        uses: actions/upload-artifact@v4
         with:
+          name: pages-site
           path: build/web
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v5
+          retention-days: 7
+          if-no-files-found: error
