@@ -1,0 +1,89 @@
+{
+  "source": "balance-designer-iter001",
+  "boost_units": [
+    { "unit_id": "shield_boon", "w_add": 3 },
+    { "unit_id": "paymaster", "w_add": 2 },
+    { "unit_id": "aftershock", "w_add": 2 },
+    { "unit_id": "echo_spear", "w_add": 2 },
+    { "unit_id": "mend_friar", "w_add": 1 },
+    { "unit_id": "horsebow", "w_add": 1 }
+  ],
+  "penalize_units": [
+    { "unit_id": "skeleton", "l_add": 3 },
+    { "unit_id": "knight", "l_add": 2 },
+    { "unit_id": "goblin", "l_add": 1 },
+    { "unit_id": "edge_hex", "l_add": 1 },
+    { "unit_id": "spear_goblin", "l_add": 1 },
+    { "unit_id": "rune_plate", "l_add": 1 },
+    { "unit_id": "spike_shield", "l_add": 1 }
+  ],
+  "floor_unit_boosts": [
+    { "floor": 2, "unit_id": "shield_boon", "w_add": 3 },
+    { "floor": 2, "unit_id": "paymaster", "w_add": 2 },
+    { "floor": 2, "unit_id": "echo_spear", "w_add": 2 },
+    { "floor": 3, "unit_id": "shield_boon", "w_add": 3 },
+    { "floor": 3, "unit_id": "paymaster", "w_add": 2 },
+    { "floor": 3, "unit_id": "aftershock", "w_add": 2 }
+  ],
+  "seed_rows": [
+    {
+      "state_key": "recruit4|f1|g0|team=-|shop=aftershock|archer|crossbow|edge_hex|shield_boon|aftershock",
+      "action_key": "shield_boon",
+      "w_add": 4,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f1|g0|team=-|shop=aftershock|archer|crossbow|knight|shield_boon|aftershock",
+      "action_key": "shield_boon",
+      "w_add": 4,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f1|g0|team=-|shop=aftershock|archer|crossbow|edge_hex|skeleton|aftershock",
+      "action_key": "aftershock",
+      "w_add": 2,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f2|g0|team=aftershock#1|aftershock#1|paymaster#1|shop=shield_boon|spear_goblin|spike_shield|wood_drum|shield_boon",
+      "action_key": "shield_boon",
+      "w_add": 3,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f2|g0|team=aftershock#1|aftershock#1|crossbow#1|paymaster#1|shop=edge_hex|goblin|paymaster|scatter_hex|edge_hex",
+      "action_key": "paymaster",
+      "w_add": 3,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f2|g0|team=aftershock#1|aftershock#1|echo_spear#1|paymaster#1|shop=crossbow|edge_hex|shield_boon|wood_drum|crossbow",
+      "action_key": "shield_boon",
+      "w_add": 3,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f3|g0|team=aftershock#1|aftershock#1|archer#1|archer#1|paymaster#1|paymaster#2|skeleton#1|shop=shield_boon|skeleton|spike_shield|shield_boon",
+      "action_key": "shield_boon",
+      "w_add": 4,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f3|g0|team=aftershock#1|aftershock#1|crossbow#1|echo_spear#1|paymaster#1|shop=aftershock|crossbow|echo_spear|shield_boon|aftershock",
+      "action_key": "shield_boon",
+      "w_add": 3,
+      "l_add": 0
+    },
+    {
+      "state_key": "recruit4|f3|g0|team=aftershock#1|aftershock#1|archer#1|knight#1|paymaster#1|skeleton#1|shop=archer|skeleton|spear_goblin|archer",
+      "action_key": "paymaster",
+      "w_add": 2,
+      "l_add": 0
+    }
+  ],
+  "notes": [
+    "数据源：docs/balancereport/summary.json（bandit-v4.1，100 局 seed_start=1）；无 iter_001_bundle.json / runs.json，深度/招募分布用 summary 的 death_floor 与 roster_unit_run_depth_stats 推断。",
+    "主瓶颈在 F2→F3：败局众数 F2（52/100），F3 遭遇胜率仅 23.3%；F4+ Run 约 15%，F12+ 当前为 0。patch 优先抬 F2/F3 的 shield_boon / paymaster / 合成向 aftershock，压 skeleton 与高频浅层单位。",
+    "apply 后须再跑 train_eval_round 或 v4 训练扩表；单靠 w/l 偏置无法突破金币/席位/短名单约束，亦不能强制 F4 先买旗帜。"
+  ]
+}

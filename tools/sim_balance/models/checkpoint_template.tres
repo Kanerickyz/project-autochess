@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SimBanditCheckpoint" format=3]
+
+[ext_resource type="Script" path="res://scripts/sim_balance/sim_bandit_checkpoint.gd" id="1_tpl"]
+
+[resource]
+script = ExtResource("1_tpl")
+policy_id = "bandit-v4-cursor"
+schema_version = 2
+reward_mode = "v4"
+stats_json = "{}"

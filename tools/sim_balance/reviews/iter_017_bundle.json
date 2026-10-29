@@ -1,0 +1,323 @@
+{
+  "batch_dir": "/workspace/tools/sim_balance/runs/iter_017",
+  "run_count": 100,
+  "run_complete_rate": 0.0,
+  "death_floor_mode": 2,
+  "death_floor_mean": 3.6,
+  "f4_plus_rate": 0.35,
+  "reach_floor_rate": {
+    "1": 1.0,
+    "2": 1.0,
+    "3": 0.65,
+    "4": 0.35,
+    "5": 0.25,
+    "6": 0.16,
+    "7": 0.1,
+    "8": 0.05,
+    "9": 0.02,
+    "10": 0.02
+  },
+  "reach_floor_12_rate": 0.0,
+  "max_floor_any_run": 10,
+  "weak_encounter_floors": [
+    {
+      "floor": 5,
+      "win_rate": 0.4,
+      "attempts": 15
+    },
+    {
+      "floor": 8,
+      "win_rate": 0.4,
+      "attempts": 5
+    }
+  ],
+  "recruit_picks_by_floor": {
+    "1": {
+      "aftershock": 37,
+      "crossbow": 32,
+      "shield_boon": 32,
+      "paymaster": 30,
+      "skeleton": 30,
+      "spear_goblin": 25,
+      "edge_hex": 24,
+      "knight": 17
+    },
+    "2": {
+      "aftershock": 11,
+      "paymaster": 10,
+      "archer": 8,
+      "edge_hex": 7,
+      "knight": 4,
+      "crossbow": 4,
+      "skeleton": 4,
+      "scatter_hex": 4
+    },
+    "3": {
+      "skeleton": 9,
+      "crossbow": 6,
+      "aftershock": 6,
+      "goblin": 3,
+      "archer": 2,
+      "rune_plate": 2,
+      "edge_hex": 2,
+      "echo_spear": 2
+    },
+    "4": {
+      "apothecary": 3,
+      "barbarian": 2,
+      "golden_drum": 2,
+      "rune_plate": 2,
+      "echo_spear": 2,
+      "dirge_horn": 1,
+      "archer": 1,
+      "funeral_pyre": 1
+    },
+    "5": {
+      "armorer": 2,
+      "maul": 2,
+      "goblin": 2,
+      "horsebow": 2,
+      "skeleton": 1,
+      "soulcaller": 1,
+      "apothecary": 1,
+      "arcane": 1
+    },
+    "6": {
+      "flower_drum": 4,
+      "gravewright": 3,
+      "horsebow": 3,
+      "crossbow": 2,
+      "goblin": 2,
+      "shinobi": 2,
+      "vita_keeper": 2,
+      "edge_hex": 2
+    },
+    "7": {
+      "blood_wage": 2,
+      "edge_hex": 1,
+      "dirge_horn": 1,
+      "armorer": 1,
+      "blood_acolyte": 1,
+      "flower_drum": 1,
+      "spear_goblin": 1
+    },
+    "8": {
+      "dirge_horn": 2,
+      "knight": 1,
+      "spike_shield": 1
+    },
+    "9": {
+      "spear_goblin": 1,
+      "crossbow": 1
+    }
+  },
+  "units_in_deep_runs": [
+    [
+      "paymaster",
+      8
+    ],
+    [
+      "crossbow",
+      7
+    ],
+    [
+      "spear_goblin",
+      7
+    ],
+    [
+      "edge_hex",
+      6
+    ],
+    [
+      "knight",
+      5
+    ],
+    [
+      "goblin",
+      4
+    ],
+    [
+      "armorer",
+      4
+    ],
+    [
+      "dirge_horn",
+      4
+    ],
+    [
+      "skeleton",
+      3
+    ],
+    [
+      "maul",
+      3
+    ],
+    [
+      "aftershock",
+      3
+    ],
+    [
+      "flower_drum",
+      3
+    ]
+  ],
+  "units_in_shallow_runs": [
+    [
+      "aftershock",
+      26
+    ],
+    [
+      "crossbow",
+      24
+    ],
+    [
+      "skeleton",
+      24
+    ],
+    [
+      "edge_hex",
+      20
+    ],
+    [
+      "spear_goblin",
+      17
+    ],
+    [
+      "knight",
+      15
+    ],
+    [
+      "paymaster",
+      12
+    ],
+    [
+      "archer",
+      12
+    ],
+    [
+      "shield_boon",
+      12
+    ],
+    [
+      "echo_spear",
+      8
+    ],
+    [
+      "goblin",
+      3
+    ],
+    [
+      "scatter_hex",
+      2
+    ]
+  ],
+  "top_quartile_unit_freq": [
+    [
+      "paymaster",
+      18
+    ],
+    [
+      "aftershock",
+      17
+    ],
+    [
+      "crossbow",
+      12
+    ],
+    [
+      "shield_boon",
+      12
+    ],
+    [
+      "skeleton",
+      10
+    ],
+    [
+      "archer",
+      10
+    ],
+    [
+      "rune_plate",
+      9
+    ],
+    [
+      "edge_hex",
+      8
+    ],
+    [
+      "goblin",
+      8
+    ],
+    [
+      "spear_goblin",
+      8
+    ],
+    [
+      "echo_spear",
+      7
+    ],
+    [
+      "knight",
+      7
+    ]
+  ],
+  "bottom_quartile_unit_freq": [
+    [
+      "skeleton",
+      10
+    ],
+    [
+      "crossbow",
+      9
+    ],
+    [
+      "aftershock",
+      9
+    ],
+    [
+      "edge_hex",
+      7
+    ],
+    [
+      "paymaster",
+      5
+    ],
+    [
+      "knight",
+      5
+    ],
+    [
+      "shield_boon",
+      4
+    ],
+    [
+      "archer",
+      3
+    ],
+    [
+      "spear_goblin",
+      3
+    ],
+    [
+      "rune_plate",
+      1
+    ],
+    [
+      "goblin",
+      1
+    ],
+    [
+      "echo_spear",
+      1
+    ]
+  ],
+  "meta": {
+    "ai_profile_id": "bandit-v4",
+    "elapsed_ms": 4668,
+    "game_version": "0.5.255",
+    "generated_at_utc": "2026-10-29T16:04:41",
+    "report_schema_version": "1.0",
+    "runs_requested": 100,
+    "seed_start": 1
+  }
+}

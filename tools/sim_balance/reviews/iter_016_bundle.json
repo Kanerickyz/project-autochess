@@ -1,0 +1,327 @@
+{
+  "batch_dir": "/workspace/tools/sim_balance/runs/iter_016",
+  "run_count": 100,
+  "run_complete_rate": 0.0,
+  "death_floor_mode": 3,
+  "death_floor_mean": 3.88,
+  "f4_plus_rate": 0.38,
+  "reach_floor_rate": {
+    "1": 1.0,
+    "2": 1.0,
+    "3": 0.71,
+    "4": 0.38,
+    "5": 0.27,
+    "6": 0.18,
+    "7": 0.13,
+    "8": 0.09,
+    "9": 0.06,
+    "10": 0.05,
+    "11": 0.01
+  },
+  "reach_floor_12_rate": 0.0,
+  "max_floor_any_run": 11,
+  "weak_encounter_floors": [
+    {
+      "floor": 10,
+      "win_rate": 0.2,
+      "attempts": 5
+    }
+  ],
+  "recruit_picks_by_floor": {
+    "1": {
+      "aftershock": 34,
+      "shield_boon": 32,
+      "paymaster": 30,
+      "skeleton": 30,
+      "crossbow": 28,
+      "spear_goblin": 23,
+      "edge_hex": 23,
+      "knight": 21
+    },
+    "2": {
+      "paymaster": 10,
+      "aftershock": 10,
+      "edge_hex": 9,
+      "archer": 9,
+      "knight": 8,
+      "crossbow": 5,
+      "scatter_hex": 5,
+      "shield_boon": 4
+    },
+    "3": {
+      "skeleton": 9,
+      "crossbow": 5,
+      "aftershock": 5,
+      "edge_hex": 4,
+      "goblin": 3,
+      "echo_spear": 3,
+      "archer": 2,
+      "rune_plate": 2
+    },
+    "4": {
+      "apothecary": 4,
+      "golden_drum": 3,
+      "barbarian": 2,
+      "aftershock": 2,
+      "paymaster": 2,
+      "rune_plate": 2,
+      "dirge_horn": 1,
+      "archer": 1
+    },
+    "5": {
+      "goblin": 3,
+      "armorer": 2,
+      "maul": 2,
+      "mend_friar": 2,
+      "wardrum": 2,
+      "horsebow": 2,
+      "skeleton": 1,
+      "soulcaller": 1
+    },
+    "6": {
+      "horsebow": 4,
+      "shinobi": 4,
+      "flower_drum": 4,
+      "gravewright": 3,
+      "soulcaller": 2,
+      "wardrum": 2,
+      "crossbow": 2,
+      "vita_keeper": 2
+    },
+    "7": {
+      "blood_wage": 3,
+      "armorer": 2,
+      "horsebow": 1,
+      "shinobi": 1,
+      "relic_aegis": 1,
+      "edge_hex": 1,
+      "mend_friar": 1,
+      "blood_acolyte": 1
+    },
+    "8": {
+      "armorer": 2,
+      "horsebow": 2,
+      "dirge_horn": 2,
+      "arcane": 1,
+      "gravewright": 1,
+      "funeral_pyre": 1,
+      "iron_heart": 1,
+      "relic_aegis": 1
+    },
+    "9": {
+      "relic_aegis": 1,
+      "arcane": 1,
+      "spear_goblin": 1,
+      "crossbow": 1
+    }
+  },
+  "units_in_deep_runs": [
+    [
+      "edge_hex",
+      12
+    ],
+    [
+      "paymaster",
+      11
+    ],
+    [
+      "crossbow",
+      8
+    ],
+    [
+      "horsebow",
+      8
+    ],
+    [
+      "spear_goblin",
+      7
+    ],
+    [
+      "knight",
+      7
+    ],
+    [
+      "armorer",
+      7
+    ],
+    [
+      "goblin",
+      6
+    ],
+    [
+      "aftershock",
+      6
+    ],
+    [
+      "skeleton",
+      4
+    ],
+    [
+      "wardrum",
+      4
+    ],
+    [
+      "echo_spear",
+      4
+    ]
+  ],
+  "units_in_shallow_runs": [
+    [
+      "aftershock",
+      24
+    ],
+    [
+      "skeleton",
+      24
+    ],
+    [
+      "crossbow",
+      19
+    ],
+    [
+      "knight",
+      19
+    ],
+    [
+      "edge_hex",
+      18
+    ],
+    [
+      "spear_goblin",
+      14
+    ],
+    [
+      "archer",
+      14
+    ],
+    [
+      "shield_boon",
+      13
+    ],
+    [
+      "paymaster",
+      11
+    ],
+    [
+      "echo_spear",
+      9
+    ],
+    [
+      "goblin",
+      6
+    ],
+    [
+      "scatter_hex",
+      2
+    ]
+  ],
+  "top_quartile_unit_freq": [
+    [
+      "paymaster",
+      19
+    ],
+    [
+      "aftershock",
+      17
+    ],
+    [
+      "shield_boon",
+      11
+    ],
+    [
+      "crossbow",
+      10
+    ],
+    [
+      "edge_hex",
+      10
+    ],
+    [
+      "knight",
+      10
+    ],
+    [
+      "echo_spear",
+      9
+    ],
+    [
+      "goblin",
+      9
+    ],
+    [
+      "skeleton",
+      9
+    ],
+    [
+      "archer",
+      9
+    ],
+    [
+      "rune_plate",
+      8
+    ],
+    [
+      "spear_goblin",
+      7
+    ]
+  ],
+  "bottom_quartile_unit_freq": [
+    [
+      "skeleton",
+      11
+    ],
+    [
+      "aftershock",
+      10
+    ],
+    [
+      "crossbow",
+      8
+    ],
+    [
+      "knight",
+      6
+    ],
+    [
+      "paymaster",
+      5
+    ],
+    [
+      "edge_hex",
+      4
+    ],
+    [
+      "archer",
+      4
+    ],
+    [
+      "shield_boon",
+      4
+    ],
+    [
+      "echo_spear",
+      2
+    ],
+    [
+      "rune_plate",
+      1
+    ],
+    [
+      "spear_goblin",
+      1
+    ],
+    [
+      "goblin",
+      1
+    ]
+  ],
+  "meta": {
+    "ai_profile_id": "bandit-v4",
+    "elapsed_ms": 5537,
+    "game_version": "0.5.255",
+    "generated_at_utc": "2026-10-29T16:04:16",
+    "report_schema_version": "1.0",
+    "runs_requested": 100,
+    "seed_start": 1
+  }
+}
