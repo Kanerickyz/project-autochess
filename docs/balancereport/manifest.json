@@ -1,7 +1,17 @@
 {
 	"manifest_schema_version": "1.0",
-	"latest_run_id": "2026-10-29T15-07-51Z_100runs_v0.5.255_a29329d",
+	"latest_run_id": "2026-10-29T15-15-29Z_100runs_v0.5.255_2037c2f",
 	"runs": [
+		{
+			"id": "2026-10-29T15-15-29Z_100runs_v0.5.255_2037c2f",
+			"path": "runs/2026-10-29T15-15-29Z_100runs_v0.5.255_2037c2f/summary.json",
+			"generated_at_utc": "2026-10-29T15:15:29",
+			"game_version": "0.5.255",
+			"run_count": 100,
+			"git_ref": "balance-eval",
+			"github_sha": "2037c2f",
+			"ai_profile_id": "bandit-v4"
+		},
 		{
 			"id": "2026-10-29T15-07-51Z_100runs_v0.5.255_a29329d",
 			"path": "runs/2026-10-29T15-07-51Z_100runs_v0.5.255_a29329d/summary.json",
