@@ -2,52 +2,42 @@
 
 > **范围**：仅 `scripts/sim_balance/` 与 `resources/sim_balance/`；**不是**玩家对战 AI，不影响 `run_game` 主路径。
 
-## 双模式（已定稿）
+## 双模式（训练 vs 评估）
 
 | 模式 | 行为 | 用途 |
 |------|------|------|
-| **训练** | `BanditRunAI` + `learning_enabled=true`；每次**战斗遭遇结束**用 **won/lost** 更新 bandit | 产出 checkpoint |
-| **评估 / 报告** | 加载 **冻结** `SimBanditCheckpoint`，`learning_enabled=false`；100 局批跑 **不更新** 表 | CI / Pages / 与改数值前后对比 |
+| **训练** | `BanditRunAI` + `learning_enabled=true` | 产出 checkpoint |
+| **评估 / 报告** | 加载 **冻结** checkpoint，`learning_enabled=false` | CI / Pages |
 
-**奖励**：只用遭遇胜负（`won=true/false`），不用 Run 通关、金币 shaping。
+## 奖励策略
 
-**信用分配**：自上一场战斗结束到本场战斗结束之间的 **选路 + 招募** 决策，在本场战斗结算时收到同一条胜负反馈。
+### bandit-v1（`reward_mode=v1`）
 
-## As-Is 组件
+- **选路 + 招募** 均在 **下一场战斗遭遇** 结束时，用 **胜/负** 更新（同一 pending 批次）。
 
-- `HeuristicRunAI`：默认策略（无学习）。
-- `BanditRunAI`：选路 + 招募用 contextual bandit（UCB 探索 / 贪婪评估）；站位、旗帜仍启发式。
-- `SimBanditTable` / `SimBanditCheckpoint`：可序列化 `.tres`。
-- `SimAIProfile`：启发式权重（bandit 无数据时的 fallback 臂）。
+### bandit-v2（`reward_mode=v2`，推荐新训）
+
+| 决策 | 何时更新 | 信号 |
+|------|----------|------|
+| **选路** | 下一场 **战斗遭遇** 结束 | 胜 → w+1；败 → l+1 |
+| **招募** | **整局 Run 结束**（且本局至少 1 场战斗） | 通关：每次成功招募 w+**2**；败局死亡层 **D**、地图 **F_max**：w += round(D/F_max×**3**)，l += round((F_max−D)/F_max×**3**) |
+
+评估批跑 **不更新** 表。
 
 ## 命令
 
 ```bash
-# 训练（默认 400 局，写入 bandit_v1.tres）
-bash tools/sim_balance/train_bandit.sh
-bash tools/sim_balance/train_bandit.sh --train-runs 800 --checkpoint-out res://resources/sim_balance/checkpoints/bandit_v1.tres
+# 训练 v2（示例 2000 局）
+bash tools/sim_balance/train_bandit.sh --train-runs 2000 --reward-mode v2
 
-# 评估批跑（冻结 checkpoint，默认 100 局）
-bash tools/sim_balance/run_batch.sh 100 1 /tmp/out
-godot --headless --path . --script res://scripts/sim_balance/sim_batch_runner.gd -- \
-  --runs 100 --seed-start 1 --out /tmp/out \
-  --checkpoint res://resources/sim_balance/checkpoints/bandit_v1.tres
+# 评估 / 报告（冻结 v2）
+bash tools/sim_balance/run_batch.sh 100 1 /tmp/out \
+  --checkpoint res://resources/sim_balance/checkpoints/bandit_v2.tres
 ```
 
-报告 `meta.ai_profile_id` 使用 checkpoint 的 `policy_id`（如 `bandit-v1`），与 `default` 启发式报告分开存档。
-
-## 状态键（v1）
-
-- **地图**：层号 + 可选节点数 + 节点类型序列 → arm = 候选下标（与启发式排序一致）。
-- **招募**：层 + 金币桶 + 人数 + 候选 atk+hp/cost 摘要 → arm = 可负担候选中的下标。
-
-## 未做 / 非目标
-
-- 100 局批跑内在线学习（已明确不做）。
-- 神经网络 RL、战斗内微操、商店买装备细粒度决策。
-- 默认 Balance Report CI **仍可用** `default` 启发式；bandit 评估需显式 `--checkpoint` 或换 workflow 输入。
+Checkpoint：`bandit_v1.tres` / `bandit_v2.tres`；报告 `meta.ai_profile_id` 与 `policy_id` 一致。
 
 ## 验收
 
-- 轻量：`godot … sim_bandit_smoke_test_runner.gd` + `run_sim_balance_verify.sh`
-- 完全：训练 checkpoint → 100 局 eval → 归档报告对比 `default` vs `bandit-v1`
+- 轻量：`bash tools/run_sim_balance_verify.sh`
+- 对比 default / bandit-v1 / bandit-v2 各 100 局报告（死亡层直方图、分层胜率）
