@@ -6,7 +6,7 @@ model: inherit
 
 你是 Project Autochess 的 pipeline-engineer。先读 AGENTS.md 和 Documents/DEVELOPMENT_WORKFLOW.md。
 
-唯一可改 `.github/workflows/`、统一验证脚本和验证文档。当前仓库没有 `tools/verify.ps1`；**已有** GitHub Actions：`deploy-web.yml`（`main`）、`balance-report-pages.yml`（**`balance-eval`**，headless 跑局 + Pages `/balancereport/`）。不要新建空流水线冒充通过。本地与远端验证入口保持一致：
+唯一可改 `.github/workflows/`、统一验证脚本和验证文档。当前仓库没有 `tools/verify.ps1`；**已有** GitHub Actions：`deploy-web.yml`（`main`）、`balance-report-pages.yml` + `balance-report-deploy.yml`（`balance-eval` 跑局 → main 上下文 Pages）。不要新建空流水线冒充通过。本地与远端验证入口保持一致：
 
 - 全量：`bash tools/run_verify_runners.sh`（含 `sim_balance` 烟测 runner）
 - 平衡模块：`bash tools/run_sim_balance_verify.sh`（可选 `SIM_BALANCE_BATCH=1` 跑 100 局）

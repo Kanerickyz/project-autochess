@@ -92,8 +92,10 @@ godot --headless --path . --export-release "Web" build/web/index.html
 
 | 触发 | 工作流 | 行为 |
 |------|--------|------|
-| 推 **`balance-eval`** | `Balance Report Pages` | headless 跑局（默认 100）→ 生成 `summary.json` → 导出 Web → 部署（含游戏根路径 + `/balancereport/`） |
-| 推 **`main`** | `Deploy Web` | 导出 Web；若仓库里有 `docs/balancereport/summary.json` 一并打包，否则仅 HTML |
+| 推 **`balance-eval`** | **Balance Report Pages** → **Balance Report Deploy** | 跑局（默认 100）→ `summary.json` → 打包 `pages-site` artifact；**Deploy** 在 **main** 上下文发布（满足 `github-pages` 环境仅允许 **main** 部署分支） |
+| 推 **`main`** | **Deploy Web** | 导出 Web + 静态 `balancereport/`（无 CI 生成 `summary.json` 时线上图表为空） |
+
+若 `Environments → github-pages → Deployment branches` 仅含 **main**，不要在 `balance-eval` 上直接 `deploy-pages`（deploy job 会无步骤失败）。也可把 **`balance-eval`** 加入允许列表后改回单 workflow 部署。
 
 专用评估分支用法：
 
