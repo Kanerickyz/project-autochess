@@ -23,7 +23,7 @@ L0–L5 描述当前切片质量，不取代 [INDEX.md](./INDEX.md) 与 [ARCHITE
 
 主代理不新增制作人子角色。游戏设计师不改 `.tres`，讨论属性时与数值分离：先定「有哪些属性 / 哪些模式」，具体点数与默认值由数值策划填写。场景与控件实现归程序。游戏美术师不改导入、着色器和玩法脚本。技术美术师风格听美术师，界面结构听 UI 设计师。程序不改 CI 来放行，不覆盖美术原文件。QA 不改业务代码和断言。审查不替代游玩。
 
-`pipeline-engineer` 是唯一可改 `.github/workflows/`、未来统一验证脚本和验证文档的角色。当前仓库没有 `tools/verify.ps1` 或 Actions；不要新建空流水线冒充通过。不删断言，GUI 证据不写进 CI。
+`pipeline-engineer` 是唯一可改 `.github/workflows/`、统一验证脚本和验证文档的角色。CI 已有 **Deploy Web**（`main`）与 **Balance Report Pages**（`balance-eval`）；仍无单一 `tools/verify.ps1`。不删断言，GUI 证据不写进 CI。
 
 当前是单人 PvE 自走棋切片，关卡布置并入游戏设计师，不单设关卡师或叙事角色。
 
@@ -55,7 +55,7 @@ L0–L5 描述当前切片质量，不取代 [INDEX.md](./INDEX.md) 与 [ARCHITE
 | 方式 | 代理侧出口 | 不做 | 效果 / 画面 |
 | --- | --- | --- | --- |
 | **轻量验收** | 项目能加载即过：`bash tools/run_light_verify.sh`（import + 关键场景 instantiate，无 SCRIPT/Parse Error） | 不跑完整 `run_verify_runners.sh`；不派 `qa-tester` GUI；不用 `gui-acceptance`；不收集截图/录屏当门禁 | **由用户本人验收**；代理交付时标明「轻量验收，效果未代验」 |
-| **完全验收** | 与现行流程一致：相关 `*_test_runner.gd` / `run_verify_runners.sh`、按目标 L 级派 QA/审查，UI 改动走 GUI 证据 | — | 代理按 L 级收集证据后才可声称达到该级 |
+| **完全验收** | 与现行流程一致：相关 `*_test_runner.gd` / `run_verify_runners.sh`（含 `sim_balance` 烟测）；改平衡 Sim 另跑 `bash tools/run_sim_balance_verify.sh`；按目标 L 级派 QA/审查，UI 改动走 GUI 证据 | — | 代理按 L 级收集证据后才可声称达到该级 |
 
 规则：
 
@@ -119,7 +119,7 @@ L5 合同额外写明：禁止新功能；只列缺陷与复现。
 
 职责表只在本文维护。角色文件是短合同，不复制本表。
 
-- Cursor：`.cursor/agents/*.md`，按 [Cursor Subagents](https://cursor.com/docs/subagents.md) 用 Task 或 `/role` 委派。可重复步骤用 `.cursor/skills/`：`design-brainstorm`（设计未定）、`characterdesign`（新建/修改角色：阶段 I `design-brainstorm` + 只读 game-designer 等与用户对齐 → 确认后阶段 II Content 再单位与池子，默认轻量验收）、`implement`（设计已定 → 代码/资源/编辑器）、`vertical-slice`（完整 L 级纵切片）、`verify-godot`、`gui-acceptance`。
+- Cursor：`.cursor/agents/*.md`，按 [Cursor Subagents](https://cursor.com/docs/subagents.md) 用 Task 或 `/role` 委派。可重复步骤用 `.cursor/skills/`：`design-brainstorm`（设计未定）、`characterdesign`（新建/修改角色：阶段 I `design-brainstorm` + 只读 game-designer 等与用户对齐 → 确认后阶段 II Content 再单位与池子，默认轻量验收）、`implement`（设计已定 → 代码/资源/编辑器）、`vertical-slice`（完整 L 级纵切片）、`verify-godot`、`gui-acceptance`。平衡评估分支 **`balance-eval`** + harness 见 `tools/run_sim_balance_verify.sh`、`Documents/WEB_DEPLOY.md` § 平衡报告。
 - 主规则为根目录 `AGENTS.md`。Customize 或客户端里看不见就不算已加载；改为手读对应文件再传合同。文件存在不等于角色已运行。不修改全局权限或模型。
 
 示例：“按 Features/UNIT_ABILITIES 与上文共识实现死亡召唤，目标 L3，完全验收 → 用 `implement` 拉 gameplay-engineer（必要时 balance-designer），再 QA / reviewer。”
