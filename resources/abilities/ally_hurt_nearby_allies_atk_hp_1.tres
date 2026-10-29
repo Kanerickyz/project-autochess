@@ -17,6 +17,7 @@ value = 1
 script = ExtResource("2_spec")
 trigger = &"OnFriendDamageTaken"
 target_selector = 18
+exclude_owner = true
 actions = Array[ExtResource("3_act")]([SubResource("Resource_act_atk"), SubResource("Resource_act_hp")])
 
 [resource]
