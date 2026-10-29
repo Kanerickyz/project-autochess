@@ -38,4 +38,29 @@ func _initialize() -> void:
 		quit(1)
 		return
 	print("SimBanditSmoke: OK updates=%d eval_outcome=%s" % [updates, record.get("outcome")])
+	_smoke_v4_multi_recruit_per_run()
 	quit(0)
+
+
+func _smoke_v4_multi_recruit_per_run() -> void:
+	var path := "res://resources/sim_balance/checkpoints/bandit_v4.tres"
+	if not ResourceLoader.exists(path):
+		return
+	var loaded := load(path) as SimBanditCheckpoint
+	if loaded == null:
+		return
+	loaded = loaded.duplicate(true) as SimBanditCheckpoint
+	loaded.policy_id = "bandit-smoke-v4"
+	var sim := RunMatchSimulator.new()
+	sim.configure(null, null, null, null, null, null, loaded, false)
+	var max_picks := 0
+	for seed in range(50, 120):
+		var record: Dictionary = sim.simulate_run(seed)
+		var picks: Variant = record.get("recruit_picks", [])
+		if typeof(picks) == TYPE_ARRAY:
+			max_picks = maxi(max_picks, picks.size())
+	if max_picks < 2:
+		push_error(
+			"BanditSmoke: v4 one run should allow multiple recruit picks (max_picks=%d)" % max_picks
+		)
+		quit(1)

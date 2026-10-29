@@ -30,6 +30,12 @@
 
 v4 的设计目标：**教会模型在「当前队伍 + 本店可选角色」下招谁更容易打得更远**；队伍写在 state 里，**角色组合**通过同一 state 下的 `unit_id` 统计自然体现，不是全局配对表。
 
+### 招募环节 vs 单次购买（勿搞错）
+
+- 游戏与 Sim：**一次招募环节**（开局 recruit、战后 recruit 等）里，只要 **金币 / 席位 / 合成** 还允许，可以 **连续买多个角色**。
+- 实现：`HeuristicRunAI._run_recruit_passes` 在 **`max_recruit_passes`**（默认 **16**）内循环，**每成功买 1 人** 调用一次 `_try_best_recruit` → v4 下即 **1 次 bandit 决策**（state 随 **队伍 / 金 / 商店** 变）。
+- **不是**「每个环节只允许招 1 人」，也 **不是**「整局 Run 只学一次招募」；Run 终局反馈会写入本局 **`_recruit_log` 里每一次成功购买**（`recruit_picks` 为列表）。
+
 ### bandit-v4（`reward_mode=v4`）
 
 **状态键** `recruit4|f{层}|g{金桶}|team={排序 unit_id#level}|shop={排序可选 unit_id}`  

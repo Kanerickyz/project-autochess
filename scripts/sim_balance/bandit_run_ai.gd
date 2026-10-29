@@ -139,6 +139,7 @@ func pick_map_node(run_controller: RunController) -> MapNodeRuntime:
 
 
 func _try_best_recruit(session: RecruitSession) -> bool:
+	# 单次调用 = 买 1 人；同一 recruit 环节内可多次调用（见 _run_recruit_passes / max_recruit_passes）。
 	if reward_mode == REWARD_V4:
 		return _try_best_recruit_v4(session)
 	var candidates: Array[int] = []
