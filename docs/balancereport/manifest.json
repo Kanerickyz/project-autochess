@@ -1,5 +1,16 @@
 {
 	"manifest_schema_version": "1.0",
-	"latest_run_id": null,
-	"runs": []
+	"latest_run_id": "2026-10-29T13-07-37Z_100runs_v0.5.255_402231e",
+	"runs": [
+		{
+			"id": "2026-10-29T13-07-37Z_100runs_v0.5.255_402231e",
+			"path": "runs/2026-10-29T13-07-37Z_100runs_v0.5.255_402231e/summary.json",
+			"generated_at_utc": "2026-10-29T13:07:37",
+			"game_version": "0.5.255",
+			"run_count": 100,
+			"git_ref": "balance-eval",
+			"github_sha": "402231e",
+			"ai_profile_id": "default"
+		}
+	]
 }
