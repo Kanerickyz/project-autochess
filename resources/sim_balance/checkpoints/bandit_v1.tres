@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="SimBanditCheckpoint" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/sim_balance/sim_bandit_checkpoint.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+policy_id = "bandit-v1"
+schema_version = 1
+stats_json = "{}"

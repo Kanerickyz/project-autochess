@@ -11,6 +11,7 @@ func _initialize() -> void:
 	var runs := DEFAULT_RUNS
 	var seed_start := DEFAULT_SEED_START
 	var out_dir := SimMetricsWriter.DEFAULT_OUT_DIR
+	var checkpoint_path := ""
 	for i in args.size():
 		var a := args[i]
 		if a == "--runs" and i + 1 < args.size():
@@ -19,9 +20,18 @@ func _initialize() -> void:
 			seed_start = int(args[i + 1])
 		elif a == "--out" and i + 1 < args.size():
 			out_dir = args[i + 1]
+		elif a == "--checkpoint" and i + 1 < args.size():
+			checkpoint_path = args[i + 1]
+
+	var checkpoint: SimBanditCheckpoint = null
+	if not checkpoint_path.is_empty() and ResourceLoader.exists(checkpoint_path):
+		checkpoint = load(checkpoint_path) as SimBanditCheckpoint
 
 	var sim := RunMatchSimulator.new()
-	sim.configure()
+	if checkpoint != null:
+		sim.configure(null, null, null, null, null, null, checkpoint, false)
+	else:
+		sim.configure()
 	var batch: Array = []
 	var t0 := Time.get_ticks_msec()
 	for n in runs:
