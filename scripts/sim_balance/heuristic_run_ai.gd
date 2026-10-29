@@ -165,17 +165,17 @@ func _can_try_recruit(session: RecruitSession, unit: UnitData) -> bool:
 
 
 func _score_recruit_candidate(session: RecruitSession, unit: UnitData) -> float:
-	if unit == null:
+	if unit == null or profile == null:
 		return -1.0
 	var cost := maxf(1.0, float(session.get_recruit_cost(unit)))
 	var atk := unit.stats.attack if unit.stats != null else 1
 	var hp := unit.stats.max_hp if unit.stats != null else 1
 	var stats := float(atk + hp)
-	var score := stats / cost
+	var score := stats / cost * profile.weight_stat_per_cost
 	if _is_priority(unit.id):
-		score += 50.0
+		score += profile.weight_priority_unit_bonus
 	if session.can_recruit_via_merge(unit):
-		score += 80.0
+		score += profile.weight_merge_bonus
 	return score
 
 
@@ -197,11 +197,11 @@ func _map_node_tie_score(node: MapNodeRuntime, dist: int) -> int:
 	var t := node.get_effective_type()
 	var score := 1000 - dist * 10 + node.get_floor()
 	if profile != null and profile.prefer_shop_nodes and t == MapNodeType.Type.SHOP:
-		score += 40
+		score += int(profile.weight_shop_node_tie)
 	if t == MapNodeType.Type.BOSS:
-		score += 100
+		score += int(profile.weight_boss_path_tie)
 	if MapNodeType.is_combat(t):
-		score += 5
+		score += int(profile.weight_combat_node_tie)
 	return score
 
 
