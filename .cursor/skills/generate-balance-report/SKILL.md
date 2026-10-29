@@ -13,8 +13,9 @@ description: Sync balance-eval with main, ask run count, archive sim batch under
 
 1. **确认分支**：工作在 **`balance-eval`**（首次：`git fetch origin && git checkout -B balance-eval origin/main`）。
 2. **询问局数**：「要跑几次？」默认 **100**；未回答则用 100。
-3. **可选询问**（用户未提则不主动拖长）：起始 seed，默认 **1**（与 CI `BALANCE_SEED_START` 一致）。
-4. **验收方式**：本技能默认 **轻量**（跑批 + 归档 + 部署）；不代做 GUI 图表审美验收。
+3. **必须询问 Sim 策略**：「是否使用 **bandit 模型**（冻结 `resources/sim_balance/checkpoints/bandit_v1.tres`，报告里 `ai_profile_id=bandit-v1`）？还是 **默认启发式**（`default`，不传 checkpoint）？」未回答则**停步再问**，不要擅自假设。
+4. **可选询问**（用户未提则不主动拖长）：起始 seed，默认 **1**（与 CI `BALANCE_SEED_START` 一致）。
+5. **验收方式**：本技能默认 **轻量**（跑批 + 归档 + 部署）；不代做 GUI 图表审美验收。
 
 ## 与 main 同步（步骤 1）
 
@@ -35,10 +36,16 @@ git merge origin/main
 ```bash
 RUNS=100          # 来自用户回答，默认 100
 SEED_START=1
+USE_BANDIT=1      # 用户选 bandit 时为 1，选默认启发式时为 0
 BATCH_OUT="$(mktemp -d)/sim_balance_batch"
 mkdir -p "$BATCH_OUT"
 
-bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT"
+if [ "$USE_BANDIT" = "1" ]; then
+  bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT" \
+    --checkpoint res://resources/sim_balance/checkpoints/bandit_v1.tres
+else
+  bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT"
+fi
 test -f "$BATCH_OUT/summary.json"
 
 export GITHUB_REF_NAME=balance-eval
@@ -55,13 +62,8 @@ test -f "docs/balancereport/runs/${RUN_ID}/summary.json"
 
 可选烟测（改 sim 代码后）：`bash tools/run_sim_balance_verify.sh`（1 局，快）。
 
-<<<<<<< HEAD
-Sim 决策变「更聪明」（权重调参 / 多 profile / 离线 RL）见 `Documents/Features/SIM_BALANCE_AI.md`；换策略时报告里 `ai_profile_id` 必须可区分，避免和旧报告混读。
+Sim 策略见 `Documents/Features/SIM_BALANCE_AI.md`。Bandit **仅评估**：checkpoint 冻结，100 局内不更新表；与 `default` 报告分 `ai_profile_id` 存档。
 
-**Bandit（已定稿）**：`train_bandit.sh` 训练 checkpoint（只用遭遇胜负）→ 批跑 `--checkpoint` 冻结评估（100 局内不更新表）。
-
-=======
->>>>>>> origin/main
 ### 路径 B — 交给 CI（本地无 Godot 或用户指定 Actions）
 
 1. 确保 **`balance-eval`** 已 merge **`origin/main`** 并已 push 评估分支上的**玩法/数值改动**（若有）。
