@@ -51,7 +51,10 @@ func _build_ai(
 	if p_checkpoint != null:
 		var table := SimBanditTable.new()
 		p_checkpoint.apply_to(table)
-		return BanditRunAI.new(p_profile, table, p_learning)
+		var mode := p_checkpoint.reward_mode
+		if mode.is_empty():
+			mode = BanditRunAI.REWARD_V1
+		return BanditRunAI.new(p_profile, table, p_learning, mode)
 	return HeuristicRunAI.new(p_profile)
 
 
@@ -73,6 +76,8 @@ func simulate_run(seed: int) -> Dictionary:
 
 	run_controller.start_run()
 	run_controller.run_state.mark_run_started()
+	if _ai is BanditRunAI:
+		(_ai as BanditRunAI).begin_run()
 
 	var encounters: Array = []
 	_run_opening_recruit(run_controller, deck, economy)
@@ -98,7 +103,9 @@ func simulate_run(seed: int) -> Dictionary:
 			_:
 				break
 
-	return _build_run_record(seed, run_controller, encounters)
+	var record := _build_run_record(seed, run_controller, encounters)
+	_notify_run_finished(record, run_controller)
+	return record
 
 
 func _run_opening_recruit(run_controller: RunController, deck: DeckState, economy: RunEconomy) -> void:
@@ -250,10 +257,21 @@ func _notify_encounter_resolved(won: bool) -> void:
 		(_ai as BanditRunAI).on_encounter_resolved(won)
 
 
+func _notify_run_finished(record: Dictionary, run_controller: RunController) -> void:
+	if _ai is BanditRunAI:
+		(_ai as BanditRunAI).on_run_finished(
+			str(record.get("outcome", "")),
+			int(record.get("death_floor", 0)),
+			_map_floor_count(run_controller),
+		)
+
+
 func export_bandit_checkpoint() -> SimBanditCheckpoint:
 	var out := bandit_checkpoint.duplicate_checkpoint() if bandit_checkpoint != null else SimBanditCheckpoint.new()
 	if _ai is BanditRunAI:
-		out.capture_from((_ai as BanditRunAI).bandit_table)
+		var ai := _ai as BanditRunAI
+		out.capture_from(ai.bandit_table)
+		out.reward_mode = ai.reward_mode
 	return out
 
 

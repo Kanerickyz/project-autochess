@@ -34,17 +34,29 @@ func export_dict() -> Dictionary:
 
 
 func record_outcome(state_key: String, action_key: String, won: bool, learning: bool) -> void:
+	record_weighted(state_key, action_key, 1 if won else 0, 0 if won else 1, learning)
+
+
+func record_weighted(
+	state_key: String,
+	action_key: String,
+	w_add: int,
+	l_add: int,
+	learning: bool,
+) -> void:
 	if not learning:
+		return
+	w_add = maxi(0, w_add)
+	l_add = maxi(0, l_add)
+	if w_add == 0 and l_add == 0:
 		return
 	var k := _compound_key(state_key, action_key)
 	if not _stats.has(k):
 		_stats[k] = {"w": 0, "l": 0}
 	var row: Dictionary = _stats[k]
-	if won:
-		row["w"] = int(row.get("w", 0)) + 1
-	else:
-		row["l"] = int(row.get("l", 0)) + 1
-	_total_updates += 1
+	row["w"] = int(row.get("w", 0)) + w_add
+	row["l"] = int(row.get("l", 0)) + l_add
+	_total_updates += w_add + l_add
 
 
 func select_arm(
