@@ -15,6 +15,7 @@ static func run_all() -> bool:
 	_check("armor_depletes_keeps_equipment", _test_armor_depletes())
 	_check("armor_refills_after_deplete", _test_armor_refill())
 	_check("partial_hit_leaves_remaining_armor", _test_armor_partial_deplete())
+	_check("combat_temp_armor_stacks_and_depletes_first", _test_combat_temp_armor_depletes_before_equipment())
 	_check("lethal_skips_hurt", _test_lethal_skips_hurt())
 	_check("realtime_lethal_skips_hurt", _test_realtime_lethal_skips_hurt())
 	_check("nonlethal_still_hurts", _test_nonlethal_still_hurts())
@@ -214,6 +215,44 @@ static func _test_armor_partial_deplete() -> bool:
 	if entry.get_armor_block() != 6:
 		return false
 	if entry.equipment == null:
+		return false
+	return true
+
+
+static func _test_combat_temp_armor_depletes_before_equipment() -> bool:
+	var eq := EquipmentData.new()
+	eq.id = "armor_t1"
+	eq.armor_block = 5
+	var entry := DeckEntry.new()
+	entry.entry_id = 3
+	entry.attach_equipment(eq)
+	var unit := UnitInstance.new("tank", Vector2i(0, 0), UnitInstance.Team.PLAYER)
+	unit.stats = UnitStats.new()
+	unit.stats.max_hp = 20
+	unit.current_hp = 20
+	unit._deck_entry_ref = weakref(entry)
+	unit.armor_block = entry.get_armor_block()
+	unit.grant_combat_temp_armor(2)
+	if unit.get_armor_block() != 7:
+		return false
+	var leftover := unit.mitigate_incoming_damage(2)
+	if leftover != 0:
+		return false
+	if unit.combat_temp_armor != 0:
+		return false
+	if unit.armor_block != 5:
+		return false
+	if entry.get_armor_block() != 5:
+		return false
+	unit.grant_combat_temp_armor(2)
+	leftover = unit.mitigate_incoming_damage(4)
+	if leftover != 0:
+		return false
+	if unit.combat_temp_armor != 0:
+		return false
+	if unit.armor_block != 3:
+		return false
+	if entry.get_armor_block() != 3:
 		return false
 	return true
 

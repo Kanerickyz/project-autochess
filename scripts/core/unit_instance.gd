@@ -36,6 +36,8 @@ const COMBAT_SKILL_HEAL_BUDGET: int = 100
 var main_ability_override: AbilityData = null
 ## 来自 DeckEntry 装备的护甲抵挡；受伤结算前抵消伤害，受击消耗。
 var armor_block: int = 0
+## 本场技能授予的临时护甲（可叠加；遭遇结束随实例销毁；不回写队伍装备）。
+var combat_temp_armor: int = 0
 ## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
 var _deck_entry_ref: WeakRef = null
 
@@ -242,7 +244,18 @@ func get_effective_max_hp() -> int:
 
 
 func get_armor_block() -> int:
+	return maxi(0, armor_block) + maxi(0, combat_temp_armor)
+
+
+func get_equipment_armor_block() -> int:
 	return maxi(0, armor_block)
+
+
+## 本场临时护甲（与装备护甲叠加显示；受击时优先消耗）。
+func grant_combat_temp_armor(amount: int) -> void:
+	if amount <= 0:
+		return
+	combat_temp_armor += amount
 
 
 func get_linked_deck_entry() -> DeckEntry:
@@ -257,11 +270,19 @@ func get_linked_deck_entry() -> DeckEntry:
 func mitigate_incoming_damage(amount: int) -> int:
 	if amount <= 0:
 		return 0
-	var block := get_armor_block()
-	if block <= 0:
+	var temp := maxi(0, combat_temp_armor)
+	var equip := maxi(0, armor_block)
+	var total := temp + equip
+	if total <= 0:
 		return amount
-	armor_block = maxi(0, block - amount)
-	_sync_armor_to_deck_entry()
+	if amount >= temp:
+		combat_temp_armor = 0
+		var equip_hit := amount - temp
+		if equip_hit > 0 and equip > 0:
+			armor_block = maxi(0, equip - equip_hit)
+			_sync_armor_to_deck_entry()
+	else:
+		combat_temp_armor = temp - amount
 	return 0
 
 

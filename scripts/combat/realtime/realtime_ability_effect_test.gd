@@ -65,6 +65,8 @@ static func run_all() -> bool:
 	_check("turn_start_nearby_enemies_poison_star2", _test_turn_start_nearby_enemies_poison_star2())
 	_check("wardrum_turn_start_nearby_berserk", _test_wardrum_turn_start_nearby_berserk())
 	_check("wardrum_turn_start_nearby_berserk_star2", _test_wardrum_turn_start_nearby_berserk_star2())
+	_check("armorer_turn_start_random_ally_armor", _test_armorer_turn_start_random_ally_armor())
+	_check("armorer_turn_start_random_ally_armor_star2", _test_armorer_turn_start_random_ally_armor_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
@@ -1511,6 +1513,63 @@ static func _wardrum_nearby_berserk_expect(star_level: int, expected_berserk: in
 		return false
 	if far.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK) != 0:
 		push_error("wardrum_berserk: far ally should have 0 berserk")
+		return false
+	return true
+
+
+## 甲胄师：自己回合开始随机其他队友 +2 本场临时护甲（不含自身）；2★ +6。
+static func _test_armorer_turn_start_random_ally_armor() -> bool:
+	return _armorer_random_ally_armor_expect(1, 2)
+
+
+static func _test_armorer_turn_start_random_ally_armor_star2() -> bool:
+	return _armorer_random_ally_armor_expect(2, 6)
+
+
+static func _armorer_random_ally_armor_expect(star_level: int, expected_armor: int) -> bool:
+	var data := _load_unit("res://resources/units/realtime/armorer.tres")
+	if data == null or data.ability == null:
+		push_error("armorer_armor: ability missing")
+		return false
+	if data.ability.id != "turn_start_random_ally_combat_armor_2":
+		push_error("armorer_armor: wrong ability id %s" % data.ability.id)
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("armorer_armor: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 919 + star_level)
+	var armorer := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	armorer.unit.level = star_level
+	armorer.unit.stats.steps_per_turn = 0
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 20.5),
+	)
+	sim.begin_combat()
+	var payload := CombatEventPayload.new()
+	payload.source = armorer.unit
+	payload.target = armorer.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects(true)
+	if armorer.unit.combat_temp_armor != 0:
+		push_error("armorer_armor: owner must not grant self")
+		return false
+	var ally_temp := ally.unit.combat_temp_armor
+	if ally_temp != expected_armor:
+		push_error(
+			"armorer_armor %d★: ally temp armor=%d expected %d"
+			% [star_level, ally_temp, expected_armor]
+		)
+		return false
+	# 同回合再触发一次应叠加（仅一名其他队友）。
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects(true)
+	if ally.unit.combat_temp_armor != expected_armor * 2:
+		push_error(
+			"armorer_armor stack: ally temp=%d expected %d"
+			% [ally.unit.combat_temp_armor, expected_armor * 2]
+		)
 		return false
 	return true
 

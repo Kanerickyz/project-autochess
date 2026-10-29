@@ -70,6 +70,7 @@
 | `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | （池内；鼓手已不挂载） | 节奏 |
 | `turn_start_nearby_allies_apply_berserk` | 战鼓狂暴 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格友方**施加 **狂暴 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自身） | **中庸** | 鼓手 | `NEARBY_ALLIES` + `exclude_owner` |
+| `turn_start_random_ally_combat_armor_2` | 匠甲加护 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**随机一名其他友方**授予本场临时护甲 **+2**（三合一后 **+6**；`merge_value_mult=3`；可叠加；不含自己；结算同 MAP_SHOP §5.1；遭遇结束清除） | **中庸** | 甲胄师 | `RANDOM_ALLY` + `exclude_owner` |
 | `turn_start_nearby_hp_small` | 固脉一剂 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时生命上限与当前各 **+2**（三合一后 **+8**；`merge_value_mult=4`） | **中庸** | （池内；药师已不挂载） | 医疗·加厚 |
 | `turn_start_nearby_enemies_apply_poison` | 药雾蚀敌 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格敌军**施加 **中毒 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 药师 | 状态·控场；`NEARBY_ENEMIES` |
 | `turn_start_strike_weakest` | 影袭落刃 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，瞬移至**当前生命最低**敌人邻格并对其造成技能伤害（1★ **2**；三合一升星后 **7**；不触发普攻连击） | **中庸～偏强** | 影刺 | 刺杀·斩后；**【新】** |

@@ -217,6 +217,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `dirge_horn` | 兜帽 + 吹大号角 | dirge_horn 号手 |
 | `wardrum` | 胸前大鼓 + 双鼓槌（无旗） | wardrum 鼓手 |
 | `apothecary` | 蓝帽白围裙 + 药匣 + 高举绿药瓶 | apothecary 药师 |
+| `armorer` | 蓝头巾 + 皮围裙 + 铁砧锤 + 钳持胸甲 | armorer 甲胄师 |
 | `arcane` | 尖顶蓝法帽 + 白须 + 法书与镶蓝宝珠金杖 | arcane 奥术 |
 | `echo_spear` | 骷髅面长枪兵 + 青色残影 | echo_spear 残影 |
 | `spear_goblin` | 皮帽 + 投掷姿势 + 背后标枪束 | spear_goblin 标枪 |

@@ -18,6 +18,7 @@
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_relic_aegis.tres" id="u_relic"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_dirge_horn.tres" id="u_dirge"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_wardrum.tres" id="u_drum"]
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_armorer.tres" id="u_armorer"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_crossbow.tres" id="u_xbow"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_hunter.tres" id="u_hunt"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_maul.tres" id="u_maul"]
@@ -50,6 +51,6 @@
 [resource]
 script = ExtResource("1_cfg")
 enabled = true
-enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker"), ExtResource("u_devour"), ExtResource("u_blade_mender"), ExtResource("u_aftershock"), ExtResource("u_edge_hex"), ExtResource("u_shield_boon"), ExtResource("u_paymaster"), ExtResource("u_wergild"), ExtResource("u_coffer"), ExtResource("u_bloodwage"), ExtResource("u_scatter"), ExtResource("u_pyre"), ExtResource("u_boomling")])
+enemy_pool = Array[ExtResource("2_unit")]([ExtResource("u_skel"), ExtResource("u_spear"), ExtResource("u_archer"), ExtResource("u_goblin"), ExtResource("u_barb"), ExtResource("u_knight"), ExtResource("u_musk"), ExtResource("u_rider"), ExtResource("u_valk"), ExtResource("u_pekka"), ExtResource("u_spike"), ExtResource("u_rune"), ExtResource("u_banner"), ExtResource("u_relic"), ExtResource("u_dirge"), ExtResource("u_drum"), ExtResource("u_armorer"), ExtResource("u_xbow"), ExtResource("u_hunt"), ExtResource("u_maul"), ExtResource("u_grave"), ExtResource("u_soul"), ExtResource("u_echo"), ExtResource("u_mirror"), ExtResource("u_hbow"), ExtResource("u_blood"), ExtResource("u_vita"), ExtResource("u_iron"), ExtResource("u_mend"), ExtResource("u_apoth"), ExtResource("u_arcane"), ExtResource("u_shinobi"), ExtResource("u_berserker"), ExtResource("u_devour"), ExtResource("u_blade_mender"), ExtResource("u_aftershock"), ExtResource("u_edge_hex"), ExtResource("u_shield_boon"), ExtResource("u_paymaster"), ExtResource("u_wergild"), ExtResource("u_coffer"), ExtResource("u_bloodwage"), ExtResource("u_scatter"), ExtResource("u_pyre"), ExtResource("u_boomling")])
 combat_plus_one_chance = 0.0
 elite_plus_two_chance = 0.5
