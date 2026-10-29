@@ -237,6 +237,9 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `scatter_hex` | 骷髅兜帽 + 紫宝珠 | scatter_hex 散咒 |
 | `funeral_pyre` | 背负柴捆火把 + 炭盆 | funeral_pyre 葬焰 |
 | `boomling` | 蓝袍兜帽 + 背桶炸药与火把 | boomling 爆爆 |
+| `golden_drum` | 蓝平帽小胡子 + 胸前蓝鼓金百合纹 + 金球鼓槌 | golden_drum 金鼓 |
+| `thunder_drum` | 铁盔蓝羽 + 胸前雷纹鼓 + 重槌 | thunder_drum 雷鼓 |
+| `flower_drum` | 蓝巾粉花 + 木鼓粉花面 + 细木槌 | flower_drum 花鼓 |
 
 召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
