@@ -57,6 +57,8 @@ test -f "docs/balancereport/runs/${RUN_ID}/summary.json"
 
 Sim 决策变「更聪明」（权重调参 / 多 profile / 离线 RL）见 `Documents/Features/SIM_BALANCE_AI.md`；换策略时报告里 `ai_profile_id` 必须可区分，避免和旧报告混读。
 
+**Bandit（已定稿）**：`train_bandit.sh` 训练 checkpoint（只用遭遇胜负）→ 批跑 `--checkpoint` 冻结评估（100 局内不更新表）。
+
 ### 路径 B — 交给 CI（本地无 Godot 或用户指定 Actions）
 
 1. 确保 **`balance-eval`** 已 merge **`origin/main`** 并已 push 评估分支上的**玩法/数值改动**（若有）。
