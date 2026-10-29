@@ -7,23 +7,18 @@ const COMBAT_SANDBOX_PATH := "res://scenes/main/combat_sandbox.tscn"
 const ENCHANT_SANDBOX_PATH := "res://scenes/main/enchant_sandbox.tscn"
 const MATCH_HISTORY_PATH := "res://scenes/ui/match_history/match_history_screen.tscn"
 
-const MENU_GROUP_GAP_PX := 22
-const MENU_GROUP_INNER_SEPARATION := 12
-
-# 单按钮竖条精灵图：自上而下为常态 / 悬停 / 按下 / …（见 menu_button_sheet.jpg）
-const MENU_BUTTON_NORMAL := "res://assets/ui/main_menu/menu_button_0.jpg"
-const MENU_BUTTON_HOVER := "res://assets/ui/main_menu/menu_button_1.jpg"
-const MENU_BUTTON_PRESSED := "res://assets/ui/main_menu/menu_button_2.jpg"
-const MENU_BUTTON_DISABLED := "res://assets/ui/main_menu/menu_button_5.jpg"
-
 const LOGO_TEXTURE_WIDTH := 2123.0
 const LOGO_TEXTURE_HEIGHT := 741.0
-const LOGO_WIDTH_SCALE := 0.8
+const LOGO_WIDTH_FRAC := 0.72
+const LOGO_WIDTH_MIN := 200.0
+const LOGO_WIDTH_MAX := 320.0
 
-const BUTTON_TEXTURE_SIZE := Vector2i(1024, 256)
-# 圆角胶囊：左右 slice 约为纹理高度的一半（像素）
-const BUTTON_CAP_PX := 128
-const BUTTON_TARGET_WIDTH := 328.0
+## 主按钮（开始）高度；次要/系统略矮，保证 iPhone 14 Pro 一屏可见版本号。
+const PRIMARY_BTN_H := 54.0
+const SECONDARY_BTN_H := 44.0
+const SYSTEM_BTN_H := 40.0
+const BTN_CORNER_RADIUS := 14
+const BTN_BORDER_W := 2
 
 @onready var _title_logo: TextureRect = $SafeMargin/MainVBox/TitleRow/TitleLogo
 @onready var _start_button: Button = %StartButton
@@ -40,11 +35,9 @@ const BUTTON_TARGET_WIDTH := 328.0
 
 
 func _ready() -> void:
-	_apply_title_logo_width()
+	_apply_responsive_layout()
 	if not get_viewport().size_changed.is_connected(_on_viewport_resized):
 		get_viewport().size_changed.connect(_on_viewport_resized)
-	_apply_menu_button_styles()
-	_configure_menu_groups()
 	_start_button.pressed.connect(_on_start_pressed)
 	_endless_button.pressed.connect(_on_endless_pressed)
 	_match_history_button.pressed.connect(_on_match_history_pressed)
@@ -61,39 +54,38 @@ func _ready() -> void:
 
 
 func _on_viewport_resized() -> void:
+	_apply_responsive_layout()
+
+
+func _apply_responsive_layout() -> void:
 	_apply_title_logo_width()
 	_apply_menu_button_styles()
+	_apply_safe_margins()
+
+
+func _apply_safe_margins() -> void:
+	if _safe_margin == null:
+		return
+	var view_h := get_viewport().get_visible_rect().size.y
+	## 底边给 Home 指示条留空，版本号不被挡。
+	var bottom := 52 if view_h >= 800.0 else 32
+	var top := 44 if view_h >= 800.0 else 32
+	_safe_margin.add_theme_constant_override("margin_top", top)
+	_safe_margin.add_theme_constant_override("margin_bottom", bottom)
+	_safe_margin.add_theme_constant_override("margin_left", 20)
+	_safe_margin.add_theme_constant_override("margin_right", 20)
 
 
 func _apply_title_logo_width() -> void:
 	if _title_logo == null:
 		return
 	var view_w := get_viewport().get_visible_rect().size.x
-	var side_margin := 40.0
-	var target_w := clampf(view_w - side_margin * 2.0, 560.0, 720.0) * LOGO_WIDTH_SCALE
+	var target_w := clampf(view_w * LOGO_WIDTH_FRAC, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX)
+	## 绝不超出安全区内容宽。
+	var max_fit := maxf(160.0, view_w - 40.0)
+	target_w = minf(target_w, max_fit)
 	var target_h := target_w * (LOGO_TEXTURE_HEIGHT / LOGO_TEXTURE_WIDTH)
 	_title_logo.custom_minimum_size = Vector2(target_w, target_h)
-
-
-func _menu_button_pixel_size() -> Vector2:
-	var button_w := clampf(
-		get_viewport().get_visible_rect().size.x - 64.0,
-		BUTTON_TARGET_WIDTH,
-		BUTTON_TARGET_WIDTH + 24.0,
-	)
-	var button_h := button_w * float(BUTTON_TEXTURE_SIZE.y) / float(BUTTON_TEXTURE_SIZE.x)
-	return Vector2(button_w, button_h)
-
-
-func _configure_menu_groups() -> void:
-	var menu_vbox := _start_button.get_parent().get_parent() as VBoxContainer
-	if menu_vbox == null:
-		return
-	menu_vbox.add_theme_constant_override("separation", MENU_GROUP_GAP_PX)
-	for group_name in ["PrimaryGroup", "MetaGroup", "ToolsGroup", "SystemGroup"]:
-		var group := menu_vbox.get_node_or_null(group_name) as VBoxContainer
-		if group != null:
-			group.add_theme_constant_override("separation", MENU_GROUP_INNER_SEPARATION)
 
 
 func _all_menu_buttons() -> Array[Button]:
@@ -110,37 +102,98 @@ func _all_menu_buttons() -> Array[Button]:
 
 
 func _apply_menu_button_styles() -> void:
-	var buttons := _all_menu_buttons()
-	var pixel_size := _menu_button_pixel_size()
-	for button: Button in buttons:
-		button.flat = true
-		button.custom_minimum_size = pixel_size
-		button.add_theme_stylebox_override("normal", _make_menu_button_stylebox(MENU_BUTTON_NORMAL))
-		button.add_theme_stylebox_override("hover", _make_menu_button_stylebox(MENU_BUTTON_HOVER))
-		button.add_theme_stylebox_override("pressed", _make_menu_button_stylebox(MENU_BUTTON_PRESSED))
-		button.add_theme_stylebox_override("focus", _make_menu_button_stylebox(MENU_BUTTON_HOVER))
-		button.add_theme_stylebox_override("disabled", _make_menu_button_stylebox(MENU_BUTTON_DISABLED))
-		button.add_theme_color_override("font_color", Color(0.98, 0.96, 0.9, 1))
-		button.add_theme_color_override("font_hover_color", Color(1, 1, 0.95, 1))
-		button.add_theme_color_override("font_pressed_color", Color(0.9, 0.88, 0.82, 1))
-		button.add_theme_font_size_override("font_size", 21)
-		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_style_menu_button(_start_button, PRIMARY_BTN_H, true)
+	_style_menu_button(_endless_button, SECONDARY_BTN_H, false)
+	for button: Button in [
+		_match_history_button,
+		_codex_button,
+		_combat_sandbox_button,
+		_enchant_sandbox_button,
+	]:
+		_style_menu_button(button, SECONDARY_BTN_H, false)
+	_style_menu_button(_settings_button, SYSTEM_BTN_H, false, true)
+	_style_menu_button(_exit_button, SYSTEM_BTN_H, false, true)
 
 
-func _make_menu_button_stylebox(texture_path: String) -> StyleBoxTexture:
-	var style := StyleBoxTexture.new()
-	style.texture = load(texture_path) as Texture2D
-	style.texture_margin_left = BUTTON_CAP_PX
-	style.texture_margin_right = BUTTON_CAP_PX
-	style.texture_margin_top = 0
-	style.texture_margin_bottom = 0
-	style.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
-	style.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	style.draw_center = true
+func _style_menu_button(
+	button: Button,
+	height: float,
+	is_primary: bool,
+	is_system: bool = false,
+) -> void:
+	if button == null:
+		return
+	## flat=false：确保 StyleBoxFlat 底板一定绘制（部分主题对 flat 按钮会吞样式）。
+	button.flat = false
+	button.custom_minimum_size = Vector2(0, height)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_ALL
+	var normal_sb := _make_flat_style(_Tone.NORMAL, is_primary, is_system)
+	button.add_theme_stylebox_override("normal", normal_sb)
+	button.add_theme_stylebox_override("hover", _make_flat_style(_Tone.HOVER, is_primary, is_system))
+	button.add_theme_stylebox_override("pressed", _make_flat_style(_Tone.PRESSED, is_primary, is_system))
+	button.add_theme_stylebox_override("focus", _make_flat_style(_Tone.FOCUS, is_primary, is_system))
+	button.add_theme_stylebox_override("disabled", _make_flat_style(_Tone.DISABLED, is_primary, is_system))
+	button.add_theme_stylebox_override("hover_pressed", _make_flat_style(_Tone.PRESSED, is_primary, is_system))
+	var font_size := 20 if is_primary else (16 if is_system else 17)
+	button.add_theme_font_size_override("font_size", font_size)
+	button.add_theme_color_override("font_color", Color(0.98, 0.96, 0.90, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 0.98, 0.92, 1.0))
+	button.add_theme_color_override("font_pressed_color", Color(0.92, 0.90, 0.84, 1.0))
+	button.add_theme_color_override("font_focus_color", Color(1.0, 0.98, 0.92, 1.0))
+	button.add_theme_color_override("font_disabled_color", Color(0.70, 0.68, 0.64, 0.65))
+
+
+enum _Tone { NORMAL, HOVER, PRESSED, FOCUS, DISABLED }
+
+
+func _make_flat_style(tone: _Tone, is_primary: bool, is_system: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.corner_radius_top_left = BTN_CORNER_RADIUS
+	style.corner_radius_top_right = BTN_CORNER_RADIUS
+	style.corner_radius_bottom_left = BTN_CORNER_RADIUS
+	style.corner_radius_bottom_right = BTN_CORNER_RADIUS
+	style.border_width_left = BTN_BORDER_W
+	style.border_width_top = BTN_BORDER_W
+	style.border_width_right = BTN_BORDER_W
+	style.border_width_bottom = BTN_BORDER_W
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+
+	## 可读深蓝底 + 羊皮纸描边；悬停仅轻微提亮，不再换 JPG 贴图。
+	var fill := Color(0.24, 0.38, 0.58, 0.96)
+	var border := Color(0.86, 0.74, 0.48, 1.0)
+	if is_primary:
+		fill = Color(0.28, 0.46, 0.70, 0.98)
+		border = Color(0.94, 0.80, 0.42, 1.0)
+	elif is_system:
+		fill = Color(0.22, 0.26, 0.32, 0.94)
+		border = Color(0.70, 0.64, 0.52, 0.95)
+
+	match tone:
+		_Tone.HOVER:
+			fill = fill.lightened(0.06)
+			border = border.lightened(0.10)
+		_Tone.PRESSED:
+			fill = fill.darkened(0.14)
+			border = border.darkened(0.06)
+		_Tone.FOCUS:
+			fill = fill.lightened(0.04)
+			border = Color(0.98, 0.86, 0.50, 1.0)
+			style.border_width_left = 3
+			style.border_width_top = 3
+			style.border_width_right = 3
+			style.border_width_bottom = 3
+		_Tone.DISABLED:
+			fill.a *= 0.45
+			border.a *= 0.45
+		_:
+			pass
+
+	style.bg_color = fill
+	style.border_color = border
 	return style
 
 
