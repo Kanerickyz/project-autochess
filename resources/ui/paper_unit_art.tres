@@ -34,6 +34,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_blue.png" id="b_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_blue.png" id="b_apothecary"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armorer_blue.png" id="b_armorer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_blue.png" id="b_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_blue.png" id="b_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
@@ -69,6 +70,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_iron_heart_red.png" id="r_iron_heart"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armorer_red.png" id="r_armorer"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_red.png" id="r_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_blue.png" id="b_berserker"]
@@ -108,6 +110,7 @@ script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "aftershock": &"aftershock",
 "apothecary": &"apothecary",
+"armorer": &"armorer",
 "arcane": &"arcane",
 "archer": &"archer",
 "blade_mender": &"blade_mender",
@@ -170,6 +173,7 @@ default_archetype = &"spear"
 player_textures = {
 &"aftershock": ExtResource("b_aftershock"),
 &"apothecary": ExtResource("b_apothecary"),
+&"armorer": ExtResource("b_armorer"),
 &"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
 &"blade_mender": ExtResource("b_blade_mender"),
@@ -225,6 +229,7 @@ player_textures = {
 enemy_textures = {
 &"aftershock": ExtResource("r_aftershock"),
 &"apothecary": ExtResource("r_apothecary"),
+&"armorer": ExtResource("r_armorer"),
 &"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),
 &"blade_mender": ExtResource("r_blade_mender"),

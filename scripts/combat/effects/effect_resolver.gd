@@ -988,6 +988,24 @@ func _execute_action(
 				]
 			)
 			executed = true
+		EffectAction.Type.GRANT_COMBAT_ARMOR:
+			if target == null or not target.is_alive():
+				return false
+			var armor_grant := _scaled_action_value(owner, action.value)
+			if armor_grant <= 0:
+				return false
+			target.grant_combat_temp_armor(armor_grant)
+			print(
+				"[Effect] %s +%d combat armor (total=%d equip=%d temp=%d)"
+				% [
+					target.id,
+					armor_grant,
+					target.get_armor_block(),
+					target.get_equipment_armor_block(),
+					target.combat_temp_armor,
+				]
+			)
+			executed = true
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if target == null:
 				return false

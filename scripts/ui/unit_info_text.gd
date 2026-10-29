@@ -752,6 +752,8 @@ static func format_action(
 				CombatStatusStack.get_display_name(action.stat_name),
 				scaled_value,
 			]
+		EffectAction.Type.GRANT_COMBAT_ARMOR:
+			return "获得本场临时护甲 +%d" % scaled_value
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if scaled_value <= 0:
 				return "驱散 %s" % CombatStatusStack.get_display_name(action.stat_name)

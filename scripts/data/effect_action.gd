@@ -36,6 +36,8 @@ enum Type {
 	REMOVE_COMBAT_STATUS,
 	## 击杀策反：将事件目标改为持有者同队、满血并清空本场战斗状态（首领免疫；见 UNIT_ABILITIES §6.1）。
 	CONVERT_KILL_TARGET_TO_ALLY,
+	## 本场临时护甲（可叠加；MAP_SHOP §5.1 受伤结算；不占用装备槽、不回写 DeckEntry）。
+	GRANT_COMBAT_ARMOR,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }
