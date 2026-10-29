@@ -3,6 +3,8 @@ extends RefCounted
 ## 遭遇胜负（win/loss）驱动的离散 bandit 统计；键 = state_key + action_key。
 
 const UCB_C := 1.414
+const LAPLACE_PRIOR_W := 1.0
+const LAPLACE_PRIOR_L := 1.0
 
 
 func _init() -> void:
@@ -227,6 +229,18 @@ func get_coverage_summary() -> Dictionary:
 		"median_wl": median,
 		"pct_keys_ge5": roundf(float(ge5) / float(key_count) * 1000.0) / 10.0,
 	}
+
+
+func smoothed_win_rate(
+	state_key: String,
+	action_key: String,
+	prior_w: float = LAPLACE_PRIOR_W,
+	prior_l: float = LAPLACE_PRIOR_L,
+) -> float:
+	var row := _row(state_key, action_key)
+	var w := prior_w + float(row.get("w", 0))
+	var l := prior_l + float(row.get("l", 0))
+	return w / maxf(1.0, w + l)
 
 
 func _compound_key(state_key: String, action_key: String) -> String:

@@ -11,6 +11,12 @@ const K_DEPTH := 3
 const K_DEPTH_V4_W := 4
 const K_DEPTH_V4_L := 3
 const EVAL_MIN_SAMPLES := 3
+const GLOBAL_RECRUIT_STATE := "global|recruit"
+const BLEND_HEURISTIC := 0.40
+const BLEND_GLOBAL := 0.35
+const BLEND_CONTEXT := 0.25
+const BLEND_HEURISTIC_EARLY_FLOOR := 2
+const BLEND_HEURISTIC_EARLY := 0.55
 
 var bandit_table: SimBanditTable
 var learning_enabled: bool = false
@@ -95,6 +101,8 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 		if outcome == "RUN_COMPLETE":
 			var w_win := K_COMPLETE_V4 if reward_mode == REWARD_V4 else K_COMPLETE
 			bandit_table.record_weighted(sk, ak, w_win, 0, true)
+			if reward_mode == REWARD_V4:
+				bandit_table.record_weighted(GLOBAL_RECRUIT_STATE, ak, w_win, 0, true)
 		elif reward_mode == REWARD_V4:
 			var depth_ratio := float(d) / float(f_max)
 			var shallow_ratio := float(f_max - d) / float(f_max)
@@ -102,7 +110,10 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 			var l_add := int(round(pow(shallow_ratio, 1.25) * float(K_DEPTH_V4_L)))
 			if d >= 4:
 				l_add = maxi(0, l_add - 1)
+			if d <= 2:
+				l_add += 1
 			bandit_table.record_weighted(sk, ak, w_add, l_add, true)
+			bandit_table.record_weighted(GLOBAL_RECRUIT_STATE, ak, w_add, l_add, true)
 		else:
 			var w_add := int(round(float(d) / float(f_max) * float(K_DEPTH)))
 			var l_add := int(round(float(f_max - d) / float(f_max) * float(K_DEPTH)))
@@ -186,17 +197,13 @@ func _try_best_recruit_v4(session: RecruitSession) -> bool:
 	var floor := maxi(0, session.map_floor)
 	var gold := session.economy.gold if session.economy != null else 0
 	var state_key := SimBanditKeys.recruit_state_v4(floor, gold, session.deck, action_keys)
-	var heuristic_key := action_keys[0]
-	var best_score := -1.0
-	for uid in action_keys:
-		var idx: int = int(slot_for_unit.get(uid, -1))
-		if idx < 0:
-			continue
-		var score := _score_recruit_candidate(session, session.get_candidate(idx))
-		if score > best_score:
-			best_score = score
-			heuristic_key = uid
-	var picked_id := _select_bandit_unit_id(state_key, action_keys, heuristic_key)
+	var picked_id := _pick_recruit_unit_v4(
+		state_key,
+		action_keys,
+		session,
+		slot_for_unit,
+		floor,
+	)
 	if picked_id.is_empty() or not slot_for_unit.has(picked_id):
 		return false
 	var pick: int = int(slot_for_unit[picked_id])
@@ -216,20 +223,81 @@ func _select_bandit_arm_index(state_key: String, arm_count: int, heuristic_arm: 
 	return bandit_table.select_arm(state_key, arm_count, heuristic_arm, explore, min_samples)
 
 
-func _select_bandit_unit_id(
+func _pick_recruit_unit_v4(
 	state_key: String,
 	action_keys: PackedStringArray,
-	heuristic_key: String,
+	session: RecruitSession,
+	slot_for_unit: Dictionary,
+	floor: int,
 ) -> String:
+	if action_keys.is_empty():
+		return ""
 	var explore := learning_enabled and explore_enabled
-	var min_samples := 0 if learning_enabled else EVAL_MIN_SAMPLES
-	return bandit_table.select_arm_by_action_keys(
-		state_key,
-		action_keys,
-		heuristic_key,
-		explore,
-		min_samples,
-	)
+	if explore:
+		return bandit_table.select_arm_by_action_keys(
+			GLOBAL_RECRUIT_STATE,
+			action_keys,
+			_heuristic_unit_id(session, action_keys, slot_for_unit),
+			true,
+			0,
+		)
+	return _blended_recruit_unit_id(state_key, action_keys, session, slot_for_unit, floor)
+
+
+func _heuristic_unit_id(
+	session: RecruitSession,
+	action_keys: PackedStringArray,
+	slot_for_unit: Dictionary,
+) -> String:
+	var best_id := action_keys[0]
+	var best_score := -1.0
+	for uid in action_keys:
+		var idx: int = int(slot_for_unit.get(uid, -1))
+		if idx < 0:
+			continue
+		var score := _score_recruit_candidate(session, session.get_candidate(idx))
+		if score > best_score:
+			best_score = score
+			best_id = uid
+	return best_id
+
+
+func _blended_recruit_unit_id(
+	state_key: String,
+	action_keys: PackedStringArray,
+	session: RecruitSession,
+	slot_for_unit: Dictionary,
+	floor: int,
+) -> String:
+	var w_h := BLEND_HEURISTIC_EARLY if floor <= BLEND_HEURISTIC_EARLY_FLOOR else BLEND_HEURISTIC
+	var w_g := BLEND_GLOBAL
+	var w_c := BLEND_CONTEXT
+	var norm := maxf(1.0, w_h + w_g + w_c)
+	w_h /= norm
+	w_g /= norm
+	w_c /= norm
+	var max_h := 0.0
+	var h_scores: Dictionary = {}
+	for uid in action_keys:
+		var idx: int = int(slot_for_unit.get(uid, -1))
+		if idx < 0:
+			continue
+		var h := _score_recruit_candidate(session, session.get_candidate(idx))
+		h_scores[uid] = h
+		max_h = maxf(max_h, h)
+	var best_id := _heuristic_unit_id(session, action_keys, slot_for_unit)
+	var best_blend := -1.0
+	for uid in action_keys:
+		if not h_scores.has(uid):
+			continue
+		var h_norm := float(h_scores[uid]) / maxf(1.0, max_h)
+		var glob := bandit_table.smoothed_win_rate(GLOBAL_RECRUIT_STATE, uid)
+		var ctx := bandit_table.smoothed_win_rate(state_key, uid)
+		var blend := w_h * h_norm + w_g * glob + w_c * ctx
+		if blend > best_blend:
+			best_blend = blend
+			best_id = uid
+	return best_id
 
 
 func _recruit_reward_on_run_end() -> bool:

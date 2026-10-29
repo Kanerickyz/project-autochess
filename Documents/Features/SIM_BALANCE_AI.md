@@ -44,9 +44,22 @@ v4 的设计目标：**教会模型在「当前队伍 + 本店可选角色」下
 - 通关：每次成功招募 w+**3**
 - 败局：`w_add = round((D/F_max)^0.75 × 4)`，`l_add = round(((F_max−D)/F_max)^1.25 × 3)`；**D≥4** 时 `l_add = max(0, l_add−1)`
 
+**评估 / 决策（v4.1 迭代）**
+
+- 表内增加 **`global|recruit|{unit_id}`**：每次招募 Run 终局反馈 **同步** 写入，学「单角色整体有多能深」。
+- **冻结 / 贪心阶段**：在候选里按  
+  `0.40×启发式 + 0.35×全局胜率 + 0.25×(队伍+商店)上下文胜率`（F≤2 时启发式权重 **0.55**）选 `unit_id`；**训练探索段**仍对 global 表 UCB。
+- 败局 **D≤2** 额外 `l+1`，压低「早死还招错人」。
+
 **选路**：`HeuristicRunAI.pick_map_node`（不写入 bandit 表）。
 
-**评估**：冻结、无 UCB；该 `state_key` 总样本 **&lt; 3** 时回退启发式推荐的 `unit_id`。
+**续训**（在已有 `bandit_v4.tres` 上）：
+
+```bash
+bash tools/sim_balance/train_bandit.sh \
+  --reward-mode v4 --train-runs 3000 --seed-start 2001 \
+  --checkpoint-in res://resources/sim_balance/checkpoints/bandit_v4.tres
+```
 
 批跑 **不更新** 表。Run 记录可含 `recruit_picks: [{unit_id, floor}, …]` 便于看「每局招了谁」。
 
