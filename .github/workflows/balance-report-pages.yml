@@ -1,0 +1,135 @@
+# balance-eval：headless 跑局 → summary.json → 与 Web 一并部署到 Pages /balancereport/
+# 与 deploy-web.yml 共用 concurrency group pages-deploy（同一 Pages 站点，避免互相覆盖根路径游戏包）。
+
+name: Balance Report Pages
+
+on:
+  push:
+    branches: [balance-eval]
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of simulated runs
+        required: false
+        default: "100"
+      seed_start:
+        description: First RNG seed
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.6.3"
+  BALANCE_RUNS: ${{ github.event.inputs.runs || '100' }}
+  BALANCE_SEED_START: ${{ github.event.inputs.seed_start || '1' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Cache Godot editor + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            .github/.godot-cache
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-linux-templates-v1
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} + Web templates
+        run: |
+          set -euo pipefail
+          mkdir -p .github/.godot-cache
+          base="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          editor_zip=".github/.godot-cache/${base}.zip"
+          templates_tpz=".github/.godot-cache/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          release="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+
+          if [ ! -f "$editor_zip" ]; then
+            curl -fsSL "${release}/${base}.zip" -o "$editor_zip"
+          fi
+          if [ ! -f "$templates_tpz" ]; then
+            curl -fsSL "${release}/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$templates_tpz"
+          fi
+
+          unzip -qo "$editor_zip" -d /tmp/godot-editor
+          sudo install -m 755 "/tmp/godot-editor/${base}" /usr/local/bin/godot
+
+          tdir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          if [ ! -f "$tdir/web_nothreads_release.zip" ] && [ ! -f "$tdir/web_release.zip" ]; then
+            mkdir -p "$tdir"
+            unzip -qo "$templates_tpz" -d /tmp/godot-templates
+            mv /tmp/godot-templates/templates/* "$tdir/"
+          fi
+
+          godot --headless --version
+
+      - name: Import project
+        run: godot --headless --path . --import || true
+
+      - name: Run balance batch (headless)
+        run: |
+          set -euo pipefail
+          mkdir -p docs/balancereport
+          bash tools/sim_balance/run_batch.sh "$BALANCE_RUNS" "$BALANCE_SEED_START" "$GITHUB_WORKSPACE/docs/balancereport"
+          test -f docs/balancereport/summary.json
+          python3 - <<'PY'
+          import json, os
+          p = "docs/balancereport/summary.json"
+          with open(p, encoding="utf-8") as f:
+              d = json.load(f)
+          d.setdefault("meta", {})["git_ref"] = os.environ.get("GITHUB_REF_NAME", "balance-eval")
+          d["meta"]["github_sha"] = os.environ.get("GITHUB_SHA", "")[:7]
+          with open(p, "w", encoding="utf-8") as f:
+              json.dump(d, f, indent="\t", ensure_ascii=False)
+          PY
+
+      - name: Export Web + bundle balance report
+        run: |
+          set -euo pipefail
+          mkdir -p build/web
+          godot --headless --path . --export-release "Web" build/web/index.html
+          test -f build/web/index.html
+          touch build/web/.nojekyll
+          mkdir -p build/web/balancereport
+          cp docs/balancereport/index.html build/web/balancereport/
+          cp docs/balancereport/summary.json build/web/balancereport/
+          ls -lah build/web/balancereport
+
+      - name: Upload balance-summary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: balance-summary
+          path: docs/balancereport/summary.json
+          retention-days: 30
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v5
