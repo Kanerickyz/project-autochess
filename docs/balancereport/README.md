@@ -45,7 +45,16 @@
 | `labels` | X 轴类目 |
 | `datasets[]` | `{ series_id, label, values }` |
 
-默认 5 张图：遭遇胜率、遭遇失败率、样本量、死亡层直方图、Run 结局环图。
+默认 5 张图：遭遇胜率、遭遇失败率、样本量、死亡层直方图、Run 结局环图；若有足够样本则追加 **阵容内角色遭遇胜率 Top**（`roster_unit_encounter_win_rate`）。
+
+### 阵容角色统计（Schema 1.0 扩展字段）
+
+| 字段 | 含义 |
+|------|------|
+| `roster_unit_encounter_stats[]` | 该 `unit_id` **在队伍中时**，所参与战斗遭遇的 `attempts` / `wins` / `win_rate`（按胜率降序） |
+| `roster_unit_run_depth_stats[]` | 该角色曾在本 Run 阵容中出现时：`runs_present`、`f4_plus_runs`、`f4_plus_rate`（F4+ 或通关） |
+
+每场战斗前写入 `encounters[].roster_unit_ids`（去重排序的 `unit_id`）。
 
 ## 分支与工作流
 

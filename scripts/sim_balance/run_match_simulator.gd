@@ -17,6 +17,8 @@ var spawn_budget: SpawnBudgetConfig
 var _ai: RefCounted
 var bandit_checkpoint: SimBanditCheckpoint
 var bandit_learning: bool = false
+## 训练专用：招募/商店不受金币限制（见 SimRunEconomy）。
+var unlimited_recruit_gold: bool = false
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -64,8 +66,9 @@ func simulate_run(seed: int) -> Dictionary:
 	var deck := DeckState.new()
 	deck.configure(deck_config)
 	deck.set_rng(_rng)
-	var economy := RunEconomy.new()
+	var economy := SimRunEconomy.new()
 	economy.configure(economy_config)
+	economy.unlimited_recruit_spending = unlimited_recruit_gold
 	economy.reset()
 	_rng.seed = seed + 991
 	deck.set_rng(_rng)
@@ -194,6 +197,7 @@ func _resolve_combat_encounter(
 		"won": won,
 		"encounter_id": encounter.id,
 		"tier_index": tier,
+		"roster_unit_ids": _roster_unit_ids(deck),
 	})
 
 	if not won:
@@ -295,3 +299,20 @@ func get_bandit_coverage_summary() -> Dictionary:
 	if _ai is BanditRunAI:
 		return (_ai as BanditRunAI).bandit_table.get_coverage_summary()
 	return {"keys": 0, "median_wl": 0, "pct_keys_ge5": 0.0}
+
+
+func _roster_unit_ids(deck: DeckState) -> Array:
+	var out: Array = []
+	if deck == null:
+		return out
+	var seen: Dictionary = {}
+	for entry in deck.get_entries():
+		if entry == null:
+			continue
+		var uid := entry.get_unit_id()
+		if uid.is_empty() or seen.has(uid):
+			continue
+		seen[uid] = true
+		out.append(uid)
+	out.sort()
+	return out

@@ -107,12 +107,109 @@ static func aggregate(runs: Array, encounters: Array, meta: Dictionary = {}) -> 
 		"death_floor_histogram": death_hist,
 		"death_floor_mode": mode_floor,
 		"death_floor_mode_count": mode_count,
+		"roster_unit_encounter_stats": _aggregate_roster_unit_encounter_stats(encounters),
+		"roster_unit_run_depth_stats": _aggregate_roster_unit_run_depth_stats(runs),
 		"kpis": _build_kpis(
 			game_version, run_count, run_complete_rate, encounters.size(), mode_floor, mode_count, meta
 		),
-		"charts": _build_charts(floor_stats, death_hist, run_count, run_complete),
+		"charts": _build_charts(
+			floor_stats,
+			death_hist,
+			run_count,
+			run_complete,
+			encounters,
+			runs,
+		),
 	}
 	return out
+
+
+static func _aggregate_roster_unit_encounter_stats(encounters: Array) -> Array:
+	## 角色在阵容内时：该场战斗遭遇的胜率（按 unit_id 聚合）。
+	var by_unit: Dictionary = {}
+	for enc in encounters:
+		if typeof(enc) != TYPE_DICTIONARY:
+			continue
+		var won := bool(enc.get("won", false))
+		var ids: Variant = enc.get("roster_unit_ids", [])
+		if typeof(ids) != TYPE_ARRAY:
+			continue
+		for id_v in ids:
+			var uid := str(id_v)
+			if uid.is_empty():
+				continue
+			if not by_unit.has(uid):
+				by_unit[uid] = {"unit_id": uid, "attempts": 0, "wins": 0}
+			var bucket: Dictionary = by_unit[uid]
+			bucket["attempts"] = int(bucket["attempts"]) + 1
+			if won:
+				bucket["wins"] = int(bucket["wins"]) + 1
+	return _finalize_unit_rate_rows(by_unit)
+
+
+static func _aggregate_roster_unit_run_depth_stats(runs: Array) -> Array:
+	## 角色曾出现在阵容内时：Run 到达 F4+（含通关）占比。
+	var by_unit: Dictionary = {}
+	for run in runs:
+		if typeof(run) != TYPE_DICTIONARY:
+			continue
+		var f4_plus := _run_reached_f4_plus(run)
+		var seen_units: Dictionary = {}
+		for enc in run.get("encounters", []):
+			if typeof(enc) != TYPE_DICTIONARY:
+				continue
+			for id_v in enc.get("roster_unit_ids", []):
+				var uid := str(id_v)
+				if not uid.is_empty():
+					seen_units[uid] = true
+		for uid in seen_units.keys():
+			if not by_unit.has(uid):
+				by_unit[uid] = {"unit_id": uid, "runs_present": 0, "f4_plus_runs": 0}
+			var bucket: Dictionary = by_unit[uid]
+			bucket["runs_present"] = int(bucket["runs_present"]) + 1
+			if f4_plus:
+				bucket["f4_plus_runs"] = int(bucket["f4_plus_runs"]) + 1
+	var rows: Array = []
+	for uid in by_unit.keys():
+		var b: Dictionary = by_unit[uid]
+		var present := int(b.get("runs_present", 0))
+		var f4 := int(b.get("f4_plus_runs", 0))
+		b["f4_plus_rate"] = float(f4) / float(maxi(1, present))
+		rows.append(b)
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ra := float(a.get("f4_plus_rate", 0.0))
+		var rb := float(b.get("f4_plus_rate", 0.0))
+		if ra != rb:
+			return ra > rb
+		return int(a.get("runs_present", 0)) > int(b.get("runs_present", 0))
+	)
+	return rows
+
+
+static func _run_reached_f4_plus(run: Dictionary) -> bool:
+	if str(run.get("outcome", "")) == "RUN_COMPLETE":
+		return true
+	if str(run.get("outcome", "")) != "RUN_DEFEAT":
+		return false
+	return int(run.get("death_floor", 0)) >= 4
+
+
+static func _finalize_unit_rate_rows(by_unit: Dictionary) -> Array:
+	var rows: Array = []
+	for uid in by_unit.keys():
+		var b: Dictionary = by_unit[uid]
+		var attempts := int(b.get("attempts", 0))
+		var wins := int(b.get("wins", 0))
+		b["win_rate"] = float(wins) / float(maxi(1, attempts))
+		rows.append(b)
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ra := float(a.get("win_rate", 0.0))
+		var rb := float(b.get("win_rate", 0.0))
+		if ra != rb:
+			return ra > rb
+		return int(a.get("attempts", 0)) > int(b.get("attempts", 0))
+	)
+	return rows
 
 
 static func _infer_profile_id(runs: Array) -> String:
@@ -171,6 +268,8 @@ static func _build_charts(
 	death_hist: Dictionary,
 	run_count: int,
 	run_complete: int,
+	encounters: Array = [],
+	runs: Array = [],
 ) -> Array:
 	var floor_labels: Array = []
 	var win_rates: Array = []
@@ -195,7 +294,7 @@ static func _build_charts(
 
 	var run_defeat := run_count - run_complete
 
-	return [
+	var charts: Array = [
 		{
 			"id": "encounter_win_rate_by_floor",
 			"title": "按地图层 · 遭遇胜率",
@@ -261,6 +360,42 @@ static func _build_charts(
 			],
 		},
 	]
+	charts.append(_chart_roster_unit_encounter_win_rate(encounters))
+	return charts
+
+
+static func _chart_roster_unit_encounter_win_rate(encounters: Array) -> Dictionary:
+	var stats := _aggregate_roster_unit_encounter_stats(encounters)
+	const MIN_ATTEMPTS := 15
+	const TOP_N := 12
+	var labels: Array = []
+	var values: Array = []
+	var added := 0
+	for row in stats:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		if int(row.get("attempts", 0)) < MIN_ATTEMPTS:
+			continue
+		labels.append(str(row.get("unit_id", "?")))
+		values.append(roundf(float(row.get("win_rate", 0.0)) * 1000.0) / 10.0)
+		added += 1
+		if added >= TOP_N:
+			break
+	return {
+		"id": "roster_unit_encounter_win_rate",
+		"title": "阵容内角色 · 遭遇胜率 Top",
+		"chart_type": "bar",
+		"x_label": "unit_id",
+		"y_label": "遭遇胜率 (%)",
+		"description": "该角色在队伍中时，所参与战斗遭遇的 won 占比（样本≥%d 场，取前 %d）。" % [
+			MIN_ATTEMPTS,
+			TOP_N,
+		],
+		"labels": labels,
+		"datasets": [
+			{"series_id": "win_rate_pct", "label": "遭遇胜率 %", "values": values},
+		],
+	}
 
 
 static func _write_json(path: String, data: Variant) -> void:

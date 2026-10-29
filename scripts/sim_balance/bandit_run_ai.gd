@@ -153,7 +153,7 @@ func _try_best_recruit(session: RecruitSession) -> bool:
 	if candidates.is_empty():
 		return false
 	var floor := maxi(0, session.map_floor)
-	var gold := session.economy.gold if session.economy != null else 0
+	var gold := _gold_for_recruit_key(session)
 	var roster := session.deck.get_entries().size() if session.deck != null else 0
 	var state_key := SimBanditKeys.recruit_state(floor, gold, roster, session)
 	var heuristic_arm := 0
@@ -180,6 +180,8 @@ func _try_best_recruit(session: RecruitSession) -> bool:
 
 
 func _try_best_recruit_v4(session: RecruitSession) -> bool:
+	if profile != null and profile.direct_pool_recruit:
+		return _try_best_recruit_v4_direct_pool(session)
 	var action_keys: PackedStringArray = PackedStringArray()
 	var slot_for_unit: Dictionary = {}
 	for i in session.get_candidate_slot_count():
@@ -196,7 +198,7 @@ func _try_best_recruit_v4(session: RecruitSession) -> bool:
 		return false
 	action_keys.sort()
 	var floor := maxi(0, session.map_floor)
-	var gold := session.economy.gold if session.economy != null else 0
+	var gold := _gold_for_recruit_key(session)
 	var state_key := SimBanditKeys.recruit_state_v4(floor, gold, session.deck, action_keys)
 	var picked_id := _pick_recruit_unit_v4(
 		state_key,
@@ -216,6 +218,116 @@ func _try_best_recruit_v4(session: RecruitSession) -> bool:
 	_recruit_log.append({"state_key": state_key, "action_key": picked_id})
 	_run_recruit_picks.append({"unit_id": picked_id, "floor": floor})
 	return true
+
+
+func _try_best_recruit_v4_direct_pool(session: RecruitSession) -> bool:
+	var action_keys: PackedStringArray = PackedStringArray()
+	var unit_by_id: Dictionary = {}
+	for unit in session.get_recruitable_units():
+		if unit == null or unit.id.is_empty():
+			continue
+		if not _can_try_recruit_unit(session, unit):
+			continue
+		if unit_by_id.has(unit.id):
+			continue
+		unit_by_id[unit.id] = unit
+		action_keys.append(unit.id)
+	if action_keys.is_empty():
+		return false
+	action_keys.sort()
+	var floor := maxi(0, session.map_floor)
+	var gold := _gold_for_recruit_key(session)
+	var state_key := SimBanditKeys.recruit_state_v4_direct_pool(floor, gold, session.deck, action_keys)
+	var picked_id := _pick_recruit_unit_v4_pool(state_key, action_keys, session, unit_by_id, floor)
+	if picked_id.is_empty() or not unit_by_id.has(picked_id):
+		return false
+	var picked_unit: UnitData = unit_by_id[picked_id]
+	if session.is_roster_full() and not session.can_recruit_via_merge(picked_unit):
+		_free_weakest_roster_slot(session)
+	var result := session.try_recruit_by_unit_id(picked_id)
+	if not bool(result.get("ok", false)):
+		return false
+	_recruit_log.append({"state_key": state_key, "action_key": picked_id})
+	_run_recruit_picks.append({"unit_id": picked_id, "floor": floor})
+	return true
+
+
+func _pick_recruit_unit_v4_pool(
+	state_key: String,
+	action_keys: PackedStringArray,
+	session: RecruitSession,
+	unit_by_id: Dictionary,
+	floor: int,
+) -> String:
+	if action_keys.is_empty():
+		return ""
+	var explore := learning_enabled and explore_enabled
+	var heuristic_key := _heuristic_unit_id_from_units(session, action_keys, unit_by_id)
+	if explore:
+		return bandit_table.select_arm_by_action_keys(
+			GLOBAL_RECRUIT_STATE,
+			action_keys,
+			heuristic_key,
+			true,
+			0,
+		)
+	return _blended_recruit_unit_id_pool(state_key, action_keys, session, unit_by_id, floor)
+
+
+func _heuristic_unit_id_from_units(
+	session: RecruitSession,
+	action_keys: PackedStringArray,
+	unit_by_id: Dictionary,
+) -> String:
+	var best_id := action_keys[0]
+	var best_score := -1.0
+	for uid in action_keys:
+		var unit: Variant = unit_by_id.get(uid)
+		if unit == null or not (unit is UnitData):
+			continue
+		var score := _score_recruit_candidate(session, unit as UnitData)
+		if score > best_score:
+			best_score = score
+			best_id = uid
+	return best_id
+
+
+func _blended_recruit_unit_id_pool(
+	state_key: String,
+	action_keys: PackedStringArray,
+	session: RecruitSession,
+	unit_by_id: Dictionary,
+	floor: int,
+) -> String:
+	var w_h := BLEND_HEURISTIC_EARLY if floor <= BLEND_HEURISTIC_EARLY_FLOOR else BLEND_HEURISTIC
+	var w_g := BLEND_GLOBAL
+	var w_c := BLEND_CONTEXT
+	var norm := maxf(1.0, w_h + w_g + w_c)
+	w_h /= norm
+	w_g /= norm
+	w_c /= norm
+	var max_h := 0.0
+	var h_scores: Dictionary = {}
+	for uid in action_keys:
+		var unit: Variant = unit_by_id.get(uid)
+		if unit == null or not (unit is UnitData):
+			continue
+		var h := _score_recruit_candidate(session, unit as UnitData)
+		h_scores[uid] = h
+		max_h = maxf(max_h, h)
+	var best_id := _heuristic_unit_id_from_units(session, action_keys, unit_by_id)
+	var best_blend := -1.0
+	for uid in action_keys:
+		if not h_scores.has(uid):
+			continue
+		var h_norm := float(h_scores[uid]) / maxf(1.0, max_h)
+		var glob := bandit_table.smoothed_win_rate(GLOBAL_RECRUIT_STATE, uid)
+		var ctx := bandit_table.smoothed_win_rate(state_key, uid)
+		var blend := w_h * h_norm + w_g * glob + w_c * ctx
+		if blend > best_blend:
+			best_blend = blend
+			best_id = uid
+	return best_id
 
 
 func _select_bandit_arm_index(state_key: String, arm_count: int, heuristic_arm: int) -> int:
@@ -303,6 +415,17 @@ func _blended_recruit_unit_id(
 
 func _recruit_reward_on_run_end() -> bool:
 	return reward_mode == REWARD_V2 or reward_mode == REWARD_V4
+
+
+func _gold_for_recruit_key(session: RecruitSession) -> int:
+	if session == null:
+		return 0
+	var econ := session.economy
+	if econ is SimRunEconomy and (econ as SimRunEconomy).unlimited_recruit_spending:
+		return SimBanditKeys.GOLD_BUCKET_UNLIMITED
+	if econ != null:
+		return econ.gold
+	return 0
 
 
 func enumerate_map_candidates(run_controller: RunController) -> Array:

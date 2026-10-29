@@ -11,6 +11,8 @@ extends Resource
 @export_range(1, 64, 1) var max_recruit_passes: int = 16
 ## 席位将满时尝试买旗帜扩席。
 @export var buy_banner_when_affordable: bool = true
+## Sim 训练：从当前解锁 **整池** 直选 unit_id，不经 5 槽候选人（run_game / 默认评估仍为五选一）。
+@export var direct_pool_recruit: bool = false
 
 ## --- 效用权重（供手调 / 外部优化；见 Documents/Features/SIM_BALANCE_AI.md）---
 @export_group("Utility Weights")

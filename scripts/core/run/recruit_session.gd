@@ -223,6 +223,99 @@ func can_recruit_via_merge(unit: UnitData) -> bool:
 	return deck.would_complete_triple_on_add(unit, 1)
 
 
+## 当前层/品阶下可直购的单位（去重 id；Sim 直选池与 _pick_one 解锁规则一致，不计货架占位）。
+func get_recruitable_units() -> Array[UnitData]:
+	var preferred := get_preferred_tier()
+	var min_tier := get_min_tier()
+	var pool := _player_pool()
+	var out: Array[UnitData] = []
+	var seen: Dictionary = {}
+	for unit in pool:
+		if unit == null or unit.id.is_empty():
+			continue
+		if unit.tier < min_tier or unit.tier > preferred:
+			continue
+		if COPIES_PER_CHARACTER - _copies_taken(unit.id) <= 0:
+			continue
+		if seen.has(unit.id):
+			continue
+		seen[unit.id] = true
+		out.append(unit)
+	return out
+
+
+## Sim / 直选池：按 unit id 购买，不经过候选人槽位。
+func try_recruit_by_unit_id(unit_id: String) -> Dictionary:
+	var result := {
+		"ok": false,
+		"reason": "inactive",
+		"entry": null,
+		"replaced": false,
+		"seat_index": -1,
+	}
+	if not is_active or deck == null or economy == null:
+		return result
+	if unit_id.is_empty():
+		result["reason"] = "bad_id"
+		return result
+	var unit := _find_pool_unit_by_id(unit_id)
+	if unit == null:
+		result["reason"] = "not_in_pool"
+		return result
+	var preferred := get_preferred_tier()
+	var min_tier := get_min_tier()
+	if unit.tier < min_tier or unit.tier > preferred:
+		result["reason"] = "tier_locked"
+		return result
+	if COPIES_PER_CHARACTER - _copies_taken(unit.id) <= 0:
+		result["reason"] = "sold_out"
+		return result
+	return _try_recruit_unit_data(unit)
+
+
+func _find_pool_unit_by_id(unit_id: String) -> UnitData:
+	for unit in _player_pool():
+		if unit != null and unit.id == unit_id:
+			return unit
+	return null
+
+
+func _try_recruit_unit_data(unit: UnitData) -> Dictionary:
+	var result := {
+		"ok": false,
+		"reason": "inactive",
+		"entry": null,
+		"replaced": false,
+		"seat_index": -1,
+	}
+	if unit == null:
+		result["reason"] = "no_unit"
+		return result
+	var cost := get_recruit_cost(unit)
+	if not economy.can_afford(cost):
+		result["reason"] = "no_gold"
+		return result
+	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
+	if is_roster_full() and not merge_overflow:
+		result["reason"] = "roster_full"
+		return result
+	if not economy.spend(cost):
+		result["reason"] = "no_gold"
+		return result
+	var entry := deck.add_entry(unit, 0, -1, false)
+	if entry == null:
+		economy.grant(cost)
+		result["reason"] = "add_failed"
+		return result
+	_note_copy_taken(unit)
+	result["ok"] = true
+	result["reason"] = "merged" if merge_overflow else "added"
+	result["entry"] = entry
+	result["seat_index"] = entry.seat_index
+	session_changed.emit()
+	return result
+
+
 ## 点买不强制选替换；总拥有满且不可三合一时为 true（UI 提示拖替换/先出售）。
 func needs_replace_for_candidate(candidate_index: int) -> bool:
 	if not is_roster_full():

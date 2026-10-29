@@ -1,6 +1,9 @@
 class_name SimBanditKeys
 extends RefCounted
 
+## 训练「无限金」时 state 内金桶标记，避免真金币额干扰键分布。
+const GOLD_BUCKET_UNLIMITED := -1
+
 
 static func map_state(floor: int, options: Array) -> String:
 	var types: PackedStringArray = PackedStringArray()
@@ -55,13 +58,38 @@ static func recruit_state_v4(
 	deck: DeckState,
 	shop_unit_ids: PackedStringArray,
 ) -> String:
-	var gold_bucket := (maxi(0, gold) / 5) * 5
+	var gold_bucket := _gold_bucket_value(gold)
 	var team := roster_team_signature(deck)
 	var shop := shop_unit_ids.duplicate()
 	shop.sort()
-	return "recruit4|f%d|g%d|team=%s|shop=%s" % [
+	return "recruit4|f%d|g%s|team=%s|shop=%s" % [
 		maxi(0, floor),
 		gold_bucket,
 		team if not team.is_empty() else "-",
 		"|".join(shop) if shop.size() > 0 else "-",
 	]
+
+
+## 直选池：opts 为当前可购 unit_id 全集（非 5 槽子集）。
+static func recruit_state_v4_direct_pool(
+	floor: int,
+	gold: int,
+	deck: DeckState,
+	option_ids: PackedStringArray,
+) -> String:
+	var gold_bucket := _gold_bucket_value(gold)
+	var team := roster_team_signature(deck)
+	var opts := option_ids.duplicate()
+	opts.sort()
+	return "recruit4pool|f%d|g%s|team=%s|opts=%s" % [
+		maxi(0, floor),
+		gold_bucket,
+		team if not team.is_empty() else "-",
+		"|".join(opts) if opts.size() > 0 else "-",
+	]
+
+
+static func _gold_bucket_value(gold: int) -> String:
+	if gold == GOLD_BUCKET_UNLIMITED:
+		return "*"
+	return str((maxi(0, gold) / 5) * 5)

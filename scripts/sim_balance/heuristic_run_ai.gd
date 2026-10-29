@@ -74,7 +74,7 @@ func _run_recruit_passes(session: RecruitSession, shop: RecruitShopService, open
 	for _i in passes:
 		if not session.is_active:
 			break
-		if opening and session.deck.get_entries().size() >= 1 and not _any_affordable_recruit(session):
+		if opening and session.deck.get_entries().size() >= 1 and not _any_recruit_option(session):
 			break
 		_try_buy_banner(shop, session.deck)
 		var bought := _try_best_recruit(session)
@@ -96,6 +96,27 @@ func _any_affordable_recruit(session: RecruitSession) -> bool:
 	return false
 
 
+func _any_recruit_option(session: RecruitSession) -> bool:
+	if profile != null and profile.direct_pool_recruit:
+		for unit in session.get_recruitable_units():
+			if _can_try_recruit_unit(session, unit):
+				return true
+		return false
+	return _any_affordable_recruit(session)
+
+
+func _can_try_recruit_unit(session: RecruitSession, unit: UnitData) -> bool:
+	if unit == null or not session.is_active:
+		return false
+	if not session.economy.can_afford(session.get_recruit_cost(unit)):
+		return false
+	if session.can_recruit_via_merge(unit):
+		return true
+	if session.is_roster_full():
+		return false
+	return true
+
+
 func _try_buy_banner(shop: RecruitShopService, deck: DeckState) -> bool:
 	if profile == null or not profile.buy_banner_when_affordable:
 		return false
@@ -113,6 +134,8 @@ func _try_buy_banner(shop: RecruitShopService, deck: DeckState) -> bool:
 
 
 func _try_best_recruit(session: RecruitSession) -> bool:
+	if profile != null and profile.direct_pool_recruit:
+		return _try_best_recruit_direct_pool(session)
 	var best_i := -1
 	var best_score := -1.0
 	for i in session.get_candidate_slot_count():
@@ -131,6 +154,31 @@ func _try_best_recruit(session: RecruitSession) -> bool:
 		_free_weakest_roster_slot(session)
 	var result := session.try_recruit(best_i)
 	return bool(result.get("ok", false))
+
+
+func _try_best_recruit_direct_pool(session: RecruitSession) -> bool:
+	var best_id := ""
+	var best_score := -1.0
+	for unit in session.get_recruitable_units():
+		if not _can_try_recruit_unit(session, unit):
+			continue
+		var score := _score_recruit_candidate(session, unit)
+		if score > best_score:
+			best_score = score
+			best_id = unit.id
+	if best_id.is_empty():
+		return false
+	if session.is_roster_full() and not session.can_recruit_via_merge(_find_recruit_unit(session, best_id)):
+		_free_weakest_roster_slot(session)
+	var result := session.try_recruit_by_unit_id(best_id)
+	return bool(result.get("ok", false))
+
+
+func _find_recruit_unit(session: RecruitSession, unit_id: String) -> UnitData:
+	for unit in session.get_recruitable_units():
+		if unit != null and unit.id == unit_id:
+			return unit
+	return null
 
 
 func _free_weakest_roster_slot(session: RecruitSession) -> void:

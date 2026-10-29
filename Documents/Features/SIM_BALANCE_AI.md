@@ -67,7 +67,33 @@ bash tools/sim_balance/train_bandit.sh \
   --checkpoint-in res://resources/sim_balance/checkpoints/bandit_v4.tres
 ```
 
-批跑 **不更新** 表。Run 记录可含 `recruit_picks: [{unit_id, floor}, …]` 便于看「每局招了谁」。
+### 无限金训练（仅 Sim 学习招募组合，**评估/报告默认仍用正常经济**）
+
+- 开关：`--unlimited-recruit-gold`（`SimRunEconomy`：招募/商店恒可支付、不扣金）
+- 状态键金桶为 **`g*`**，与真金币脱钩，减少「因穷招不起」的噪声
+- 例：在现有 checkpoint 上继续练角色偏好
+
+```bash
+bash tools/sim_balance/train_bandit.sh \
+  --reward-mode v4 --train-runs 3000 --seed-start 5001 \
+  --unlimited-recruit-gold \
+  --checkpoint-in res://resources/sim_balance/checkpoints/bandit_v4.tres
+```
+
+### 直选池训练（不经 5 槽，从当前解锁 **角色池** 选 `unit_id`）
+
+- 开关：`--direct-pool-recruit`（`SimAIProfile.direct_pool_recruit`；**仅 sim 训练**）
+- 状态键：`recruit4pool|…|opts=`（opts = 当前层可购 **全部** unit_id）
+- 常与 **无限金** 一起开；**Pages / 默认评估** 仍用正式 **五槽招募**
+
+```bash
+bash tools/sim_balance/train_bandit.sh \
+  --reward-mode v4 --train-runs 3000 --seed-start 8001 \
+  --unlimited-recruit-gold --direct-pool-recruit \
+  --checkpoint-in res://resources/sim_balance/checkpoints/bandit_v4.tres
+```
+
+批跑 **不更新** 表。Run 记录可含 `recruit_picks: [{unit_id, floor}, …]`；`summary.json` 含 **`roster_unit_encounter_stats`**（阵容内遭遇胜率）与 **`roster_unit_run_depth_stats`**（阵容内 F4+ 占比），见 [docs/balancereport/README.md](../../docs/balancereport/README.md)。
 
 ## 训练
 

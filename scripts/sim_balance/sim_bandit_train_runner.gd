@@ -6,6 +6,7 @@ const DEFAULT_EXPLORE_RATIO := 0.6
 const DEFAULT_CHECKPOINT_OUT_V1 := "res://resources/sim_balance/checkpoints/bandit_v1.tres"
 const DEFAULT_CHECKPOINT_OUT_V2 := "res://resources/sim_balance/checkpoints/bandit_v2.tres"
 const DEFAULT_CHECKPOINT_OUT_V4 := "res://resources/sim_balance/checkpoints/bandit_v4.tres"
+const DEFAULT_PROFILE := preload("res://resources/sim_balance/default_ai_profile.tres")
 
 
 func _initialize() -> void:
@@ -18,6 +19,8 @@ func _initialize() -> void:
 	var reward_mode := BanditRunAI.REWARD_V1
 	var checkpoint_out := DEFAULT_CHECKPOINT_OUT_V1
 	var explore_ratio := DEFAULT_EXPLORE_RATIO
+	var unlimited_recruit_gold := false
+	var direct_pool_recruit := false
 	for i in args.size():
 		var a := args[i]
 		if a == "--train-runs" and i + 1 < args.size():
@@ -32,6 +35,10 @@ func _initialize() -> void:
 			reward_mode = str(args[i + 1])
 		elif a == "--explore-ratio" and i + 1 < args.size():
 			explore_ratio = clampf(float(args[i + 1]), 0.0, 1.0)
+		elif a == "--unlimited-recruit-gold":
+			unlimited_recruit_gold = true
+		elif a == "--direct-pool-recruit":
+			direct_pool_recruit = true
 
 	if reward_mode == BanditRunAI.REWARD_V2 and checkpoint_out == DEFAULT_CHECKPOINT_OUT_V1:
 		checkpoint_out = DEFAULT_CHECKPOINT_OUT_V2
@@ -49,8 +56,12 @@ func _initialize() -> void:
 	checkpoint.policy_id = _policy_id_for_mode(reward_mode)
 	checkpoint.schema_version = SimBanditCheckpoint.SCHEMA_VERSION
 
+	var profile := DEFAULT_PROFILE.duplicate(true) as SimAIProfile
+	profile.direct_pool_recruit = direct_pool_recruit
+
 	var sim := RunMatchSimulator.new()
-	sim.configure(null, null, null, null, null, null, checkpoint, true)
+	sim.unlimited_recruit_gold = unlimited_recruit_gold
+	sim.configure(null, null, null, null, profile, null, checkpoint, true)
 
 	var explore_until := int(float(train_runs) * explore_ratio)
 	var t0 := Time.get_ticks_msec()
@@ -72,12 +83,14 @@ func _initialize() -> void:
 	var cov: Dictionary = sim.get_bandit_coverage_summary()
 	print(
 		(
-			"SimBanditTrain: saved policy_id=%s reward_mode=%s path=%s "
+			"SimBanditTrain: saved policy_id=%s reward_mode=%s unlimited_gold=%s direct_pool=%s path=%s "
 			+ "bandit_updates=%d keys=%d median_wl=%d pct_keys_ge5=%.1f elapsed_ms=%d"
 		)
 		% [
 			saved.policy_id,
 			saved.reward_mode,
+			str(unlimited_recruit_gold),
+			str(direct_pool_recruit),
 			checkpoint_out,
 			updates,
 			int(cov.get("keys", 0)),
