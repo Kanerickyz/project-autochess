@@ -339,14 +339,14 @@
 	],
 	"meta": {
 		"ai_profile_id": "bandit-v4",
-		"elapsed_ms": 3038,
+		"elapsed_ms": 3181,
 		"game_version": "0.5.255",
-		"generated_at_utc": "2026-10-29T15:00:34",
+		"generated_at_utc": "2026-10-29T15:07:51",
 		"report_schema_version": "1.0",
 		"runs_requested": 100,
 		"seed_start": 1,
 		"git_ref": "balance-eval",
-		"github_sha": "aa1799e"
+		"github_sha": "a29329d"
 	},
 	"report_schema_version": "1.0",
 	"roster_unit_encounter_stats": [
