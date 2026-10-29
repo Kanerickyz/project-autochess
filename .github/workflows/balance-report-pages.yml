@@ -108,7 +108,7 @@ jobs:
           cp "$STAGING/summary.json" docs/balancereport/
           cp "$STAGING/runs/${RUN_ID}/summary.json" "docs/balancereport/runs/${RUN_ID}/"
 
-          git add docs/balancereport/manifest.json docs/balancereport/summary.json "docs/balancereport/runs/${RUN_ID}"
+          git add docs/balancereport/manifest.json docs/balancereport/summary.json docs/balancereport/runs/
           git diff --staged --quiet && echo "Nothing new to commit" && exit 0
           git commit -m "chore(balancereport): archive sim batch ${RUN_ID}"
           git push origin main

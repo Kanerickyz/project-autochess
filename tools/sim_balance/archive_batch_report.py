@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 MANIFEST_SCHEMA = "1.0"
+MAX_RETAINED_RUNS = 100
 
 
 def slug_version(version: str) -> str:
@@ -108,12 +110,28 @@ def archive_batch(batch_dir: Path, repo_root: Path) -> str:
     runs.insert(0, entry)
     manifest["runs"] = runs
     manifest["latest_run_id"] = run_id
+    _trim_retention(manifest, report_root)
 
     with manifest_path.open("w", encoding="utf-8") as f:
         json.dump(manifest, f, indent="\t", ensure_ascii=False)
         f.write("\n")
 
     return run_id
+
+
+def _trim_retention(manifest: dict, report_root: Path) -> None:
+    runs: list = manifest.get("runs") or []
+    if len(runs) <= MAX_RETAINED_RUNS:
+        return
+    dropped = runs[MAX_RETAINED_RUNS:]
+    manifest["runs"] = runs[:MAX_RETAINED_RUNS]
+    for entry in dropped:
+        run_id = str(entry.get("id") or "")
+        if not run_id:
+            continue
+        run_dir = report_root / "runs" / run_id
+        if run_dir.is_dir():
+            shutil.rmtree(run_dir)
 
 
 def main() -> None:
