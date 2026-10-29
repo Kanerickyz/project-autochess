@@ -11,6 +11,9 @@ cd "$ROOT"
 echo "==> sim_balance smoke"
 "$GODOT_BIN" --headless --path . --script res://scripts/sim_balance/sim_balance_smoke_test_runner.gd
 
+echo "==> sim_bandit smoke"
+"$GODOT_BIN" --headless --path . --script res://scripts/sim_balance/sim_bandit_smoke_test_runner.gd
+
 if [[ "${SIM_BALANCE_BATCH:-0}" == "1" ]]; then
   RUNS="${SIM_BALANCE_RUNS:-100}"
   SEED="${SIM_BALANCE_SEED_START:-1}"

@@ -14,7 +14,9 @@ var recruit_config: RecruitConfig
 var ai_profile: SimAIProfile
 var spawn_budget: SpawnBudgetConfig
 
-var _ai: HeuristicRunAI
+var _ai: RefCounted
+var bandit_checkpoint: SimBanditCheckpoint
+var bandit_learning: bool = false
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -27,6 +29,8 @@ func configure(
 	p_recruit: RecruitConfig = null,
 	p_profile: SimAIProfile = null,
 	p_budget: SpawnBudgetConfig = null,
+	p_checkpoint: SimBanditCheckpoint = null,
+	p_bandit_learning: bool = false,
 ) -> void:
 	map_config = p_map if p_map != null else DEFAULT_RUN_MAP
 	deck_config = p_deck if p_deck != null else DEFAULT_DECK_CONFIG
@@ -34,7 +38,21 @@ func configure(
 	recruit_config = p_recruit if p_recruit != null else DEFAULT_RECRUIT_CONFIG
 	ai_profile = p_profile if p_profile != null else DEFAULT_AI_PROFILE
 	spawn_budget = p_budget if p_budget != null else SpawnBudgetConfig.load_or_default()
-	_ai = HeuristicRunAI.new(ai_profile)
+	bandit_checkpoint = p_checkpoint
+	bandit_learning = p_bandit_learning
+	_ai = _build_ai(ai_profile, p_checkpoint, p_bandit_learning)
+
+
+func _build_ai(
+	p_profile: SimAIProfile,
+	p_checkpoint: SimBanditCheckpoint,
+	p_learning: bool,
+) -> RefCounted:
+	if p_checkpoint != null:
+		var table := SimBanditTable.new()
+		p_checkpoint.apply_to(table)
+		return BanditRunAI.new(p_profile, table, p_learning)
+	return HeuristicRunAI.new(p_profile)
 
 
 func simulate_run(seed: int) -> Dictionary:
@@ -68,7 +86,7 @@ func simulate_run(seed: int) -> Dictionary:
 			RunController.RunPhase.RUN_DEFEAT:
 				break
 			RunController.RunPhase.MAP:
-				var node := _ai.pick_map_node(run_controller)
+				var node: MapNodeRuntime = _ai.pick_map_node(run_controller)
 				if node == null:
 					run_controller.fail_run()
 					break
@@ -161,6 +179,7 @@ func _resolve_combat_encounter(
 		"spawn_budget": spawn_budget,
 	})
 	var won := bool(combat.get("won", false))
+	_notify_encounter_resolved(won)
 	encounters.append({
 		"floor": floor,
 		"node_type": MapNodeType.display_name(node.get_effective_type()),
@@ -214,5 +233,31 @@ func _build_run_record(seed: int, run_controller: RunController, encounters: Arr
 		"death_floor": death_floor,
 		"encounters_fought": encounters.size(),
 		"encounters": encounters,
-		"profile_id": ai_profile.profile_id if ai_profile != null else "default",
+		"profile_id": _report_profile_id(),
 	}
+
+
+func _report_profile_id() -> String:
+	if bandit_checkpoint != null and not bandit_checkpoint.policy_id.is_empty():
+		return bandit_checkpoint.policy_id
+	if ai_profile != null:
+		return ai_profile.profile_id
+	return "default"
+
+
+func _notify_encounter_resolved(won: bool) -> void:
+	if _ai is BanditRunAI:
+		(_ai as BanditRunAI).on_encounter_resolved(won)
+
+
+func export_bandit_checkpoint() -> SimBanditCheckpoint:
+	var out := bandit_checkpoint.duplicate_checkpoint() if bandit_checkpoint != null else SimBanditCheckpoint.new()
+	if _ai is BanditRunAI:
+		out.capture_from((_ai as BanditRunAI).bandit_table)
+	return out
+
+
+func get_bandit_update_count() -> int:
+	if _ai is BanditRunAI:
+		return (_ai as BanditRunAI).bandit_table.get_total_updates()
+	return 0

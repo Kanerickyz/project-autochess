@@ -11,3 +11,12 @@ extends Resource
 @export_range(1, 64, 1) var max_recruit_passes: int = 16
 ## 席位将满时尝试买旗帜扩席。
 @export var buy_banner_when_affordable: bool = true
+
+## --- 效用权重（供手调 / 外部优化；见 Documents/Features/SIM_BALANCE_AI.md）---
+@export_group("Utility Weights")
+@export var weight_stat_per_cost: float = 1.0
+@export var weight_merge_bonus: float = 80.0
+@export var weight_priority_unit_bonus: float = 50.0
+@export var weight_shop_node_tie: float = 40.0
+@export var weight_boss_path_tie: float = 100.0
+@export var weight_combat_node_tie: float = 5.0

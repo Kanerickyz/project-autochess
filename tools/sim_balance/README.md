@@ -14,7 +14,23 @@
 bash tools/sim_balance/run_batch.sh 100 1
 ```
 
-输出：`.artifacts/sim_balance/latest/summary.json`（含 **`game_version`**、**`charts[]`** Schema 1.0，见 `docs/balancereport/README.md`）
+启发式（默认）输出：`.artifacts/sim_balance/latest/summary.json`
+
+**冻结 bandit 评估**（训练后的 checkpoint，不在批跑内学习）：
+
+```bash
+godot --headless --path . --script res://scripts/sim_balance/sim_batch_runner.gd -- \
+  --runs 100 --seed-start 1 --out .artifacts/sim_balance/bandit_eval \
+  --checkpoint res://resources/sim_balance/checkpoints/bandit_v1.tres
+```
+
+**训练 checkpoint**（遭遇胜负反馈，默认 400 局）：
+
+```bash
+bash tools/sim_balance/train_bandit.sh --train-runs 400
+```
+
+见 [Documents/Features/SIM_BALANCE_AI.md](../../Documents/Features/SIM_BALANCE_AI.md)。
 
 烟测（1 局）：
 
@@ -39,7 +55,7 @@ bash tools/sim_balance/run_batch.sh 100 1
 
 ## 策略
 
-`resources/sim_balance/default_ai_profile.tres`（`SimAIProfile`）：启发式招募 / 旗帜 / 最短路选 Boss / 前排高 HP。
+`resources/sim_balance/default_ai_profile.tres`（`SimAIProfile`）：启发式招募 / 旗帜 / 最短路选 Boss / 前排高 HP。效用权重可调，进化或 RL 导出见 [Documents/Features/SIM_BALANCE_AI.md](../../Documents/Features/SIM_BALANCE_AI.md)。
 
 ## 核心依赖
 
