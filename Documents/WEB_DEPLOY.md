@@ -84,3 +84,26 @@ godot --headless --path . --export-release "Web" build/web/index.html
 - 无声卡 / 浏览器自动播放策略下音频可能需先点一下页面。
 - 画布仍用 Adaptive 铺满浏览器；项目默认 viewport 为 **竖屏 393×852**（iPhone 14 Pro 逻辑点），`stretch/aspect=expand`；宽屏浏览器会按 expand 铺满，布局以手机优先。
 - 试玩地址（public 库 Pages 已开）：`https://kanerickyz.github.io/project-autochess/`（推 `main` 或手动跑 Deploy Web 后更新）。
+
+## 平衡报告（`/balancereport/`）
+
+静态页：`docs/balancereport/index.html`  
+线上：**https://kanerickyz.github.io/project-autochess/balancereport/**
+
+| 触发 | 工作流 | 行为 |
+|------|--------|------|
+| 推 **`balance-eval`** | `Balance Report Pages` | headless 跑局（默认 100）→ 生成 `summary.json` → 导出 Web → 部署（含游戏根路径 + `/balancereport/`） |
+| 推 **`main`** | `Deploy Web` | 导出 Web；若仓库里有 `docs/balancereport/summary.json` 一并打包，否则仅 HTML |
+
+专用评估分支用法：
+
+```bash
+git fetch origin
+git checkout -b balance-eval origin/main   # 首次
+# …改数值 / SimAIProfile / 关卡…
+git push -u origin balance-eval
+```
+
+手动重跑：Actions → **Balance Report Pages** → Run workflow（可改 runs / seed_start）。
+
+与 Deploy Web 共用 `concurrency.group: pages-deploy`，避免两个部署互相覆盖 Pages 站点。

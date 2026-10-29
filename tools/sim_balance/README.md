@@ -24,9 +24,9 @@ godot --headless --path . --script res://scripts/sim_balance/sim_balance_smoke_t
 
 ## 可视化
 
-1. `cd tools/sim_balance && python3 -m http.server 8765`
-2. 浏览器打开 `http://127.0.0.1:8765/sim_report.html`
-3. 选择 `.artifacts/sim_balance/latest/summary.json`，或把该文件拷到同目录命名为 `summary.json`
+- **GitHub Pages**：推 **`balance-eval`** 分支 → Actions **Balance Report Pages** →  
+  https://kanerickyz.github.io/project-autochess/balancereport/
+- **本地**：`cd tools/sim_balance && python3 -m http.server 8765` → 打开 `sim_report.html` 或 `docs/balancereport/index.html`，加载 `summary.json`
 
 ## 策略
 
