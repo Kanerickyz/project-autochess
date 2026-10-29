@@ -89,6 +89,9 @@
 | `ally_deploy_self_atk_small` | 援军呼应 | 同伴 · 偶尔多次 | **是**（友方被生成） | 其他友方生成完成时，自己本场临时**小幅**提高攻击 | **偏弱～中庸** | （未挂载） | 成长·上场；`OnFriendSummoned`；含锁阵入座与战中召唤；不含自己上场 |
 | `deal_damage_apply_weak` | 破甲箭 | 交战 · 高频 | **否** | 造成伤害时，对**事件目标**施加 **虚弱 1 层**（可叠至战斗状态上限） | **偏弱～中庸** | 游侠 | `OnDealDamage`；普攻与技能伤害均会触发 |
 | `ally_hurt_heal_target_small` | 弦上包扎 | 同伴 · 高频 | **是**（友方受伤） | 友方受伤时，若**该友方未满血**，为其恢复 **2** 当前生命（三合一后 **6**；`merge_value_mult=3`；受击疗≤本次伤；本场技能受疗预算计在受疗友方）；已满血则不触发 | **偏弱** | 弩手 | 回血·掩护续命；`OnFriendDamageTaken`；`EVENT_TARGET_NOT_AT_MAX_HP` |
+| `ally_hurt_lr_allies_atk_hp_1` | 金鼓邻振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，持有者**正交左右邻格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；当前生命同步） | **中庸～偏强** | 金鼓 | `OnFriendDamageTaken` + `ORTHOGONAL_LEFT_RIGHT_ALLIES` |
+| `ally_hurt_nearby_allies_atk_hp_1` | 雷鼓环振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**持有者周围一格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；可含自己） | **偏强** | 雷鼓（**T3**） | `OnFriendDamageTaken` + `NEARBY_ALLIES`（中心=持有者） |
+| `ally_hurt_random_ally_atk_hp_1` | 花鼓福点 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**随机一名友方**本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；**含自己**） | **中庸～偏强** | 花鼓 | `OnFriendDamageTaken` + `RANDOM_ALLY` |
 | `ally_death_nearby_atk_small` | 亡者之志 | 同伴 · 偶尔多次 | **是**（友方阵亡） | 友方死亡时，**周围一格**友方本场临时**小幅**提高攻击 | **中庸～偏强** | （池内；号手已不挂载） | 小队·范围；附近=1 格 |
 | `friend_summon_lr_allies_atk_hp_1` | 召从振锋 | 同伴 · 条件稀有 | **是**（友方随从被召唤） | 友方**战斗随从**被召唤时，持有者**正交左右邻格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；当前生命同步） | **中庸** | 号手 | `OnFriendSummoned` + `ORTHOGONAL_LEFT_RIGHT_ALLIES`；`exclude_owner` |
 | `ally_death_spawn_weak` | 义士应召 | 同伴 · 偶尔多次 | **是**（友方角色阵亡） | 友方**角色**（非随从/代理）死亡时，己方半场生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | 召魂 | 见 §4；`EVENT_TARGET_IS_NOT_COMBAT_SUMMON` |
