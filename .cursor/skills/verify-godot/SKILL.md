@@ -25,6 +25,14 @@ bash tools/run_light_verify.sh
 bash tools/run_verify_runners.sh
 ```
 
+改动 **`scripts/sim_balance/`**、平衡启发式或 `RealtimeCombatSim.run_until_finished` 时，额外跑：
+
+```bash
+bash tools/run_sim_balance_verify.sh
+```
+
+可选本地 100 局（慢）：`SIM_BALANCE_BATCH=1 bash tools/run_sim_balance_verify.sh`
+
 或单独例如：
 
 ```powershell

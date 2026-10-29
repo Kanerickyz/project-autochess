@@ -92,6 +92,18 @@ jobs:
           touch build/web/.nojekyll
           ls -lah build/web
 
+      - name: Bundle static balance report (if present)
+        run: |
+          set -euo pipefail
+          if [ -f docs/balancereport/index.html ]; then
+            mkdir -p build/web/balancereport
+            cp docs/balancereport/index.html build/web/balancereport/
+            cp docs/balancereport/report.js build/web/balancereport/
+            if [ -f docs/balancereport/summary.json ]; then
+              cp docs/balancereport/summary.json build/web/balancereport/
+            fi
+          fi
+
       - name: Upload web-build Artifact
         uses: actions/upload-artifact@v4
         with:

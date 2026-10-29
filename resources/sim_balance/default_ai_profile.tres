@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SimAIProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/sim_balance/sim_ai_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+profile_id = "default"
+priority_unit_ids = PackedStringArray()
+prefer_shop_nodes = false
+max_recruit_passes = 16
+buy_banner_when_affordable = true

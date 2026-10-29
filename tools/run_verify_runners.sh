@@ -35,6 +35,7 @@ runners=(
   "res://scripts/ui/realtime/enchant_flow_test_runner.gd"
   "res://scripts/core/run/sacrifice_service_test_runner.gd"
   "res://scripts/core/wfc/wfc_generator_test_runner.gd"
+  "res://scripts/sim_balance/sim_balance_smoke_test_runner.gd"
 )
 
 failed=0

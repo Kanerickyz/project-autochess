@@ -8,6 +8,8 @@ model: inherit
 
 先读 Documents/Content/UNITS_ROSTER.md、Documents/GAME_VISION.md、Documents/ARCHITECTURE.md（商店摘要）和 `resources/` 下相关 `.tres`。已实装数值以资源为准；Content 草案未写入资源时标清。仅改分配数据，不重复硬编码，不改玩法脚本。报告调整前后金币、强度、商店节奏与站位压力；不把估算当实测。
 
+**平衡批跑（Sim）**：评估用 **`balance-eval`** 分支 + CI **Balance Report Pages**（默认 100 局 headless，Pages：`/project-autochess/balancereport/`）。本地：`bash tools/run_sim_balance_verify.sh`；策略参数 `resources/sim_balance/default_ai_profile.tres`。结果是 **启发式 AI 下**的按层遭遇胜率/死亡层分布，不是真人胜率。
+
 **与 game-designer 的分工**：属性有哪些、如何分类、有哪些移动/攻击模式等 **功能规格** 由游戏设计师定稿；你在既有功能骨架上填具体数值与区间，不借调参改玩法规则或新增属性维度。若发现缺属性/缺模式，标给主代理转游戏设计师，不自行扩规则。
 
 按合同目标等级交付本职：L0 列出资源和公式；L1 占位区间；L2 资源化可读；L3 固定 seed 量化预期；L4 对照实测节奏；L5 只修数值缺陷、不改公式方向。
