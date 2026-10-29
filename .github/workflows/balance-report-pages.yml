@@ -1,4 +1,4 @@
-# balance-eval 跑局 + 打包 Pages 站点 artifact；部署见 balance-report-deploy.yml（须在 main 上执行以满足 github-pages 分支策略）。
+# balance-eval / 手动：跑局 → 归档到 docs/balancereport/runs/ → 提交 main → Deploy Web 发布 Pages。
 name: Balance Report Pages
 
 on:
@@ -16,8 +16,7 @@ on:
         default: "1"
 
 permissions:
-  contents: read
-  actions: write
+  contents: write
 
 concurrency:
   group: balance-report-build
@@ -29,7 +28,7 @@ env:
   BALANCE_SEED_START: ${{ github.event.inputs.seed_start || '1' }}
 
 jobs:
-  build:
+  archive-to-main:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -44,32 +43,18 @@ jobs:
             ~/.local/share/godot/export_templates
           key: godot-${{ env.GODOT_VERSION }}-linux-templates-v1
 
-      - name: Install Godot ${{ env.GODOT_VERSION }} + Web templates
+      - name: Install Godot ${{ env.GODOT_VERSION }}
         run: |
           set -euo pipefail
           mkdir -p .github/.godot-cache
           base="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           editor_zip=".github/.godot-cache/${base}.zip"
-          templates_tpz=".github/.godot-cache/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           release="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
-
           if [ ! -f "$editor_zip" ]; then
             curl -fsSL "${release}/${base}.zip" -o "$editor_zip"
           fi
-          if [ ! -f "$templates_tpz" ]; then
-            curl -fsSL "${release}/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$templates_tpz"
-          fi
-
           unzip -qo "$editor_zip" -d /tmp/godot-editor
           sudo install -m 755 "/tmp/godot-editor/${base}" /usr/local/bin/godot
-
-          tdir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          if [ ! -f "$tdir/web_nothreads_release.zip" ] && [ ! -f "$tdir/web_release.zip" ]; then
-            mkdir -p "$tdir"
-            unzip -qo "$templates_tpz" -d /tmp/godot-templates
-            mv /tmp/godot-templates/templates/* "$tdir/"
-          fi
-
           godot --headless --version
 
       - name: Import project
@@ -78,44 +63,52 @@ jobs:
       - name: Run balance batch (headless)
         run: |
           set -euo pipefail
-          mkdir -p docs/balancereport
-          bash tools/sim_balance/run_batch.sh "$BALANCE_RUNS" "$BALANCE_SEED_START" "$GITHUB_WORKSPACE/docs/balancereport"
-          test -f docs/balancereport/summary.json
-          python3 - <<'PY'
-          import json, os
-          p = "docs/balancereport/summary.json"
-          with open(p, encoding="utf-8") as f:
-              d = json.load(f)
-          d.setdefault("meta", {})["git_ref"] = os.environ.get("GITHUB_REF_NAME", "balance-eval")
-          d["meta"]["github_sha"] = os.environ.get("GITHUB_SHA", "")[:7]
-          with open(p, "w", encoding="utf-8") as f:
-              json.dump(d, f, indent="\t", ensure_ascii=False)
-          PY
+          BATCH_OUT="$RUNNER_TEMP/sim_balance_batch"
+          mkdir -p "$BATCH_OUT"
+          bash tools/sim_balance/run_batch.sh "$BALANCE_RUNS" "$BALANCE_SEED_START" "$BATCH_OUT"
+          test -f "$BATCH_OUT/summary.json"
+          echo "BATCH_OUT=$BATCH_OUT" >> "$GITHUB_ENV"
 
-      - name: Export Web + bundle balance report
+      - name: Archive report (runs/ + manifest + latest summary.json)
+        id: archive
         run: |
           set -euo pipefail
-          mkdir -p build/web
-          godot --headless --path . --export-release "Web" build/web/index.html
-          test -f build/web/index.html
-          touch build/web/.nojekyll
-          mkdir -p build/web/balancereport
-          cp docs/balancereport/index.html build/web/balancereport/
-          cp docs/balancereport/report.js build/web/balancereport/
-          cp docs/balancereport/summary.json build/web/balancereport/
-          ls -lah build/web/balancereport
+          RUN_ID="$(python3 tools/sim_balance/archive_batch_report.py "$BATCH_OUT" "$GITHUB_WORKSPACE")"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          test -f "docs/balancereport/runs/${RUN_ID}/summary.json"
+          test -f docs/balancereport/manifest.json
 
       - name: Upload balance-summary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: balance-summary
-          path: docs/balancereport/summary.json
-          retention-days: 30
+          name: balance-summary-${{ steps.archive.outputs.run_id }}
+          path: docs/balancereport/runs/${{ steps.archive.outputs.run_id }}/summary.json
+          retention-days: 90
 
-      - name: Upload pages-site Artifact (for deploy workflow on main)
-        uses: actions/upload-artifact@v4
-        with:
-          name: pages-site
-          path: build/web
-          retention-days: 7
-          if-no-files-found: error
+      - name: Commit and push archive to main
+        env:
+          RUN_ID: ${{ steps.archive.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          STAGING="$RUNNER_TEMP/balancereport-staging"
+          mkdir -p "$STAGING/runs/${RUN_ID}"
+          cp docs/balancereport/manifest.json "$STAGING/"
+          cp docs/balancereport/summary.json "$STAGING/"
+          cp "docs/balancereport/runs/${RUN_ID}/summary.json" "$STAGING/runs/${RUN_ID}/"
+
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+
+          mkdir -p "docs/balancereport/runs/${RUN_ID}"
+          cp "$STAGING/manifest.json" docs/balancereport/
+          cp "$STAGING/summary.json" docs/balancereport/
+          cp "$STAGING/runs/${RUN_ID}/summary.json" "docs/balancereport/runs/${RUN_ID}/"
+
+          git add docs/balancereport/manifest.json docs/balancereport/summary.json "docs/balancereport/runs/${RUN_ID}"
+          git diff --staged --quiet && echo "Nothing new to commit" && exit 0
+          git commit -m "chore(balancereport): archive sim batch ${RUN_ID}"
+          git push origin main

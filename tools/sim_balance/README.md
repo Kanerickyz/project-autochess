@@ -31,9 +31,11 @@ bash tools/sim_balance/run_batch.sh 100 1
 
 ## 可视化
 
-- **GitHub Pages**：推 **`balance-eval`** 分支 → Actions **Balance Report Pages** →  
-  https://kanerickyz.github.io/project-autochess/balancereport/
-- **本地**：`cd tools/sim_balance && python3 -m http.server 8765` → 打开 `sim_report.html` 或 `docs/balancereport/index.html`，加载 `summary.json`
+- **GitHub Pages**：推 **`balance-eval`** 或手动 **Balance Report Pages** → 归档到 `docs/balancereport/runs/` 并 push **`main`** → **Deploy Web** 发布  
+  https://kanerickyz.github.io/project-autochess/balancereport/（页内可切换历史报告）
+- **本地**：跑批后归档  
+  `python3 tools/sim_balance/archive_batch_report.py /path/to/batch_out`  
+  再 `cd docs/balancereport && python3 -m http.server 8765` 打开 `index.html`
 
 ## 策略
 

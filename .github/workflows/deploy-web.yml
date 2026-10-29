@@ -99,8 +99,15 @@ jobs:
             mkdir -p build/web/balancereport
             cp docs/balancereport/index.html build/web/balancereport/
             cp docs/balancereport/report.js build/web/balancereport/
+            if [ -f docs/balancereport/manifest.json ]; then
+              cp docs/balancereport/manifest.json build/web/balancereport/
+            fi
             if [ -f docs/balancereport/summary.json ]; then
               cp docs/balancereport/summary.json build/web/balancereport/
+            fi
+            if [ -d docs/balancereport/runs ]; then
+              mkdir -p build/web/balancereport/runs
+              cp -r docs/balancereport/runs/. build/web/balancereport/runs/
             fi
           fi
 
