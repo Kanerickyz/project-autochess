@@ -21,6 +21,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("3_parallax")
 
 [node name="SafeMargin" type="MarginContainer" parent="."]
@@ -30,133 +31,128 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 52
 
 [node name="MainVBox" type="VBoxContainer" parent="SafeMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 0
+theme_override_constants/separation = 10
 
 [node name="TopArtSpacer" type="Control" parent="SafeMargin/MainVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 2.65
+size_flags_stretch_ratio = 0.55
 
 [node name="TitleRow" type="CenterContainer" parent="SafeMargin/MainVBox"]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="TitleLogo" type="TextureRect" parent="SafeMargin/MainVBox/TitleRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(512, 179)
+custom_minimum_size = Vector2(280, 98)
 texture = ExtResource("4_logo")
 expand_mode = 1
 stretch_mode = 5
 
 [node name="TitleToButtonsSpacer" type="Control" parent="SafeMargin/MainVBox"]
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.45
 
-[node name="ButtonBlock" type="CenterContainer" parent="SafeMargin/MainVBox"]
+[node name="ButtonBlock" type="VBoxContainer" parent="SafeMargin/MainVBox"]
 layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.85
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
 
-[node name="MenuVBox" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock"]
+[node name="PrimaryGroup" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock"]
 layout_mode = 2
-theme_override_constants/separation = 22
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
-[node name="PrimaryGroup" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="StartButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/PrimaryGroup"]
+[node name="StartButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/PrimaryGroup"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "开始游戏"
 
-[node name="EndlessButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/PrimaryGroup"]
+[node name="EndlessButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/PrimaryGroup"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "无尽"
 
-[node name="MetaGroup" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
+[node name="SecondaryGrid" type="GridContainer" parent="SafeMargin/MainVBox/ButtonBlock"]
 layout_mode = 2
-theme_override_constants/separation = 12
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
 
-[node name="MatchHistoryButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/MetaGroup"]
+[node name="MatchHistoryButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SecondaryGrid"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "对局记录"
 
-[node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/MetaGroup"]
+[node name="CodexButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SecondaryGrid"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "角色库"
 
-[node name="ToolsGroup" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="CombatSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/ToolsGroup"]
+[node name="CombatSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SecondaryGrid"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "沙盒"
 
-[node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/ToolsGroup"]
+[node name="EnchantSandboxButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SecondaryGrid"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "附魔试验场"
 
-[node name="SystemGroup" type="VBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox"]
+[node name="SystemGroup" type="HBoxContainer" parent="SafeMargin/MainVBox/ButtonBlock"]
 layout_mode = 2
-theme_override_constants/separation = 12
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="SettingsButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/SystemGroup"]
+[node name="SettingsButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SystemGroup"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "设置"
 
-[node name="ExitButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/MenuVBox/SystemGroup"]
+[node name="ExitButton" type="Button" parent="SafeMargin/MainVBox/ButtonBlock/SystemGroup"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 text = "退出"
 
-[node name="VersionSpacer" type="Control" parent="SafeMargin/MainVBox"]
-custom_minimum_size = Vector2(0, 14)
+[node name="MenuFlexSpacer" type="Control" parent="SafeMargin/MainVBox"]
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.55
 
 [node name="VersionRow" type="CenterContainer" parent="SafeMargin/MainVBox"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
 
 [node name="VersionLabel" type="Label" parent="SafeMargin/MainVBox/VersionRow"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.58, 0.6, 0.64, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.35)
+theme_override_colors/font_color = Color(0.72, 0.74, 0.78, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.45)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 14
 text = "v0.0.0"
 horizontal_alignment = 1
-
-[node name="BottomArtSpacer" type="Control" parent="SafeMargin/MainVBox"]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 2.15
 
 [node name="SettingsPanel" parent="." instance=ExtResource("2")]
 unique_name_in_owner = true
