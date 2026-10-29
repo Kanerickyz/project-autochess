@@ -104,9 +104,11 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_golden_drum_blue.png" id="b_golden_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_thunder_drum_blue.png" id="b_thunder_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_flower_drum_blue.png" id="b_flower_drum"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wood_drum_blue.png" id="b_wood_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_golden_drum_red.png" id="r_golden_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_thunder_drum_red.png" id="r_thunder_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_flower_drum_red.png" id="r_flower_drum"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_wood_drum_red.png" id="r_wood_drum"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev_enemy.png" id="dev_enemy"]
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="dev_player"]
 
@@ -146,6 +148,7 @@ archetype_by_unit_id = {
 "goblin": &"goblin",
 "golden_drum": &"golden_drum",
 "flower_drum": &"flower_drum",
+"wood_drum": &"wood_drum",
 "gravewright": &"gravewright",
 "horsebow": &"horsebow",
 "hunter": &"hunter",
@@ -210,6 +213,7 @@ player_textures = {
 &"goblin": ExtResource("b_goblin"),
 &"golden_drum": ExtResource("b_golden_drum"),
 &"flower_drum": ExtResource("b_flower_drum"),
+&"wood_drum": ExtResource("b_wood_drum"),
 &"gravewright": ExtResource("b_gravewright"),
 &"horsebow": ExtResource("b_horsebow"),
 &"hunter": ExtResource("b_hunter"),
@@ -269,6 +273,7 @@ enemy_textures = {
 &"goblin": ExtResource("r_goblin"),
 &"golden_drum": ExtResource("r_golden_drum"),
 &"flower_drum": ExtResource("r_flower_drum"),
+&"wood_drum": ExtResource("r_wood_drum"),
 &"gravewright": ExtResource("r_gravewright"),
 &"horsebow": ExtResource("r_horsebow"),
 &"hunter": ExtResource("r_hunter"),

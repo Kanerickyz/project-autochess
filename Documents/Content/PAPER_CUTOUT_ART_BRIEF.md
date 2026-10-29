@@ -240,6 +240,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `golden_drum` | 蓝平帽小胡子 + 胸前蓝鼓金百合纹 + 金球鼓槌 | golden_drum 金鼓 |
 | `thunder_drum` | 铁盔蓝羽 + 胸前雷纹鼓 + 重槌 | thunder_drum 雷鼓 |
 | `flower_drum` | 蓝巾粉花 + 木鼓粉花面 + 细木槌 | flower_drum 花鼓 |
+| `wood_drum` | 麻巾 + 素面原木鼓 + 短木槌 | wood_drum 木鼓 |
 
 召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
