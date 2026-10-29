@@ -64,12 +64,20 @@ func select_arm(
 	arm_count: int,
 	heuristic_arm: int,
 	explore: bool,
+	min_samples: int = 0,
 ) -> int:
 	if arm_count <= 0:
 		return 0
 	var fallback := clampi(heuristic_arm, 0, arm_count - 1)
 	if arm_count == 1:
 		return 0
+	if min_samples > 0:
+		var seen := 0
+		for i in arm_count:
+			var row := _row(state_key, str(i))
+			seen += int(row.get("w", 0)) + int(row.get("l", 0))
+		if seen < min_samples:
+			return fallback
 	if not explore:
 		return _greedy_arm(state_key, arm_count, fallback)
 	return _ucb_arm(state_key, arm_count, fallback)
@@ -123,6 +131,29 @@ func _row(state_key: String, action_key: String) -> Dictionary:
 
 func get_total_updates() -> int:
 	return _total_updates
+
+
+func get_coverage_summary() -> Dictionary:
+	var totals: Array[int] = []
+	for key in _stats.keys():
+		var row: Variant = _stats[key]
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		totals.append(int(row.get("w", 0)) + int(row.get("l", 0)))
+	var key_count := totals.size()
+	if key_count == 0:
+		return {"keys": 0, "median_wl": 0, "pct_keys_ge5": 0.0}
+	totals.sort()
+	var median := totals[key_count / 2]
+	var ge5 := 0
+	for t in totals:
+		if t >= 5:
+			ge5 += 1
+	return {
+		"keys": key_count,
+		"median_wl": median,
+		"pct_keys_ge5": roundf(float(ge5) / float(key_count) * 1000.0) / 10.0,
+	}
 
 
 func _compound_key(state_key: String, action_key: String) -> String:

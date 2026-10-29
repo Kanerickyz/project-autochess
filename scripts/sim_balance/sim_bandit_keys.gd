@@ -31,3 +31,34 @@ static func recruit_state(
 		var cost := maxi(1, session.get_recruit_cost(unit))
 		parts.append("%d/%d" % [unit.stats.attack + unit.stats.max_hp, cost])
 	return "|".join(parts)
+
+
+## v3：桶化候选，前缀 recruit3|，与 v2 键并存（续训时 map| 条目仍有效）。
+static func recruit_state_v3(
+	floor: int,
+	gold: int,
+	roster_size: int,
+	session: RecruitSession,
+) -> String:
+	var gold_bucket := (maxi(0, gold) / 5) * 5
+	var parts: PackedStringArray = PackedStringArray()
+	parts.append("recruit3|f%d|g%d|r%d" % [maxi(0, floor), gold_bucket, maxi(0, roster_size)])
+	if session == null:
+		return parts[0]
+	for i in session.get_candidate_slot_count():
+		var unit: UnitData = session.get_candidate(i)
+		if unit == null or unit.stats == null:
+			parts.append("-")
+			continue
+		var cost := maxi(1, session.get_recruit_cost(unit))
+		parts.append(
+			"%d/%d"
+			% [_stat_bucket(unit.stats.attack + unit.stats.max_hp, 15, 9), _stat_bucket(cost, 2, 9)]
+		)
+	return "|".join(parts)
+
+
+static func _stat_bucket(value: int, step: int, cap: int) -> int:
+	if step <= 0:
+		return 0
+	return mini(cap, maxi(0, maxi(0, value) / step))

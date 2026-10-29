@@ -279,3 +279,14 @@ func get_bandit_update_count() -> int:
 	if _ai is BanditRunAI:
 		return (_ai as BanditRunAI).bandit_table.get_total_updates()
 	return 0
+
+
+func set_bandit_explore_enabled(enabled: bool) -> void:
+	if _ai is BanditRunAI:
+		(_ai as BanditRunAI).set_explore_enabled(enabled)
+
+
+func get_bandit_coverage_summary() -> Dictionary:
+	if _ai is BanditRunAI:
+		return (_ai as BanditRunAI).bandit_table.get_coverage_summary()
+	return {"keys": 0, "median_wl": 0, "pct_keys_ge5": 0.0}

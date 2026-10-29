@@ -17,6 +17,7 @@ description: Sync balance-eval with main, ask run count, archive sim batch under
    - **默认启发式**（`default`，不传 checkpoint）
    - **bandit-v1**（`checkpoints/bandit_v1.tres`，遭遇胜负更新选路+招募）
    - **bandit-v2**（`checkpoints/bandit_v2.tres`，选路吃胜负、招募吃 Run 终局/死亡层）
+   - **bandit-v3**（`checkpoints/bandit_v3.tres`，v2 选路 + 深度向招募奖励；可从 v2 续训）
 4. **可选询问**（用户未提则不主动拖长）：起始 seed，默认 **1**（与 CI `BALANCE_SEED_START` 一致）。
 5. **验收方式**：本技能默认 **轻量**（跑批 + 归档 + 部署）；不代做 GUI 图表审美验收。
 
@@ -39,12 +40,15 @@ git merge origin/main
 ```bash
 RUNS=100          # 来自用户回答，默认 100
 SEED_START=1
-# SIM_POLICY: default | bandit-v1 | bandit-v2
-SIM_POLICY=bandit-v2
+# SIM_POLICY: default | bandit-v1 | bandit-v2 | bandit-v3
+SIM_POLICY=bandit-v3
 BATCH_OUT="$(mktemp -d)/sim_balance_batch"
 mkdir -p "$BATCH_OUT"
 
-if [ "$SIM_POLICY" = "bandit-v2" ]; then
+if [ "$SIM_POLICY" = "bandit-v3" ]; then
+  CKPT="res://resources/sim_balance/checkpoints/bandit_v3.tres"
+  bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT" --checkpoint "$CKPT"
+elif [ "$SIM_POLICY" = "bandit-v2" ]; then
   CKPT="res://resources/sim_balance/checkpoints/bandit_v2.tres"
   bash tools/sim_balance/run_batch.sh "$RUNS" "$SEED_START" "$BATCH_OUT" --checkpoint "$CKPT"
 elif [ "$SIM_POLICY" = "bandit-v1" ]; then

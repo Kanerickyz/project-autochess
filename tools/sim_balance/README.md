@@ -24,7 +24,7 @@ godot --headless --path . --script res://scripts/sim_balance/sim_batch_runner.gd
   --checkpoint res://resources/sim_balance/checkpoints/bandit_v1.tres
 ```
 
-**训练 checkpoint**（遭遇胜负反馈，默认 400 局）：
+**训练 checkpoint**（默认 400 局；v3 续训见 [Documents/Features/SIM_BALANCE_AI.md](../../Documents/Features/SIM_BALANCE_AI.md)）：
 
 ```bash
 bash tools/sim_balance/train_bandit.sh --train-runs 400

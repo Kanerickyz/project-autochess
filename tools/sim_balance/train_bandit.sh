@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Train contextual bandit checkpoint (encounter win/loss only). Default 400 episodes.
+# Train contextual bandit checkpoint. Default 400 episodes; v3 续训见 Documents/Features/SIM_BALANCE_AI.md
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
