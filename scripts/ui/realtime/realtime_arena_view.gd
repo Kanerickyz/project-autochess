@@ -254,11 +254,10 @@ var _recruit_left_source: bool = false
 var _recruit_shell_progress: float = 0.0
 var _recruit_shell_tween: Tween
 var _recruit_restore_index: int = -1
-var _recruit_card_shells: Array[ColorRect] = []
-var _recruit_card_mats: Array[ShaderMaterial] = []
-## 跟手溶解卡：离格后卡壳跟着角色碎掉，播完只剩纸片。
-var _recruit_follow_shell: ColorRect
-var _recruit_follow_mat: ShaderMaterial
+## 静置卡壳用 _draw 实心矩形；溶解用 SubViewport+shader 贴到 _draw 层（不被草地盖住）。
+var _recruit_card_vp: SubViewport
+var _recruit_card_vp_panel: ColorRect
+var _recruit_card_vp_mat: ShaderMaterial
 var _recruit_item_drag_index: int = -1
 var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
@@ -337,11 +336,16 @@ func _ready() -> void:
 	add_child(_motion)
 	_info_card.name = "UnitInfoCard"
 	add_child(_info_card)
-	_ensure_recruit_card_shells()
+	_ensure_recruit_card_viewport()
 
 
 func _process(delta: float) -> void:
 	_fx_clock += delta
+	## 提前写 dissolve progress，让离屏 Viewport 本帧纹理跟上手拖。
+	if _recruit_card_vp_mat != null and (
+		(_recruit_drag_index >= 0 and _recruit_left_source) or _recruit_restore_index >= 0
+	):
+		_recruit_card_vp_mat.set_shader_parameter("progress", _recruit_shell_progress)
 	if _drag_visual_alive and not _drag_settling:
 		_update_drag_hold_pose(delta)
 	if sim != null and sim.has_started():
@@ -1679,45 +1683,36 @@ func _make_recruit_card_material() -> ShaderMaterial:
 	mat.set_shader_parameter("fill_inner", RECRUIT_CARD_FILL_INNER)
 	mat.set_shader_parameter("stroke_color", RECRUIT_CARD_STROKE)
 	mat.set_shader_parameter("burn_color", RECRUIT_CARD_BURN)
-	mat.set_shader_parameter("burn_width", 0.16)
-	mat.set_shader_parameter("noise_scale", 9.5)
+	mat.set_shader_parameter("burn_width", 0.18)
+	mat.set_shader_parameter("noise_scale", 8.5)
 	return mat
 
 
-func _ensure_recruit_card_shells() -> void:
-	if _recruit_card_shells.is_empty():
-		for i in RECRUIT_CARD_SLOT_CAP:
-			var shell := ColorRect.new()
-			shell.name = "RecruitCardShell_%d" % i
-			shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			shell.show_behind_parent = true
-			shell.visible = false
-			shell.color = Color(1, 1, 1, 1)
-			var mat := _make_recruit_card_material()
-			shell.material = mat
-			add_child(shell)
-			move_child(shell, 0)
-			_recruit_card_shells.append(shell)
-			_recruit_card_mats.append(mat)
-	if _recruit_follow_shell == null:
-		_recruit_follow_shell = ColorRect.new()
-		_recruit_follow_shell.name = "RecruitCardFollowShell"
-		_recruit_follow_shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_recruit_follow_shell.show_behind_parent = true
-		_recruit_follow_shell.visible = false
-		_recruit_follow_shell.color = Color(1, 1, 1, 1)
-		_recruit_follow_mat = _make_recruit_card_material()
-		_recruit_follow_shell.material = _recruit_follow_mat
-		add_child(_recruit_follow_shell)
-		move_child(_recruit_follow_shell, 0)
+func _ensure_recruit_card_viewport() -> void:
+	if _recruit_card_vp != null:
+		return
+	_recruit_card_vp = SubViewport.new()
+	_recruit_card_vp.name = "RecruitCardDissolveVP"
+	_recruit_card_vp.size = Vector2i(128, 176)
+	_recruit_card_vp.transparent_bg = true
+	_recruit_card_vp.disable_3d = true
+	_recruit_card_vp.handle_input_locally = false
+	_recruit_card_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_recruit_card_vp_panel = ColorRect.new()
+	_recruit_card_vp_panel.size = Vector2(_recruit_card_vp.size)
+	_recruit_card_vp_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_recruit_card_vp_panel.color = Color(1, 1, 1, 1)
+	_recruit_card_vp_mat = _make_recruit_card_material()
+	_recruit_card_vp_panel.material = _recruit_card_vp_mat
+	_recruit_card_vp.add_child(_recruit_card_vp_panel)
+	add_child(_recruit_card_vp)
+	## 不占布局；仅作离屏渲染目标。
+	_recruit_card_vp.visible = false
 
 
 func _hide_recruit_card_shells() -> void:
-	for shell in _recruit_card_shells:
-		if shell != null:
-			shell.visible = false
-	if _recruit_follow_shell != null:
-		_recruit_follow_shell.visible = false
+	## Viewport 常驻离屏；无货架卡壳 Control 可藏。
+	pass
 
 
 func _recruit_candidate_shell_size(px: float) -> Vector2:
@@ -1730,65 +1725,31 @@ func _recruit_candidate_shell_rect(center_local: Vector2, px: float) -> Rect2:
 	return Rect2(center_local - sz * 0.5, sz)
 
 
-func _sync_recruit_card_shells(px: float, off: Vector2) -> void:
-	_ensure_recruit_card_shells()
-	if not recruit_active:
-		_hide_recruit_card_shells()
+func _draw_recruit_card_shell_static(center_local: Vector2, px: float) -> void:
+	## 静置：统一尺寸旧纸卡（_draw 层，不被背景盖住）。
+	var rect := _recruit_candidate_shell_rect(center_local, px)
+	if rect.size.x <= 1.0 or rect.size.y <= 1.0:
 		return
-	var active_slots: Dictionary = {}
-	var follow_active := false
-	for info in recruit_candidates:
-		if not (info is Dictionary):
-			continue
-		var cell: Vector2i = info.get("cell", NO_CELL)
-		if cell == NO_CELL:
-			continue
-		var unit: UnitData = info.get("unit") as UnitData
-		if unit == null:
-			continue
-		var index := int(info.get("index", -1))
-		if index < 0 or index >= _recruit_card_shells.size():
-			continue
-		var dragging := index == _recruit_drag_index
-		var restoring := index == _recruit_restore_index
-		## 离格后源槽立刻空：溶解改在跟手卡壳上播。
-		if dragging and _recruit_left_source:
-			continue
-		if restoring and _drag_settling:
-			continue
-		var progress := 0.0
-		if restoring:
-			progress = _recruit_shell_progress
-		var center_local := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off
-		var rect := _recruit_candidate_shell_rect(center_local, px)
-		var shell := _recruit_card_shells[index]
-		var mat := _recruit_card_mats[index]
-		shell.visible = progress < 0.999
-		shell.position = rect.position
-		shell.size = rect.size
-		if mat != null:
-			mat.set_shader_parameter("progress", progress)
-		active_slots[index] = true
-	## 跟手溶解：卡跟着角色，噪声阈值逐步碎掉后只剩纸片。
-	if (
-		_recruit_drag_index >= 0
-		and _recruit_left_source
-		and _drag_visual_alive
-		and _recruit_shell_progress < 0.999
-		and _recruit_follow_shell != null
-	):
-		var follow_rect := _recruit_candidate_shell_rect(_drag_draw_pos, px)
-		_recruit_follow_shell.visible = true
-		_recruit_follow_shell.position = follow_rect.position
-		_recruit_follow_shell.size = follow_rect.size
-		if _recruit_follow_mat != null:
-			_recruit_follow_mat.set_shader_parameter("progress", _recruit_shell_progress)
-		follow_active = true
-	if _recruit_follow_shell != null and not follow_active:
-		_recruit_follow_shell.visible = false
-	for i in _recruit_card_shells.size():
-		if not active_slots.has(i):
-			_recruit_card_shells[i].visible = false
+	draw_rect(rect, RECRUIT_CARD_FILL, true)
+	var inset := rect.grow(-maxf(2.0, minf(rect.size.x, rect.size.y) * 0.045))
+	if inset.size.x > 2.0 and inset.size.y > 2.0:
+		draw_rect(inset, RECRUIT_CARD_FILL_INNER, true)
+	draw_rect(rect, RECRUIT_CARD_STROKE, false, maxf(1.5, rect.size.x * 0.028))
+
+
+func _draw_recruit_card_shell_dissolving(center_local: Vector2, px: float, progress: float) -> void:
+	## 溶解/复卡：离屏 shader 渲染后贴到 _draw，保证跟手时也在草地之上可见。
+	if progress >= 0.999:
+		return
+	_ensure_recruit_card_viewport()
+	if _recruit_card_vp_mat != null:
+		_recruit_card_vp_mat.set_shader_parameter("progress", progress)
+	var tex: Texture2D = _recruit_card_vp.get_texture()
+	if tex == null:
+		_draw_recruit_card_shell_static(center_local, px)
+		return
+	var rect := _recruit_candidate_shell_rect(center_local, px)
+	draw_texture_rect(tex, rect, false)
 
 
 func _draw_enchant_team_seat_hint(px: float) -> void:
@@ -4006,8 +3967,6 @@ func _draw_merge_fx(px: float, off: Vector2) -> void:
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
-	## 统一卡壳（ColorRect + dissolve shader）画在父节点背后；此处只同步并画居中角色。
-	_sync_recruit_card_shells(px, off)
 	var ordered := recruit_candidates.duplicate()
 	if _info_shown and not ordered.is_empty():
 		var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
@@ -4049,10 +4008,14 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		## 静置 / 源格内拖：卡+人；离格后源槽空；回席 settle 完再 shader 复卡。
+		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空；回席 settle 完再 shader 复卡。
 		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
 		if hide_body:
 			continue
+		if restoring and _recruit_shell_progress > 0.001:
+			_draw_recruit_card_shell_dissolving(center_local, px, _recruit_shell_progress)
+		else:
+			_draw_recruit_card_shell_static(center_local, px)
 		var alpha := 0.95
 		if restoring:
 			alpha = clampf(1.0 - _recruit_shell_progress, 0.35, 0.95)
@@ -4839,6 +4802,15 @@ func _draw_drag_follower(px: float) -> void:
 	var tile := local_to_tile(_drag_draw_pos)
 	var snapped := tile_to_local(tile)
 	var pixel_off := _drag_draw_pos - snapped
+	## 离格溶解：先贴跟手卡壳（shader 噪声碎掉），再画居中纸片。
+	if (
+		_recruit_drag_index >= 0
+		and _recruit_left_source
+		and _recruit_shell_progress < 0.999
+		and _drag_texture == null
+	):
+		_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
+	var center_sprite := _recruit_drag_index >= 0 and _recruit_shell_progress < 0.999
 	_draw_body(
 		tile,
 		_drag_radius,
@@ -4857,6 +4829,7 @@ func _draw_drag_follower(px: float) -> void:
 		1.0,
 		-1,
 		_drag_texture,
+		center_sprite,
 	)
 
 
