@@ -104,10 +104,14 @@ const GOLD_COIN_SLIDE_TILE_MIN := 0.18
 const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
-## 标签高度只随格子尺寸变化，所有单位同一尺寸。
-const STAT_BADGE_HEIGHT_MUL := 0.5
-const STAT_BADGE_MIN_HEIGHT := 14.0
-const STAT_BADGE_MAX_HEIGHT := 28.0
+## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
+const STAT_BADGE_HEIGHT_MUL := 0.42
+const STAT_BADGE_MIN_HEIGHT := 11.0
+const STAT_BADGE_MAX_HEIGHT := 24.0
+## 一行徽章总宽不超过该比例×格宽，避免邻格脚下数值互叠。
+const STAT_BADGE_ROW_MAX_CELL_W := 0.96
+## 同排徽章间距（相对徽章高度）；略疏一点避免贴图软边看起来粘在一起。
+const STAT_BADGE_GAP_MUL := 0.12
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
 const STAT_NUMBER_MAX_WIDTH := 0.42
@@ -2032,7 +2036,8 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	## 脚下可能有攻/血一行 + 价签第二行，预留两行高度避免信息卡盖住数字。
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
@@ -2064,7 +2069,7 @@ func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) 
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var bounds := get_board_rect()
 	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
 	_show_info_attachments(attachments, bounds, slide_dir, false)
@@ -2336,7 +2341,8 @@ func inspect_at(local_pos: Vector2) -> Dictionary:
 	for info: Dictionary in _collect_inspectables():
 		var center: Vector2 = info["center"]
 		var feet_y := center.y + px * 0.38
-		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + get_stat_badge_size(px).y * 1.2)
+		var badge_h := get_fitted_stat_badge_size(px, 2).y
+		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_h * 2.35)
 		if not hit.has_point(local_pos):
 			continue
 		var d := local_pos.distance_squared_to(center)
@@ -4057,7 +4063,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			ordered.remove_at(focus_at)
 			ordered.append(moved)
 	var shell_sz := _recruit_candidate_shell_size(px)
-	var badge := get_stat_badge_size(px)
+	var badge := get_fitted_stat_badge_size(px, 2)
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -4102,10 +4108,10 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
-		## 价签/攻血挂在统一卡壳下缘外侧（_draw_stat_badges 会再加 px*0.38）。
+		## 攻/血挂卡壳下缘外侧；价签由 _draw_stat_badges 排到第二行，落在空行内不挡道具。
 		var badge_anchor := Vector2(
 			center_local.x,
-			center_local.y + shell_sz.y * 0.5 - px * 0.38 + badge.y * 0.08,
+			center_local.y + shell_sz.y * 0.5 - px * 0.38 + badge.y * 0.04,
 		)
 		_draw_stat_badges(
 			badge_anchor, atk, hp, alpha, px, 0, cost, affordable
@@ -4123,7 +4129,7 @@ func _draw_recruit_gold_badge(
 ) -> void:
 	if STAT_GOLD_TEX == null:
 		return
-	var badge := get_stat_badge_size(px)
+	var badge := get_fitted_stat_badge_size(px, 1)
 	var top := center.y + px * 0.38 + badge.y * 0.05
 	var half_span := badge.x * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
@@ -4694,14 +4700,32 @@ func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, 
 	draw_polyline(points, color, width, true)
 
 
-## 攻血标尺寸：只随格子尺寸变化，与兵种剪影、数值位数无关。
+## 攻血标名义尺寸：只随格子尺寸变化，与兵种剪影、数值位数无关。
 func get_stat_badge_size(px: float) -> Vector2:
 	var h := clampf(px * STAT_BADGE_HEIGHT_MUL, STAT_BADGE_MIN_HEIGHT, STAT_BADGE_MAX_HEIGHT)
 	var tex_size := STAT_ATTACK_TEX.get_size()
 	return Vector2(h * tex_size.x / maxf(1.0, tex_size.y), h)
 
 
-## 脚下纸片标签：攻 + 血；有装备护甲时再画护甲标（无图则跳过护甲标）。
+## 将一行 count 枚徽章缩到 max_width 内；count<=0 时退回名义尺寸。
+func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) -> Vector2:
+	var base := get_stat_badge_size(px)
+	var n := maxi(1, count)
+	var cap := max_width if max_width > 0.0 else px * STAT_BADGE_ROW_MAX_CELL_W
+	var gap_mul := STAT_BADGE_GAP_MUL
+	## total_w = n*w + (n-1)*h*gap_mul，且 w/h = base.x/base.y。
+	var aspect := base.x / maxf(1.0, base.y)
+	var denom := float(n) * aspect + float(n - 1) * gap_mul
+	var h_fit := cap / maxf(0.001, denom)
+	var h := minf(base.y, h_fit)
+	## 可读下限：仍优先不互挡，故允许略低于名义 MIN。
+	h = maxf(h, minf(STAT_BADGE_MIN_HEIGHT, base.y * 0.72))
+	if h * denom > cap + 0.01:
+		h = cap / maxf(0.001, denom)
+	return Vector2(h * aspect, h)
+
+
+## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -4712,14 +4736,15 @@ func _draw_stat_badges(
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
 ) -> void:
-	var badge := get_stat_badge_size(px)
-	var gap := badge.y * 0.06
-	var top := center.y + px * 0.38 + badge.y * 0.05
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
-	var count := 2 + (1 if show_armor else 0) + (1 if show_gold else 0)
-	var total_w := badge.x * float(count) + gap * float(count - 1)
+	var primary_count := 2 + (1 if show_armor else 0)
+	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
+	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
+	var gap := badge.y * STAT_BADGE_GAP_MUL
+	var top := center.y + px * 0.38 + badge.y * 0.05
+	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
@@ -4732,10 +4757,14 @@ func _draw_stat_badges(
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
 	if show_armor:
 		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-		slot += 1
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
 	if show_gold:
-		var gold_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
+		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
+		var gold_top := top + badge.y + gap * 1.6
+		var gold_half := gold_badge.x * 0.5
+		var gold_cx := clampf(center.x, gold_half, maxf(gold_half, size.x - gold_half))
+		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
 		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
 		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
 
