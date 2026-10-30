@@ -25,6 +25,7 @@ id = "echo_spear"
 display_name = "残影"
 cost = 2
 tier = 1
+theme_bond = 1
 command_cost = 3
 stats = SubResource("UnitStats_echo_spear")
 ability = ExtResource("3_ability")

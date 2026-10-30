@@ -27,6 +27,7 @@ id = "rider"
 display_name = "狼骑兵"
 cost = 3
 tier = 3
+theme_bond = 3
 command_cost = 4
 stats = SubResource("UnitStats_rider")
 ability = ExtResource("3_ability")

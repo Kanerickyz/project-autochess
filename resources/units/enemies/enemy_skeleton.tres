@@ -28,6 +28,7 @@ id = "enemy_skeleton"
 display_name = "敌·民兵"
 cost = 1
 tier = 1
+theme_bond = 1
 command_cost = 1
 stats = SubResource("UnitStats_enemy_skeleton")
 team_default = 1

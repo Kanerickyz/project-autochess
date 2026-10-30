@@ -25,6 +25,7 @@ id = "dirge_horn"
 display_name = "号手"
 cost = 3
 tier = 2
+theme_bond = 5
 command_cost = 4
 stats = SubResource("UnitStats_dirge_horn")
 ability = ExtResource("3_ability")

@@ -25,6 +25,7 @@ id = "enemy_dirge_horn"
 display_name = "敌·号手"
 cost = 3
 tier = 2
+theme_bond = 5
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_dirge_horn")

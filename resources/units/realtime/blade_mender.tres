@@ -26,6 +26,7 @@ id = "blade_mender"
 display_name = "疗刃"
 cost = 3
 tier = 3
+theme_bond = 6
 command_cost = 3
 stats = SubResource("UnitStats_blade_mender")
 ability = ExtResource("3_ability")

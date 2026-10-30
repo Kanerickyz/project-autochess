@@ -25,6 +25,7 @@ id = "mirror_warden"
 display_name = "禁卫"
 cost = 4
 tier = 3
+theme_bond = 7
 command_cost = 5
 stats = SubResource("UnitStats_mirror_warden")
 ability = ExtResource("3_ability")

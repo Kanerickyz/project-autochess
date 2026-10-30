@@ -74,6 +74,18 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
+[node name="ThemeScroll" type="ScrollContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+vertical_scroll_mode = 0
+
+[node name="ThemeFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody/ThemeScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
+
 [node name="TierFilter" type="HBoxContainer" parent="Root/Hud/HudMargin/HudVBox/FilterBody"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -108,7 +120,7 @@ alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
 theme_override_font_sizes/font_size = 13
-text = "长按单位查看技能 · 可切换一星 / 三合一预览 · 可按品阶 / 触发 / 效果筛选"
+text = "长按单位查看技能 · 可切换一星 / 三合一预览 · 可按主题 / 品阶 / 触发 / 效果筛选"
 horizontal_alignment = 1
 
 [node name="CodexArena" type="Control" parent="Root"]

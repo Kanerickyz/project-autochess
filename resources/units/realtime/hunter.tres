@@ -25,6 +25,7 @@ id = "hunter"
 display_name = "猎手"
 cost = 3
 tier = 2
+theme_bond = 2
 command_cost = 4
 stats = SubResource("UnitStats_hunter")
 ability = ExtResource("3_ability")

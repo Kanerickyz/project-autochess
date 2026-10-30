@@ -25,6 +25,7 @@ id = "enemy_vita_keeper"
 display_name = "敌·命卫"
 cost = 3
 tier = 2
+theme_bond = 7
 team_default = 1
 command_cost = 3
 stats = SubResource("UnitStats_enemy_vita_keeper")

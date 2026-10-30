@@ -26,6 +26,7 @@ id = "enemy_shinobi"
 display_name = "敌·影刺"
 cost = 3
 tier = 2
+theme_bond = 6
 command_cost = 4
 stats = SubResource("UnitStats_enemy_shinobi")
 team_default = 1

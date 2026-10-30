@@ -28,6 +28,7 @@ id = "arcane"
 display_name = "奥术"
 cost = 3
 tier = 2
+theme_bond = 6
 command_cost = 4
 stats = SubResource("UnitStats_arcane")
 ability = ExtResource("3_ability")

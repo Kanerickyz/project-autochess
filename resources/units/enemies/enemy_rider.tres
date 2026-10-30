@@ -27,6 +27,7 @@ id = "enemy_rider"
 display_name = "敌·狼骑兵"
 cost = 3
 tier = 3
+theme_bond = 3
 command_cost = 4
 stats = SubResource("UnitStats_enemy_rider")
 team_default = 1

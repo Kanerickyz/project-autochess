@@ -29,6 +29,7 @@ id = "enemy_musketeer"
 display_name = "敌·火枪手"
 cost = 3
 tier = 2
+theme_bond = 4
 command_cost = 4
 stats = SubResource("UnitStats_enemy_musketeer")
 team_default = 1

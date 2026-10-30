@@ -17,6 +17,7 @@
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
+| [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（七类包装；角色库筛选；战斗同主题效果另切片） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
@@ -129,7 +130,7 @@ Project Autochess/
 | `resources/units/test_*.tres` | 三样本测试单位 | **M3.5 已实现** |
 | `resources/abilities/` | 单位技能资源；规则见 [UNIT_ABILITIES](./Features/UNIT_ABILITIES.md)；内容归 Content；商店技能 `.tres` **待迁出** | **M3.5+** |
 | `resources/effects/` | 可复用效果片段（可选） | 空目录（效果嵌在 ability `.tres`） |
-| `resources/traits/` | 羁绊 `.tres`（**远期**，非 v1） | 不实现 |
+| `resources/traits/` | 主题羁绊**战斗**效果资源（可选；分类在 `UnitData.theme_bond`） | 分类已落地；战斗效果另切片 |
 | `resources/items/` | 装备（可选） | 空目录（未使用） |
 | `assets/sprites/` | 2D 精灵与图集 | 已创建（骨架） |
 | `assets/audio/` | BGM / SFX | 已创建（骨架） |

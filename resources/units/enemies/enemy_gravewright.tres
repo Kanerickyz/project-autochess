@@ -25,6 +25,7 @@ id = "enemy_gravewright"
 display_name = "敌·掘墓"
 cost = 3
 tier = 2
+theme_bond = 1
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_gravewright")

@@ -1,9 +1,19 @@
 extends Control
-## 角色库：用战斗棋盘同款剪影铺招募池单位；可按 tier / 触发时机 / 技能效果筛选；长按弹技能卡。
+## 角色库：用战斗棋盘同款剪影铺招募池单位；可按主题羁绊 / tier / 触发时机 / 技能效果筛选；长按弹技能卡。
 
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const RECRUIT_CONFIG_PATH := "res://resources/recruit/default_recruit_config.tres"
 const CATALOG_COLUMNS := 5
+## 主题羁绊筛选序（与 UnitData.ThemeBond / UNIT_THEME_BONDS 一致）。
+const THEME_BOND_ORDER: Array[UnitData.ThemeBond] = [
+	UnitData.ThemeBond.UNDEAD,
+	UnitData.ThemeBond.WARRIOR,
+	UnitData.ThemeBond.KNIGHT,
+	UnitData.ThemeBond.ARTISAN,
+	UnitData.ThemeBond.BAND,
+	UnitData.ThemeBond.ARCANA,
+	UnitData.ThemeBond.GUARD,
+]
 ## 触发按钮优先按此序排列（与 UnitInfoText 文案一致）；池中未出现的不显示。
 const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_COMBAT_START,
@@ -50,6 +60,7 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 @onready var _back_button: Button = %BackButton
 @onready var _filter_toggle: Button = %FilterToggle
 @onready var _filter_body: VBoxContainer = %FilterBody
+@onready var _theme_filter: HBoxContainer = %ThemeFilter
 @onready var _tier_filter: HBoxContainer = %TierFilter
 @onready var _trigger_filter: HBoxContainer = %TriggerFilter
 @onready var _effect_filter: HBoxContainer = %EffectFilter
@@ -60,6 +71,8 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 @onready var _content_root: Control = $Root
 
 var _all_units: Array[UnitData] = []
+## UnitData.ThemeBond.NONE = 全部主题
+var _selected_theme: UnitData.ThemeBond = UnitData.ThemeBond.NONE
 ## 0 = 全部；1–6 = 对应 tier
 var _selected_tier: int = 0
 ## &"" = 全部时机；TRIGGER_NONE = 无技能；其余为 CombatEvents / ShopEvents
@@ -69,10 +82,12 @@ var _selected_effect: EffectCategory = EffectCategory.ALL
 var _preview_level: int = 1
 ## 顶部筛选栏展开；收起后棋盘更高。
 var _filters_expanded: bool = true
+var _theme_buttons: Dictionary = {} # ThemeBond -> Button
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
 var _effect_buttons: Dictionary = {} # EffectCategory -> Button
 var _star_buttons: Dictionary = {} # level -> Button
+var _theme_button_group: ButtonGroup = ButtonGroup.new()
 var _tier_button_group: ButtonGroup = ButtonGroup.new()
 var _trigger_button_group: ButtonGroup = ButtonGroup.new()
 var _effect_button_group: ButtonGroup = ButtonGroup.new()
@@ -83,11 +98,13 @@ func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	if _filter_toggle != null:
 		_filter_toggle.pressed.connect(_on_filter_toggle_pressed)
+	_theme_button_group.allow_unpress = false
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
 	_effect_button_group.allow_unpress = false
 	_star_button_group.allow_unpress = false
 	_load_pool()
+	_build_theme_filters()
 	_build_tier_filters()
 	_build_trigger_filters()
 	_build_effect_filters()
@@ -108,8 +125,52 @@ func _apply_filter_collapsed() -> void:
 	if _filter_toggle != null:
 		_filter_toggle.text = "筛选 ▴" if _filters_expanded else "筛选 ▾"
 		_filter_toggle.tooltip_text = (
-			"收起筛选栏，扩大棋盘" if _filters_expanded else "展开品阶 / 触发 / 效果 / 星级筛选"
+			"收起筛选栏，扩大棋盘"
+			if _filters_expanded
+			else "展开主题 / 品阶 / 触发 / 效果 / 星级筛选"
 		)
+
+
+func _build_theme_filters() -> void:
+	if _theme_filter == null:
+		return
+	for child in _theme_filter.get_children():
+		child.queue_free()
+	_theme_buttons.clear()
+	_add_theme_button(UnitData.ThemeBond.NONE, "全部主题")
+	var present: Dictionary = {}
+	for unit in _all_units:
+		if unit == null:
+			continue
+		if unit.theme_bond == UnitData.ThemeBond.NONE:
+			continue
+		present[unit.theme_bond] = true
+	for bond in THEME_BOND_ORDER:
+		if present.has(bond):
+			_add_theme_button(bond, UnitData.theme_bond_label(bond))
+	if _theme_buttons.has(_selected_theme):
+		(_theme_buttons[_selected_theme] as Button).button_pressed = true
+	elif _theme_buttons.has(UnitData.ThemeBond.NONE):
+		_selected_theme = UnitData.ThemeBond.NONE
+		(_theme_buttons[UnitData.ThemeBond.NONE] as Button).button_pressed = true
+
+
+func _add_theme_button(bond: UnitData.ThemeBond, label: String) -> void:
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_group = _theme_button_group
+	button.custom_minimum_size = Vector2(0, 36)
+	button.text = label
+	button.pressed.connect(_on_theme_pressed.bind(bond))
+	_theme_filter.add_child(button)
+	_theme_buttons[bond] = button
+
+
+func _on_theme_pressed(bond: UnitData.ThemeBond) -> void:
+	if _selected_theme == bond:
+		return
+	_selected_theme = bond
+	_rebuild_board()
 
 
 func _load_pool() -> void:
@@ -416,6 +477,8 @@ func _unit_matches_effect(unit: UnitData) -> bool:
 func _filtered_units() -> Array[UnitData]:
 	var out: Array[UnitData] = []
 	for unit in _all_units:
+		if _selected_theme != UnitData.ThemeBond.NONE and unit.theme_bond != _selected_theme:
+			continue
 		if _selected_tier > 0 and maxi(1, unit.tier) != _selected_tier:
 			continue
 		if not _unit_matches_trigger(unit):
@@ -441,6 +504,8 @@ func _rebuild_board() -> void:
 func _format_count(count: int) -> String:
 	var parts: PackedStringArray = []
 	parts.append("一星" if _preview_level <= 1 else "三合一")
+	if _selected_theme != UnitData.ThemeBond.NONE:
+		parts.append(UnitData.theme_bond_label(_selected_theme))
 	if _selected_tier > 0:
 		parts.append("T%d" % _selected_tier)
 	if _selected_trigger == TRIGGER_NONE:

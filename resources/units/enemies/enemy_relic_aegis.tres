@@ -25,6 +25,7 @@ id = "enemy_relic_aegis"
 display_name = "敌·圣骸"
 cost = 3
 tier = 2
+theme_bond = 1
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_relic_aegis")

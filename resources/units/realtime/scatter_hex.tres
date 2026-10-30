@@ -26,6 +26,7 @@ id = "scatter_hex"
 display_name = "散咒"
 cost = 2
 tier = 1
+theme_bond = 6
 command_cost = 2
 stats = SubResource("UnitStats_scatter")
 ability = ExtResource("3_ability")

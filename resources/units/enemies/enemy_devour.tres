@@ -26,6 +26,7 @@ id = "enemy_devour"
 display_name = "敌·吞噬"
 cost = 4
 tier = 3
+theme_bond = 2
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_devour")

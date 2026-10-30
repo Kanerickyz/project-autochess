@@ -25,6 +25,7 @@ id = "enemy_hunter"
 display_name = "敌·猎手"
 cost = 3
 tier = 2
+theme_bond = 2
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_hunter")

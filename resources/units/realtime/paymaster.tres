@@ -26,6 +26,7 @@ id = "paymaster"
 display_name = "饷吏"
 cost = 2
 tier = 1
+theme_bond = 3
 command_cost = 2
 stats = SubResource("UnitStats_paymaster")
 ability = ExtResource("3_ability")
