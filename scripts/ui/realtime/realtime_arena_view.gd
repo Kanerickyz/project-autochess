@@ -4080,13 +4080,13 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空，跟手处播碎裂卡。
 		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
 		if hide_body:
-			if (
-				dragging
-				and _recruit_left_source
-				and _drag_visual_alive
-				and _recruit_shell_progress < 0.999
-			):
-				_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
+			if dragging and _recruit_left_source and _drag_visual_alive:
+				## 跟手碎裂卡（进度到 1 后仍可无）。
+				if _recruit_shell_progress < 0.999:
+					_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
+				else:
+					## 保底：溶解播完前若 progress 已满，仍让人看见过卡（调试期可见性）。
+					pass
 			continue
 		if restoring and _recruit_shell_progress > 0.001:
 			_draw_recruit_card_shell_dissolving(center_local, px, _recruit_shell_progress)
@@ -4878,15 +4878,11 @@ func _draw_drag_follower(px: float) -> void:
 	var tile := local_to_tile(_drag_draw_pos)
 	var snapped := tile_to_local(tile)
 	var pixel_off := _drag_draw_pos - snapped
-	## 离格溶解：先贴跟手卡壳（shader 噪声碎掉），再画居中纸片。
-	if (
-		_recruit_drag_index >= 0
-		and _recruit_left_source
-		and _recruit_shell_progress < 0.999
-		and _drag_texture == null
-	):
-		_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
-	var center_sprite := _recruit_drag_index >= 0 and _recruit_shell_progress < 0.999
+	## 离格溶解：先贴跟手卡壳（噪声碎掉），再画居中纸片。
+	if _recruit_drag_index >= 0 and _recruit_left_source and _drag_texture == null:
+		var dissolve_p := clampf(_recruit_shell_progress, 0.0, 0.92)
+		_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, dissolve_p)
+	var center_sprite := _recruit_drag_index >= 0 and _recruit_left_source
 	_draw_body(
 		tile,
 		_drag_radius,
