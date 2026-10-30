@@ -377,18 +377,9749 @@
 			"value": "1.0"
 		}
 	],
+	"lineups": {
+		"description": "每局结束时（通关或阵亡时刻）的队伍快照；上场=已入座。角色统计按局去重计「上场局数」。",
+		"runs": [
+			{
+				"bench": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10001
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10002
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10003
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10008
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10009
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10010
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10011
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10013
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10014
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10016
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10017
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10018
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10019
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10020
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10021
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10023
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10025
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10026
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10027
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10028
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10029
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10032
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10033
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10034
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10038
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10040
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10041
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10042
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10043
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10045
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10046
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10047
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10049
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10050
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10051
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10053
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10054
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10055
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10056
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10058
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10059
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10060
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10061
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10062
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10063
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10066
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10067
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10069
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10070
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10071
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10072
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10073
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10074
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10078
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10079
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10080
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10081
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10082
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10083
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10084
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10085
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10086
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10087
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10088
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10089
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10090
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10091
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10093
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10095
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 0,
+				"outcome": "RUN_COMPLETE",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "狂战士",
+						"tier": 3,
+						"unit_id": "berserker"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10098
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 15,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10068
+			},
+			{
+				"bench": [
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"death_floor": 15,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10096
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 14,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 1,
+						"name": "雷鼓",
+						"tier": 3,
+						"unit_id": "thunder_drum"
+					},
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					}
+				],
+				"seed": 10030
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 14,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10099
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 12,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10015
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 12,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10039
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					}
+				],
+				"death_floor": 12,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10065
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 12,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": true,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10092
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 11,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10035
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 11,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "帑卫",
+						"tier": 3,
+						"unit_id": "coffer_ward"
+					},
+					{
+						"level": 1,
+						"name": "大剑",
+						"tier": 3,
+						"unit_id": "mini_pekka"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10076
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "猎手",
+						"tier": 2,
+						"unit_id": "hunter"
+					},
+					{
+						"level": 1,
+						"name": "猎手",
+						"tier": 2,
+						"unit_id": "hunter"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10004
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10005
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "火铳",
+						"tier": 2,
+						"unit_id": "musketeer"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10006
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10022
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10024
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10031
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 1,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10036
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10037
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10044
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 10,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10048
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10052
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10064
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "猎手",
+						"tier": 2,
+						"unit_id": "hunter"
+					},
+					{
+						"level": 1,
+						"name": "猎手",
+						"tier": 2,
+						"unit_id": "hunter"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10075
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "火铳",
+						"tier": 2,
+						"unit_id": "musketeer"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10077
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10094
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "火铳",
+						"tier": 2,
+						"unit_id": "musketeer"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"death_floor": 10,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10100
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 9,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10012
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "奥术",
+						"tier": 2,
+						"unit_id": "arcane"
+					},
+					{
+						"level": 1,
+						"name": "骑弓",
+						"tier": 2,
+						"unit_id": "horsebow"
+					},
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					}
+				],
+				"death_floor": 9,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 8,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10057
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 9,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 9,
+				"seated": [
+					{
+						"level": 1,
+						"name": "巨锤",
+						"tier": 2,
+						"unit_id": "maul"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"seed": 10097
+			},
+			{
+				"bench": [
+					{
+						"level": 1,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 1,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 1,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					}
+				],
+				"death_floor": 7,
+				"outcome": "RUN_DEFEAT",
+				"reached_f12": false,
+				"seat_cap": 5,
+				"seated": [
+					{
+						"level": 2,
+						"name": "弩手",
+						"tier": 1,
+						"unit_id": "crossbow"
+					},
+					{
+						"level": 2,
+						"name": "余烬",
+						"tier": 1,
+						"unit_id": "goblin"
+					},
+					{
+						"level": 2,
+						"name": "盾卫",
+						"tier": 1,
+						"unit_id": "knight"
+					},
+					{
+						"level": 2,
+						"name": "刺盾",
+						"tier": 1,
+						"unit_id": "spike_shield"
+					},
+					{
+						"level": 1,
+						"name": "咒刃",
+						"tier": 1,
+						"unit_id": "edge_hex"
+					}
+				],
+				"seed": 10007
+			}
+		],
+		"runs_other": 22,
+		"runs_reached_f12": 78,
+		"unit_usage": [
+			{
+				"avg_level": 2.0,
+				"copies_seated": 151,
+				"name": "弩手",
+				"rate_other": 1.0,
+				"rate_reached_f12": 1.0,
+				"runs_other": 22,
+				"runs_reached_f12": 78,
+				"tier": 1,
+				"unit_id": "crossbow"
+			},
+			{
+				"avg_level": 1.96774193548387,
+				"copies_seated": 155,
+				"name": "巨锤",
+				"rate_other": 0.727272727272727,
+				"rate_reached_f12": 0.961538461538462,
+				"runs_other": 16,
+				"runs_reached_f12": 75,
+				"tier": 2,
+				"unit_id": "maul"
+			},
+			{
+				"avg_level": 1.86792452830189,
+				"copies_seated": 159,
+				"name": "帑卫",
+				"rate_other": 0.0454545454545455,
+				"rate_reached_f12": 0.948717948717949,
+				"runs_other": 1,
+				"runs_reached_f12": 74,
+				"tier": 3,
+				"unit_id": "coffer_ward"
+			},
+			{
+				"avg_level": 1.94202898550725,
+				"copies_seated": 69,
+				"name": "骑弓",
+				"rate_other": 0.136363636363636,
+				"rate_reached_f12": 0.833333333333333,
+				"runs_other": 3,
+				"runs_reached_f12": 65,
+				"tier": 2,
+				"unit_id": "horsebow"
+			},
+			{
+				"avg_level": 1.5188679245283,
+				"copies_seated": 106,
+				"name": "雷鼓",
+				"rate_other": 0.0,
+				"rate_reached_f12": 0.58974358974359,
+				"runs_other": 0,
+				"runs_reached_f12": 46,
+				"tier": 3,
+				"unit_id": "thunder_drum"
+			},
+			{
+				"avg_level": 1.54838709677419,
+				"copies_seated": 93,
+				"name": "狂战士",
+				"rate_other": 0.0,
+				"rate_reached_f12": 0.564102564102564,
+				"runs_other": 0,
+				"runs_reached_f12": 44,
+				"tier": 3,
+				"unit_id": "berserker"
+			},
+			{
+				"avg_level": 1.98507462686567,
+				"copies_seated": 67,
+				"name": "咒刃",
+				"rate_other": 0.727272727272727,
+				"rate_reached_f12": 0.358974358974359,
+				"runs_other": 16,
+				"runs_reached_f12": 28,
+				"tier": 1,
+				"unit_id": "edge_hex"
+			},
+			{
+				"avg_level": 1.4468085106383,
+				"copies_seated": 47,
+				"name": "大剑",
+				"rate_other": 0.0454545454545455,
+				"rate_reached_f12": 0.551282051282051,
+				"runs_other": 1,
+				"runs_reached_f12": 43,
+				"tier": 3,
+				"unit_id": "mini_pekka"
+			},
+			{
+				"avg_level": 2.0,
+				"copies_seated": 48,
+				"name": "刺盾",
+				"rate_other": 1.0,
+				"rate_reached_f12": 0.0897435897435897,
+				"runs_other": 22,
+				"runs_reached_f12": 7,
+				"tier": 1,
+				"unit_id": "spike_shield"
+			},
+			{
+				"avg_level": 2.0,
+				"copies_seated": 42,
+				"name": "盾卫",
+				"rate_other": 1.0,
+				"rate_reached_f12": 0.0641025641025641,
+				"runs_other": 22,
+				"runs_reached_f12": 5,
+				"tier": 1,
+				"unit_id": "knight"
+			},
+			{
+				"avg_level": 2.0,
+				"copies_seated": 23,
+				"name": "余烬",
+				"rate_other": 0.909090909090909,
+				"rate_reached_f12": 0.0384615384615385,
+				"runs_other": 20,
+				"runs_reached_f12": 3,
+				"tier": 1,
+				"unit_id": "goblin"
+			},
+			{
+				"avg_level": 1.33333333333333,
+				"copies_seated": 3,
+				"name": "奥术",
+				"rate_other": 0.0909090909090909,
+				"rate_reached_f12": 0.0128205128205128,
+				"runs_other": 2,
+				"runs_reached_f12": 1,
+				"tier": 2,
+				"unit_id": "arcane"
+			}
+		]
+	},
 	"meta": {
 		"ai_profile_id": "bandit-v5-direct",
 		"checkpoint": "res://resources/sim_balance/checkpoints/bandit_v5_direct.tres",
 		"direct_pick": true,
-		"elapsed_ms": 98202,
+		"elapsed_ms": 97985,
 		"game_version": "0.5.255",
-		"generated_at_utc": "2026-10-30T09:29:39",
+		"generated_at_utc": "2026-10-30T09:52:01",
 		"report_schema_version": "1.0",
 		"runs_requested": 100,
 		"seed_start": 10001,
-		"git_ref": "balance-eval",
-		"github_sha": "c0260b0"
+		"git_ref": "cursor/direct-pick-sim-d63b",
+		"github_sha": "ec57a1c"
 	},
 	"reached_f12_count": 78,
 	"report_schema_version": "1.0",

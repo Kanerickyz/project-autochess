@@ -1,7 +1,17 @@
 {
 	"manifest_schema_version": "1.0",
-	"latest_run_id": "2026-10-30T09-29-39Z_100runs_v0.5.255_c0260b0",
+	"latest_run_id": "2026-10-30T09-52-01Z_100runs_v0.5.255_ec57a1c",
 	"runs": [
+		{
+			"id": "2026-10-30T09-52-01Z_100runs_v0.5.255_ec57a1c",
+			"path": "runs/2026-10-30T09-52-01Z_100runs_v0.5.255_ec57a1c/summary.json",
+			"generated_at_utc": "2026-10-30T09:52:01",
+			"game_version": "0.5.255",
+			"run_count": 100,
+			"git_ref": "cursor/direct-pick-sim-d63b",
+			"github_sha": "ec57a1c",
+			"ai_profile_id": "bandit-v5-direct"
+		},
 		{
 			"id": "2026-10-30T09-29-39Z_100runs_v0.5.255_c0260b0",
 			"path": "runs/2026-10-30T09-29-39Z_100runs_v0.5.255_c0260b0/summary.json",
