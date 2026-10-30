@@ -132,7 +132,7 @@ const DRAG_SOURCE_ALPHA := 0.32
 const RECRUIT_CARD_DISSOLVE_SEC := 0.55
 const RECRUIT_CARD_RESTORE_SEC := 0.40
 const RECRUIT_CARD_W_CELLS := 0.90
-const RECRUIT_CARD_H_CELLS := 1.30
+const RECRUIT_CARD_H_CELLS := 1.18
 const RECRUIT_CARD_SLOT_CAP := 5
 const RECRUIT_CARD_DISSOLVE_COLS := 10
 const RECRUIT_CARD_DISSOLVE_ROWS := 13
@@ -4080,13 +4080,12 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空，跟手处播碎裂卡。
 		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
 		if hide_body:
-			if dragging and _recruit_left_source and _drag_visual_alive:
-				## 跟手碎裂卡（进度到 1 后仍可无）。
-				if _recruit_shell_progress < 0.999:
-					_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
-				else:
-					## 保底：溶解播完前若 progress 已满，仍让人看见过卡（调试期可见性）。
-					pass
+			if dragging and _recruit_left_source:
+				var dissolve_p := clampf(_recruit_shell_progress, 0.0, 0.92)
+				## 源槽就地碎裂（最易看见）+ 跟手同步碎裂。
+				_draw_recruit_card_shell_dissolving(center_local, px, dissolve_p)
+				if _drag_visual_alive:
+					_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, dissolve_p)
 			continue
 		if restoring and _recruit_shell_progress > 0.001:
 			_draw_recruit_card_shell_dissolving(center_local, px, _recruit_shell_progress)
@@ -4597,11 +4596,15 @@ func _draw_unit_sprite(
 		w *= RECRUIT_PROP_SPRITE_SCALE
 		h *= RECRUIT_PROP_SPRITE_SCALE
 		content_bottom = RECRUIT_PROP_CONTENT_BOTTOM
-	## 货架卡：贴图几何中心对齐卡心；2×2 同理；1×1 战场仍脚底略低于格心。
+	## 货架卡：略上移对齐视觉重心（贴图下方常有留白）；2×2 几何居中；1×1 战场脚底锚点。
 	var feet := (
-		center + Vector2(0.0, h * 0.5)
-		if center_sprite or footprint_span >= 1.5
-		else center + Vector2(0.0, px * 0.38)
+		center + Vector2(0.0, h * 0.42)
+		if center_sprite
+		else (
+			center + Vector2(0.0, h * 0.5)
+			if footprint_span >= 1.5
+			else center + Vector2(0.0, px * 0.38)
+		)
 	)
 	var offset := Vector2.ZERO
 	var rot := 0.0

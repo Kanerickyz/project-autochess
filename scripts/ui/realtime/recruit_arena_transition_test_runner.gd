@@ -125,16 +125,16 @@ func _test_recruit_arena_transition() -> void:
 			absf(arena.size.y - prepare_arena_h) <= 2.0,
 			"arena height matches prepare (no dock collapse)"
 		)
-	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+1；备战中缝。
+	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+2（中间空一行）；备战中缝。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 2))
-	var expected_action_y := expected_cand_y + 1
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
+	var expected_action_y := expected_cand_y + 2
 	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
 	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
 	_expect(cand_cell.y == expected_cand_y, "candidate row in recruit half row 1 (mid+1)")
 	if not arena.recruit_items.is_empty():
 		var item_cell: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item_cell.y == expected_action_y, "item row y == cand_y+1")
+		_expect(item_cell.y == expected_action_y, "item row y == cand_y+2")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell on action row")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock on action row")
 	_expect(arena.bench_slots != null and arena.bench_slots.get_cell(0).y == mid_y, "recruit bench on midline")

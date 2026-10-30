@@ -106,10 +106,10 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+1；备战夹在队伍与候选之间。
+	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+2（中间空一行）；备战夹在队伍与候选之间。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 2))
-	var expected_action_y := expected_cand_y + 1
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
+	var expected_action_y := expected_cand_y + 2
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
 	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
 	if not arena.recruit_candidates.is_empty():
@@ -129,15 +129,15 @@ func _test_opening_enter_recruit_ui() -> void:
 	_expect(not arena.recruit_items.is_empty(), "item row present")
 	if not arena.recruit_items.is_empty():
 		var item0: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item0.y == expected_action_y, "item row y == cand_y+1")
-		_expect(item0.y - expected_cand_y == 1, "candidate/item row delta == 1")
+		_expect(item0.y == expected_action_y, "item row y == cand_y+2")
+		_expect(item0.y - expected_cand_y == 2, "candidate/item row delta == 2")
 		for info in arena.recruit_items:
 			var ic: Vector2i = info.get("cell", Vector2i(-1, -1))
 			_expect(ic.y == expected_action_y, "all items share action row")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell same row as items")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock same row as items")
 	_expect(arena.recruit_sell_cell != arena.recruit_lock_cell, "sell/lock not overlapping")
-	_expect(arena.recruit_sell_cell.y != expected_cand_y + 2, "sell not on cand_y+2")
+	_expect(arena.recruit_sell_cell.y == expected_cand_y + 2, "sell on cand_y+2")
 
 	## 道具 / 锁定 / 卖出均可长按 inspect（同 is_item 信息卡路径）。
 	if not arena.recruit_items.is_empty():
