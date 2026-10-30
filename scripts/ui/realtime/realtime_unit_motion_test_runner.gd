@@ -31,6 +31,7 @@ func _run() -> void:
 	await _test_prepare_bench_tap_auto_deploy()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
+	await _test_recruit_card_dissolve()
 	await _test_recruit_team_sell_drag()
 	await _test_recruit_team_bench_drag()
 	await _test_recruit_lock_drag()
@@ -530,6 +531,56 @@ func _test_recruit_input() -> void:
 	move.relative = Vector2(26, 0)
 	arena._gui_input(move)
 	_expect(arena.recruit_selected_candidate == 0, "moving past slop starts the recruit drag")
+	arena.clear_recruit_mode()
+	arena.queue_free()
+	await process_frame
+
+
+func _test_recruit_card_dissolve() -> void:
+	## §6.3：离源格后源槽空；买不起可预览拖；失败回弹不改扣费口径。
+	var arena := RealtimeArenaView.new()
+	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 8)
+	root.add_child(arena)
+	await process_frame
+	var unit := load(UNIT_PATHS[0]) as UnitData
+	var mid := BoardHalf.midline_row(arena.board_size.y)
+	var cell := Vector2i(2, mid + 1)
+	arena.recruit_active = true
+	arena.recruit_candidates = [{
+		"index": 0, "unit": unit, "cell": cell, "cost": 9, "affordable": false,
+	}]
+	var center := arena.tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
+	var outside := arena.tile_to_local(Vector2(cell) + Vector2(2.5, 0.5))
+	var drops: Array = []
+	arena.recruit_drop.connect(func(i: int, r: int, s: int) -> void: drops.append([i, r, s]))
+
+	_press(arena, center, true)
+	var move_in := InputEventMouseMotion.new()
+	move_in.position = center + Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	move_in.relative = Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
+	arena._gui_input(move_in)
+	_expect(arena.recruit_selected_candidate == 0, "unaffordable candidate still starts preview drag")
+	_expect(not arena.is_recruit_drag_detached(), "still in source cell keeps card attached")
+	_expect(not arena.is_recruit_drag_source_body_hidden(), "in-cell drag still shows source body")
+
+	var leave := InputEventMouseMotion.new()
+	leave.position = outside
+	leave.relative = outside - move_in.position
+	arena._gui_input(leave)
+	_expect(arena.is_recruit_drag_detached(), "leaving source cell detaches / dissolves card")
+	_expect(arena.is_recruit_drag_source_body_hidden(), "detached drag hides source body")
+	## 等半拍让 dissolve progress 推进（shader 噪声阈值，非整卡透明度）。
+	var waited := 0
+	while arena.get_recruit_shell_dissolve_progress() <= 0.05 and waited < 45:
+		await process_frame
+		waited += 1
+	_expect(arena.get_recruit_shell_dissolve_progress() > 0.05, "dissolve progress advances after leave")
+
+	## 松在下半场非法区：回弹路径（不发 recruit_drop）。
+	_press(arena, outside, false)
+	_expect(drops.is_empty(), "invalid half drop does not emit recruit_drop")
+	_expect(not arena.is_recruit_drag_detached(), "release clears active detach drag")
 	arena.clear_recruit_mode()
 	arena.queue_free()
 	await process_frame

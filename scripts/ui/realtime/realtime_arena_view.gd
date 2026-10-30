@@ -104,10 +104,14 @@ const GOLD_COIN_SLIDE_TILE_MIN := 0.18
 const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
-## 标签高度只随格子尺寸变化，所有单位同一尺寸。
-const STAT_BADGE_HEIGHT_MUL := 0.5
-const STAT_BADGE_MIN_HEIGHT := 14.0
-const STAT_BADGE_MAX_HEIGHT := 28.0
+## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
+const STAT_BADGE_HEIGHT_MUL := 0.42
+const STAT_BADGE_MIN_HEIGHT := 11.0
+const STAT_BADGE_MAX_HEIGHT := 24.0
+## 一行徽章总宽不超过该比例×格宽，避免邻格脚下数值互叠。
+const STAT_BADGE_ROW_MAX_CELL_W := 0.96
+## 同排徽章间距（相对徽章高度）；略疏一点避免贴图软边看起来粘在一起。
+const STAT_BADGE_GAP_MUL := 0.12
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
 const STAT_NUMBER_MAX_WIDTH := 0.42
@@ -128,6 +132,21 @@ const DRAG_FOLLOW_RATE := 18.0
 const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
 const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
+## 招募候选人货架卡壳（旧纸包装）：统一尺寸；噪声阈值逐步溶解（非整卡透明度）。
+const RECRUIT_CARD_DISSOLVE_SEC := 0.55
+const RECRUIT_CARD_RESTORE_SEC := 0.40
+const RECRUIT_CARD_W_CELLS := 0.90
+const RECRUIT_CARD_H_CELLS := 1.18
+const RECRUIT_CARD_SLOT_CAP := 5
+const RECRUIT_CARD_DISSOLVE_COLS := 10
+const RECRUIT_CARD_DISSOLVE_ROWS := 13
+const RECRUIT_CARD_BURN_WIDTH := 0.28
+const RECRUIT_CARD_NOISE_SCALE := 6.5
+const RECRUIT_CARD_SHADER: Shader = preload("res://assets/ui/recruit/recruit_card_dissolve.gdshader")
+const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.94)
+const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.55)
+const RECRUIT_CARD_STROKE := Color(0.38, 0.24, 0.12, 0.96)
+const RECRUIT_CARD_BURN := Color(1.0, 0.35, 0.05, 1.0)
 ## 三合一合成演出：残影飞入 → 合成体弹跳闪白 + 星标。
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
@@ -237,6 +256,17 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
+## 候选人拖出：源格、是否已离格溶解、溶解进度（0完整→1消失）、失败回席后再现。
+var _recruit_drag_source_cell: Vector2i = NO_CELL
+var _recruit_left_source: bool = false
+var _recruit_shell_progress: float = 0.0
+var _recruit_shell_tween: Tween
+var _recruit_restore_index: int = -1
+## 溶解离屏渲染（shader）；_draw 层再 blit。失败则同噪声 CPU 碎裂兜底。
+var _recruit_card_vp_host: SubViewportContainer
+var _recruit_card_vp: SubViewport
+var _recruit_card_vp_panel: ColorRect
+var _recruit_card_vp_mat: ShaderMaterial
 var _recruit_item_drag_index: int = -1
 var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
@@ -315,10 +345,16 @@ func _ready() -> void:
 	add_child(_motion)
 	_info_card.name = "UnitInfoCard"
 	add_child(_info_card)
+	_ensure_recruit_card_viewport()
 
 
 func _process(delta: float) -> void:
 	_fx_clock += delta
+	## 提前写 dissolve progress，让离屏 Viewport 本帧纹理跟上手拖。
+	if _recruit_card_vp_mat != null and (
+		(_recruit_drag_index >= 0 and _recruit_left_source) or _recruit_restore_index >= 0
+	):
+		_recruit_card_vp_mat.set_shader_parameter("progress", _recruit_shell_progress)
 	if _drag_visual_alive and not _drag_settling:
 		_update_drag_hold_pose(delta)
 	if sim != null and sim.has_started():
@@ -359,6 +395,7 @@ func _notification(what: int) -> void:
 		_drag_active = false
 		_recruit_drag_index = -1
 		_recruit_press_index = -1
+		_reset_recruit_card_dissolve()
 		_recruit_item_drag_index = -1
 		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
@@ -1014,6 +1051,8 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_track_press_motion(motion.position)
 		if _recruit_drag_index >= 0 or _recruit_item_drag_index >= 0 or _recruit_team_drag_id >= 0:
 			_set_drag_pointer(motion.position)
+			if _recruit_drag_index >= 0:
+				_update_recruit_drag_leave(motion.position)
 		elif _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
 			## 离开按下点超过容差即进入拖拽（触屏抖动不误触发）。
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
@@ -1555,7 +1594,235 @@ func _clear_drag_visual() -> void:
 	_drag_pose.rotation = 0.0
 	_drag_pose.flash = 0.0
 	_drag_pose.shadow_mul = 1.0
+	## 失败回席：纸片落地后再淡入卡壳（可被下次拖拽打断）。
+	if _recruit_restore_index >= 0:
+		_start_recruit_shell_restore(_recruit_restore_index)
 	queue_redraw()
+
+
+func _kill_recruit_shell_tween() -> void:
+	if _recruit_shell_tween != null and _recruit_shell_tween.is_valid():
+		_recruit_shell_tween.kill()
+	_recruit_shell_tween = null
+
+
+func _reset_recruit_card_dissolve() -> void:
+	_kill_recruit_shell_tween()
+	_recruit_drag_source_cell = NO_CELL
+	_recruit_left_source = false
+	_recruit_shell_progress = 0.0
+	_recruit_restore_index = -1
+	_hide_recruit_card_shells()
+
+
+## 测试/调试：候选人拖已离源格（卡溶解、源槽空、跟手仅纸片）。
+func is_recruit_drag_detached() -> bool:
+	return _recruit_drag_index >= 0 and _recruit_left_source
+
+
+## 测试/调试：源槽当前不画纸片角色（离格溶解中或失败回席飞行中）。
+func is_recruit_drag_source_body_hidden() -> bool:
+	if _recruit_drag_index >= 0 and _recruit_left_source:
+		return true
+	if _recruit_restore_index >= 0 and _drag_settling:
+		return true
+	return false
+
+
+## 测试/调试：当前溶解进度（0 完整 → 1 消失）。
+func get_recruit_shell_dissolve_progress() -> float:
+	return _recruit_shell_progress
+
+
+func _recruit_candidate_cell(index: int) -> Vector2i:
+	if index < 0 or index >= recruit_candidates.size():
+		return NO_CELL
+	var info: Variant = recruit_candidates[index]
+	if not (info is Dictionary):
+		return NO_CELL
+	return (info as Dictionary).get("cell", NO_CELL) as Vector2i
+
+
+func _update_recruit_drag_leave(local_pos: Vector2 = Vector2.INF) -> void:
+	if _recruit_drag_index < 0 or _recruit_left_source:
+		return
+	if _recruit_drag_source_cell == NO_CELL:
+		return
+	## 与点选候选人一致：用未钳死的虚拟格，避免半场外候选被 tile_to_cell 夹到他格而误溶。
+	var pos := local_pos if local_pos != Vector2.INF else get_local_mouse_position()
+	var tile := local_to_tile(pos)
+	var cell := Vector2i(floori(tile.x), floori(tile.y))
+	if cell == _recruit_drag_source_cell:
+		return
+	_recruit_left_source = true
+	_start_recruit_shell_dissolve()
+
+
+func _start_recruit_shell_dissolve() -> void:
+	_kill_recruit_shell_tween()
+	_recruit_restore_index = -1
+	_recruit_shell_progress = 0.0
+	_recruit_shell_tween = create_tween()
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_progress", 1.0, RECRUIT_CARD_DISSOLVE_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+func _start_recruit_shell_restore(index: int) -> void:
+	_kill_recruit_shell_tween()
+	_recruit_restore_index = index
+	_recruit_left_source = false
+	_recruit_drag_source_cell = NO_CELL
+	_recruit_shell_progress = 1.0
+	_recruit_shell_tween = create_tween()
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_progress", 0.0, RECRUIT_CARD_RESTORE_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_recruit_shell_tween.tween_callback(func() -> void:
+		if _recruit_restore_index == index:
+			_recruit_restore_index = -1
+			_recruit_shell_progress = 0.0
+		queue_redraw()
+	)
+
+
+func _make_recruit_card_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = RECRUIT_CARD_SHADER
+	mat.set_shader_parameter("progress", 0.0)
+	mat.set_shader_parameter("fill_color", RECRUIT_CARD_FILL)
+	mat.set_shader_parameter("fill_inner", RECRUIT_CARD_FILL_INNER)
+	mat.set_shader_parameter("stroke_color", RECRUIT_CARD_STROKE)
+	mat.set_shader_parameter("burn_color", RECRUIT_CARD_BURN)
+	mat.set_shader_parameter("burn_width", RECRUIT_CARD_BURN_WIDTH)
+	mat.set_shader_parameter("noise_scale", RECRUIT_CARD_NOISE_SCALE)
+	return mat
+
+
+func _ensure_recruit_card_viewport() -> void:
+	if _recruit_card_vp != null:
+		return
+	## SubViewportContainer 挂树上才能稳定刷 render target；挪到屏外避免挡操作。
+	_recruit_card_vp_host = SubViewportContainer.new()
+	_recruit_card_vp_host.name = "RecruitCardDissolveHost"
+	_recruit_card_vp_host.stretch = true
+	_recruit_card_vp_host.size = Vector2(128, 176)
+	_recruit_card_vp_host.position = Vector2(-500, -500)
+	_recruit_card_vp_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_recruit_card_vp_host.z_index = -50
+	add_child(_recruit_card_vp_host)
+	_recruit_card_vp = SubViewport.new()
+	_recruit_card_vp.name = "RecruitCardDissolveVP"
+	_recruit_card_vp.size = Vector2i(128, 176)
+	_recruit_card_vp.transparent_bg = true
+	_recruit_card_vp.disable_3d = true
+	_recruit_card_vp.handle_input_locally = false
+	_recruit_card_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_recruit_card_vp_host.add_child(_recruit_card_vp)
+	_recruit_card_vp_panel = ColorRect.new()
+	_recruit_card_vp_panel.size = Vector2(_recruit_card_vp.size)
+	_recruit_card_vp_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_recruit_card_vp_panel.color = Color(1, 1, 1, 1)
+	_recruit_card_vp_mat = _make_recruit_card_material()
+	_recruit_card_vp_panel.material = _recruit_card_vp_mat
+	_recruit_card_vp.add_child(_recruit_card_vp_panel)
+
+
+func _hide_recruit_card_shells() -> void:
+	pass
+
+
+func _recruit_candidate_shell_size(px: float) -> Vector2:
+	## 全槽统一尺寸（不随兵种剪影半宽/半高变化）。
+	return Vector2(px * RECRUIT_CARD_W_CELLS, px * RECRUIT_CARD_H_CELLS)
+
+
+func _recruit_candidate_shell_rect(center_local: Vector2, px: float) -> Rect2:
+	var sz := _recruit_candidate_shell_size(px)
+	return Rect2(center_local - sz * 0.5, sz)
+
+
+func _recruit_hash21(p: Vector2) -> float:
+	return fposmod(sin(p.dot(Vector2(127.1, 311.7))) * 43758.5453123, 1.0)
+
+
+func _recruit_value_noise(p: Vector2) -> float:
+	var i := Vector2(floorf(p.x), floorf(p.y))
+	var f := Vector2(p.x - i.x, p.y - i.y)
+	var a := _recruit_hash21(i)
+	var b := _recruit_hash21(i + Vector2(1.0, 0.0))
+	var c := _recruit_hash21(i + Vector2(0.0, 1.0))
+	var d := _recruit_hash21(i + Vector2(1.0, 1.0))
+	var u := Vector2(f.x * f.x * (3.0 - 2.0 * f.x), f.y * f.y * (3.0 - 2.0 * f.y))
+	return lerpf(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y
+
+
+func _draw_recruit_card_shell_static(center_local: Vector2, px: float) -> void:
+	## 静置：统一尺寸旧纸卡（_draw 层，不被背景盖住）。
+	var rect := _recruit_candidate_shell_rect(center_local, px)
+	if rect.size.x <= 1.0 or rect.size.y <= 1.0:
+		return
+	draw_rect(rect, RECRUIT_CARD_FILL, true)
+	var inset := rect.grow(-maxf(2.0, minf(rect.size.x, rect.size.y) * 0.045))
+	if inset.size.x > 2.0 and inset.size.y > 2.0:
+		draw_rect(inset, RECRUIT_CARD_FILL_INNER, true)
+	draw_rect(rect, RECRUIT_CARD_STROKE, false, maxf(1.5, rect.size.x * 0.028))
+
+
+func _recruit_smoothstep(edge0: float, edge1: float, x: float) -> float:
+	if edge1 <= edge0:
+		return 1.0 if x >= edge1 else 0.0
+	var t := clampf((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _draw_recruit_card_shell_dissolve_cpu(rect: Rect2, progress: float) -> void:
+	## 与 recruit_card_dissolve.gdshader 同款噪声阈值：孔洞+烧边，非整卡 alpha。
+	if progress >= 0.999 or rect.size.x <= 1.0 or rect.size.y <= 1.0:
+		return
+	var cols := RECRUIT_CARD_DISSOLVE_COLS
+	var rows := RECRUIT_CARD_DISSOLVE_ROWS
+	var cell_w := rect.size.x / float(cols)
+	var cell_h := rect.size.y / float(rows)
+	var burn := RECRUIT_CARD_BURN_WIDTH
+	var threshold := progress * (1.0 + burn)
+	draw_rect(rect.grow(1.0), Color(RECRUIT_CARD_STROKE, 0.55), false, 2.0)
+	for y in rows:
+		for x in cols:
+			var uv := Vector2((float(x) + 0.5) / float(cols), (float(y) + 0.5) / float(rows))
+			var n := _recruit_value_noise(uv * RECRUIT_CARD_NOISE_SCALE)
+			n = n * 0.78 + _recruit_value_noise(uv * RECRUIT_CARD_NOISE_SCALE * 2.17 + Vector2(3.1, 1.7)) * 0.22
+			if n < threshold - burn:
+				continue
+			var edge := 1.0 - _recruit_smoothstep(threshold - burn, threshold, n)
+			var cell := Rect2(
+				rect.position + Vector2(float(x) * cell_w, float(y) * cell_h),
+				Vector2(cell_w + 0.8, cell_h + 0.8),
+			)
+			var col := RECRUIT_CARD_FILL
+			if uv.x > 0.08 and uv.x < 0.92 and uv.y > 0.08 and uv.y < 0.92:
+				col = col.lerp(RECRUIT_CARD_FILL_INNER, 0.35)
+			if edge > 0.001:
+				col = col.lerp(RECRUIT_CARD_BURN, clampf(edge, 0.0, 1.0))
+			col.a = 1.0
+			draw_rect(cell, col, true)
+
+
+func _draw_recruit_card_shell_dissolving(center_local: Vector2, px: float, progress: float) -> void:
+	## 溶解/复卡：shader Viewport 与同款噪声 CPU 都更新；棋盘层用 CPU 碎裂保证孔洞可见
+	##（Control._draw 无法给单次 draw_rect 挂 material，故可见碎裂走与 gdshader 同阈值的格点）。
+	if progress >= 0.999:
+		return
+	var rect := _recruit_candidate_shell_rect(center_local, px)
+	_ensure_recruit_card_viewport()
+	if _recruit_card_vp_mat != null:
+		_recruit_card_vp_mat.set_shader_parameter("progress", progress)
+	var tex: Texture2D = _recruit_card_vp.get_texture() if _recruit_card_vp != null else null
+	if tex != null:
+		## shader 路径：贴离屏结果（若 Viewport 正常，孔洞已在贴图里）。
+		draw_texture_rect(tex, rect, false)
+	else:
+		_draw_recruit_card_shell_dissolve_cpu(rect, progress)
+	## 再叠一层 CPU，避免 Viewport 尚未刷出/空白时看起来像「瞬间消失」。
+	_draw_recruit_card_shell_dissolve_cpu(rect, progress)
 
 
 func _draw_enchant_team_seat_hint(px: float) -> void:
@@ -1769,7 +2036,8 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	## 脚下可能有攻/血一行 + 价签第二行，预留两行高度避免信息卡盖住数字。
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
@@ -1801,7 +2069,7 @@ func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) 
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_size(px).y * 1.1)
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var bounds := get_board_rect()
 	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
 	_show_info_attachments(attachments, bounds, slide_dir, false)
@@ -2073,7 +2341,8 @@ func inspect_at(local_pos: Vector2) -> Dictionary:
 	for info: Dictionary in _collect_inspectables():
 		var center: Vector2 = info["center"]
 		var feet_y := center.y + px * 0.38
-		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + get_stat_badge_size(px).y * 1.2)
+		var badge_h := get_fitted_stat_badge_size(px, 2).y
+		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_h * 2.35)
 		if not hit.has_point(local_pos):
 			continue
 		var d := local_pos.distance_squared_to(center)
@@ -2455,12 +2724,18 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	var info: Dictionary = recruit_candidates[index]
 	if info.get("unit") == null:
 		return
+	## 买不起仍允许预览拖；扣费由 session 在松手结算时拒绝。
+	_kill_recruit_shell_tween()
 	_recruit_drag_index = index
 	_recruit_press_index = -1
 	_recruit_item_drag_index = -1
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_recruit_restore_index = -1
+	_recruit_drag_source_cell = info.get("cell", NO_CELL) as Vector2i
+	_recruit_left_source = false
+	_recruit_shell_progress = 0.0
 	recruit_selected_candidate = index
 	recruit_needs_replace = _candidate_needs_replace(index)
 	_drag_active = true
@@ -2474,6 +2749,7 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
+	_update_recruit_drag_leave(origin)
 	queue_redraw()
 
 
@@ -2527,23 +2803,33 @@ func _finish_recruit_item_drag(cell: Vector2i) -> void:
 
 func _finish_recruit_drag(cell: Vector2i) -> void:
 	var index := _recruit_drag_index
+	var source := _recruit_drag_source_cell
+	var left_source := _recruit_left_source
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
 	_drag_active = false
-	_finish_drag_visual(cell)
 	if index < 0:
+		_reset_recruit_card_dissolve()
+		_finish_drag_visual(cell)
 		return
+	var info: Dictionary = {}
+	if index >= 0 and index < recruit_candidates.size():
+		info = recruit_candidates[index]
+	var affordable := bool(info.get("affordable", true))
 	## 候选人拖到出售落点无效（与队伍拖卖分离）。
 	if _is_recruit_sell_cell(cell):
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
-	## 拖到锁定落点：切换锁定，不购买。
+	## 拖到锁定落点：切换锁定，不购买；纸片回席、卡再现。
 	if _is_recruit_lock_cell(cell):
 		recruit_candidate_lock.emit(index)
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	var mid := BoardHalf.midline_row(board_size.y)
 	if cell == NO_CELL or cell.y >= mid:
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
@@ -2551,6 +2837,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	## 候选人不可拖到已上场友方（避免误替换致旧人消失）；替换仅点选路径。
 	if replace_id >= 0:
 		recruit_drop_rejected.emit("occupied_seat")
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先上场）。
@@ -2560,8 +2847,31 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 			var sc := recruit_team_slots.get_cell(seat_i)
 			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
 				seat_i = -1
+	## 买不起：预览拖后必回弹+卡再现（仍发 drop 让控制器提示，session 不扣费）。
+	if not affordable:
+		recruit_drop.emit(index, -1, seat_i)
+		_bounce_recruit_card_drag(index, source, left_source)
+		queue_redraw()
+		return
+	## 成功落座路径：跟手落向目标；货架槽由 sync 清空，卡不再现。
+	_reset_recruit_card_dissolve()
+	_finish_drag_visual(cell)
 	recruit_drop.emit(index, -1, seat_i)
 	queue_redraw()
+
+
+func _bounce_recruit_card_drag(index: int, source: Vector2i, left_source: bool) -> void:
+	if not left_source:
+		## 未离源格：尚未拆卡，直接收起跟手，源位仍是卡+人。
+		_reset_recruit_card_dissolve()
+		_clear_drag_visual()
+		return
+	_recruit_restore_index = index
+	_recruit_left_source = true
+	_recruit_shell_progress = 1.0
+	_kill_recruit_shell_tween()
+	var settle_cell := source if source != NO_CELL else _recruit_candidate_cell(index)
+	_finish_drag_visual(settle_cell)
 
 
 func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
@@ -3069,6 +3379,7 @@ func clear_recruit_mode() -> void:
 	recruit_sell_preview_gold = 0
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
+	_reset_recruit_card_dissolve()
 	_recruit_item_drag_index = -1
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
@@ -3751,6 +4062,8 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			var moved: Variant = ordered[focus_at]
 			ordered.remove_at(focus_at)
 			ordered.append(moved)
+	var shell_sz := _recruit_candidate_shell_size(px)
+	var badge := get_fitted_stat_badge_size(px, 2)
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -3762,26 +4075,49 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var locked := bool(info.get("locked", false))
 		if unit == null:
 			continue
-		## 拖拽中的候选人在原位半透明；跟手剪影由 _draw_drag_follower 画。
-		var alpha := DRAG_SOURCE_ALPHA if index == _recruit_drag_index else 0.95
+		var dragging := index == _recruit_drag_index
+		var restoring := index == _recruit_restore_index
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var center_local := tile_to_local(center_tile) + off
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空，跟手处播碎裂卡。
+		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
+		if hide_body:
+			if dragging and _recruit_left_source:
+				var dissolve_p := clampf(_recruit_shell_progress, 0.0, 0.92)
+				## 源槽就地碎裂（最易看见）+ 跟手同步碎裂。
+				_draw_recruit_card_shell_dissolving(center_local, px, dissolve_p)
+				if _drag_visual_alive:
+					_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, dissolve_p)
+			continue
+		if restoring and _recruit_shell_progress > 0.001:
+			_draw_recruit_card_shell_dissolving(center_local, px, _recruit_shell_progress)
+		else:
+			_draw_recruit_card_shell_static(center_local, px)
+		var alpha := 0.95
+		if restoring:
+			alpha = clampf(1.0 - _recruit_shell_progress, 0.35, 0.95)
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
-			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
+			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index), null, true,
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
+		## 攻/血挂卡壳下缘外侧；价签由 _draw_stat_badges 排到第二行，落在空行内不挡道具。
+		var badge_anchor := Vector2(
+			center_local.x,
+			center_local.y + shell_sz.y * 0.5 - px * 0.38 + badge.y * 0.04,
+		)
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
+			badge_anchor, atk, hp, alpha, px, 0, cost, affordable
 		)
 		if locked:
-			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
+			_draw_recruit_lock_tag(center_local + Vector2(0.0, -shell_sz.y * 0.42), px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
@@ -3793,7 +4129,7 @@ func _draw_recruit_gold_badge(
 ) -> void:
 	if STAT_GOLD_TEX == null:
 		return
-	var badge := get_stat_badge_size(px)
+	var badge := get_fitted_stat_badge_size(px, 1)
 	var top := center.y + px * 0.38 + badge.y * 0.05
 	var half_span := badge.x * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
@@ -4131,6 +4467,7 @@ func _draw_body(
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
 	override_tex: Texture2D = null,
+	center_sprite: bool = false,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
@@ -4143,13 +4480,15 @@ func _draw_body(
 	if tex == null and _art != null:
 		tex = _art.get_texture(unit_id, is_player)
 	if tex != null:
-		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed)
+		_draw_unit_sprite(
+			center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed, center_sprite
+		)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
 	var fill := Color(color, alpha)
 	_draw_ellipse_filled(center, rx, ry, fill)
 	_draw_ellipse_outline(center, rx, ry, Color(0, 0, 0, 0.45 * alpha), 1.5)
-	if show_foot:
+	if show_foot and not center_sprite:
 		var foot_r := maxf(2.0, body_radius * px)
 		draw_arc(center, foot_r, 0.0, TAU, 20, Color(0, 0, 0, 0.35 * alpha), 1.25)
 	if label.is_empty():
@@ -4234,17 +4573,25 @@ func _draw_unit_sprite(
 	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
+	center_sprite: bool = false,
 ) -> void:
 	var h_cap := px * 1.9
 	if footprint_span >= 1.5:
 		h_cap = px * minf(2.6, footprint_span * 1.15)
+	## 货架卡内居中：略收高度，保证剪影落在统一卡壳内。
+	if center_sprite:
+		h_cap = minf(h_cap, px * RECRUIT_CARD_H_CELLS * 0.78)
 	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, h_cap)
+	if center_sprite:
+		h = minf(h, px * RECRUIT_CARD_H_CELLS * 0.72)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
 	## 贴纸 sheet 剪影偏方/偏宽：限制占格宽度，超限时等比缩小，避免压住邻格。
 	var max_w := px * (
 		SPRITE_MAX_WIDTH_CELLS_FOOTPRINT if footprint_span >= 1.5 else SPRITE_MAX_WIDTH_CELLS
 	)
+	if center_sprite:
+		max_w = minf(max_w, px * RECRUIT_CARD_W_CELLS * 0.78)
 	if w > max_w and w > 0.0:
 		var shrink := max_w / w
 		w = max_w
@@ -4255,11 +4602,15 @@ func _draw_unit_sprite(
 		w *= RECRUIT_PROP_SPRITE_SCALE
 		h *= RECRUIT_PROP_SPRITE_SCALE
 		content_bottom = RECRUIT_PROP_CONTENT_BOTTOM
-	## 2×2：贴图中心对齐足迹几何中心；1×1：脚底略低于格心。
+	## 货架卡：略上移对齐视觉重心（贴图下方常有留白）；2×2 几何居中；1×1 战场脚底锚点。
 	var feet := (
-		center + Vector2(0.0, h * 0.5)
-		if footprint_span >= 1.5
-		else center + Vector2(0.0, px * 0.38)
+		center + Vector2(0.0, h * 0.42)
+		if center_sprite
+		else (
+			center + Vector2(0.0, h * 0.5)
+			if footprint_span >= 1.5
+			else center + Vector2(0.0, px * 0.38)
+		)
 	)
 	var offset := Vector2.ZERO
 	var rot := 0.0
@@ -4349,14 +4700,32 @@ func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, 
 	draw_polyline(points, color, width, true)
 
 
-## 攻血标尺寸：只随格子尺寸变化，与兵种剪影、数值位数无关。
+## 攻血标名义尺寸：只随格子尺寸变化，与兵种剪影、数值位数无关。
 func get_stat_badge_size(px: float) -> Vector2:
 	var h := clampf(px * STAT_BADGE_HEIGHT_MUL, STAT_BADGE_MIN_HEIGHT, STAT_BADGE_MAX_HEIGHT)
 	var tex_size := STAT_ATTACK_TEX.get_size()
 	return Vector2(h * tex_size.x / maxf(1.0, tex_size.y), h)
 
 
-## 脚下纸片标签：攻 + 血；有装备护甲时再画护甲标（无图则跳过护甲标）。
+## 将一行 count 枚徽章缩到 max_width 内；count<=0 时退回名义尺寸。
+func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) -> Vector2:
+	var base := get_stat_badge_size(px)
+	var n := maxi(1, count)
+	var cap := max_width if max_width > 0.0 else px * STAT_BADGE_ROW_MAX_CELL_W
+	var gap_mul := STAT_BADGE_GAP_MUL
+	## total_w = n*w + (n-1)*h*gap_mul，且 w/h = base.x/base.y。
+	var aspect := base.x / maxf(1.0, base.y)
+	var denom := float(n) * aspect + float(n - 1) * gap_mul
+	var h_fit := cap / maxf(0.001, denom)
+	var h := minf(base.y, h_fit)
+	## 可读下限：仍优先不互挡，故允许略低于名义 MIN。
+	h = maxf(h, minf(STAT_BADGE_MIN_HEIGHT, base.y * 0.72))
+	if h * denom > cap + 0.01:
+		h = cap / maxf(0.001, denom)
+	return Vector2(h * aspect, h)
+
+
+## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -4367,14 +4736,15 @@ func _draw_stat_badges(
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
 ) -> void:
-	var badge := get_stat_badge_size(px)
-	var gap := badge.y * 0.06
-	var top := center.y + px * 0.38 + badge.y * 0.05
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
-	var count := 2 + (1 if show_armor else 0) + (1 if show_gold else 0)
-	var total_w := badge.x * float(count) + gap * float(count - 1)
+	var primary_count := 2 + (1 if show_armor else 0)
+	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
+	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
+	var gap := badge.y * STAT_BADGE_GAP_MUL
+	var top := center.y + px * 0.38 + badge.y * 0.05
+	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
@@ -4387,10 +4757,14 @@ func _draw_stat_badges(
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
 	if show_armor:
 		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-		slot += 1
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
 	if show_gold:
-		var gold_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
+		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
+		var gold_top := top + badge.y + gap * 1.6
+		var gold_half := gold_badge.x * 0.5
+		var gold_cx := clampf(center.x, gold_half, maxf(gold_half, size.x - gold_half))
+		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
 		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
 		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
 
@@ -4530,9 +4904,19 @@ func _draw_feedback_string(
 func _draw_drag_follower(px: float) -> void:
 	if not _drag_visual_alive:
 		return
+	## 候选人拖仍在源格内：跟手不画，避免与源位卡+人双影。
+	if _recruit_drag_index >= 0 and not _recruit_left_source:
+		return
 	var tile := local_to_tile(_drag_draw_pos)
 	var snapped := tile_to_local(tile)
 	var pixel_off := _drag_draw_pos - snapped
+	## 离格溶解：先贴跟手卡壳（噪声碎掉），再画居中纸片。
+	if _recruit_drag_index >= 0 and _recruit_left_source and _drag_texture == null:
+		## 清掉上一单位的旋转缩放矩阵，避免卡壳画飞；位移仍走 _frame_shake。
+		draw_set_transform(_frame_shake)
+		var dissolve_p := clampf(_recruit_shell_progress, 0.0, 0.92)
+		_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, dissolve_p)
+	var center_sprite := _recruit_drag_index >= 0 and _recruit_left_source
 	_draw_body(
 		tile,
 		_drag_radius,
@@ -4551,6 +4935,7 @@ func _draw_drag_follower(px: float) -> void:
 		1.0,
 		-1,
 		_drag_texture,
+		center_sprite,
 	)
 
 

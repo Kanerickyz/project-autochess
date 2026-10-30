@@ -2791,8 +2791,9 @@ func _build_recruit_item_previews() -> Array:
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
 	## 招募半场第 1 行：候选人一行占满宽度（gap=0）；mid 行留给备战中缝。
+	## 下方留空一行 + 道具/锁/卖行，故上限 y-3。
 	var mid := BoardHalf.midline_row(_board_size.y)
-	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 2))
+	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 3))
 	var gap := 0
 	var block_w := n
 	if block_w > _board_size.x:
@@ -2806,16 +2807,16 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
-## 招募半场第 2 行 y：候选人下一行（cand_y+1）；道具/锁定/出售共用，禁止落到 +2。
+## 招募半场第 2 行 y：候选人下再空一行（cand_y+2）；道具/锁定/出售共用，禁止落到 +3。
 func _recruit_action_row_y() -> int:
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var cand_count := RecruitSession.CANDIDATE_COUNT
 	if _recruit_session != null:
 		cand_count = _recruit_session.get_candidate_slot_count()
 	var cand := _build_recruit_candidate_cells(cand_count)
-	var y := mid + 2
+	var y := mid + 3
 	if not cand.is_empty():
-		y = cand[0].y + 1
+		y = cand[0].y + 2
 	return clampi(y, mid, maxi(mid, _board_size.y - 1))
 
 
@@ -2857,7 +2858,7 @@ func _build_recruit_side_action_cell(on_right: bool) -> Vector2i:
 	var y := _recruit_action_row_y()
 	var x := (_board_size.x - 1) if on_right else 0
 	x = clampi(x, 0, maxi(0, _board_size.x - 1))
-	## 窄板：若与对侧动作格同格，向内挤一格，仍保持同行（不落到 cand_y+2）。
+	## 窄板：若与对侧动作格同格，向内挤一格，仍保持同行（不落到 cand_y+3）。
 	if not on_right and _arena != null and _arena.recruit_sell_cell == Vector2i(x, y):
 		x = clampi(x + 1, 0, maxi(0, _board_size.x - 1))
 	return Vector2i(x, y)
