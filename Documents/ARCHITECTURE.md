@@ -229,7 +229,7 @@ extends Resource
 @export var cost: int
 @export var tier: int = 1          # 1–6，商店 roll 与默认 cost 对齐
 @export var base_stats: UnitStats
-@export var tags: Array[StringName] = []  # 技能目标筛选用，非羁绊计数
+@export var tags: Array[StringName] = []  # 技能目标筛选用（与 theme_bond 主题羁绊分列）
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
 @export var icon: Texture2D  # UI 头像；留空则色块占位
