@@ -128,6 +128,12 @@ const DRAG_FOLLOW_RATE := 18.0
 const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
 const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
+## 招募候选人货架卡壳（旧纸包装）：溶解 / 回席再现秒数可打断。
+const RECRUIT_CARD_DISSOLVE_SEC := 0.16
+const RECRUIT_CARD_RESTORE_SEC := 0.14
+const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.92)
+const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.35)
+const RECRUIT_CARD_STROKE := Color(0.38, 0.24, 0.12, 0.95)
 ## 三合一合成演出：残影飞入 → 合成体弹跳闪白 + 星标。
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
@@ -237,6 +243,12 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
+## 候选人拖出：源格、是否已离格溶解、卡壳 alpha、失败回席后再现。
+var _recruit_drag_source_cell: Vector2i = NO_CELL
+var _recruit_left_source: bool = false
+var _recruit_shell_alpha: float = 1.0
+var _recruit_shell_tween: Tween
+var _recruit_restore_index: int = -1
 var _recruit_item_drag_index: int = -1
 var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
@@ -359,6 +371,7 @@ func _notification(what: int) -> void:
 		_drag_active = false
 		_recruit_drag_index = -1
 		_recruit_press_index = -1
+		_reset_recruit_card_dissolve()
 		_recruit_item_drag_index = -1
 		_recruit_item_press_index = -1
 		_recruit_team_drag_id = -1
@@ -1014,6 +1027,8 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_track_press_motion(motion.position)
 		if _recruit_drag_index >= 0 or _recruit_item_drag_index >= 0 or _recruit_team_drag_id >= 0:
 			_set_drag_pointer(motion.position)
+			if _recruit_drag_index >= 0:
+				_update_recruit_drag_leave(motion.position)
 		elif _recruit_press_index >= 0 and _recruit_drag_index < 0 and not _info_shown:
 			## 离开按下点超过容差即进入拖拽（触屏抖动不误触发）。
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
@@ -1555,7 +1570,122 @@ func _clear_drag_visual() -> void:
 	_drag_pose.rotation = 0.0
 	_drag_pose.flash = 0.0
 	_drag_pose.shadow_mul = 1.0
+	## 失败回席：纸片落地后再淡入卡壳（可被下次拖拽打断）。
+	if _recruit_restore_index >= 0:
+		_start_recruit_shell_restore(_recruit_restore_index)
 	queue_redraw()
+
+
+func _kill_recruit_shell_tween() -> void:
+	if _recruit_shell_tween != null and _recruit_shell_tween.is_valid():
+		_recruit_shell_tween.kill()
+	_recruit_shell_tween = null
+
+
+func _reset_recruit_card_dissolve() -> void:
+	_kill_recruit_shell_tween()
+	_recruit_drag_source_cell = NO_CELL
+	_recruit_left_source = false
+	_recruit_shell_alpha = 1.0
+	_recruit_restore_index = -1
+
+
+## 测试/调试：候选人拖已离源格（卡溶解、源槽空、跟手仅纸片）。
+func is_recruit_drag_detached() -> bool:
+	return _recruit_drag_index >= 0 and _recruit_left_source
+
+
+## 测试/调试：源槽当前不画纸片角色（离格溶解中或失败回席飞行中）。
+func is_recruit_drag_source_body_hidden() -> bool:
+	if _recruit_drag_index >= 0 and _recruit_left_source:
+		return true
+	if _recruit_restore_index >= 0 and _drag_settling:
+		return true
+	return false
+
+
+func _recruit_candidate_cell(index: int) -> Vector2i:
+	if index < 0 or index >= recruit_candidates.size():
+		return NO_CELL
+	var info: Variant = recruit_candidates[index]
+	if not (info is Dictionary):
+		return NO_CELL
+	return (info as Dictionary).get("cell", NO_CELL) as Vector2i
+
+
+func _update_recruit_drag_leave(local_pos: Vector2 = Vector2.INF) -> void:
+	if _recruit_drag_index < 0 or _recruit_left_source:
+		return
+	if _recruit_drag_source_cell == NO_CELL:
+		return
+	## 与点选候选人一致：用未钳死的虚拟格，避免半场外候选被 tile_to_cell 夹到他格而误溶。
+	var pos := local_pos if local_pos != Vector2.INF else get_local_mouse_position()
+	var tile := local_to_tile(pos)
+	var cell := Vector2i(floori(tile.x), floori(tile.y))
+	if cell == _recruit_drag_source_cell:
+		return
+	_recruit_left_source = true
+	_start_recruit_shell_dissolve()
+
+
+func _start_recruit_shell_dissolve() -> void:
+	_kill_recruit_shell_tween()
+	_recruit_restore_index = -1
+	_recruit_shell_tween = create_tween()
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_alpha", 0.0, RECRUIT_CARD_DISSOLVE_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+func _start_recruit_shell_restore(index: int) -> void:
+	_kill_recruit_shell_tween()
+	_recruit_restore_index = index
+	_recruit_left_source = false
+	_recruit_drag_source_cell = NO_CELL
+	_recruit_shell_alpha = 0.0
+	_recruit_shell_tween = create_tween()
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_alpha", 1.0, RECRUIT_CARD_RESTORE_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_recruit_shell_tween.tween_callback(func() -> void:
+		if _recruit_restore_index == index:
+			_recruit_restore_index = -1
+			_recruit_shell_alpha = 1.0
+		queue_redraw()
+	)
+
+
+func _recruit_candidate_shell_rect(
+	center_local: Vector2,
+	body_radius: float,
+	visual_half_width: float,
+	visual_half_height: float,
+	px: float,
+	badge_count: int = 3,
+) -> Rect2:
+	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
+	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
+	var badge := get_stat_badge_size(px)
+	var gap := badge.y * 0.06
+	var badges_w := badge.x * float(maxi(1, badge_count)) + gap * float(maxi(0, badge_count - 1))
+	var pad_x := px * 0.05
+	var pad_top := px * 0.1
+	var pad_bot := px * 0.06
+	var half_w := minf(px * 0.46, maxf(rx, badges_w * 0.5) + pad_x)
+	var top := center_local.y - ry - pad_top
+	var bot := center_local.y + px * 0.38 + badge.y * 1.08 + pad_bot
+	return Rect2(Vector2(center_local.x - half_w, top), Vector2(half_w * 2.0, bot - top))
+
+
+func _draw_recruit_candidate_shell(rect: Rect2, alpha: float) -> void:
+	if alpha <= 0.01 or rect.size.x <= 1.0 or rect.size.y <= 1.0:
+		return
+	var fill := Color(RECRUIT_CARD_FILL, RECRUIT_CARD_FILL.a * alpha)
+	var inner := Color(RECRUIT_CARD_FILL_INNER, RECRUIT_CARD_FILL_INNER.a * alpha)
+	var stroke := Color(RECRUIT_CARD_STROKE, RECRUIT_CARD_STROKE.a * alpha)
+	draw_rect(rect, fill, true)
+	var inset := rect.grow(-maxf(2.0, minf(rect.size.x, rect.size.y) * 0.04))
+	if inset.size.x > 2.0 and inset.size.y > 2.0:
+		draw_rect(inset, inner, true)
+	draw_rect(rect, stroke, false, maxf(1.5, rect.size.x * 0.025))
 
 
 func _draw_enchant_team_seat_hint(px: float) -> void:
@@ -2455,12 +2585,18 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	var info: Dictionary = recruit_candidates[index]
 	if info.get("unit") == null:
 		return
+	## 买不起仍允许预览拖；扣费由 session 在松手结算时拒绝。
+	_kill_recruit_shell_tween()
 	_recruit_drag_index = index
 	_recruit_press_index = -1
 	_recruit_item_drag_index = -1
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
 	_recruit_team_press_id = -1
+	_recruit_restore_index = -1
+	_recruit_drag_source_cell = info.get("cell", NO_CELL) as Vector2i
+	_recruit_left_source = false
+	_recruit_shell_alpha = 1.0
 	recruit_selected_candidate = index
 	recruit_needs_replace = _candidate_needs_replace(index)
 	_drag_active = true
@@ -2474,6 +2610,7 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	_drag_texture = null
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
+	_update_recruit_drag_leave(origin)
 	queue_redraw()
 
 
@@ -2527,23 +2664,33 @@ func _finish_recruit_item_drag(cell: Vector2i) -> void:
 
 func _finish_recruit_drag(cell: Vector2i) -> void:
 	var index := _recruit_drag_index
+	var source := _recruit_drag_source_cell
+	var left_source := _recruit_left_source
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
 	_drag_active = false
-	_finish_drag_visual(cell)
 	if index < 0:
+		_reset_recruit_card_dissolve()
+		_finish_drag_visual(cell)
 		return
+	var info: Dictionary = {}
+	if index >= 0 and index < recruit_candidates.size():
+		info = recruit_candidates[index]
+	var affordable := bool(info.get("affordable", true))
 	## 候选人拖到出售落点无效（与队伍拖卖分离）。
 	if _is_recruit_sell_cell(cell):
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
-	## 拖到锁定落点：切换锁定，不购买。
+	## 拖到锁定落点：切换锁定，不购买；纸片回席、卡再现。
 	if _is_recruit_lock_cell(cell):
 		recruit_candidate_lock.emit(index)
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	var mid := BoardHalf.midline_row(board_size.y)
 	if cell == NO_CELL or cell.y >= mid:
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
@@ -2551,6 +2698,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 	## 候选人不可拖到已上场友方（避免误替换致旧人消失）；替换仅点选路径。
 	if replace_id >= 0:
 		recruit_drop_rejected.emit("occupied_seat")
+		_bounce_recruit_card_drag(index, source, left_source)
 		queue_redraw()
 		return
 	## 空席：指定空座；拖到非座位格则找最近空座；仍无则 seat=-1（点买优先上场）。
@@ -2560,8 +2708,31 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 			var sc := recruit_team_slots.get_cell(seat_i)
 			if absi(sc.x - cell.x) + absi(sc.y - cell.y) > 4:
 				seat_i = -1
+	## 买不起：预览拖后必回弹+卡再现（仍发 drop 让控制器提示，session 不扣费）。
+	if not affordable:
+		recruit_drop.emit(index, -1, seat_i)
+		_bounce_recruit_card_drag(index, source, left_source)
+		queue_redraw()
+		return
+	## 成功落座路径：跟手落向目标；货架槽由 sync 清空，卡不再现。
+	_reset_recruit_card_dissolve()
+	_finish_drag_visual(cell)
 	recruit_drop.emit(index, -1, seat_i)
 	queue_redraw()
+
+
+func _bounce_recruit_card_drag(index: int, source: Vector2i, left_source: bool) -> void:
+	if not left_source:
+		## 未离源格：尚未拆卡，直接收起跟手，源位仍是卡+人。
+		_reset_recruit_card_dissolve()
+		_clear_drag_visual()
+		return
+	_recruit_restore_index = index
+	_recruit_left_source = true
+	_recruit_shell_alpha = 0.0
+	_kill_recruit_shell_tween()
+	var settle_cell := source if source != NO_CELL else _recruit_candidate_cell(index)
+	_finish_drag_visual(settle_cell)
 
 
 func _begin_recruit_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
@@ -3069,6 +3240,7 @@ func clear_recruit_mode() -> void:
 	recruit_sell_preview_gold = 0
 	_recruit_drag_index = -1
 	_recruit_press_index = -1
+	_reset_recruit_card_dissolve()
 	_recruit_item_drag_index = -1
 	_recruit_item_press_index = -1
 	_recruit_team_drag_id = -1
@@ -3762,13 +3934,29 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var locked := bool(info.get("locked", false))
 		if unit == null:
 			continue
-		## 拖拽中的候选人在原位半透明；跟手剪影由 _draw_drag_follower 画。
-		var alpha := DRAG_SOURCE_ALPHA if index == _recruit_drag_index else 0.95
+		var dragging := index == _recruit_drag_index
+		var restoring := index == _recruit_restore_index
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var center_local := tile_to_local(center_tile) + off
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		## 静置 / 源格内拖：卡+人；离格后源槽空（卡壳短促淡出）；回席 settle 完再淡入卡。
+		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
+		var shell_alpha := 1.0
+		if dragging and _recruit_left_source:
+			shell_alpha = _recruit_shell_alpha
+		elif restoring:
+			shell_alpha = 0.0 if _drag_settling else _recruit_shell_alpha
+		if shell_alpha > 0.01:
+			var shell := _recruit_candidate_shell_rect(center_local, radius, vwx, vhy, px, 3)
+			_draw_recruit_candidate_shell(shell, shell_alpha)
+		if hide_body:
+			continue
+		var alpha := 0.95
+		if restoring:
+			alpha = clampf(_recruit_shell_alpha, 0.35, 0.95)
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
 			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
@@ -3778,10 +3966,10 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
+			center_local, atk, hp, alpha, px, 0, cost, affordable
 		)
 		if locked:
-			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
+			_draw_recruit_lock_tag(center_local, px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
@@ -4529,6 +4717,9 @@ func _draw_feedback_string(
 
 func _draw_drag_follower(px: float) -> void:
 	if not _drag_visual_alive:
+		return
+	## 候选人拖仍在源格内：跟手不画，避免与源位卡+人双影。
+	if _recruit_drag_index >= 0 and not _recruit_left_source:
 		return
 	var tile := local_to_tile(_drag_draw_pos)
 	var snapped := tile_to_local(tile)
