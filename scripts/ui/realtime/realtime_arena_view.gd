@@ -128,12 +128,16 @@ const DRAG_FOLLOW_RATE := 18.0
 const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
 const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
-## 招募候选人货架卡壳（旧纸包装）：统一尺寸；shader 噪声逐步溶解（非整卡透明度）。
-const RECRUIT_CARD_DISSOLVE_SEC := 0.42
-const RECRUIT_CARD_RESTORE_SEC := 0.32
+## 招募候选人货架卡壳（旧纸包装）：统一尺寸；噪声阈值逐步溶解（非整卡透明度）。
+const RECRUIT_CARD_DISSOLVE_SEC := 0.55
+const RECRUIT_CARD_RESTORE_SEC := 0.40
 const RECRUIT_CARD_W_CELLS := 0.90
 const RECRUIT_CARD_H_CELLS := 1.30
 const RECRUIT_CARD_SLOT_CAP := 5
+const RECRUIT_CARD_DISSOLVE_COLS := 14
+const RECRUIT_CARD_DISSOLVE_ROWS := 18
+const RECRUIT_CARD_BURN_WIDTH := 0.20
+const RECRUIT_CARD_NOISE_SCALE := 8.5
 const RECRUIT_CARD_SHADER: Shader = preload("res://assets/ui/recruit/recruit_card_dissolve.gdshader")
 const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.94)
 const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.55)
@@ -254,7 +258,8 @@ var _recruit_left_source: bool = false
 var _recruit_shell_progress: float = 0.0
 var _recruit_shell_tween: Tween
 var _recruit_restore_index: int = -1
-## 静置卡壳用 _draw 实心矩形；溶解用 SubViewport+shader 贴到 _draw 层（不被草地盖住）。
+## 溶解离屏渲染（shader）；_draw 层再 blit。失败则同噪声 CPU 碎裂兜底。
+var _recruit_card_vp_host: SubViewportContainer
 var _recruit_card_vp: SubViewport
 var _recruit_card_vp_panel: ColorRect
 var _recruit_card_vp_mat: ShaderMaterial
@@ -1683,14 +1688,23 @@ func _make_recruit_card_material() -> ShaderMaterial:
 	mat.set_shader_parameter("fill_inner", RECRUIT_CARD_FILL_INNER)
 	mat.set_shader_parameter("stroke_color", RECRUIT_CARD_STROKE)
 	mat.set_shader_parameter("burn_color", RECRUIT_CARD_BURN)
-	mat.set_shader_parameter("burn_width", 0.18)
-	mat.set_shader_parameter("noise_scale", 8.5)
+	mat.set_shader_parameter("burn_width", RECRUIT_CARD_BURN_WIDTH)
+	mat.set_shader_parameter("noise_scale", RECRUIT_CARD_NOISE_SCALE)
 	return mat
 
 
 func _ensure_recruit_card_viewport() -> void:
 	if _recruit_card_vp != null:
 		return
+	## SubViewportContainer 挂树上才能稳定刷 render target；挪到屏外避免挡操作。
+	_recruit_card_vp_host = SubViewportContainer.new()
+	_recruit_card_vp_host.name = "RecruitCardDissolveHost"
+	_recruit_card_vp_host.stretch = true
+	_recruit_card_vp_host.size = Vector2(128, 176)
+	_recruit_card_vp_host.position = Vector2(-500, -500)
+	_recruit_card_vp_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_recruit_card_vp_host.z_index = -50
+	add_child(_recruit_card_vp_host)
 	_recruit_card_vp = SubViewport.new()
 	_recruit_card_vp.name = "RecruitCardDissolveVP"
 	_recruit_card_vp.size = Vector2i(128, 176)
@@ -1698,6 +1712,7 @@ func _ensure_recruit_card_viewport() -> void:
 	_recruit_card_vp.disable_3d = true
 	_recruit_card_vp.handle_input_locally = false
 	_recruit_card_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_recruit_card_vp_host.add_child(_recruit_card_vp)
 	_recruit_card_vp_panel = ColorRect.new()
 	_recruit_card_vp_panel.size = Vector2(_recruit_card_vp.size)
 	_recruit_card_vp_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1705,13 +1720,9 @@ func _ensure_recruit_card_viewport() -> void:
 	_recruit_card_vp_mat = _make_recruit_card_material()
 	_recruit_card_vp_panel.material = _recruit_card_vp_mat
 	_recruit_card_vp.add_child(_recruit_card_vp_panel)
-	add_child(_recruit_card_vp)
-	## 不占布局；仅作离屏渲染目标。
-	_recruit_card_vp.visible = false
 
 
 func _hide_recruit_card_shells() -> void:
-	## Viewport 常驻离屏；无货架卡壳 Control 可藏。
 	pass
 
 
@@ -1723,6 +1734,21 @@ func _recruit_candidate_shell_size(px: float) -> Vector2:
 func _recruit_candidate_shell_rect(center_local: Vector2, px: float) -> Rect2:
 	var sz := _recruit_candidate_shell_size(px)
 	return Rect2(center_local - sz * 0.5, sz)
+
+
+func _recruit_hash21(p: Vector2) -> float:
+	return fposmod(sin(p.dot(Vector2(127.1, 311.7))) * 43758.5453123, 1.0)
+
+
+func _recruit_value_noise(p: Vector2) -> float:
+	var i := Vector2(floorf(p.x), floorf(p.y))
+	var f := Vector2(p.x - i.x, p.y - i.y)
+	var a := _recruit_hash21(i)
+	var b := _recruit_hash21(i + Vector2(1.0, 0.0))
+	var c := _recruit_hash21(i + Vector2(0.0, 1.0))
+	var d := _recruit_hash21(i + Vector2(1.0, 1.0))
+	var u := Vector2(f.x * f.x * (3.0 - 2.0 * f.x), f.y * f.y * (3.0 - 2.0 * f.y))
+	return lerpf(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y
 
 
 func _draw_recruit_card_shell_static(center_local: Vector2, px: float) -> void:
@@ -1737,19 +1763,53 @@ func _draw_recruit_card_shell_static(center_local: Vector2, px: float) -> void:
 	draw_rect(rect, RECRUIT_CARD_STROKE, false, maxf(1.5, rect.size.x * 0.028))
 
 
+func _draw_recruit_card_shell_dissolve_cpu(rect: Rect2, progress: float) -> void:
+	## 与 recruit_card_dissolve.gdshader 同款噪声阈值：孔洞+烧边，非整卡 alpha。
+	if progress >= 0.999 or rect.size.x <= 1.0 or rect.size.y <= 1.0:
+		return
+	var cols := RECRUIT_CARD_DISSOLVE_COLS
+	var rows := RECRUIT_CARD_DISSOLVE_ROWS
+	var cell_w := rect.size.x / float(cols)
+	var cell_h := rect.size.y / float(rows)
+	var burn := RECRUIT_CARD_BURN_WIDTH
+	var threshold := progress * (1.0 + burn)
+	for y in rows:
+		for x in cols:
+			var uv := Vector2((float(x) + 0.5) / float(cols), (float(y) + 0.5) / float(rows))
+			var n := _recruit_value_noise(uv * RECRUIT_CARD_NOISE_SCALE)
+			n = n * 0.78 + _recruit_value_noise(uv * RECRUIT_CARD_NOISE_SCALE * 2.17 + Vector2(3.1, 1.7)) * 0.22
+			if n < threshold - burn:
+				continue
+			var edge := 1.0 - smoothstep(threshold - burn, threshold, n)
+			var cell := Rect2(
+				rect.position + Vector2(float(x) * cell_w, float(y) * cell_h),
+				Vector2(cell_w + 0.6, cell_h + 0.6),
+			)
+			var col := RECRUIT_CARD_FILL
+			if uv.x > 0.08 and uv.x < 0.92 and uv.y > 0.08 and uv.y < 0.92:
+				col = col.lerp(RECRUIT_CARD_FILL_INNER, 0.35)
+			if edge > 0.001:
+				col = col.lerp(RECRUIT_CARD_BURN, clampf(edge, 0.0, 1.0))
+			draw_rect(cell, col, true)
+
+
 func _draw_recruit_card_shell_dissolving(center_local: Vector2, px: float, progress: float) -> void:
-	## 溶解/复卡：离屏 shader 渲染后贴到 _draw，保证跟手时也在草地之上可见。
+	## 溶解/复卡：shader Viewport 与同款噪声 CPU 都更新；棋盘层用 CPU 碎裂保证孔洞可见
+	##（Control._draw 无法给单次 draw_rect 挂 material，故可见碎裂走与 gdshader 同阈值的格点）。
 	if progress >= 0.999:
 		return
+	var rect := _recruit_candidate_shell_rect(center_local, px)
 	_ensure_recruit_card_viewport()
 	if _recruit_card_vp_mat != null:
 		_recruit_card_vp_mat.set_shader_parameter("progress", progress)
-	var tex: Texture2D = _recruit_card_vp.get_texture()
-	if tex == null:
-		_draw_recruit_card_shell_static(center_local, px)
-		return
-	var rect := _recruit_candidate_shell_rect(center_local, px)
-	draw_texture_rect(tex, rect, false)
+	var tex: Texture2D = _recruit_card_vp.get_texture() if _recruit_card_vp != null else null
+	if tex != null:
+		## shader 路径：贴离屏结果（若 Viewport 正常，孔洞已在贴图里）。
+		draw_texture_rect(tex, rect, false)
+	else:
+		_draw_recruit_card_shell_dissolve_cpu(rect, progress)
+	## 再叠一层 CPU，避免 Viewport 尚未刷出/空白时看起来像「瞬间消失」。
+	_draw_recruit_card_shell_dissolve_cpu(rect, progress)
 
 
 func _draw_enchant_team_seat_hint(px: float) -> void:
