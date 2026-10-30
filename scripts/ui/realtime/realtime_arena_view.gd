@@ -134,15 +134,15 @@ const RECRUIT_CARD_RESTORE_SEC := 0.40
 const RECRUIT_CARD_W_CELLS := 0.90
 const RECRUIT_CARD_H_CELLS := 1.30
 const RECRUIT_CARD_SLOT_CAP := 5
-const RECRUIT_CARD_DISSOLVE_COLS := 14
-const RECRUIT_CARD_DISSOLVE_ROWS := 18
-const RECRUIT_CARD_BURN_WIDTH := 0.20
-const RECRUIT_CARD_NOISE_SCALE := 8.5
+const RECRUIT_CARD_DISSOLVE_COLS := 10
+const RECRUIT_CARD_DISSOLVE_ROWS := 13
+const RECRUIT_CARD_BURN_WIDTH := 0.28
+const RECRUIT_CARD_NOISE_SCALE := 6.5
 const RECRUIT_CARD_SHADER: Shader = preload("res://assets/ui/recruit/recruit_card_dissolve.gdshader")
 const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.94)
 const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.55)
 const RECRUIT_CARD_STROKE := Color(0.38, 0.24, 0.12, 0.96)
-const RECRUIT_CARD_BURN := Color(1.0, 0.52, 0.14, 1.0)
+const RECRUIT_CARD_BURN := Color(1.0, 0.35, 0.05, 1.0)
 ## 三合一合成演出：残影飞入 → 合成体弹跳闪白 + 星标。
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
@@ -1763,6 +1763,13 @@ func _draw_recruit_card_shell_static(center_local: Vector2, px: float) -> void:
 	draw_rect(rect, RECRUIT_CARD_STROKE, false, maxf(1.5, rect.size.x * 0.028))
 
 
+func _recruit_smoothstep(edge0: float, edge1: float, x: float) -> float:
+	if edge1 <= edge0:
+		return 1.0 if x >= edge1 else 0.0
+	var t := clampf((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
 func _draw_recruit_card_shell_dissolve_cpu(rect: Rect2, progress: float) -> void:
 	## 与 recruit_card_dissolve.gdshader 同款噪声阈值：孔洞+烧边，非整卡 alpha。
 	if progress >= 0.999 or rect.size.x <= 1.0 or rect.size.y <= 1.0:
@@ -1773,6 +1780,7 @@ func _draw_recruit_card_shell_dissolve_cpu(rect: Rect2, progress: float) -> void
 	var cell_h := rect.size.y / float(rows)
 	var burn := RECRUIT_CARD_BURN_WIDTH
 	var threshold := progress * (1.0 + burn)
+	draw_rect(rect.grow(1.0), Color(RECRUIT_CARD_STROKE, 0.55), false, 2.0)
 	for y in rows:
 		for x in cols:
 			var uv := Vector2((float(x) + 0.5) / float(cols), (float(y) + 0.5) / float(rows))
@@ -1780,16 +1788,17 @@ func _draw_recruit_card_shell_dissolve_cpu(rect: Rect2, progress: float) -> void
 			n = n * 0.78 + _recruit_value_noise(uv * RECRUIT_CARD_NOISE_SCALE * 2.17 + Vector2(3.1, 1.7)) * 0.22
 			if n < threshold - burn:
 				continue
-			var edge := 1.0 - smoothstep(threshold - burn, threshold, n)
+			var edge := 1.0 - _recruit_smoothstep(threshold - burn, threshold, n)
 			var cell := Rect2(
 				rect.position + Vector2(float(x) * cell_w, float(y) * cell_h),
-				Vector2(cell_w + 0.6, cell_h + 0.6),
+				Vector2(cell_w + 0.8, cell_h + 0.8),
 			)
 			var col := RECRUIT_CARD_FILL
 			if uv.x > 0.08 and uv.x < 0.92 and uv.y > 0.08 and uv.y < 0.92:
 				col = col.lerp(RECRUIT_CARD_FILL_INNER, 0.35)
 			if edge > 0.001:
 				col = col.lerp(RECRUIT_CARD_BURN, clampf(edge, 0.0, 1.0))
+			col.a = 1.0
 			draw_rect(cell, col, true)
 
 
@@ -4068,9 +4077,16 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空；回席 settle 完再 shader 复卡。
+		## 静置 / 源格内拖：统一卡+居中人；离格后源槽空，跟手处播碎裂卡。
 		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
 		if hide_body:
+			if (
+				dragging
+				and _recruit_left_source
+				and _drag_visual_alive
+				and _recruit_shell_progress < 0.999
+			):
+				_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, _recruit_shell_progress)
 			continue
 		if restoring and _recruit_shell_progress > 0.001:
 			_draw_recruit_card_shell_dissolving(center_local, px, _recruit_shell_progress)
