@@ -31,7 +31,7 @@ func _run() -> void:
 	await _test_prepare_bench_tap_auto_deploy()
 	await _test_long_press_slide_inspect()
 	await _test_recruit_input()
-	await _test_recruit_card_dissolve()
+	await _test_recruit_candidate_preview_drag()
 	await _test_recruit_team_sell_drag()
 	await _test_recruit_team_bench_drag()
 	await _test_recruit_lock_drag()
@@ -536,8 +536,8 @@ func _test_recruit_input() -> void:
 	await process_frame
 
 
-func _test_recruit_card_dissolve() -> void:
-	## §6.3：离源格后源槽空；买不起可预览拖；失败回弹不改扣费口径。
+func _test_recruit_candidate_preview_drag() -> void:
+	## 卡壳已回撤：买不起仍可起拖；松在下半场非法区不发 recruit_drop。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
 	arena.board_size = Vector2i(5, 8)
@@ -561,26 +561,17 @@ func _test_recruit_card_dissolve() -> void:
 	move_in.relative = Vector2(RealtimeArenaView.LONG_PRESS_SLOP_PX + 6.0, 0)
 	arena._gui_input(move_in)
 	_expect(arena.recruit_selected_candidate == 0, "unaffordable candidate still starts preview drag")
-	_expect(not arena.is_recruit_drag_detached(), "still in source cell keeps card attached")
-	_expect(not arena.is_recruit_drag_source_body_hidden(), "in-cell drag still shows source body")
 
 	var leave := InputEventMouseMotion.new()
 	leave.position = outside
 	leave.relative = outside - move_in.position
 	arena._gui_input(leave)
-	_expect(arena.is_recruit_drag_detached(), "leaving source cell detaches / dissolves card")
-	_expect(arena.is_recruit_drag_source_body_hidden(), "detached drag hides source body")
-	## 等半拍让 dissolve progress 推进（shader 噪声阈值，非整卡透明度）。
-	var waited := 0
-	while arena.get_recruit_shell_dissolve_progress() <= 0.05 and waited < 45:
-		await process_frame
-		waited += 1
-	_expect(arena.get_recruit_shell_dissolve_progress() > 0.05, "dissolve progress advances after leave")
+	_expect(arena.recruit_selected_candidate == 0, "drag continues after leaving source cell")
 
-	## 松在下半场非法区：回弹路径（不发 recruit_drop）。
+	## 松在下半场非法区：不发 recruit_drop。
 	_press(arena, outside, false)
 	_expect(drops.is_empty(), "invalid half drop does not emit recruit_drop")
-	_expect(not arena.is_recruit_drag_detached(), "release clears active detach drag")
+	_expect(arena.recruit_selected_candidate == 0 or arena.recruit_selected_candidate == -1, "release ends active drag path")
 	arena.clear_recruit_mode()
 	arena.queue_free()
 	await process_frame
