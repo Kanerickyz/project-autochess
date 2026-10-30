@@ -11,8 +11,13 @@ if [ $# -ge 3 ]; then
   shift 3
 fi
 CHECKPOINT=""
+DIRECT_PICK=0
 while [ $# -gt 0 ]; do
   case "$1" in
+    --direct-pick)
+      DIRECT_PICK=1
+      shift
+      ;;
     --checkpoint)
       CHECKPOINT="${2:-}"
       shift 2
@@ -27,6 +32,9 @@ mkdir -p "$OUT"
 CMD=(--runs "$RUNS" --seed-start "$SEED_START" --out "$OUT")
 if [ -n "$CHECKPOINT" ]; then
   CMD+=(--checkpoint "$CHECKPOINT")
+fi
+if [ "$DIRECT_PICK" = "1" ]; then
+  CMD+=(--direct-pick)
 fi
 "$GODOT_BIN" --headless --path "$ROOT" --script res://scripts/sim_balance/sim_batch_runner.gd -- "${CMD[@]}"
 echo "Wrote summary to $OUT/summary.json"

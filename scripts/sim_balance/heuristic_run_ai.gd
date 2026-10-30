@@ -227,6 +227,127 @@ func _distance_to_boss(state: MapState, from_id: int, boss_id: int) -> int:
 	return 999
 
 
+const DIRECT_GAP_BONUS := 250.0
+const DIRECT_COMPLETE_2STAR_BONUS := 600.0
+const DIRECT_PAIR_BONUS := 350.0
+const DIRECT_NEW_SET_AFTER_2STAR := 60.0
+const DIRECT_NEW_SINGLE_PENALTY := 70.0
+const DIRECT_REPLACE_MARGIN := 1.1
+const DIRECT_LATE_T1_PENALTY := 300.0
+const DIRECT_MID_T2_BONUS := 150.0
+const DIRECT_LATE_T3_BONUS := 250.0
+const DIRECT_LATE_LOW_TIER_PENALTY := 200.0
+
+
+## 直选池合法候选：未满员全部；满员仅能合 2★ 或明显强于可替换最弱者。
+func direct_pick_legal(deck: DeckState, candidates: Array[UnitData]) -> Array[UnitData]:
+	if deck.can_add():
+		return candidates
+	var out: Array[UnitData] = []
+	var weakest := _direct_weakest_replaceable(deck)
+	var weakest_s := SimUnitFeatures.entry_strength(weakest) if weakest != null else 1.0e9
+	for unit in candidates:
+		if deck.would_complete_triple_on_add(unit, 1):
+			out.append(unit)
+		elif weakest != null and SimUnitFeatures.unit_strength(unit) > weakest_s * DIRECT_REPLACE_MARGIN:
+			out.append(unit)
+	return out
+
+
+## 启发式（每阶段 4 拿，重质量）：凑 2★ 进度 > 阵容缺口 > 档位过渡 > 单卡强度；新开散件扣分。
+func direct_pick_score(deck: DeckState, unit: UnitData, floor: int = 1) -> float:
+	var score := SimUnitFeatures.unit_strength(unit)
+	var c1 := SimUnitFeatures.count_same_level(deck, unit.id, 1)
+	var c2 := SimUnitFeatures.count_same_level(deck, unit.id, 2)
+	var completes := c1 >= 2
+	if completes:
+		score += DIRECT_COMPLETE_2STAR_BONUS
+	elif c1 == 1:
+		score += DIRECT_PAIR_BONUS
+	elif c2 >= 2:
+		pass
+	elif c2 == 1:
+		score += DIRECT_NEW_SET_AFTER_2STAR
+	else:
+		score -= DIRECT_NEW_SINGLE_PENALTY * float(SimUnitFeatures.single_group_count(deck))
+	if deck.can_add():
+		var lu := SimUnitFeatures.lineup(deck)
+		if lu.size() < deck.get_max_size():
+			var counts := SimUnitFeatures.role_counts(lu)
+			var targets := SimUnitFeatures.role_targets(deck.get_max_size())
+			for r in SimUnitFeatures.roles(unit):
+				if int(counts[r]) < int(targets[r]):
+					score += DIRECT_GAP_BONUS
+					break
+	score += _direct_tier_transition(unit, floor, completes, c1)
+	return score
+
+
+## F7–9：T1 只在能合 2★ 时不扣分，T2 加分；F10+：T3 加分，T2 仅在凑对/合成时不扣，T1 重扣。
+func _direct_tier_transition(unit: UnitData, floor: int, completes: bool, c1: int) -> float:
+	if floor >= 10:
+		if unit.tier >= 3:
+			return DIRECT_LATE_T3_BONUS
+		if unit.tier == 2:
+			return 0.0 if (completes or c1 == 1) else -DIRECT_LATE_LOW_TIER_PENALTY
+		return 0.0 if completes else -DIRECT_LATE_T1_PENALTY * 1.5
+	if floor >= 7:
+		if unit.tier == 1:
+			return 0.0 if completes else -DIRECT_LATE_T1_PENALTY
+		return DIRECT_MID_T2_BONUS
+	return 0.0
+
+
+func direct_pick_heuristic(deck: DeckState, legal: Array[UnitData], floor: int = 1) -> UnitData:
+	var ranked := direct_pick_ranked(deck, legal, floor)
+	return ranked[0] if not ranked.is_empty() else null
+
+
+func direct_pick_ranked(deck: DeckState, legal: Array[UnitData], floor: int = 1) -> Array[UnitData]:
+	var scored: Array = []
+	for unit in legal:
+		scored.append({"u": unit, "s": direct_pick_score(deck, unit, floor)})
+	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["s"]) > float(b["s"])
+	)
+	var out: Array[UnitData] = []
+	for item in scored:
+		out.append(item["u"])
+	return out
+
+
+func direct_pick_choose(deck: DeckState, candidates: Array[UnitData], floor: int) -> UnitData:
+	var legal := direct_pick_legal(deck, candidates)
+	if legal.is_empty():
+		return null
+	return direct_pick_heuristic(deck, legal, floor)
+
+
+func direct_pick_replace_target(deck: DeckState, _unit: UnitData) -> int:
+	var weakest := _direct_weakest_replaceable(deck)
+	return weakest.entry_id if weakest != null else -1
+
+
+func direct_pick_entry_score(entry: DeckEntry) -> float:
+	return SimUnitFeatures.entry_strength(entry)
+
+
+## 最弱且不在凑对中的成员（同名 1 星 2 只视为三合一进度，不拆）。
+func _direct_weakest_replaceable(deck: DeckState) -> DeckEntry:
+	var worst: DeckEntry = null
+	var worst_s := 1.0e9
+	for entry in deck.get_entries():
+		if entry == null or entry.unit == null:
+			continue
+		if entry.level == 1 and SimUnitFeatures.count_same_level1(deck, entry.get_unit_id()) >= 2:
+			continue
+		var s := SimUnitFeatures.entry_strength(entry)
+		if s < worst_s:
+			worst_s = s
+			worst = entry
+	return worst
+
+
 func _auto_frontline_layout(deck: DeckState, board_size: Vector2i) -> void:
 	if deck == null:
 		return

@@ -17,6 +17,9 @@ var spawn_budget: SpawnBudgetConfig
 var _ai: RefCounted
 var bandit_checkpoint: SimBanditCheckpoint
 var bandit_learning: bool = false
+## 直选池模式（--direct-pick）：招募不走货架/金币，见 DirectPickRecruiter。
+var direct_pick: bool = false
+var _direct_recruiter: DirectPickRecruiter = DirectPickRecruiter.new()
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -74,6 +77,9 @@ func simulate_run(seed: int) -> Dictionary:
 	_recruit_session.clear_taken_copies()
 	_recruit_shop.configure(RecruitShopConfig.load_or_default(), economy)
 
+	_direct_recruiter.configure(recruit_config)
+	_direct_recruiter.begin_run()
+
 	run_controller.start_run()
 	run_controller.run_state.mark_run_started()
 	if _ai is BanditRunAI:
@@ -104,6 +110,11 @@ func simulate_run(seed: int) -> Dictionary:
 				break
 
 	var record := _build_run_record(seed, run_controller, encounters)
+	if direct_pick:
+		record["direct_pick"] = true
+		record["recruit_picks"] = _direct_recruiter.get_run_picks()
+		record["final_roster"] = _roster_snapshot(deck)
+		record["final_seat_cap"] = deck.get_max_size()
 	_notify_run_finished(record, run_controller)
 	return record
 
@@ -114,6 +125,9 @@ func _run_opening_recruit(run_controller: RunController, deck: DeckState, econom
 	_recruit_session.require_nonempty_roster = true
 	_recruit_session.forward_tier_unlock = run_controller.is_endless()
 	var floors := _map_floor_count(run_controller)
+	if direct_pick:
+		_direct_recruiter.run_phase(deck, _ai, 1, floors, run_controller.is_endless())
+		return
 	_recruit_session.begin(0.0, 1, floors)
 	_ai.run_opening_recruit(_recruit_session, _recruit_shop)
 
@@ -204,7 +218,15 @@ func _resolve_combat_encounter(
 		economy.grant(encounter.bonus_gold)
 	economy.grant_floor_gold(floor)
 
-	if _recruit_session.should_offer_recruit(node.get_effective_type(), true):
+	if direct_pick and _recruit_session.should_offer_recruit(node.get_effective_type(), true):
+		_direct_recruiter.run_phase(
+			deck,
+			_ai,
+			floor,
+			_map_floor_count(run_controller),
+			run_controller.is_endless(),
+		)
+	elif _recruit_session.should_offer_recruit(node.get_effective_type(), true):
 		_rng.seed = combat_rng_seed + 3
 		_recruit_session.configure(recruit_config, deck, economy, _rng)
 		_recruit_session.require_nonempty_roster = false
@@ -247,6 +269,21 @@ func _build_run_record(seed: int, run_controller: RunController, encounters: Arr
 		if not picks.is_empty():
 			record["recruit_picks"] = picks
 	return record
+
+
+func _roster_snapshot(deck: DeckState) -> Array:
+	var out: Array = []
+	for entry in deck.get_entries():
+		if entry == null or entry.unit == null:
+			continue
+		out.append({
+			"unit_id": entry.get_unit_id(),
+			"level": entry.level,
+			"tier": entry.unit.tier,
+			"seated": entry.seat_index >= 0,
+			"roles": Array(SimUnitFeatures.roles(entry.unit)),
+		})
+	return out
 
 
 func _report_profile_id() -> String:

@@ -12,6 +12,7 @@ func _initialize() -> void:
 	var seed_start := DEFAULT_SEED_START
 	var out_dir := SimMetricsWriter.DEFAULT_OUT_DIR
 	var checkpoint_path := ""
+	var direct_pick := false
 	for i in args.size():
 		var a := args[i]
 		if a == "--runs" and i + 1 < args.size():
@@ -22,6 +23,8 @@ func _initialize() -> void:
 			out_dir = args[i + 1]
 		elif a == "--checkpoint" and i + 1 < args.size():
 			checkpoint_path = args[i + 1]
+		elif a == "--direct-pick":
+			direct_pick = true
 
 	var checkpoint: SimBanditCheckpoint = null
 	if not checkpoint_path.is_empty() and ResourceLoader.exists(checkpoint_path):
@@ -32,6 +35,7 @@ func _initialize() -> void:
 		sim.configure(null, null, null, null, null, null, checkpoint, false)
 	else:
 		sim.configure()
+	sim.direct_pick = direct_pick
 	var batch: Array = []
 	var t0 := Time.get_ticks_msec()
 	for n in runs:
@@ -48,6 +52,8 @@ func _initialize() -> void:
 			"runs_requested": runs,
 			"seed_start": seed_start,
 			"elapsed_ms": elapsed_ms,
+			"direct_pick": direct_pick,
+			"checkpoint": checkpoint_path,
 			"generated_at_utc": Time.get_datetime_string_from_system(true),
 		},
 	)

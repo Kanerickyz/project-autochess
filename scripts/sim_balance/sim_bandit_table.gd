@@ -109,6 +109,43 @@ func select_arm_by_action_keys(
 	return _ucb_action_key(state_key, action_keys, fallback)
 
 
+## v5：探索时 UCB；冻结时仅 n>=min_n 的动作参与，分数 (w+1)/(n+2)，平局/无达标回退启发式。
+func select_action_key_v5(
+	state_key: String,
+	action_keys: PackedStringArray,
+	heuristic_key: String,
+	explore: bool,
+	min_n: int,
+) -> String:
+	if action_keys.is_empty():
+		return ""
+	var fallback := heuristic_key if action_keys.has(heuristic_key) else action_keys[0]
+	if action_keys.size() == 1:
+		return action_keys[0]
+	if explore:
+		return _ucb_action_key(state_key, action_keys, fallback)
+	var best_key := fallback
+	var best_score := -1.0
+	var fb_row := _row(state_key, fallback)
+	var fb_n := int(fb_row.get("w", 0)) + int(fb_row.get("l", 0))
+	if fb_n >= min_n:
+		best_score = (float(fb_row.get("w", 0)) + 1.0) / (float(fb_n) + 2.0)
+	else:
+		best_score = 0.5
+	for ak in action_keys:
+		if ak == fallback:
+			continue
+		var row := _row(state_key, ak)
+		var n := int(row.get("w", 0)) + int(row.get("l", 0))
+		if n < min_n:
+			continue
+		var score := (float(row.get("w", 0)) + 1.0) / (float(n) + 2.0)
+		if score > best_score:
+			best_score = score
+			best_key = ak
+	return best_key
+
+
 func _greedy_action_key(
 	state_key: String,
 	action_keys: PackedStringArray,
