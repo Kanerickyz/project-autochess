@@ -30,6 +30,8 @@
     .hint, .warn { font-size: 0.8rem; opacity: 0.65; }
     .warn { color: #f0ad4e; }
     #chartMount { display: flex; flex-direction: column; gap: 0.5rem; }
+    #lineupSection td { vertical-align: top; }
+    #lineupSection .dim { opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -51,6 +53,13 @@
     <div id="chartMount"></div>
     <h2>分层数据表</h2>
     <table><thead><tr><th>层</th><th>尝试</th><th>胜</th><th>胜率</th><th>失败率</th></tr></thead><tbody id="floorTable"></tbody></table>
+    <section id="lineupSection" hidden>
+      <h2>选取阵容 · 角色上场统计</h2>
+      <p class="chart-desc" id="lineupDesc"></p>
+      <table><thead><tr><th>角色</th><th>档位</th><th>到达 F12 局中上场</th><th>未到达局中上场</th><th>平均星级</th></tr></thead><tbody id="unitUsageTable"></tbody></table>
+      <h2>选取阵容 · 每局最终阵容</h2>
+      <table><thead><tr><th>Seed</th><th>结局</th><th>上场/席位</th><th>上场阵容</th><th>备战</th></tr></thead><tbody id="lineupRunsTable"></tbody></table>
+    </section>
     <h2>图表规格（机器可读）</h2>
     <table><thead><tr><th>id</th><th>类型</th><th>标题</th><th>说明</th></tr></thead><tbody id="chartSpecTable"></tbody></table>
   </div>

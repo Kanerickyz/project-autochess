@@ -278,6 +278,7 @@ func _roster_snapshot(deck: DeckState) -> Array:
 			continue
 		out.append({
 			"unit_id": entry.get_unit_id(),
+			"name": entry.unit.display_name if not entry.unit.display_name.is_empty() else entry.get_unit_id(),
 			"level": entry.level,
 			"tier": entry.unit.tier,
 			"seated": entry.seat_index >= 0,
