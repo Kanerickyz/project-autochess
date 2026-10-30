@@ -45,6 +45,23 @@ bash tools/sim_balance/run_batch.sh 100 1
 # 或 SIM_BALANCE_BATCH=1 bash tools/run_sim_balance_verify.sh
 ```
 
+## 直选池模式（`--direct-pick`，默认关闭）
+
+招募阶段不走货架/金币：候选 = 当前层解锁档位全部玩家角色（每角色本局 9 份）；F4 起每阶段免费席位 +1（封顶 10）；每阶段最多拿 10 个；加人/三合一走 `DeckState.add_entry`，满员替换走 `DeckState.replace_entry`（`scripts/sim_balance/direct_pick_recruiter.gd`）。
+
+```bash
+# 训练 bandit-v5-direct（特征化 state，动作 unit_id，深度奖励目标 F12）
+bash tools/sim_balance/train_bandit.sh --train-runs 500 --seed-start 1 --direct-pick --reward-mode v5 \
+  --checkpoint-also res://resources/sim_balance/checkpoints/bandit_v5_direct_iter1.tres
+# 冻结评估 / 启发式对照
+bash tools/sim_balance/run_batch.sh 100 10001 .artifacts/sim_balance/direct_pick/iter1 --direct-pick \
+  --checkpoint res://resources/sim_balance/checkpoints/bandit_v5_direct.tres
+bash tools/sim_balance/run_batch.sh 100 10001 .artifacts/sim_balance/direct_pick/iter1_heuristic --direct-pick
+python3 tools/sim_balance/analyze_direct_pick.py .artifacts/sim_balance/direct_pick/iter1
+```
+
+`runs.json` 直选模式额外字段：`recruit_picks`（unit_id/floor/mode/tier）、`final_roster`、`final_seat_cap`；`summary.json` 含 `reached_f12_count`。
+
 ## 可视化
 
 - **GitHub Pages**：推 **`balance-eval`** 或手动 **Balance Report Pages** → 归档到 `docs/balancereport/runs/` 并 push **`main`** → **Deploy Web** 发布  

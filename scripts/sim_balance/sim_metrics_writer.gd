@@ -73,11 +73,14 @@ static func aggregate(runs: Array, encounters: Array, meta: Dictionary = {}) -> 
 
 	var death_hist: Dictionary = {}
 	var run_complete := 0
+	var reached_f12 := 0
 	for run in runs:
 		if typeof(run) != TYPE_DICTIONARY:
 			continue
 		if str(run.get("outcome", "")) == "RUN_COMPLETE":
 			run_complete += 1
+		if str(run.get("outcome", "")) == "RUN_COMPLETE" or int(run.get("death_floor", 0)) >= 12:
+			reached_f12 += 1
 		if str(run.get("outcome", "")) != "RUN_DEFEAT":
 			continue
 		var df := str(int(run.get("death_floor", 0)))
@@ -102,6 +105,7 @@ static func aggregate(runs: Array, encounters: Array, meta: Dictionary = {}) -> 
 		"run_count": run_count,
 		"run_complete_count": run_complete,
 		"run_complete_rate": run_complete_rate,
+		"reached_f12_count": reached_f12,
 		"encounter_count": encounters.size(),
 		"by_floor": floor_stats,
 		"death_floor_histogram": death_hist,

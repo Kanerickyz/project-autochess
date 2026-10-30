@@ -227,6 +227,89 @@ func _distance_to_boss(state: MapState, from_id: int, boss_id: int) -> int:
 	return 999
 
 
+const DIRECT_GAP_BONUS := 1000.0
+const DIRECT_TRIPLE_BONUS := 600.0
+const DIRECT_PAIR_BONUS := 300.0
+const DIRECT_REPLACE_MARGIN := 1.1
+
+
+## 直选池合法候选：未满员全部；满员仅三合一或明显强于可替换最弱者。
+func direct_pick_legal(deck: DeckState, candidates: Array[UnitData]) -> Array[UnitData]:
+	if deck.can_add():
+		return candidates
+	var out: Array[UnitData] = []
+	var weakest := _direct_weakest_replaceable(deck)
+	var weakest_s := SimUnitFeatures.entry_strength(weakest) if weakest != null else 1.0e9
+	for unit in candidates:
+		if deck.would_complete_triple_on_add(unit, 1):
+			out.append(unit)
+		elif weakest != null and SimUnitFeatures.unit_strength(unit) > weakest_s * DIRECT_REPLACE_MARGIN:
+			out.append(unit)
+	return out
+
+
+## 启发式：补阵容缺口（前排/后排/输出/治疗）> 三合一进度 > 单卡强度。
+func direct_pick_score(deck: DeckState, unit: UnitData) -> float:
+	var score := SimUnitFeatures.unit_strength(unit)
+	if deck.would_complete_triple_on_add(unit, 1):
+		score += DIRECT_TRIPLE_BONUS
+	elif SimUnitFeatures.count_same_level1(deck, unit.id) == 1:
+		score += DIRECT_PAIR_BONUS
+	if deck.can_add():
+		var lu := SimUnitFeatures.lineup(deck)
+		if lu.size() < deck.get_max_size():
+			var counts := SimUnitFeatures.role_counts(lu)
+			var targets := SimUnitFeatures.role_targets(deck.get_max_size())
+			for r in SimUnitFeatures.roles(unit):
+				if int(counts[r]) < int(targets[r]):
+					score += DIRECT_GAP_BONUS
+					break
+	return score
+
+
+func direct_pick_heuristic(deck: DeckState, legal: Array[UnitData]) -> UnitData:
+	var best: UnitData = null
+	var best_s := -1.0e9
+	for unit in legal:
+		var s := direct_pick_score(deck, unit)
+		if s > best_s:
+			best_s = s
+			best = unit
+	return best
+
+
+func direct_pick_choose(deck: DeckState, candidates: Array[UnitData], _floor: int) -> UnitData:
+	var legal := direct_pick_legal(deck, candidates)
+	if legal.is_empty():
+		return null
+	return direct_pick_heuristic(deck, legal)
+
+
+func direct_pick_replace_target(deck: DeckState, _unit: UnitData) -> int:
+	var weakest := _direct_weakest_replaceable(deck)
+	return weakest.entry_id if weakest != null else -1
+
+
+func direct_pick_entry_score(entry: DeckEntry) -> float:
+	return SimUnitFeatures.entry_strength(entry)
+
+
+## 最弱且不在凑对中的成员（同名 1 星 2 只视为三合一进度，不拆）。
+func _direct_weakest_replaceable(deck: DeckState) -> DeckEntry:
+	var worst: DeckEntry = null
+	var worst_s := 1.0e9
+	for entry in deck.get_entries():
+		if entry == null or entry.unit == null:
+			continue
+		if entry.level == 1 and SimUnitFeatures.count_same_level1(deck, entry.get_unit_id()) >= 2:
+			continue
+		var s := SimUnitFeatures.entry_strength(entry)
+		if s < worst_s:
+			worst_s = s
+			worst = entry
+	return worst
+
+
 func _auto_frontline_layout(deck: DeckState, board_size: Vector2i) -> void:
 	if deck == null:
 		return

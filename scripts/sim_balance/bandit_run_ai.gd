@@ -5,6 +5,12 @@ extends HeuristicRunAI
 const REWARD_V1 := "v1"
 const REWARD_V2 := "v2"
 const REWARD_V4 := "v4"
+const REWARD_V5 := "v5"
+const V5_TARGET_FLOOR := 12
+const V5_DEPTH_W := 4
+const V5_DEPTH_L := 3
+const V5_DEEP_BONUS_FROM := 10
+const V5_COMPLETE_W := 8
 const K_COMPLETE := 2
 const K_COMPLETE_V4 := 3
 const K_DEPTH := 3
@@ -57,7 +63,7 @@ func _reset_run_state() -> void:
 
 func on_encounter_resolved(won: bool) -> void:
 	_combats_fought += 1
-	if reward_mode == REWARD_V4:
+	if reward_mode == REWARD_V4 or reward_mode == REWARD_V5:
 		_pending_map.clear()
 		return
 	if reward_mode == REWARD_V2:
@@ -89,6 +95,9 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 		return
 	var f_max := maxi(1, map_floor_max)
 	var d := maxi(0, death_floor)
+	if reward_mode == REWARD_V5:
+		_record_v5_rewards(outcome, d)
+		return
 	for item in _recruit_log:
 		var sk := str(item.get("state_key", ""))
 		var ak := str(item.get("action_key", ""))
@@ -109,8 +118,56 @@ func on_run_finished(outcome: String, death_floor: int, map_floor_max: int) -> v
 			bandit_table.record_weighted(sk, ak, w_add, l_add, true)
 
 
+## v5：深度奖励以 F12 为目标，F10+ 额外加权；通关最大。
+func _record_v5_rewards(outcome: String, death_floor: int) -> void:
+	var w_add := V5_COMPLETE_W
+	var l_add := 0
+	if outcome != "RUN_COMPLETE":
+		var r := clampf(float(death_floor) / float(V5_TARGET_FLOOR), 0.0, 1.0)
+		w_add = int(round(pow(r, 0.75) * float(V5_DEPTH_W)))
+		l_add = int(round(pow(1.0 - r, 1.25) * float(V5_DEPTH_L)))
+		if death_floor >= V5_DEEP_BONUS_FROM:
+			w_add += 2
+		if death_floor >= V5_TARGET_FLOOR:
+			w_add += 2
+		if death_floor < 4:
+			l_add += 1
+	for item in _recruit_log:
+		bandit_table.record_weighted(
+			str(item.get("state_key", "")),
+			str(item.get("action_key", "")),
+			w_add,
+			l_add,
+			true,
+		)
+
+
+func direct_pick_choose(deck: DeckState, candidates: Array[UnitData], floor: int) -> UnitData:
+	if reward_mode != REWARD_V5:
+		return super.direct_pick_choose(deck, candidates, floor)
+	var legal := direct_pick_legal(deck, candidates)
+	if legal.is_empty():
+		return null
+	var heuristic := direct_pick_heuristic(deck, legal)
+	var by_id: Dictionary = {}
+	var keys := PackedStringArray()
+	for unit in legal:
+		if by_id.has(unit.id):
+			continue
+		by_id[unit.id] = unit
+		keys.append(unit.id)
+	keys.sort()
+	var state_key := SimUnitFeatures.direct_state_key(deck, floor)
+	var picked := _select_bandit_unit_id(state_key, keys, heuristic.id if heuristic != null else keys[0])
+	if picked.is_empty() or not by_id.has(picked):
+		return heuristic
+	_recruit_log.append({"state_key": state_key, "action_key": picked})
+	_run_recruit_picks.append({"unit_id": picked, "floor": floor})
+	return by_id[picked]
+
+
 func pick_map_node(run_controller: RunController) -> MapNodeRuntime:
-	if reward_mode == REWARD_V4:
+	if reward_mode == REWARD_V4 or reward_mode == REWARD_V5:
 		return super.pick_map_node(run_controller)
 	var ranked := enumerate_map_candidates(run_controller)
 	if ranked.is_empty():
@@ -233,7 +290,7 @@ func _select_bandit_unit_id(
 
 
 func _recruit_reward_on_run_end() -> bool:
-	return reward_mode == REWARD_V2 or reward_mode == REWARD_V4
+	return reward_mode == REWARD_V2 or reward_mode == REWARD_V4 or reward_mode == REWARD_V5
 
 
 func enumerate_map_candidates(run_controller: RunController) -> Array:
