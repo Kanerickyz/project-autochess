@@ -1,0 +1,4 @@
+auto_loop.log
+auto_loop_console.log
+iter_*_apply.json
+iter_*_train_eval.log

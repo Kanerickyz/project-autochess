@@ -74,6 +74,8 @@ python3 tools/sim_balance/analyze_direct_pick.py .artifacts/sim_balance/direct_p
 
 `resources/sim_balance/default_ai_profile.tres`（`SimAIProfile`）：启发式招募 / 旗帜 / 最短路选 Boss / 前排高 HP。效用权重可调，进化或 RL 导出见 [Documents/Features/SIM_BALANCE_AI.md](../../Documents/Features/SIM_BALANCE_AI.md)。
 
+**自动训练闭环**（仅改 `tools/sim_balance/`）：见 [TRAIN_LOOP.md](./TRAIN_LOOP.md)。
+
 ## 核心依赖
 
 仅一条主工程接缝：`RealtimeCombatSim.run_until_finished()`（无 UI 行为变化）。

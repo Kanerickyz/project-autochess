@@ -1,0 +1,3 @@
+# Generated checkpoints (regenerate via train_eval_round.sh / auto_train_loop.sh)
+active.tres
+seed_v4_stats.json
