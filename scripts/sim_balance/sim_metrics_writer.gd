@@ -116,7 +116,119 @@ static func aggregate(runs: Array, encounters: Array, meta: Dictionary = {}) -> 
 		),
 		"charts": _build_charts(floor_stats, death_hist, run_count, run_complete),
 	}
+	var lineups := _build_lineups(runs)
+	if not lineups.is_empty():
+		out["lineups"] = lineups
 	return out
+
+
+static func _reached_f12(run: Dictionary) -> bool:
+	return str(run.get("outcome", "")) == "RUN_COMPLETE" or int(run.get("death_floor", 0)) >= 12
+
+
+static func _lineup_sort(a: Dictionary, b: Dictionary) -> bool:
+	if int(a.get("tier", 0)) != int(b.get("tier", 0)):
+		return int(a.get("tier", 0)) > int(b.get("tier", 0))
+	if int(a.get("level", 0)) != int(b.get("level", 0)):
+		return int(a.get("level", 0)) > int(b.get("level", 0))
+	return str(a.get("unit_id", "")) < str(b.get("unit_id", ""))
+
+
+static func _lineup_member(e: Dictionary) -> Dictionary:
+	return {
+		"unit_id": str(e.get("unit_id", "")),
+		"name": str(e.get("name", e.get("unit_id", ""))),
+		"level": int(e.get("level", 1)),
+		"tier": int(e.get("tier", 0)),
+	}
+
+
+## 直选池等带 final_roster 的批跑：每局最终上场/备战阵容 + 角色上场统计（按是否到达 F12 拆分）。
+static func _build_lineups(runs: Array) -> Dictionary:
+	var rows: Array = []
+	var usage: Dictionary = {}
+	var reached_runs := 0
+	var other_runs := 0
+	for run in runs:
+		if typeof(run) != TYPE_DICTIONARY or not run.has("final_roster"):
+			continue
+		var reached := _reached_f12(run)
+		if reached:
+			reached_runs += 1
+		else:
+			other_runs += 1
+		var seated: Array = []
+		var bench: Array = []
+		var seen_in_run: Dictionary = {}
+		for e in run.get("final_roster", []):
+			if typeof(e) != TYPE_DICTIONARY:
+				continue
+			var m := _lineup_member(e)
+			if bool(e.get("seated", false)):
+				seated.append(m)
+				var uid: String = m["unit_id"]
+				if not usage.has(uid):
+					usage[uid] = {
+						"unit_id": uid,
+						"name": m["name"],
+						"tier": m["tier"],
+						"copies_seated": 0,
+						"level_sum": 0,
+						"runs_reached_f12": 0,
+						"runs_other": 0,
+					}
+				var u: Dictionary = usage[uid]
+				u["copies_seated"] = int(u["copies_seated"]) + 1
+				u["level_sum"] = int(u["level_sum"]) + int(m["level"])
+				if not seen_in_run.has(uid):
+					seen_in_run[uid] = true
+					var key := "runs_reached_f12" if reached else "runs_other"
+					u[key] = int(u[key]) + 1
+			else:
+				bench.append(m)
+		seated.sort_custom(_lineup_sort)
+		bench.sort_custom(_lineup_sort)
+		rows.append({
+			"seed": int(run.get("seed", 0)),
+			"outcome": str(run.get("outcome", "")),
+			"death_floor": int(run.get("death_floor", 0)),
+			"reached_f12": reached,
+			"seat_cap": int(run.get("final_seat_cap", seated.size())),
+			"seated": seated,
+			"bench": bench,
+		})
+	if rows.is_empty():
+		return {}
+	var unit_usage: Array = []
+	for uid in usage.keys():
+		var u: Dictionary = usage[uid]
+		var copies := maxi(1, int(u["copies_seated"]))
+		u["avg_level"] = float(u["level_sum"]) / float(copies)
+		u.erase("level_sum")
+		u["rate_reached_f12"] = float(u["runs_reached_f12"]) / float(maxi(1, reached_runs))
+		u["rate_other"] = float(u["runs_other"]) / float(maxi(1, other_runs))
+		unit_usage.append(u)
+	unit_usage.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ta := int(a["runs_reached_f12"]) + int(a["runs_other"])
+		var tb := int(b["runs_reached_f12"]) + int(b["runs_other"])
+		if ta != tb:
+			return ta > tb
+		return str(a["unit_id"]) < str(b["unit_id"])
+	)
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var da := 99 if a["outcome"] == "RUN_COMPLETE" else int(a["death_floor"])
+		var db := 99 if b["outcome"] == "RUN_COMPLETE" else int(b["death_floor"])
+		if da != db:
+			return da > db
+		return int(a["seed"]) < int(b["seed"])
+	)
+	return {
+		"description": "每局结束时（通关或阵亡时刻）的队伍快照；上场=已入座。角色统计按局去重计「上场局数」。",
+		"runs_reached_f12": reached_runs,
+		"runs_other": other_runs,
+		"unit_usage": unit_usage,
+		"runs": rows,
+	}
 
 
 static func _infer_profile_id(runs: Array) -> String:

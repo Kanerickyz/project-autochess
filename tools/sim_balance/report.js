@@ -193,6 +193,79 @@
       mount.appendChild(block);
       renderChart(canvas, chart);
     });
+
+    renderLineups(summary.lineups);
+  }
+
+  function formatMember(m) {
+    return escapeHtml(m.name || m.unit_id) + " " + "★".repeat(Math.max(1, m.level || 1));
+  }
+
+  function formatOutcome(row) {
+    return row.outcome === "RUN_COMPLETE" ? "通关" : "F" + row.death_floor + " 阵亡";
+  }
+
+  function pct(v) {
+    return ((v || 0) * 100).toFixed(0) + "%";
+  }
+
+  function renderLineups(lineups) {
+    const section = document.getElementById("lineupSection");
+    if (!section) return;
+    if (!lineups || !Array.isArray(lineups.runs) || lineups.runs.length === 0) {
+      section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    document.getElementById("lineupDesc").textContent =
+      (lineups.description || "") +
+      " 到达 F12：" +
+      lineups.runs_reached_f12 +
+      " 局；未到达：" +
+      lineups.runs_other +
+      " 局。";
+
+    document.getElementById("unitUsageTable").innerHTML = (lineups.unit_usage || [])
+      .map(
+        (u) =>
+          "<tr><td>" +
+          escapeHtml(u.name || u.unit_id) +
+          " <code>" +
+          escapeHtml(u.unit_id) +
+          "</code></td><td>T" +
+          u.tier +
+          "</td><td>" +
+          u.runs_reached_f12 +
+          " (" +
+          pct(u.rate_reached_f12) +
+          ")</td><td>" +
+          u.runs_other +
+          " (" +
+          pct(u.rate_other) +
+          ")</td><td>" +
+          (u.avg_level || 0).toFixed(2) +
+          "</td></tr>"
+      )
+      .join("");
+
+    document.getElementById("lineupRunsTable").innerHTML = lineups.runs
+      .map(
+        (r) =>
+          "<tr><td>" +
+          r.seed +
+          "</td><td>" +
+          formatOutcome(r) +
+          "</td><td>" +
+          (r.seated || []).length +
+          "/" +
+          r.seat_cap +
+          "</td><td>" +
+          (r.seated || []).map(formatMember).join("、") +
+          '</td><td class="dim">' +
+          ((r.bench || []).map(formatMember).join("、") || "—") +
+          "</td></tr>"
+      )
+      .join("");
   }
 
   function buildLegacyCharts(summary) {
