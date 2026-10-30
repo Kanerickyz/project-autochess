@@ -4880,8 +4880,10 @@ func _draw_drag_follower(px: float) -> void:
 	var pixel_off := _drag_draw_pos - snapped
 	## 离格溶解：先贴跟手卡壳（噪声碎掉），再画居中纸片。
 	if _recruit_drag_index >= 0 and _recruit_left_source and _drag_texture == null:
+		draw_set_transform(Vector2.ZERO) ## 清掉上一单位的 draw_set_transform，避免卡壳画飞。
 		var dissolve_p := clampf(_recruit_shell_progress, 0.0, 0.92)
-		_draw_recruit_card_shell_dissolving(_drag_draw_pos, px, dissolve_p)
+		_draw_recruit_card_shell_dissolving(_drag_draw_pos + _frame_shake, px, dissolve_p)
+		draw_set_transform(_frame_shake)
 	var center_sprite := _recruit_drag_index >= 0 and _recruit_left_source
 	_draw_body(
 		tile,
