@@ -14,7 +14,7 @@
 | `manifest.json` | 索引：`runs[]` 列表 + `latest_run_id` |
 | `summary.json` | 与最新一次归档相同（兼容旧链接 / 默认加载） |
 
-`run_id` 示例：`2026-10-29T13-02-00Z_100runs_v0.5.254_abc1234`（时间、局数、游戏版本、提交短 SHA）。
+`run_id` 示例：`2026-10-30T12-00-00Z_100runs_v6.0.1_abc1234`（时间、局数、游戏版本、提交短 SHA）。历史归档仍可能带 `v0.5.*`。
 
 当 **Balance Report Pages** 用 `GITHUB_TOKEN` 推 `main` 时，不会再次触发 `push` 工作流；**Deploy Web** 通过 `workflow_run` 在归档成功后自动部署。
 

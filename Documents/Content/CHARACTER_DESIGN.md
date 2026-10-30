@@ -92,7 +92,7 @@ DEV 阶段友方用蓝、敌方用红，便于半场辨认；终稿仍走纸剪�
 
 - 招募 / 商店池：`resources/recruit/default_recruit_config.tres`（及同类配置）  
 - 策划可在 Godot 启用 `addons/unit_catalog_editor/` 浏览全单位；**入池仍要改对应 `.tres` 池子**  
-- **玩家可见新单位合入**：bump `project.godot` → `application/config/version`（见 [CONTRIBUTING.md](../../CONTRIBUTING.md)）
+- **玩家可见新单位合入**：bump `project.godot` → `application/config/version`（0.6 线自 `6.0.1` 起；见 [CONTRIBUTING.md](../../CONTRIBUTING.md)）
 
 ### 5.6 修改已有角色
 
