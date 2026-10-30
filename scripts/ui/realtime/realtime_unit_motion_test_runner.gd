@@ -570,6 +570,12 @@ func _test_recruit_card_dissolve() -> void:
 	arena._gui_input(leave)
 	_expect(arena.is_recruit_drag_detached(), "leaving source cell detaches / dissolves card")
 	_expect(arena.is_recruit_drag_source_body_hidden(), "detached drag hides source body")
+	## 等半拍让 dissolve progress 推进（shader 噪声阈值，非整卡透明度）。
+	var waited := 0
+	while arena.get_recruit_shell_dissolve_progress() <= 0.05 and waited < 45:
+		await process_frame
+		waited += 1
+	_expect(arena.get_recruit_shell_dissolve_progress() > 0.05, "dissolve progress advances after leave")
 
 	## 松在下半场非法区：回弹路径（不发 recruit_drop）。
 	_press(arena, outside, false)

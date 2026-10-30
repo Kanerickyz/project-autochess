@@ -128,12 +128,17 @@ const DRAG_FOLLOW_RATE := 18.0
 const DRAG_SCALE := RealtimeUnitMotion.DRAG_SCALE
 const DRAG_VELOCITY_SMOOTH := 14.0
 const DRAG_SOURCE_ALPHA := 0.32
-## 招募候选人货架卡壳（旧纸包装）：溶解 / 回席再现秒数可打断。
-const RECRUIT_CARD_DISSOLVE_SEC := 0.16
-const RECRUIT_CARD_RESTORE_SEC := 0.14
-const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.92)
-const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.35)
-const RECRUIT_CARD_STROKE := Color(0.38, 0.24, 0.12, 0.95)
+## 招募候选人货架卡壳（旧纸包装）：统一尺寸；shader 噪声逐步溶解（非整卡透明度）。
+const RECRUIT_CARD_DISSOLVE_SEC := 0.28
+const RECRUIT_CARD_RESTORE_SEC := 0.22
+const RECRUIT_CARD_W_CELLS := 0.90
+const RECRUIT_CARD_H_CELLS := 1.30
+const RECRUIT_CARD_SLOT_CAP := 5
+const RECRUIT_CARD_SHADER: Shader = preload("res://assets/ui/recruit/recruit_card_dissolve.gdshader")
+const RECRUIT_CARD_FILL := Color(0.93, 0.86, 0.68, 0.94)
+const RECRUIT_CARD_FILL_INNER := Color(0.97, 0.92, 0.78, 0.55)
+const RECRUIT_CARD_STROKE := Color(0.38, 0.24, 0.12, 0.96)
+const RECRUIT_CARD_BURN := Color(1.0, 0.52, 0.14, 1.0)
 ## 三合一合成演出：残影飞入 → 合成体弹跳闪白 + 星标。
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
@@ -243,12 +248,14 @@ var _fx_clock: float = 0.0
 var _feedback: Array = []
 var _recruit_drag_index: int = -1
 var _recruit_press_index: int = -1
-## 候选人拖出：源格、是否已离格溶解、卡壳 alpha、失败回席后再现。
+## 候选人拖出：源格、是否已离格溶解、溶解进度（0完整→1消失）、失败回席后再现。
 var _recruit_drag_source_cell: Vector2i = NO_CELL
 var _recruit_left_source: bool = false
-var _recruit_shell_alpha: float = 1.0
+var _recruit_shell_progress: float = 0.0
 var _recruit_shell_tween: Tween
 var _recruit_restore_index: int = -1
+var _recruit_card_shells: Array[ColorRect] = []
+var _recruit_card_mats: Array[ShaderMaterial] = []
 var _recruit_item_drag_index: int = -1
 var _recruit_item_press_index: int = -1
 var _recruit_team_drag_id: int = -1
@@ -327,6 +334,7 @@ func _ready() -> void:
 	add_child(_motion)
 	_info_card.name = "UnitInfoCard"
 	add_child(_info_card)
+	_ensure_recruit_card_shells()
 
 
 func _process(delta: float) -> void:
@@ -1586,8 +1594,9 @@ func _reset_recruit_card_dissolve() -> void:
 	_kill_recruit_shell_tween()
 	_recruit_drag_source_cell = NO_CELL
 	_recruit_left_source = false
-	_recruit_shell_alpha = 1.0
+	_recruit_shell_progress = 0.0
 	_recruit_restore_index = -1
+	_hide_recruit_card_shells()
 
 
 ## 测试/调试：候选人拖已离源格（卡溶解、源槽空、跟手仅纸片）。
@@ -1602,6 +1611,11 @@ func is_recruit_drag_source_body_hidden() -> bool:
 	if _recruit_restore_index >= 0 and _drag_settling:
 		return true
 	return false
+
+
+## 测试/调试：当前溶解进度（0 完整 → 1 消失）。
+func get_recruit_shell_dissolve_progress() -> float:
+	return _recruit_shell_progress
 
 
 func _recruit_candidate_cell(index: int) -> Vector2i:
@@ -1631,8 +1645,9 @@ func _update_recruit_drag_leave(local_pos: Vector2 = Vector2.INF) -> void:
 func _start_recruit_shell_dissolve() -> void:
 	_kill_recruit_shell_tween()
 	_recruit_restore_index = -1
+	_recruit_shell_progress = 0.0
 	_recruit_shell_tween = create_tween()
-	_recruit_shell_tween.tween_property(self, "_recruit_shell_alpha", 0.0, RECRUIT_CARD_DISSOLVE_SEC) \
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_progress", 1.0, RECRUIT_CARD_DISSOLVE_SEC) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 
@@ -1641,51 +1656,101 @@ func _start_recruit_shell_restore(index: int) -> void:
 	_recruit_restore_index = index
 	_recruit_left_source = false
 	_recruit_drag_source_cell = NO_CELL
-	_recruit_shell_alpha = 0.0
+	_recruit_shell_progress = 1.0
 	_recruit_shell_tween = create_tween()
-	_recruit_shell_tween.tween_property(self, "_recruit_shell_alpha", 1.0, RECRUIT_CARD_RESTORE_SEC) \
+	_recruit_shell_tween.tween_property(self, "_recruit_shell_progress", 0.0, RECRUIT_CARD_RESTORE_SEC) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_recruit_shell_tween.tween_callback(func() -> void:
 		if _recruit_restore_index == index:
 			_recruit_restore_index = -1
-			_recruit_shell_alpha = 1.0
+			_recruit_shell_progress = 0.0
 		queue_redraw()
 	)
 
 
-func _recruit_candidate_shell_rect(
-	center_local: Vector2,
-	body_radius: float,
-	visual_half_width: float,
-	visual_half_height: float,
-	px: float,
-	badge_count: int = 3,
-) -> Rect2:
-	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
-	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
-	var badge := get_stat_badge_size(px)
-	var gap := badge.y * 0.06
-	var badges_w := badge.x * float(maxi(1, badge_count)) + gap * float(maxi(0, badge_count - 1))
-	var pad_x := px * 0.05
-	var pad_top := px * 0.1
-	var pad_bot := px * 0.06
-	var half_w := minf(px * 0.46, maxf(rx, badges_w * 0.5) + pad_x)
-	var top := center_local.y - ry - pad_top
-	var bot := center_local.y + px * 0.38 + badge.y * 1.08 + pad_bot
-	return Rect2(Vector2(center_local.x - half_w, top), Vector2(half_w * 2.0, bot - top))
-
-
-func _draw_recruit_candidate_shell(rect: Rect2, alpha: float) -> void:
-	if alpha <= 0.01 or rect.size.x <= 1.0 or rect.size.y <= 1.0:
+func _ensure_recruit_card_shells() -> void:
+	if not _recruit_card_shells.is_empty():
 		return
-	var fill := Color(RECRUIT_CARD_FILL, RECRUIT_CARD_FILL.a * alpha)
-	var inner := Color(RECRUIT_CARD_FILL_INNER, RECRUIT_CARD_FILL_INNER.a * alpha)
-	var stroke := Color(RECRUIT_CARD_STROKE, RECRUIT_CARD_STROKE.a * alpha)
-	draw_rect(rect, fill, true)
-	var inset := rect.grow(-maxf(2.0, minf(rect.size.x, rect.size.y) * 0.04))
-	if inset.size.x > 2.0 and inset.size.y > 2.0:
-		draw_rect(inset, inner, true)
-	draw_rect(rect, stroke, false, maxf(1.5, rect.size.x * 0.025))
+	for i in RECRUIT_CARD_SLOT_CAP:
+		var shell := ColorRect.new()
+		shell.name = "RecruitCardShell_%d" % i
+		shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shell.show_behind_parent = true
+		shell.visible = false
+		shell.color = Color(1, 1, 1, 1)
+		var mat := ShaderMaterial.new()
+		mat.shader = RECRUIT_CARD_SHADER
+		mat.set_shader_parameter("progress", 0.0)
+		mat.set_shader_parameter("fill_color", RECRUIT_CARD_FILL)
+		mat.set_shader_parameter("fill_inner", RECRUIT_CARD_FILL_INNER)
+		mat.set_shader_parameter("stroke_color", RECRUIT_CARD_STROKE)
+		mat.set_shader_parameter("burn_color", RECRUIT_CARD_BURN)
+		shell.material = mat
+		add_child(shell)
+		move_child(shell, 0)
+		_recruit_card_shells.append(shell)
+		_recruit_card_mats.append(mat)
+
+
+func _hide_recruit_card_shells() -> void:
+	for shell in _recruit_card_shells:
+		if shell != null:
+			shell.visible = false
+
+
+func _recruit_candidate_shell_size(px: float) -> Vector2:
+	## 全槽统一尺寸（不随兵种剪影半宽/半高变化）。
+	return Vector2(px * RECRUIT_CARD_W_CELLS, px * RECRUIT_CARD_H_CELLS)
+
+
+func _recruit_candidate_shell_rect(center_local: Vector2, px: float) -> Rect2:
+	var sz := _recruit_candidate_shell_size(px)
+	return Rect2(center_local - sz * 0.5, sz)
+
+
+func _sync_recruit_card_shells(px: float, off: Vector2) -> void:
+	_ensure_recruit_card_shells()
+	if not recruit_active:
+		_hide_recruit_card_shells()
+		return
+	var active_slots: Dictionary = {}
+	for info in recruit_candidates:
+		if not (info is Dictionary):
+			continue
+		var cell: Vector2i = info.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var unit: UnitData = info.get("unit") as UnitData
+		if unit == null:
+			continue
+		var index := int(info.get("index", -1))
+		if index < 0 or index >= _recruit_card_shells.size():
+			continue
+		var dragging := index == _recruit_drag_index
+		var restoring := index == _recruit_restore_index
+		## 离格溶解播完或回席飞行中：该槽不画卡（源槽空）。
+		if dragging and _recruit_left_source and _recruit_shell_progress >= 0.999:
+			continue
+		if restoring and _drag_settling:
+			continue
+		var progress := 0.0
+		if dragging and _recruit_left_source:
+			progress = _recruit_shell_progress
+		elif restoring:
+			progress = _recruit_shell_progress
+		var center_local := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + off
+		var rect := _recruit_candidate_shell_rect(center_local, px)
+		var shell := _recruit_card_shells[index]
+		var mat := _recruit_card_mats[index]
+		shell.visible = progress < 0.999
+		shell.position = rect.position
+		shell.size = rect.size
+		if mat != null:
+			mat.set_shader_parameter("progress", progress)
+		active_slots[index] = true
+	for i in _recruit_card_shells.size():
+		if not active_slots.has(i):
+			_recruit_card_shells[i].visible = false
 
 
 func _draw_enchant_team_seat_hint(px: float) -> void:
@@ -2596,7 +2661,7 @@ func _begin_recruit_drag(index: int, from_local: Vector2 = Vector2.ZERO) -> void
 	_recruit_restore_index = -1
 	_recruit_drag_source_cell = info.get("cell", NO_CELL) as Vector2i
 	_recruit_left_source = false
-	_recruit_shell_alpha = 1.0
+	_recruit_shell_progress = 0.0
 	recruit_selected_candidate = index
 	recruit_needs_replace = _candidate_needs_replace(index)
 	_drag_active = true
@@ -2729,7 +2794,7 @@ func _bounce_recruit_card_drag(index: int, source: Vector2i, left_source: bool) 
 		return
 	_recruit_restore_index = index
 	_recruit_left_source = true
-	_recruit_shell_alpha = 0.0
+	_recruit_shell_progress = 1.0
 	_kill_recruit_shell_tween()
 	var settle_cell := source if source != NO_CELL else _recruit_candidate_cell(index)
 	_finish_drag_visual(settle_cell)
@@ -3903,6 +3968,8 @@ func _draw_merge_fx(px: float, off: Vector2) -> void:
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:
+	## 统一卡壳（ColorRect + dissolve shader）画在父节点背后；此处只同步并画居中角色。
+	_sync_recruit_card_shells(px, off)
 	var ordered := recruit_candidates.duplicate()
 	if _info_shown and not ordered.is_empty():
 		var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
@@ -3923,6 +3990,8 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			var moved: Variant = ordered[focus_at]
 			ordered.remove_at(focus_at)
 			ordered.append(moved)
+	var shell_sz := _recruit_candidate_shell_size(px)
+	var badge := get_stat_badge_size(px)
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -3942,34 +4011,31 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		## 静置 / 源格内拖：卡+人；离格后源槽空（卡壳短促淡出）；回席 settle 完再淡入卡。
+		## 静置 / 源格内拖：卡+人；离格后源槽空；回席 settle 完再 shader 复卡。
 		var hide_body := (dragging and _recruit_left_source) or (restoring and _drag_settling)
-		var shell_alpha := 1.0
-		if dragging and _recruit_left_source:
-			shell_alpha = _recruit_shell_alpha
-		elif restoring:
-			shell_alpha = 0.0 if _drag_settling else _recruit_shell_alpha
-		if shell_alpha > 0.01:
-			var shell := _recruit_candidate_shell_rect(center_local, radius, vwx, vhy, px, 3)
-			_draw_recruit_candidate_shell(shell, shell_alpha)
 		if hide_body:
 			continue
 		var alpha := 0.95
 		if restoring:
-			alpha = clampf(_recruit_shell_alpha, 0.35, 0.95)
+			alpha = clampf(1.0 - _recruit_shell_progress, 0.35, 0.95)
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
-			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
+			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index), null, true,
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
+		## 价签/攻血挂在统一卡壳下缘外侧（_draw_stat_badges 会再加 px*0.38）。
+		var badge_anchor := Vector2(
+			center_local.x,
+			center_local.y + shell_sz.y * 0.5 - px * 0.38 + badge.y * 0.08,
+		)
 		_draw_stat_badges(
-			center_local, atk, hp, alpha, px, 0, cost, affordable
+			badge_anchor, atk, hp, alpha, px, 0, cost, affordable
 		)
 		if locked:
-			_draw_recruit_lock_tag(center_local, px)
+			_draw_recruit_lock_tag(center_local + Vector2(0.0, -shell_sz.y * 0.42), px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
@@ -4319,6 +4385,7 @@ func _draw_body(
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
 	override_tex: Texture2D = null,
+	center_sprite: bool = false,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
@@ -4331,13 +4398,15 @@ func _draw_body(
 	if tex == null and _art != null:
 		tex = _art.get_texture(unit_id, is_player)
 	if tex != null:
-		_draw_unit_sprite(center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed)
+		_draw_unit_sprite(
+			center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed, center_sprite
+		)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
 	var fill := Color(color, alpha)
 	_draw_ellipse_filled(center, rx, ry, fill)
 	_draw_ellipse_outline(center, rx, ry, Color(0, 0, 0, 0.45 * alpha), 1.5)
-	if show_foot:
+	if show_foot and not center_sprite:
 		var foot_r := maxf(2.0, body_radius * px)
 		draw_arc(center, foot_r, 0.0, TAU, 20, Color(0, 0, 0, 0.35 * alpha), 1.25)
 	if label.is_empty():
@@ -4422,17 +4491,25 @@ func _draw_unit_sprite(
 	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
+	center_sprite: bool = false,
 ) -> void:
 	var h_cap := px * 1.9
 	if footprint_span >= 1.5:
 		h_cap = px * minf(2.6, footprint_span * 1.15)
+	## 货架卡内居中：略收高度，保证剪影落在统一卡壳内。
+	if center_sprite:
+		h_cap = minf(h_cap, px * RECRUIT_CARD_H_CELLS * 0.78)
 	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, h_cap)
+	if center_sprite:
+		h = minf(h, px * RECRUIT_CARD_H_CELLS * 0.72)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
 	## 贴纸 sheet 剪影偏方/偏宽：限制占格宽度，超限时等比缩小，避免压住邻格。
 	var max_w := px * (
 		SPRITE_MAX_WIDTH_CELLS_FOOTPRINT if footprint_span >= 1.5 else SPRITE_MAX_WIDTH_CELLS
 	)
+	if center_sprite:
+		max_w = minf(max_w, px * RECRUIT_CARD_W_CELLS * 0.78)
 	if w > max_w and w > 0.0:
 		var shrink := max_w / w
 		w = max_w
@@ -4443,10 +4520,10 @@ func _draw_unit_sprite(
 		w *= RECRUIT_PROP_SPRITE_SCALE
 		h *= RECRUIT_PROP_SPRITE_SCALE
 		content_bottom = RECRUIT_PROP_CONTENT_BOTTOM
-	## 2×2：贴图中心对齐足迹几何中心；1×1：脚底略低于格心。
+	## 货架卡：贴图几何中心对齐卡心；2×2 同理；1×1 战场仍脚底略低于格心。
 	var feet := (
 		center + Vector2(0.0, h * 0.5)
-		if footprint_span >= 1.5
+		if center_sprite or footprint_span >= 1.5
 		else center + Vector2(0.0, px * 0.38)
 	)
 	var offset := Vector2.ZERO
