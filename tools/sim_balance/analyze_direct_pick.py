@@ -90,6 +90,10 @@ def analyze(runs: list) -> dict:
     tier_sum = 0
     roster_count = 0
     seat_cap_sum = 0
+    seated_healers = 0
+    seated_level_sum = 0
+    seated_count = 0
+    max_level_seen = 0
     for r in runs:
         roster = r.get("final_roster", [])
         seat_cap_sum += int(r.get("final_seat_cap", 0))
@@ -98,6 +102,12 @@ def analyze(runs: list) -> dict:
             for role in e.get("roles", []):
                 roster_roles[role] += 1
             level_sum += int(e.get("level", 1))
+            max_level_seen = max(max_level_seen, int(e.get("level", 1)))
+            if e.get("seated"):
+                seated_count += 1
+                seated_level_sum += int(e.get("level", 1))
+                if "healer" in e.get("roles", []):
+                    seated_healers += 1
             tier_sum += int(e.get("tier", 1))
             roster_count += 1
     avg_roster = {
@@ -105,6 +115,9 @@ def analyze(runs: list) -> dict:
         "avg_level": round(level_sum / max(1, roster_count), 2),
         "avg_tier": round(tier_sum / max(1, roster_count), 2),
         "avg_seat_cap": round(seat_cap_sum / max(1, n), 2),
+        "avg_seated_level": round(seated_level_sum / max(1, seated_count), 2),
+        "avg_seated_healers": round(seated_healers / max(1, n), 2),
+        "max_level_seen": max_level_seen,
         "avg_role_counts": {k: round(v / max(1, n), 2) for k, v in roster_roles.most_common()},
         "top_units": roster_units.most_common(15),
     }

@@ -7,7 +7,29 @@ const ROLE_RANGED := "ranged"
 const ROLE_HEALER := "healer"
 const ROLE_DPS := "dps"
 
+const DPS_TOP_FRACTION := 0.3
+
 static var _healer_cache: Dictionary = {}
+## 全花名册攻/血比前 30% 分位阈值；未配置时回退 1/3。
+static var _dps_ratio_threshold: float = -1.0
+
+
+static func configure_pool(pool: Array) -> void:
+	var ratios: Array[float] = []
+	for unit in pool:
+		var u := unit as UnitData
+		if u == null or u.team_default != UnitInstance.Team.PLAYER:
+			continue
+		ratios.append(_atk_hp_ratio(u))
+	if ratios.is_empty():
+		return
+	ratios.sort()
+	var idx := clampi(int(floor(float(ratios.size()) * (1.0 - DPS_TOP_FRACTION))), 0, ratios.size() - 1)
+	_dps_ratio_threshold = ratios[idx]
+
+
+static func _atk_hp_ratio(unit: UnitData) -> float:
+	return float(atk(unit)) / float(maxi(1, hp(unit)))
 
 
 static func atk(unit: UnitData) -> int:
@@ -50,7 +72,9 @@ static func _ability_heals(ability: AbilityData) -> bool:
 
 
 static func is_dps(unit: UnitData) -> bool:
-	return atk(unit) * 3 >= hp(unit)
+	if _dps_ratio_threshold < 0.0:
+		return atk(unit) * 3 >= hp(unit)
+	return _atk_hp_ratio(unit) >= _dps_ratio_threshold
 
 
 static func roles(unit: UnitData) -> PackedStringArray:
@@ -121,6 +145,44 @@ static func count_same_level1(deck: DeckState, unit_id: String) -> int:
 	return c
 
 
+static func count_same_level(deck: DeckState, unit_id: String, level: int) -> int:
+	var c := 0
+	for entry in deck.get_entries():
+		if entry != null and entry.unit != null and entry.get_unit_id() == unit_id and entry.level == level:
+			c += 1
+	return c
+
+
+## 同名 1★ 恰 2 只（再拿 1 只即 2★）的组数。
+static func pair_group_count(deck: DeckState) -> int:
+	var c1: Dictionary = {}
+	for entry in deck.get_entries():
+		if entry == null or entry.unit == null or entry.level != 1:
+			continue
+		var uid := entry.get_unit_id()
+		c1[uid] = int(c1.get(uid, 0)) + 1
+	var n := 0
+	for k in c1.keys():
+		if int(c1[k]) >= 2:
+			n += 1
+	return n
+
+
+## 只有 1 只 1★、尚未成对的不同角色数（「新开」散件）。
+static func single_group_count(deck: DeckState) -> int:
+	var c1: Dictionary = {}
+	for entry in deck.get_entries():
+		if entry == null or entry.unit == null or entry.level != 1:
+			continue
+		var uid := entry.get_unit_id()
+		c1[uid] = int(c1.get(uid, 0)) + 1
+	var n := 0
+	for k in c1.keys():
+		if int(c1[k]) == 1:
+			n += 1
+	return n
+
+
 static func has_pair(deck: DeckState) -> bool:
 	var buckets: Dictionary = {}
 	for entry in deck.get_entries():
@@ -167,7 +229,12 @@ static func direct_state_key(deck: DeckState, floor: int) -> String:
 	avg_tier = avg_tier / float(maxi(1, lu.size()))
 	var seat_b := 0 if seats <= 6 else (1 if seats <= 8 else 2)
 	var owned_b := 0 if owned <= 2 else (1 if owned <= 5 else (2 if owned <= 8 else 3))
-	return "v5|%s|s%d|o%d|gap%s|fr%d|rg%d|t%d|p%d" % [
+	var pairs := pair_group_count(deck)
+	var stars2 := 0
+	for e in lu:
+		if e.level >= 2:
+			stars2 += 1
+	return "v5|%s|s%d|o%d|gap%s|fr%d|rg%d|t%d|pg%d|st%d" % [
 		floor_segment(floor),
 		seat_b,
 		owned_b,
@@ -175,5 +242,6 @@ static func direct_state_key(deck: DeckState, floor: int) -> String:
 		_bucket3(int(counts[ROLE_FRONT])),
 		_bucket3(int(counts[ROLE_RANGED])),
 		int(round(avg_tier)),
-		1 if has_pair(deck) else 0,
+		mini(pairs, 2),
+		_bucket3(stars2),
 	]

@@ -54,10 +54,25 @@ func _direct_pick_smoke() -> bool:
 	var record: Dictionary = {}
 	for seed in range(2):
 		record = sim.simulate_run(9100 + seed)
+		for e in record.get("final_roster", []):
+			if int((e as Dictionary).get("level", 1)) > DirectPickRecruiter.MAX_LEVEL:
+				push_error("BanditSmoke: direct-pick seed %d roster has level>%d: %s" % [9100 + seed, DirectPickRecruiter.MAX_LEVEL, e])
+				return false
 	var picks: Array = record.get("recruit_picks", [])
 	if picks.is_empty() or not bool(record.get("direct_pick", false)):
 		push_error("BanditSmoke: direct-pick run must log recruit_picks")
 		return false
+	var per_phase: Dictionary = {}
+	for p in picks:
+		var ph := int((p as Dictionary).get("phase", 0))
+		per_phase[ph] = int(per_phase.get(ph, 0)) + 1
+		if int(per_phase[ph]) > DirectPickRecruiter.MAX_PICKS_PER_PHASE:
+			push_error("BanditSmoke: direct-pick phase %d exceeded %d picks" % [ph, DirectPickRecruiter.MAX_PICKS_PER_PHASE])
+			return false
+	for e in record.get("final_roster", []):
+		if int((e as Dictionary).get("level", 1)) > DirectPickRecruiter.MAX_LEVEL:
+			push_error("BanditSmoke: direct-pick roster has level>%d: %s" % [DirectPickRecruiter.MAX_LEVEL, e])
+			return false
 	var counts: Dictionary = {}
 	for p in picks:
 		var uid := str((p as Dictionary).get("unit_id", ""))

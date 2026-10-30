@@ -1,0 +1,7698 @@
+[gd_resource type="Resource" script_class="SimBanditCheckpoint" format=3]
+
+[ext_resource type="Script" path="res://scripts/sim_balance/sim_bandit_checkpoint.gd" id="1_aeikt"]
+
+[resource]
+script = ExtResource("1_aeikt")
+policy_id = "bandit-v5-direct"
+reward_mode = "v5"
+stats_json = "{
+	\"v5|f10|s1|o3|gap0010|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s1|o3|gap0010|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|mini_pekka\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|berserker\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 64
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|banner\": {
+		\"l\": 3,
+		\"w\": 17
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|berserker\": {
+		\"l\": 3,
+		\"w\": 11
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 213
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|devour\": {
+		\"l\": 0,
+		\"w\": 31
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 10
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 18
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|mini_pekka\": {
+		\"l\": 6,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 15
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 6,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|thunder_drum\": {
+		\"l\": 3,
+		\"w\": 16
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|vita_keeper\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 6,
+		\"w\": 9
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 6,
+		\"w\": 46
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|banner\": {
+		\"l\": 6,
+		\"w\": 49
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|berserker\": {
+		\"l\": 6,
+		\"w\": 97
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|coffer_ward\": {
+		\"l\": 3,
+		\"w\": 719
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|devour\": {
+		\"l\": 9,
+		\"w\": 31
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|flower_drum\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 44
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 6,
+		\"w\": 44
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 9,
+		\"w\": 17
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|mini_pekka\": {
+		\"l\": 9,
+		\"w\": 41
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 45
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 9,
+		\"w\": 28
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|thunder_drum\": {
+		\"l\": 12,
+		\"w\": 22
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|vita_keeper\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|wardrum\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 6,
+		\"w\": 32
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|banner\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|berserker\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|mini_pekka\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 11
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|banner\": {
+		\"l\": 6,
+		\"w\": 34
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 67
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 491
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|devour\": {
+		\"l\": 0,
+		\"w\": 65
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|horsebow\": {
+		\"l\": 3,
+		\"w\": 11
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|hunter\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 15
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|mini_pekka\": {
+		\"l\": 3,
+		\"w\": 57
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 14
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|thunder_drum\": {
+		\"l\": 3,
+		\"w\": 48
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 59
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 277
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|berserker\": {
+		\"l\": 9,
+		\"w\": 116
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 1548
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|devour\": {
+		\"l\": 6,
+		\"w\": 134
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|flower_drum\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 90
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|hunter\": {
+		\"l\": 9,
+		\"w\": 26
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 53
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|mini_pekka\": {
+		\"l\": 6,
+		\"w\": 141
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|mirror_warden\": {
+		\"l\": 3,
+		\"w\": 104
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 9,
+		\"w\": 50
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|thunder_drum\": {
+		\"l\": 3,
+		\"w\": 502
+	},
+	\"v5|f10|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 11
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t1|pg1|st2|mini_pekka\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|banner\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 19
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 21
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 40
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 32
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|hunter\": {
+		\"l\": 6,
+		\"w\": 5
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 26
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 23
+	},
+	\"v5|f10|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg0|st2|maul\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|banner\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 52
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|mini_pekka\": {
+		\"l\": 9,
+		\"w\": 253
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|banner\": {
+		\"l\": 0,
+		\"w\": 49
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|devour\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|horsebow\": {
+		\"l\": 3,
+		\"w\": 17
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 35
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 56
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|coffer_ward\": {
+		\"l\": 6,
+		\"w\": 1573
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 32
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 19
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 6,
+		\"w\": 28
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 49
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 11
+	},
+	\"v5|f10|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|thunder_drum\": {
+		\"l\": 6,
+		\"w\": 868
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg0|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg0|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg0|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 19
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f10|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f10|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|thunder_drum\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg0|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|banner\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 28
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|devour\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 61
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 22
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 107
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 131
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 128
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 107
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 124
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 68
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 1423
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t3|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t3|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t3|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t3|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0000|fr2|rg2|t3|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|banner\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 32
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 28
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0010|fr2|rg2|t3|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 48
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 1339
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 68
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 164
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 100
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 116
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 48
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 48
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 124
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0100|fr2|rg1|t3|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t3|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t3|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t3|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg0|t3|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg0|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|banner\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|devour\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg1|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 44
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 48
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 40
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t2|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 36
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg1|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg1|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg1|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|banner\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|berserker\": {
+		\"l\": 0,
+		\"w\": 40
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|coffer_ward\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|devour\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|mini_pekka\": {
+		\"l\": 0,
+		\"w\": 144
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|mirror_warden\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f13|s2|o3|gap0110|fr2|rg1|t3|pg2|st2|thunder_drum\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|archer\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|crossbow\": {
+		\"l\": 5,
+		\"w\": 27
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|edge_hex\": {
+		\"l\": 9,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|goblin\": {
+		\"l\": 8,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|knight\": {
+		\"l\": 8,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|skeleton\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st0|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|goblin\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|knight\": {
+		\"l\": 1,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg0|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|crossbow\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|goblin\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0110|fr1|rg0|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg0|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|archer\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|knight\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap0111|fr1|rg0|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|archer\": {
+		\"l\": 12,
+		\"w\": 23
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 20,
+		\"w\": 38
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 15,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 19,
+		\"w\": 21
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|knight\": {
+		\"l\": 20,
+		\"w\": 25
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|rune_plate\": {
+		\"l\": 21,
+		\"w\": 58
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 18,
+		\"w\": 17
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st0|spike_shield\": {
+		\"l\": 21,
+		\"w\": 42
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|echo_spear\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|knight\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 5,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 6,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|knight\": {
+		\"l\": 6,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|rune_plate\": {
+		\"l\": 5,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr0|rg1|t1|pg1|st0|spike_shield\": {
+		\"l\": 4,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 15,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 21,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 21,
+		\"w\": 25
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|knight\": {
+		\"l\": 23,
+		\"w\": 50
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|rune_plate\": {
+		\"l\": 21,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 20,
+		\"w\": 19
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st0|spike_shield\": {
+		\"l\": 94,
+		\"w\": 705
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 3,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|echo_spear\": {
+		\"l\": 8,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 8,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|knight\": {
+		\"l\": 7,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o0|gap1000|fr1|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 7,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|archer\": {
+		\"l\": 7,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 8,
+		\"w\": 15
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 8,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|knight\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg1|st0|archer\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1010|fr0|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|archer\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 8,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 9,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|knight\": {
+		\"l\": 8,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 9,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|archer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap1010|fr1|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|archer\": {
+		\"l\": 17,
+		\"w\": 33
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|crossbow\": {
+		\"l\": 17,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|edge_hex\": {
+		\"l\": 16,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|goblin\": {
+		\"l\": 17,
+		\"w\": 28
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|knight\": {
+		\"l\": 15,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st0|spear_goblin\": {
+		\"l\": 14,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st1|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1110|fr1|rg0|t1|pg0|st1|goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|archer\": {
+		\"l\": 47,
+		\"w\": 40
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|crossbow\": {
+		\"l\": 66,
+		\"w\": 107
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|edge_hex\": {
+		\"l\": 51,
+		\"w\": 56
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|goblin\": {
+		\"l\": 45,
+		\"w\": 40
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|knight\": {
+		\"l\": 139,
+		\"w\": 756
+	},
+	\"v5|f1|s0|o0|gap1111|fr0|rg0|t0|pg0|st0|spear_goblin\": {
+		\"l\": 64,
+		\"w\": 97
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|archer\": {
+		\"l\": 11,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|crossbow\": {
+		\"l\": 80,
+		\"w\": 687
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|edge_hex\": {
+		\"l\": 12,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|goblin\": {
+		\"l\": 12,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|knight\": {
+		\"l\": 12,
+		\"w\": 27
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st0|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o0|gap1111|fr1|rg0|t1|pg0|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|archer\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 16,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 16,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 16,
+		\"w\": 35
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|knight\": {
+		\"l\": 87,
+		\"w\": 691
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|rune_plate\": {
+		\"l\": 15,
+		\"w\": 34
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 17,
+		\"w\": 26
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st0|spike_shield\": {
+		\"l\": 16,
+		\"w\": 43
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|archer\": {
+		\"l\": 19,
+		\"w\": 21
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 20,
+		\"w\": 44
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|echo_spear\": {
+		\"l\": 14,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 18,
+		\"w\": 54
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 14,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|knight\": {
+		\"l\": 20,
+		\"w\": 38
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 18,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 20,
+		\"w\": 33
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 20,
+		\"w\": 34
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|archer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|echo_spear\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|knight\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 15
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|archer\": {
+		\"l\": 13,
+		\"w\": 28
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 12,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 13,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 12,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|knight\": {
+		\"l\": 12,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|rune_plate\": {
+		\"l\": 12,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st0|spike_shield\": {
+		\"l\": 11,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|archer\": {
+		\"l\": 8,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 4,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|echo_spear\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 7,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 7,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|knight\": {
+		\"l\": 4,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|rune_plate\": {
+		\"l\": 7,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 9,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 4,
+		\"w\": 17
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|archer\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg1|t1|pg2|st0|spike_shield\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|knight\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st1|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|archer\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|crossbow\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|edge_hex\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|knight\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|rune_plate\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|spear_goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st0|spike_shield\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|archer\": {
+		\"l\": 14,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|crossbow\": {
+		\"l\": 12,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|edge_hex\": {
+		\"l\": 12,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|goblin\": {
+		\"l\": 11,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|knight\": {
+		\"l\": 10,
+		\"w\": 17
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|rune_plate\": {
+		\"l\": 12,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st1|spike_shield\": {
+		\"l\": 13,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|crossbow\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|knight\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|rune_plate\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st0|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|knight\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|knight\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|skeleton\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st0|spike_shield\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|archer\": {
+		\"l\": 14,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 18,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|echo_spear\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 15,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 16,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|knight\": {
+		\"l\": 15,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 18,
+		\"w\": 53
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|skeleton\": {
+		\"l\": 16,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 76
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 13,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 12,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 14,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|echo_spear\": {
+		\"l\": 14,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 13,
+		\"w\": 14
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 11,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 12,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 10,
+		\"w\": 43
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|skeleton\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 11,
+		\"w\": 26
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|archer\": {
+		\"l\": 16,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 17,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 19,
+		\"w\": 33
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 18,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|knight\": {
+		\"l\": 19,
+		\"w\": 34
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|rune_plate\": {
+		\"l\": 15,
+		\"w\": 37
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|skeleton\": {
+		\"l\": 14,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 16,
+		\"w\": 19
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st0|spike_shield\": {
+		\"l\": 87,
+		\"w\": 698
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|archer\": {
+		\"l\": 23,
+		\"w\": 47
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 93,
+		\"w\": 710
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|echo_spear\": {
+		\"l\": 15,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 22,
+		\"w\": 30
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 27,
+		\"w\": 33
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|knight\": {
+		\"l\": 22,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|rune_plate\": {
+		\"l\": 18,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|skeleton\": {
+		\"l\": 16,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 29,
+		\"w\": 99
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 25,
+		\"w\": 55
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|echo_spear\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|archer\": {
+		\"l\": 5,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|crossbow\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 75,
+		\"w\": 660
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|goblin\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|knight\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|rune_plate\": {
+		\"l\": 5,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|spear_goblin\": {
+		\"l\": 6,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st0|spike_shield\": {
+		\"l\": 5,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 1,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|rune_plate\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap0000|fr2|rg1|t1|pg2|st1|spike_shield\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|skeleton\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|knight\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr1|rg1|t1|pg2|st0|goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|skeleton\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg2|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0010|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st0|skeleton\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|skeleton\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|crossbow\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg1|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0100|fr2|rg0|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg0|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg0|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg0|st1|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|archer\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|crossbow\": {
+		\"l\": 4,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|edge_hex\": {
+		\"l\": 3,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|goblin\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|knight\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|skeleton\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st0|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|goblin\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|skeleton\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg1|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap0110|fr2|rg0|t1|pg2|st0|goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap0111|fr2|rg0|t1|pg1|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|archer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|crossbow\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|knight\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st0|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st1|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st1|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg1|st1|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg2|st0|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg2|st0|crossbow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr0|rg2|t1|pg2|st0|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|archer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|crossbow\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|edge_hex\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|knight\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st0|spike_shield\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|archer\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 8,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 10,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 9,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|knight\": {
+		\"l\": 9,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|rune_plate\": {
+		\"l\": 8,
+		\"w\": 15
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 15
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st0|spike_shield\": {
+		\"l\": 10,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|knight\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|edge_hex\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st0|spike_shield\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|archer\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|crossbow\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|edge_hex\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|knight\": {
+		\"l\": 4,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|rune_plate\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st1|spike_shield\": {
+		\"l\": 3,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg2|st0|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st1|archer\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o1|gap1010|fr1|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st0|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st0|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|archer\": {
+		\"l\": 19,
+		\"w\": 23
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|crossbow\": {
+		\"l\": 16,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|edge_hex\": {
+		\"l\": 20,
+		\"w\": 23
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|goblin\": {
+		\"l\": 24,
+		\"w\": 28
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|knight\": {
+		\"l\": 15,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|rune_plate\": {
+		\"l\": 16,
+		\"w\": 19
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|skeleton\": {
+		\"l\": 14,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|spear_goblin\": {
+		\"l\": 21,
+		\"w\": 27
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st1|spike_shield\": {
+		\"l\": 15,
+		\"w\": 25
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 9,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 8,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|skeleton\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 37
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 6,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|archer\": {
+		\"l\": 9,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|crossbow\": {
+		\"l\": 10,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|edge_hex\": {
+		\"l\": 11,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|goblin\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|knight\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|rune_plate\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|spear_goblin\": {
+		\"l\": 11,
+		\"w\": 27
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st0|spike_shield\": {
+		\"l\": 5,
+		\"w\": 13
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 27,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 42,
+		\"w\": 48
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 36,
+		\"w\": 71
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 33,
+		\"w\": 37
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|knight\": {
+		\"l\": 32,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 30,
+		\"w\": 70
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|skeleton\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 34,
+		\"w\": 46
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 18,
+		\"w\": 32
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 3,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o2|gap0000|fr1|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|knight\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|skeleton\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 9,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|echo_spear\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 7,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 8,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 8,
+		\"w\": 14
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|skeleton\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 8,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|crossbow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|goblin\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st0|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|archer\": {
+		\"l\": 20,
+		\"w\": 26
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 18,
+		\"w\": 17
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|echo_spear\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 17,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|goblin\": {
+		\"l\": 157,
+		\"w\": 1337
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|knight\": {
+		\"l\": 19,
+		\"w\": 35
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|rune_plate\": {
+		\"l\": 17,
+		\"w\": 32
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|skeleton\": {
+		\"l\": 24,
+		\"w\": 32
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 22,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 19,
+		\"w\": 23
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 20,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 18,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|echo_spear\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 28,
+		\"w\": 53
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 17,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 68,
+		\"w\": 600
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 20,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|skeleton\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 22,
+		\"w\": 27
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 31,
+		\"w\": 55
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|archer\": {
+		\"l\": 10,
+		\"w\": 2
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|crossbow\": {
+		\"l\": 152,
+		\"w\": 1310
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 9,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|goblin\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|knight\": {
+		\"l\": 9,
+		\"w\": 9
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|rune_plate\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|skeleton\": {
+		\"l\": 8,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|spear_goblin\": {
+		\"l\": 14,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st0|spike_shield\": {
+		\"l\": 11,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|archer\": {
+		\"l\": 34,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 44,
+		\"w\": 107
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 41,
+		\"w\": 57
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 50,
+		\"w\": 75
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 36,
+		\"w\": 37
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|rune_plate\": {
+		\"l\": 32,
+		\"w\": 51
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|skeleton\": {
+		\"l\": 26,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 45,
+		\"w\": 58
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|spike_shield\": {
+		\"l\": 158,
+		\"w\": 1306
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 9,
+		\"w\": 19
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 9,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 10,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 8,
+		\"w\": 21
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 7,
+		\"w\": 21
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 7,
+		\"w\": 25
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 6,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 10,
+		\"w\": 10
+	},
+	\"v5|f1|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 6,
+		\"w\": 35
+	},
+	\"v5|f1|s0|o2|gap0010|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr1|rg2|t1|pg1|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st0|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st0|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|rune_plate\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0010|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0100|fr2|rg0|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0100|fr2|rg0|t1|pg1|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg1|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg1|st2|crossbow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg1|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg1|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg2|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr0|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr0|rg2|t1|pg2|st1|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|knight\": {
+		\"l\": 0,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st0|goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st0|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 20
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 6,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|knight\": {
+		\"l\": 2,
+		\"w\": 19
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg1|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 18,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 18,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 18,
+		\"w\": 32
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 20,
+		\"w\": 31
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|knight\": {
+		\"l\": 24,
+		\"w\": 14
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|skeleton\": {
+		\"l\": 7,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 15,
+		\"w\": 11
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 18
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0000|fr1|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 41,
+		\"w\": 525
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|archer\": {
+		\"l\": 21,
+		\"w\": 24
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 16,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 27,
+		\"w\": 42
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 26,
+		\"w\": 29
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 60,
+		\"w\": 577
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|rune_plate\": {
+		\"l\": 5,
+		\"w\": 22
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|skeleton\": {
+		\"l\": 12,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 21,
+		\"w\": 38
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|spike_shield\": {
+		\"l\": 16,
+		\"w\": 5
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 12,
+		\"w\": 12
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 10,
+		\"w\": 26
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 14,
+		\"w\": 14
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 11,
+		\"w\": 16
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 11,
+		\"w\": 14
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 11,
+		\"w\": 23
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 11,
+		\"w\": 26
+	},
+	\"v5|f1|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 8,
+		\"w\": 21
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0100|fr2|rg0|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr0|rg2|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr0|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr0|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st0|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 8
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f1|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 2,
+		\"w\": 2
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg1|st1|spike_shield\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap0000|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o1|gap0010|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg1|t1|pg0|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg1|t1|pg1|st1|crossbow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o1|gap1000|fr1|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 7
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 40,
+		\"w\": 540
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 5,
+		\"w\": 13
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|horsebow\": {
+		\"l\": 1,
+		\"w\": 13
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|musketeer\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|skeleton\": {
+		\"l\": 10,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|rune_plate\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 16
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 10,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 39,
+		\"w\": 142
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|echo_spear\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 10,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 12,
+		\"w\": 13
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 7,
+		\"w\": 20
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 10,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 9,
+		\"w\": 24
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 7,
+		\"w\": 34
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|skeleton\": {
+		\"l\": 14,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 9,
+		\"w\": 16
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 21,
+		\"w\": 53
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 20,
+		\"w\": 73
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|rune_plate\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 7
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 11
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 11
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 3,
+		\"w\": 7
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 10
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|knight\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 18
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 11,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 10,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 12,
+		\"w\": 2
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 14
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 8,
+		\"w\": 11
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 14,
+		\"w\": 10
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|skeleton\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|arcane\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|archer\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 35,
+		\"w\": 123
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o2|gap0000|fr2|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap0010|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0100|fr2|rg0|t1|pg1|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0100|fr2|rg0|t1|pg2|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0110|fr2|rg0|t1|pg1|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|crossbow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap0110|fr2|rg0|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|knight\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 6,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 10
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 6,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o2|gap1010|fr1|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg0|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 11
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 7,
+		\"w\": 7
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 6,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 5,
+		\"w\": 9
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 67,
+		\"w\": 950
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 1,
+		\"w\": 22
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 5,
+		\"w\": 11
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 6,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st1|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 25,
+		\"w\": 37
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 24,
+		\"w\": 20
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 87,
+		\"w\": 653
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 34,
+		\"w\": 29
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 46,
+		\"w\": 199
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 24,
+		\"w\": 18
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 22,
+		\"w\": 27
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 26,
+		\"w\": 31
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 2,
+		\"w\": 22
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 22,
+		\"w\": 21
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 17,
+		\"w\": 39
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 12,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 19,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 20,
+		\"w\": 27
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t2|pg2|st1|hunter\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t2|pg2|st2|hunter\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg1|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 8,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 7,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 5,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 5,
+		\"w\": 9
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 3,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|arcane\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 17
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st1|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 14,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 24,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 20,
+		\"w\": 36
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 17,
+		\"w\": 31
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 15,
+		\"w\": 9
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 18,
+		\"w\": 9
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 14,
+		\"w\": 17
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 18,
+		\"w\": 37
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 17,
+		\"w\": 57
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|rune_plate\": {
+		\"l\": 6,
+		\"w\": 22
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 14,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 18,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o3|gap0000|fr2|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 13,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg1|t2|pg2|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap0010|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap0100|fr2|rg0|t1|pg2|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap0110|fr2|rg0|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 3
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|arcane\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st1|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 6,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 10,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 12,
+		\"w\": 15
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 8
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 19
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|maul\": {
+		\"l\": 2,
+		\"w\": 4
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 6
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|rune_plate\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 7,
+		\"w\": 16
+	},
+	\"v5|f4|s0|o3|gap1000|fr1|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f4|s1|o1|gap0000|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o1|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o1|gap0000|fr2|rg1|t1|pg0|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o1|gap0100|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o1|gap0100|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 5,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 23,
+		\"w\": 20
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 43,
+		\"w\": 423
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|horsebow\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 2,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 35,
+		\"w\": 159
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 17,
+		\"w\": 19
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|skeleton\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 32,
+		\"w\": 94
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 18,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 5,
+		\"w\": 9
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 7,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 7,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 28,
+		\"w\": 22
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|knight\": {
+		\"l\": 6,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 17,
+		\"w\": 9
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 7,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 3,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 10,
+		\"w\": 10
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 4,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg0|st2|wergild\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 20,
+		\"w\": 20
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 5,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 14,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t2|pg0|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0000|fr2|rg2|t2|pg0|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0010|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0010|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0010|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0010|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg0|t1|pg1|st2|arcane\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap0100|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o2|gap1000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg0|st2|spike_shield\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|echo_spear\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 74,
+		\"w\": 696
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 21,
+		\"w\": 164
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 10,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|skeleton\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 48,
+		\"w\": 777
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg1|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|apothecary\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 15,
+		\"w\": 23
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 11,
+		\"w\": 39
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 25,
+		\"w\": 116
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|dirge_horn\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 18,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|flower_drum\": {
+		\"l\": 0,
+		\"w\": 16
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 16,
+		\"w\": 17
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 24,
+		\"w\": 49
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 21,
+		\"w\": 28
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 47,
+		\"w\": 256
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 23,
+		\"w\": 38
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 16,
+		\"w\": 17
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 20,
+		\"w\": 30
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 65,
+		\"w\": 774
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t1|pg2|st2|wergild\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t2|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg1|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 11,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 10,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 9,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 10,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|knight\": {
+		\"l\": 7,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 12,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 13,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 15
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|spike_shield\": {
+		\"l\": 3,
+		\"w\": 9
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg0|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 119,
+		\"w\": 123
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 35,
+		\"w\": 21
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 62,
+		\"w\": 449
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 28,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 26,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 39,
+		\"w\": 28
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 30,
+		\"w\": 10
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 52,
+		\"w\": 79
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 123,
+		\"w\": 577
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 26,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 5,
+		\"w\": 15
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 31,
+		\"w\": 11
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 18,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|vita_keeper\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 28,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st1|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 85,
+		\"w\": 57
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 84,
+		\"w\": 53
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 187,
+		\"w\": 326
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 161,
+		\"w\": 204
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|flower_drum\": {
+		\"l\": 9,
+		\"w\": 88
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 34,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 124,
+		\"w\": 154
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 52,
+		\"w\": 9
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 90,
+		\"w\": 144
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 190,
+		\"w\": 708
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 65,
+		\"w\": 32
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|rune_plate\": {
+		\"l\": 9,
+		\"w\": 17
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 0,
+		\"w\": 13
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 13,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 56,
+		\"w\": 33
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 113,
+		\"w\": 396
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|vita_keeper\": {
+		\"l\": 16,
+		\"w\": 9
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|wardrum\": {
+		\"l\": 3,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 61,
+		\"w\": 54
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg1|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|edge_hex\": {
+		\"l\": 3,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|maul\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|shinobi\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0000|fr2|rg2|t2|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg1|t2|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 2,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 2,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0010|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg0|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg0|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|archer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|spear_goblin\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 5,
+		\"w\": 17
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 8,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 1,
+		\"w\": 21
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 32
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 7,
+		\"w\": 14
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|rune_plate\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 1,
+		\"w\": 22
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t1|pg2|st2|spike_shield\": {
+		\"l\": 6,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg1|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg2|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg2|st2|hunter\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0100|fr2|rg1|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg0|t1|pg2|st2|goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg0|t1|pg2|st2|hunter\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg1|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap0110|fr2|rg1|t1|pg2|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg0|st2|archer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 3,
+		\"w\": 13
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 2,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|knight\": {
+		\"l\": 6,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|maul\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|rune_plate\": {
+		\"l\": 2,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 11
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg1|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 16,
+		\"w\": 12
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 11,
+		\"w\": 17
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 7,
+		\"w\": 32
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 11,
+		\"w\": 28
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 12,
+		\"w\": 35
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 12,
+		\"w\": 13
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|maul\": {
+		\"l\": 4,
+		\"w\": 24
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 28,
+		\"w\": 39
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr1|rg2|t2|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 2,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 6,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 5,
+		\"w\": 4
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 12,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 5,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 8,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|vita_keeper\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|apothecary\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 29,
+		\"w\": 11
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 20,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 18,
+		\"w\": 5
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 19,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|flower_drum\": {
+		\"l\": 5,
+		\"w\": 20
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 24,
+		\"w\": 15
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 27,
+		\"w\": 42
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 35,
+		\"w\": 26
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 22,
+		\"w\": 90
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 22,
+		\"w\": 16
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 28,
+		\"w\": 13
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 18,
+		\"w\": 6
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|vita_keeper\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t2|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t2|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1000|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s1|o3|gap1010|fr2|rg2|t2|pg2|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s1|o3|gap1010|fr2|rg2|t2|pg2|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 1,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t2|pg0|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o2|gap0000|fr2|rg2|t2|pg1|st2|horsebow\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg0|st2|knight\": {
+		\"l\": 1,
+		\"w\": 26
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|edge_hex\": {
+		\"l\": 1,
+		\"w\": 26
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 9,
+		\"w\": 82
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 1,
+		\"w\": 34
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|hunter\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|knight\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 16,
+		\"w\": 48
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 23,
+		\"w\": 249
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t1|pg2|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t2|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t2|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 17,
+		\"w\": 22
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 18,
+		\"w\": 2
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 20,
+		\"w\": 38
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 14,
+		\"w\": 2
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 11
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|vita_keeper\": {
+		\"l\": 10,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg0|st2|wergild\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|apothecary\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 34,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 9,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 16,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 28,
+		\"w\": 27
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|goblin\": {
+		\"l\": 17,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 29,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 30,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|knight\": {
+		\"l\": 26,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 123,
+		\"w\": 644
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 38,
+		\"w\": 13
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|soulcaller\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 13,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|vita_keeper\": {
+		\"l\": 6,
+		\"w\": 2
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|wardrum\": {
+		\"l\": 0,
+		\"w\": 9
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 48,
+		\"w\": 44
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|apothecary\": {
+		\"l\": 36,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 72,
+		\"w\": 40
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 32,
+		\"w\": 34
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|blood_wage\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 38,
+		\"w\": 126
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 54,
+		\"w\": 96
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|flower_drum\": {
+		\"l\": 43,
+		\"w\": 269
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 27,
+		\"w\": 21
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 229,
+		\"w\": 926
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 77,
+		\"w\": 39
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 34,
+		\"w\": 13
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 401,
+		\"w\": 2793
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 46,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 16,
+		\"w\": 40
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 21,
+		\"w\": 22
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|spike_shield\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|vita_keeper\": {
+		\"l\": 20,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|wardrum\": {
+		\"l\": 2,
+		\"w\": 14
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 110,
+		\"w\": 101
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|hunter\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|maul\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg1|st2|musketeer\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 9,
+		\"w\": 7
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|blood_wage\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|flower_drum\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 12,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 24
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 20
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 27
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|shinobi\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0000|fr2|rg2|t2|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 21
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 12,
+		\"w\": 10
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 9,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t2|pg1|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0010|fr2|rg2|t2|pg2|st2|skeleton\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg0|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg0|st2|maul\": {
+		\"l\": 0,
+		\"w\": 21
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|knight\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|maul\": {
+		\"l\": 9,
+		\"w\": 64
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg1|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|crossbow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|maul\": {
+		\"l\": 3,
+		\"w\": 21
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t1|pg2|st2|musketeer\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap0100|fr2|rg1|t2|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap0110|fr2|rg0|t1|pg2|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0110|fr2|rg0|t1|pg2|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap0110|fr2|rg1|t1|pg2|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|archer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|blood_wage\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|maul\": {
+		\"l\": 6,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 4,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 16,
+		\"w\": 11
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 7
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|blood_wage\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 3,
+		\"w\": 9
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 0,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 0,
+		\"w\": 28
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|maul\": {
+		\"l\": 15,
+		\"w\": 13
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 0,
+		\"w\": 9
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t2|pg1|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t2|pg1|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t2|pg2|st2|arcane\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t2|pg2|st2|maul\": {
+		\"l\": 0,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap1000|fr1|rg2|t2|pg2|st2|musketeer\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|arcane\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|horsebow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|hunter\": {
+		\"l\": 0,
+		\"w\": 6
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|maul\": {
+		\"l\": 2,
+		\"w\": 2
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg0|st2|wergild\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|arcane\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|archer\": {
+		\"l\": 1,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|blood_wage\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|crossbow\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|edge_hex\": {
+		\"l\": 4,
+		\"w\": 10
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|horsebow\": {
+		\"l\": 16,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|hunter\": {
+		\"l\": 10,
+		\"w\": 5
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|maul\": {
+		\"l\": 9,
+		\"w\": 12
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|musketeer\": {
+		\"l\": 16,
+		\"w\": 13
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|spear_goblin\": {
+		\"l\": 0,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|vita_keeper\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg1|st2|wergild\": {
+		\"l\": 8,
+		\"w\": 19
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|apothecary\": {
+		\"l\": 12,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|arcane\": {
+		\"l\": 12,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|archer\": {
+		\"l\": 4,
+		\"w\": 18
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|crossbow\": {
+		\"l\": 12,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|edge_hex\": {
+		\"l\": 0,
+		\"w\": 12
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|goblin\": {
+		\"l\": 12,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|horsebow\": {
+		\"l\": 24,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|hunter\": {
+		\"l\": 12,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|knight\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|maul\": {
+		\"l\": 10,
+		\"w\": 16
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|musketeer\": {
+		\"l\": 11,
+		\"w\": 32
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|shinobi\": {
+		\"l\": 9,
+		\"w\": 3
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|skeleton\": {
+		\"l\": 4,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|spear_goblin\": {
+		\"l\": 4,
+		\"w\": 4
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|vita_keeper\": {
+		\"l\": 3,
+		\"w\": 1
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t1|pg2|st2|wergild\": {
+		\"l\": 12,
+		\"w\": 8
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t2|pg1|st2|musketeer\": {
+		\"l\": 8,
+		\"w\": 0
+	},
+	\"v5|f4|s2|o3|gap1000|fr2|rg2|t2|pg2|st2|wergild\": {
+		\"l\": 0,
+		\"w\": 8
+	}
+}"
