@@ -68,6 +68,7 @@
 | `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart`；附近=1 格；`exclude_owner` |
 | `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | （未挂载） | 资源保留 |
 | `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
+| `hurt_nearby_allies_apply_relic_bone` | 遗骨加持 | 挨打 · 高频 | 否 | 自己受伤时，对**周围一格其他友军**施加 **遗骨 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自己）。遗骨死亡兑现见 [COMBAT_STATUS](../Features/COMBAT_STATUS.md) §2.3 | **中庸** | 骷髅将军 | `OnDamageTaken` + `NEARBY_ALLIES` + `exclude_owner`；`APPLY_COMBAT_STATUS` `relic_bone` |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | （池内；鼓手已不挂载） | 节奏 |
 | `turn_start_nearby_allies_apply_berserk` | 战鼓狂暴 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格友方**施加 **狂暴 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自身） | **中庸** | 鼓手 | `NEARBY_ALLIES` + `exclude_owner` |
 | `turn_start_random_ally_combat_armor_2` | 匠甲加护 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**随机一名其他友方**授予本场临时护甲 **+2**（三合一后 **+6**；`merge_value_mult=3`；可叠加；不含自己；结算同 MAP_SHOP §5.1；遭遇结束清除） | **中庸** | 甲胄师 | `RANDOM_ALLY` + `exclude_owner` |

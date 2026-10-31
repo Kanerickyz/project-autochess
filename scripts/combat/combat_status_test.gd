@@ -11,6 +11,10 @@ static func run_all() -> bool:
 	_check("berserk_attack_only", _test_berserk_attack_only())
 	_check("poison_tick_lethal", _test_poison_tick_lethal())
 	_check("apply_status_via_resolver", _test_apply_via_resolver())
+	_check("apply_relic_bone_via_resolver", _test_apply_relic_bone_via_resolver())
+	_check("relic_bone_death_spawn", _test_relic_bone_death_spawn())
+	_check("relic_bone_zero_stacks_no_spawn", _test_relic_bone_zero_stacks_no_spawn())
+	_check("relic_bone_token_no_chain", _test_relic_bone_token_no_chain())
 	_check("weak_skip_dead_on_deal_damage", _test_weak_skip_dead_on_deal_damage())
 	_check("status_attachments_ui", _test_status_attachments())
 	if _failures == 0:
@@ -134,6 +138,115 @@ static func _test_apply_via_resolver() -> bool:
 	var spec := EffectSpec.new()
 	resolver._execute_action(action, target, CombatEventPayload.new(), 0, target, spec)
 	return target.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK) == 2
+
+
+static func _test_apply_relic_bone_via_resolver() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var target := UnitInstance.new("t", Vector2i(0, 0), UnitInstance.Team.PLAYER)
+	target.stats = UnitStats.new()
+	target.stats.max_hp = 10
+	target.current_hp = 10
+	grid.place(target, Vector2i(0, 0))
+	var action := EffectAction.new()
+	action.action_type = EffectAction.Type.APPLY_COMBAT_STATUS
+	action.stat_name = CombatStatusStack.ID_RELIC_BONE
+	action.value = 1
+	var spec := EffectSpec.new()
+	resolver._execute_action(action, target, CombatEventPayload.new(), 0, target, spec)
+	if target.combat_statuses.get_stacks(CombatStatusStack.ID_RELIC_BONE) != 1:
+		return false
+	if CombatStatusStack.get_display_name(CombatStatusStack.ID_RELIC_BONE) != "遗骨":
+		return false
+	return CombatStatusStack.get_rule_summary(CombatStatusStack.ID_RELIC_BONE).contains("层数×2")
+
+
+static func _find_relic_token(grid: BoardGrid) -> UnitInstance:
+	for item in grid.get_alive_units():
+		var unit := item as UnitInstance
+		if unit != null and unit.id == "token_relic_skeleton":
+			return unit
+	return null
+
+
+static func _test_relic_bone_death_spawn() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var dead := UnitInstance.new("dead", Vector2i(2, 2), UnitInstance.Team.PLAYER)
+	dead.stats = UnitStats.new()
+	dead.stats.max_hp = 1
+	dead.stats.attack = 1
+	dead.current_hp = 0
+	dead.combat_statuses.add_stacks(CombatStatusStack.ID_RELIC_BONE, 3)
+	grid.place(dead, Vector2i(2, 2))
+	var payload := CombatEventPayload.new()
+	payload.target = dead
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	var token := _find_relic_token(grid)
+	if token == null:
+		return false
+	if not token.is_combat_summon:
+		return false
+	if token.stats == null or token.stats.attack != 6 or token.stats.max_hp != 6:
+		return false
+	if token.current_hp != 6:
+		return false
+	return token.combat_statuses.get_stacks(CombatStatusStack.ID_RELIC_BONE) == 0
+
+
+static func _test_relic_bone_zero_stacks_no_spawn() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var dead := UnitInstance.new("dead0", Vector2i(1, 1), UnitInstance.Team.PLAYER)
+	dead.stats = UnitStats.new()
+	dead.stats.max_hp = 1
+	dead.current_hp = 0
+	grid.place(dead, Vector2i(1, 1))
+	var payload := CombatEventPayload.new()
+	payload.target = dead
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	return _find_relic_token(grid) == null
+
+
+static func _test_relic_bone_token_no_chain() -> bool:
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(8, 8))
+	var bus := CombatEventBus.new()
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var dead := UnitInstance.new("dead_chain", Vector2i(3, 3), UnitInstance.Team.ENEMY)
+	dead.stats = UnitStats.new()
+	dead.stats.max_hp = 1
+	dead.current_hp = 0
+	dead.combat_statuses.add_stacks(CombatStatusStack.ID_RELIC_BONE, 2)
+	grid.place(dead, Vector2i(3, 3))
+	var payload := CombatEventPayload.new()
+	payload.target = dead
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	var token := _find_relic_token(grid)
+	if token == null:
+		return false
+	## 骷髅再死：无遗骨 → 不再生成。
+	token.current_hp = 0
+	var payload2 := CombatEventPayload.new()
+	payload2.target = token
+	resolver.on_event(CombatEvents.ON_DEATH, payload2)
+	var count := 0
+	for item in grid.get_alive_units():
+		var unit := item as UnitInstance
+		if unit != null and unit.id == "token_relic_skeleton" and unit.is_alive():
+			count += 1
+	## 原 token 已死；不应出现第二只。
+	return count == 0
 
 
 static func _test_status_attachments() -> bool:

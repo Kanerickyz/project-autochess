@@ -1541,6 +1541,8 @@ func _finalize_pending_deaths() -> bool:
 		_pipeline.emit_post_kill_death_events(entry)
 		if rt != null:
 			unit_died.emit(rt)
+	## 遗骨等 ON_DEATH 即时落子：即使无后续技能批次也要同步进 RT。
+	_sync_effect_spawns_from_grid()
 	return true
 
 
