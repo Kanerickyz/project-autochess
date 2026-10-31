@@ -1,8 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Resource" path="res://resources/abilities/ally_hurt_lr_allies_atk_hp_1.tres" id="3_ability"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_golden_drum_red.png" id="4_icon"]
 
 [sub_resource type="Resource" id="UnitStats_enemy_golden_drum"]
@@ -30,5 +29,4 @@ theme_bond = 5
 team_default = 1
 command_cost = 3
 stats = SubResource("UnitStats_enemy_golden_drum")
-ability = ExtResource("3_ability")
 icon = ExtResource("4_icon")
