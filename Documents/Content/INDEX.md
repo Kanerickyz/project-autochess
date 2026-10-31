@@ -18,7 +18,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（四十九人 · 主题羁绊七类 · §6 与技能 1:1；realtime 资源已写） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（五十人 · 主题羁绊七类 · §6 与技能 1:1；realtime 资源已写；含骷髅将军） |
 | [../Features/UNIT_THEME_BONDS.md](../Features/UNIT_THEME_BONDS.md) | **主题羁绊**规格（分类 + 角色库筛选） |
 
 | [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |

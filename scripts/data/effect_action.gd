@@ -90,14 +90,16 @@ func validate_config() -> PackedStringArray:
 		Type.APPLY_COMBAT_STATUS:
 			if not CombatStatusStack.is_valid_id(stat_name):
 				issues.append(
-					"combat status stat_name '%s' is not weak/berserk/poison" % String(stat_name)
+					"combat status stat_name '%s' is not weak/berserk/poison/relic_bone"
+					% String(stat_name)
 				)
 			if value <= 0:
 				issues.append("APPLY_COMBAT_STATUS requires value > 0")
 		Type.REMOVE_COMBAT_STATUS:
 			if not CombatStatusStack.is_valid_id(stat_name):
 				issues.append(
-					"combat status stat_name '%s' is not weak/berserk/poison" % String(stat_name)
+					"combat status stat_name '%s' is not weak/berserk/poison/relic_bone"
+					% String(stat_name)
 				)
 		_:
 			pass

@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://384e1073ac4c4"]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" uid="uid://8733c8c49efd4" path="res://resources/abilities/hurt_nearby_allies_apply_relic_bone.tres" id="3_ability"]
+[ext_resource type="Texture2D" uid="uid://bgofo23sp1fan" path="res://assets/sprites/paper_cutout/units/unit_skeleton_general_blue.png" id="icon_tex"]
+
+[sub_resource type="Resource" id="UnitStats_skeleton_general"]
+script = ExtResource("2_stats")
+max_hp = 7
+attack = 2
+steps_per_turn = 1
+attack_interval = 1.0
+attack_windup = 0.35
+attack_reach = 0.5
+sight_range = 5.5
+body_radius = 0.35
+mass = 1.2
+projectile_speed = 0.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "skeleton_general"
+display_name = "骷髅将军"
+cost = 3
+tier = 2
+theme_bond = 1
+command_cost = 4
+stats = SubResource("UnitStats_skeleton_general")
+ability = ExtResource("3_ability")
+icon = ExtResource("icon_tex")

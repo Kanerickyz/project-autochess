@@ -108,7 +108,7 @@
 | 余烬 / 召魂 / 残影 | 火焰、魂火、残影拖尾拆为独立特效；静态造型仍有明确实体剪影 |
 | 血僧 / 命卫 / 铁心 / 愈修 | 念珠与拳形 / 宝石护甲 / 心形胸甲 / 修士帽与杖；回血特效不要画进常驻底图 |
 | 号手 / 鼓手 | 号角外扩方向与鼓的圆形正面形成不同轮廓 |
-| 掘墓 / 猎手 / 蛮斧 | 铲 / 弯刃＋皮毛帽 / 角盔＋巨斧，避免都变成普通战士 |
+| 掘墓 / 骷髅将军 / 猎手 / 蛮斧 | 铲 / 骨盔将军破旗 / 弯刃＋皮毛帽 / 角盔＋巨斧，避免亡灵近战彼此撞型 |
 | 圣骸 / 禁卫 | 空甲与遗赠感 / 王权与厚重感，避免共用相同盾与头盔剪影 |
 | 药师 / 奥术 | 药匣与绿药瓶 / 尖顶法帽＋法书＋镶宝珠金杖；勿与火铳、游侠远程剪影混淆 |
 | 召唤物 | 独立 ID、尺寸档、静态图与动画；弱复制可以减装备，但不得只靠低透明度表示 |
@@ -223,6 +223,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `spear_goblin` | 皮帽 + 投掷姿势 + 背后标枪束 | spear_goblin 标枪 |
 | `goblin` | 火纹长袍 + 提炭火吊炉 | goblin 余烬 |
 | `gravewright` | 驼背老人 + 铁锹 + 提灯 | gravewright 掘墓 |
+| `skeleton_general` | 骨盔将军 + 破旗 / 骨刃 | skeleton_general 骷髅将军；终稿 `unit_skeleton_general_{blue,red}.png` |
 | `soulcaller` | 黑面兜帽 + 骷髅杖 + 鬼火 | soulcaller 召魂 |
 | `shinobi` | 蓝兜帽蒙面 + 双匕首 | shinobi 影刺 |
 | `devour` | 绿皮巨口肚兜 + 剁刀 | devour 吞噬 |
@@ -242,7 +243,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `flower_drum` | 蓝巾粉花 + 木鼓粉花面 + 细木槌 | flower_drum 花鼓 |
 | `wood_drum` | 麻巾 + 素面原木鼓 + 短木槌 | wood_drum 木鼓 |
 
-召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
+召唤代理借用来源或专属贴图：token_thick_copy → `mirror_warden`；token_weak_copy → `echo_spear`；token_ember → `spear`；token_weak、token_relic_skeleton、zombie_fly → `skeleton`；ram、bus → `ram`；slime_split、chick → `slime`。`spear`（敞盔投枪兵）不再分配给主兵种，作召唤与默认兜底。
 
 ---
 

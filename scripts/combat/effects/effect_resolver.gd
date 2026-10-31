@@ -2,6 +2,7 @@ class_name EffectResolver
 extends RefCounted
 
 const MAX_CHAIN_DEPTH := 12
+const RELIC_BONE_TOKEN_PATH := "res://resources/units/tokens/token_relic_skeleton.tres"
 
 var _grid: BoardGrid
 var _bus: CombatEventBus
@@ -65,6 +66,9 @@ func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
 	if payload != null:
 		start_depth = maxi(0, payload.chain_depth)
 	_enqueue_for_event(event_type, payload, start_depth)
+	## 遗骨：仅 ON_DEATH 路径（Boss 溃散不发此事件）；与同批死亡技能同事件内结算。
+	if event_type == CombatEvents.ON_DEATH and payload != null:
+		try_spawn_relic_bone_on_death(payload.target, start_depth)
 
 
 func has_pending_steps() -> bool:
@@ -1508,6 +1512,49 @@ func _split_self(
 		_emit_summoned(spawned, depth)
 		entries.append({"action": action, "target": spawned})
 	return entries
+
+
+## 死者持有遗骨且层数≥1 时，生成 1 只攻/血=层数×2 的无技能骷髅代理（无空位则跳过）。
+## 不挂遗骨，切断连环。仅应由 ON_DEATH 调用。
+func try_spawn_relic_bone_on_death(dead: UnitInstance, depth: int = 0) -> bool:
+	if dead == null or _grid == null:
+		return false
+	var stacks := dead.combat_statuses.get_stacks(CombatStatusStack.ID_RELIC_BONE)
+	if stacks < 1:
+		return false
+	var token_data := load(RELIC_BONE_TOKEN_PATH) as UnitData
+	if token_data == null:
+		push_warning("EffectResolver: missing relic bone token %s" % RELIC_BONE_TOKEN_PATH)
+		return false
+	var team := dead.team
+	var origin := _grid.find_cell_of(dead)
+	if origin == Vector2i(-1, -1):
+		origin = dead.grid_pos
+	var prefer_player_half := team == UnitInstance.Team.PLAYER
+	if not _has_spawn_cell_available(prefer_player_half):
+		return false
+	var cell := _pick_spawn_cell(origin, true, prefer_player_half)
+	if cell == Vector2i(-1, -1):
+		return false
+	var spawned := UnitInstance.from_unit_data(token_data, cell, team)
+	spawned.is_combat_summon = true
+	var body := maxi(1, stacks * 2)
+	if spawned.stats != null:
+		spawned.stats.attack = body
+		spawned.stats.max_hp = body
+		spawned.stats.deploy_time = 0.0
+	spawned.current_hp = body
+	## 切断连环：代理无主技能（token 白板）、不带遗骨。
+	spawned.combat_statuses.clear()
+	if not _grid.place(spawned, cell):
+		return false
+	print(
+		"[Effect] relic_bone spawn %s at %s atk=%d hp=%d (stacks=%d)"
+		% [spawned.id, str(cell), body, body, stacks]
+	)
+	_emit_friend_summoned(spawned, dead, depth)
+	_emit_summoned(spawned, depth)
+	return true
 
 
 func _spawn_unit(

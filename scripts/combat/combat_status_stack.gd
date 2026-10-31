@@ -4,9 +4,10 @@ extends RefCounted
 const ID_WEAK := &"weak"
 const ID_BERSERK := &"berserk"
 const ID_POISON := &"poison"
+const ID_RELIC_BONE := &"relic_bone"
 const MAX_STACKS := 15
 
-const DISPLAY_ORDER: Array[StringName] = [ID_WEAK, ID_BERSERK, ID_POISON]
+const DISPLAY_ORDER: Array[StringName] = [ID_WEAK, ID_BERSERK, ID_POISON, ID_RELIC_BONE]
 
 var _stacks: Dictionary = {}
 
@@ -16,6 +17,7 @@ static func is_valid_id(status_id: StringName) -> bool:
 		status_id == ID_WEAK
 		or status_id == ID_BERSERK
 		or status_id == ID_POISON
+		or status_id == ID_RELIC_BONE
 	)
 
 
@@ -27,6 +29,8 @@ static func get_display_name(status_id: StringName) -> String:
 			return "狂暴"
 		ID_POISON:
 			return "中毒"
+		ID_RELIC_BONE:
+			return "遗骨"
 		_:
 			return String(status_id)
 
@@ -39,6 +43,8 @@ static func get_rule_summary(status_id: StringName) -> String:
 			return "普攻伤害在护甲前 +1（每层）。"
 		ID_POISON:
 			return "你的回合开始时失去生命（每层 1 点，先于回合开始技能）。"
+		ID_RELIC_BONE:
+			return "遗骨：死亡时生成攻/血均等于层数×2 的骷髅"
 		_:
 			return ""
 
