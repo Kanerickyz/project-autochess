@@ -24,6 +24,8 @@ signal recruit_empty_seat_pressed(seat_index: int)
 signal recruit_item_pressed(item_slot: int)
 ## 招募道具行：药水拖到上区队伍成员。
 signal recruit_item_drop(item_slot: int, entry_id: int)
+## 胜后免费强化：点上区或备战纸片选中目标（长按不触发）。
+signal victory_boost_unit_pressed(entry_id: int)
 ## 附魔：队伍成员拖到时机格 A / 效果格 B。
 signal enchant_forge_drop(entry_id: int, slot: StringName)
 ## 附魔：下半场队伍换座（与招募上区同规则）。
@@ -176,6 +178,12 @@ var ally_half_slide_y: float = 0.0
 var bench_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
+## 胜后免费强化：上半场队伍 + 中缝备战；下区无货架，点选纸片；不拖拽换座。
+var victory_boost_active: bool = false
+## 当前选中成员；≥0 时画选中环与 +N/+N 预览。
+var victory_boost_selected_id: int = -1
+## 本档幅度（攻血同加点数），用于选中预览。
+var victory_boost_amount: int = 1
 ## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
@@ -389,8 +397,8 @@ func _notification(what: int) -> void:
 func _bench_layout_tiles() -> float:
 	if not bench_visible:
 		return 0.0
-	## 招募备战在棋盘内中缝，不另占棋盘外高度。
-	if recruit_active:
+	## 招募 / 免费强化备战在棋盘内中缝，不另占棋盘外高度。
+	if recruit_active or victory_boost_active:
 		return 0.0
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
 
@@ -933,6 +941,9 @@ func _gui_input(event: InputEvent) -> void:
 	if map_shop_active:
 		_gui_input_map_shop(event)
 		return
+	if victory_boost_active:
+		_gui_input_victory_boost(event)
+		return
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
@@ -1169,6 +1180,57 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			accept_event()
 		_recruit_team_press_id = -1
 		_recruit_empty_seat_press = -1
+		_bench_press_id = -1
+
+
+## 免费强化：只点选上区/备战纸片；长按信息卡；禁止拖拽换座。
+func _gui_input_victory_boost(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_track_press_motion(motion.position)
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var board_cell := tile_to_cell(local_to_tile(mb.position))
+		if mb.pressed:
+			_bench_press_id = -1
+			_recruit_team_press_id = -1
+			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
+			if bench_entry >= 0:
+				_bench_press_id = bench_entry
+				_begin_press(
+					mb.position,
+					inspect_at(mb.position),
+					victory_boost_unit_pressed.emit.bind(bench_entry),
+				)
+				accept_event()
+				return
+			var entry_id := _find_recruit_team_entry_at(board_cell)
+			if entry_id >= 0:
+				_recruit_team_press_id = entry_id
+				_begin_press(
+					mb.position,
+					inspect_at(mb.position),
+					victory_boost_unit_pressed.emit.bind(entry_id),
+				)
+				accept_event()
+				return
+			_begin_press(mb.position, inspect_at(mb.position), Callable())
+			accept_event()
+			return
+		if _info_shown:
+			_recruit_team_press_id = -1
+			_bench_press_id = -1
+			_end_press()
+			accept_event()
+			return
+		if _end_press():
+			accept_event()
+		_recruit_team_press_id = -1
 		_bench_press_id = -1
 
 
@@ -2094,6 +2156,15 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	if victory_boost_active:
+		if recruit_team_slots != null:
+			for i in recruit_team_slots.cells.size():
+				var entry := recruit_team_slots.get_entry(i)
+				if entry != null:
+					var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					out.append(_info_from_entry(entry, tile_to_local(tile) + enemy_off))
+		_append_bench_inspectables(out)
+		return out
 	if map_shop_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
@@ -2689,6 +2760,7 @@ func _can_prepare_seat_drag() -> bool:
 		prepare_slots != null
 		and not catalog_active
 		and not recruit_active
+		and not victory_boost_active
 		and not map_shop_active
 		and not enchant_active
 		and (sim == null or not sim.has_started())
@@ -2696,7 +2768,7 @@ func _can_prepare_seat_drag() -> bool:
 
 
 func _can_drag_prepare_or_bench() -> bool:
-	if catalog_active or map_shop_active or enchant_active:
+	if catalog_active or map_shop_active or enchant_active or victory_boost_active:
 		return false
 	if recruit_active:
 		return bench_interactive
@@ -3062,8 +3134,8 @@ func clear_map_shop_mode() -> void:
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
-	## 地图商店复用 recruit_team_slots 画上半场；清招募时勿误清商店。
-	if not map_shop_active:
+	## 地图商店 / 免费强化复用 recruit_team_slots；清招募时勿误清。
+	if not map_shop_active and not victory_boost_active:
 		recruit_team_slots = null
 	recruit_candidates.clear()
 	recruit_items.clear()
@@ -3082,6 +3154,19 @@ func clear_recruit_mode() -> void:
 	_recruit_team_press_id = -1
 	_recruit_empty_seat_press = -1
 	clear_party_bark()
+	_clear_drag_visual()
+	queue_redraw()
+
+
+func clear_victory_boost_mode() -> void:
+	_cancel_press()
+	victory_boost_active = false
+	victory_boost_selected_id = -1
+	victory_boost_amount = 1
+	if not recruit_active and not map_shop_active:
+		recruit_team_slots = null
+	_recruit_team_press_id = -1
+	_bench_press_id = -1
 	_clear_drag_visual()
 	queue_redraw()
 
@@ -3185,6 +3270,7 @@ func _draw() -> void:
 	var showing_placement := (
 		(placement_active or _drag_active)
 		and not recruit_active
+		and not victory_boost_active
 		and not map_shop_active
 		and not catalog_active
 	)
@@ -3217,6 +3303,10 @@ func _draw() -> void:
 			_draw_map_shop_offer_drop_hint(px, mid)
 		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_team_seat_hint(px)
+	elif victory_boost_active:
+		_draw_victory_boost_zone_labels(px, mid, enemy_off, ally_off)
+		_draw_recruit_team(px, enemy_off)
+		_draw_bench_row(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -3274,8 +3364,8 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
-	## 备战行：准备/战斗在友方半场下方；招募已在候选之前绘制。
-	if not recruit_active:
+	## 备战行：准备/战斗在友方半场下方；招募/免费强化已在分区内绘制。
+	if not recruit_active and not victory_boost_active:
 		_draw_bench_row(px)
 	_draw_fx(px)
 	_draw_feedback(px)
@@ -3354,6 +3444,16 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
 	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+
+
+func _draw_victory_boost_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.55), 11, 18)
+	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "免费强化", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.85, 1.0, 0.78, 0.9))
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -3609,9 +3709,10 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
-		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
-		)
+		var center_local := tile_to_local(center_tile) + off
+		_draw_stat_badges(center_local, atk, hp, alpha, px, entry.get_armor_block())
+		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
+			_draw_victory_boost_selection(center_local, px)
 	if _merge_active:
 		_draw_merge_fx(px, off)
 
@@ -4031,9 +4132,31 @@ func _draw_bench_row(px: float) -> void:
 		var atk := DeckUpgradeService.get_display_attack(entry)
 		var hp := DeckUpgradeService.get_display_max_hp(entry)
 		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
+			_draw_victory_boost_selection(center, px)
 	## 小标签：备战
 	var label_pos := bench_slot_center_local(0) + Vector2(-px * 0.45, -px * 0.62)
 	draw_string(font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.75))
+
+
+func _draw_victory_boost_selection(center: Vector2, px: float) -> void:
+	var amount := maxi(1, victory_boost_amount)
+	var ring_r := px * 0.48
+	draw_arc(center, ring_r, 0.0, TAU, 36, Color(0.45, 1.0, 0.55, 0.85), maxf(2.0, px * 0.07), true)
+	draw_arc(center, ring_r * 0.86, 0.0, TAU, 28, Color(0.85, 1.0, 0.7, 0.45), maxf(1.5, px * 0.045), true)
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.34), 10, 16)
+	var label := "+%d / +%d" % [amount, amount]
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.72)
+	draw_string(
+		font, pos + Vector2(1.0, 1.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+		Color(0.08, 0.12, 0.08, 0.55)
+	)
+	draw_string(
+		font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+		Color(0.75, 1.0, 0.7, 0.95)
+	)
 
 
 func _draw_bench_triple_merge_hint(center: Vector2, px: float) -> void:
