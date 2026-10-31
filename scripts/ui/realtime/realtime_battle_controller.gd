@@ -11,11 +11,13 @@ signal combat_resolved(won: bool)
 signal final_trial_floors_recorded(floors: int)
 ## 招募阶段结束（完成/跳过）；由 Run 接线回地图。
 signal recruit_finished(kept_changes: bool)
+## 胜后免费强化结束（确认=true / 跳过=false）；Run 在其后进招募。
+signal victory_boost_finished(applied: bool)
 signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, VICTORY_BOOST, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -29,6 +31,8 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var half_exit_seconds: float = 0.5
 ## 招募半场滑入秒数；≤0 瞬切。
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
+## 确认强化后展示加成再进招募的短停（秒）。
+@export_range(0.0, 2.0, 0.05) var victory_boost_confirm_hold_seconds: float = 0.5
 
 var last_seed: int = 0
 
@@ -128,6 +132,16 @@ var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
+## 胜后免费强化（招募前一步）。
+var _victory_boost_session: VictoryBoostSession
+var _victory_boost_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
+var _victory_boost_hud: Control
+var _victory_boost_title: Label
+var _victory_boost_amount_label: Label
+var _victory_boost_hint: Label
+var _victory_boost_confirm_btn: Button
+var _victory_boost_skip_btn: Button
+var _victory_boost_animating: bool = false
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -236,6 +250,7 @@ func _ready() -> void:
 	_arena.prepare_team_bench_drop.connect(_on_prepare_team_bench_drop)
 	_arena.bench_pressed.connect(_on_bench_pressed)
 	_arena.bench_empty_pressed.connect(_on_bench_empty_pressed)
+	_arena.victory_boost_unit_pressed.connect(_on_victory_boost_unit_pressed)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	if _final_trial_button != null:
@@ -246,6 +261,7 @@ func _ready() -> void:
 	_ensure_layout_clipboard_buttons()
 	_ensure_tape_controls()
 	_ensure_recruit_hud()
+	_ensure_victory_boost_hud()
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
@@ -1307,12 +1323,73 @@ func play_half_field_exit_animation(duration: float = -1.0) -> void:
 		_arena.queue_redraw()
 
 
+## 胜后免费强化：同屏半场滑入队伍（上）+ 备战中缝；下区无货架，规则走 VictoryBoostSession。
+## headless：enter_seconds≤0 时瞬间到位。
+func enter_victory_boost(session: VictoryBoostSession, enter_seconds: float = -1.0) -> void:
+	if session == null:
+		push_error("RealtimeBattleController.enter_victory_boost: session is null")
+		return
+	if not is_node_ready():
+		await ready
+	## 若仍停在强化态，先清再进（防重入）。
+	if _phase == Phase.VICTORY_BOOST:
+		exit_victory_boost(false)
+	_victory_boost_session = session
+	_victory_boost_animating = true
+	_preserve_half_slide_for_recruit = false
+	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
+	_set_phase(Phase.VICTORY_BOOST)
+	_hide_combat_chrome_for_recruit()
+	_hide_recruit_hud()
+	_show_victory_boost_hud()
+	await get_tree().process_frame
+	if _arena != null:
+		_arena.clear_recruit_mode()
+		_arena.clear_map_shop_mode()
+		_arena.clear_enchant_mode()
+		var travel := _half_slide_travel()
+		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
+		if not already_out:
+			_arena.set_half_slide_offscreen(travel)
+	_sync_victory_boost_arena()
+	_refresh_victory_boost_hud()
+	if _arena != null:
+		_arena.queue_redraw()
+	await _play_half_field_enter_animation(seconds)
+	## _play_half_field_enter_animation 会置 _recruit_animating；本阶段不用招募锁。
+	_recruit_animating = false
+	_victory_boost_animating = false
+	_sync_victory_boost_arena()
+	_refresh_victory_boost_hud()
+
+
+## preserve_for_recruit：确认/跳过后衔接到招募，保留半场 slide 与 Dock 占位。
+func exit_victory_boost(preserve_for_recruit: bool = false) -> void:
+	_victory_boost_animating = false
+	_hide_victory_boost_hud()
+	_victory_boost_team_slots.clear()
+	if _victory_boost_session != null:
+		_victory_boost_session.end()
+		_victory_boost_session = null
+	if _arena != null:
+		_arena.clear_victory_boost_mode()
+		if not preserve_for_recruit:
+			_arena.reset_half_slide()
+	if not preserve_for_recruit:
+		_restore_combat_chrome_after_recruit()
+	if _phase == Phase.VICTORY_BOOST:
+		_set_phase(Phase.IDLE)
+
+
 ## 胜后进入招募：同屏半场滑入队伍（上）与候选人（下）；规则走 RecruitSession。
 ## headless：enter_seconds≤0 时瞬间到位，不 await 长动画。
 func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void:
 	if session == null:
 		push_error("RealtimeBattleController.enter_recruit: session is null")
 		return
+	## 免费强化 → 招募：清强化选中与 HUD，保留 slide。
+	if _phase == Phase.VICTORY_BOOST:
+		exit_victory_boost(true)
 	_recruit_session = session
 	_recruit_selected_candidate = -1
 	_recruit_selected_replace_id = -1
@@ -1323,6 +1400,7 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		seconds = session.config.panel_enter_seconds
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
+	_hide_victory_boost_hud()
 	_show_recruit_hud()
 	## 等一帧让 Dock 最小高度生效，Arena 与准备同尺后再算 slide / 画单位。
 	await get_tree().process_frame
@@ -1331,6 +1409,7 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
 	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
 	if _arena != null:
+		_arena.clear_victory_boost_mode()
 		var travel := _half_slide_travel()
 		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
 		if not already_out:
@@ -1580,10 +1659,12 @@ func exit_recruit() -> void:
 	_recruit_team_slots.clear()
 	if _arena != null:
 		_arena.clear_recruit_mode()
+		_arena.clear_victory_boost_mode()
 		_arena.reset_half_slide()
 	_hide_recruit_hud()
+	_hide_victory_boost_hud()
 	_restore_combat_chrome_after_recruit()
-	if _phase == Phase.RECRUIT:
+	if _phase == Phase.RECRUIT or _phase == Phase.VICTORY_BOOST:
 		_set_phase(Phase.IDLE)
 
 
@@ -2641,6 +2722,196 @@ func _show_recruit_hud() -> void:
 func _hide_recruit_hud() -> void:
 	if _recruit_hud != null:
 		_recruit_hud.visible = false
+
+
+func _ensure_victory_boost_hud() -> void:
+	if _victory_boost_hud != null and is_instance_valid(_victory_boost_hud):
+		return
+	_victory_boost_hud = PanelContainer.new()
+	_victory_boost_hud.name = "VictoryBoostHud"
+	_victory_boost_hud.visible = false
+	_victory_boost_hud.mouse_filter = Control.MOUSE_FILTER_STOP
+	_victory_boost_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.16, 0.12, 0.92)
+	style.set_content_margin_all(8.0)
+	_victory_boost_hud.add_theme_stylebox_override("panel", style)
+	var dock_box: Node = null
+	if _dock != null:
+		dock_box = _dock.get_node_or_null("DockBox")
+	if dock_box != null:
+		dock_box.add_child(_victory_boost_hud)
+	else:
+		_victory_boost_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		_victory_boost_hud.offset_top = -132.0
+		_victory_boost_hud.offset_bottom = 0.0
+		add_child(_victory_boost_hud)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	_victory_boost_hud.add_child(box)
+
+	var top := HBoxContainer.new()
+	box.add_child(top)
+	_victory_boost_title = Label.new()
+	_victory_boost_title.text = "免费强化"
+	_victory_boost_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_victory_boost_title)
+	_victory_boost_amount_label = Label.new()
+	_victory_boost_amount_label.text = "+1 / +1 · 不花金币"
+	top.add_child(_victory_boost_amount_label)
+
+	_victory_boost_hint = Label.new()
+	_victory_boost_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_victory_boost_hint.text = "点上区或备战纸片选人；免费攻血同加（药水为花钱单维）"
+	box.add_child(_victory_boost_hint)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	_victory_boost_skip_btn = Button.new()
+	_victory_boost_skip_btn.text = "跳过强化"
+	_victory_boost_skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_victory_boost_skip_btn.pressed.connect(_on_victory_boost_skip_pressed)
+	row.add_child(_victory_boost_skip_btn)
+	_victory_boost_confirm_btn = Button.new()
+	_victory_boost_confirm_btn.text = "确认强化"
+	_victory_boost_confirm_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_victory_boost_confirm_btn.pressed.connect(_on_victory_boost_confirm_pressed)
+	row.add_child(_victory_boost_confirm_btn)
+
+
+func _show_victory_boost_hud() -> void:
+	_ensure_victory_boost_hud()
+	if _victory_boost_hud != null:
+		_victory_boost_hud.visible = true
+
+
+func _hide_victory_boost_hud() -> void:
+	if _victory_boost_hud != null:
+		_victory_boost_hud.visible = false
+
+
+func _sync_victory_boost_arena() -> void:
+	if _arena == null or _victory_boost_session == null:
+		return
+	_rebuild_victory_boost_team_slots()
+	_arena.clear_recruit_mode()
+	_arena.victory_boost_active = true
+	_arena.victory_boost_selected_id = _victory_boost_session.selected_entry_id
+	_arena.victory_boost_amount = _victory_boost_session.boost_amount
+	_arena.recruit_team_slots = _victory_boost_team_slots
+	_arena.prepare_slots = null
+	_arena.enemy_slots = null
+	_arena.enemy_previews = []
+	_arena.sim = null
+	_arena.placement_active = false
+	_sync_arena_bench()
+	_arena.queue_redraw()
+
+
+func _rebuild_victory_boost_team_slots() -> void:
+	var seat_rows := DeckConfig.DEFAULT_SEAT_ROWS
+	var seat_cols := DeckConfig.DEFAULT_SEAT_COLS
+	if _deck_state != null:
+		var config := _deck_state.get_config()
+		if config != null:
+			seat_rows = config.get_seat_rows()
+			seat_cols = config.get_seat_cols()
+	_victory_boost_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
+	if _deck_state == null:
+		return
+	for entry in _deck_state.get_entries():
+		if entry == null or entry.seat_index < 0:
+			continue
+		var seat_i := entry.seat_index
+		if seat_i >= _victory_boost_team_slots.slot_count:
+			continue
+		if not _victory_boost_team_slots.is_empty(seat_i):
+			continue
+		_victory_boost_team_slots.try_assign_with_seq(seat_i, entry, entry.seat_assign_seq)
+	_refresh_bench_row()
+
+
+func _refresh_victory_boost_hud() -> void:
+	if _victory_boost_session == null:
+		return
+	var amount := maxi(1, _victory_boost_session.boost_amount)
+	if _victory_boost_title != null:
+		_victory_boost_title.text = "免费强化"
+	if _victory_boost_amount_label != null:
+		_victory_boost_amount_label.text = "+%d / +%d · 不花金币" % [amount, amount]
+	if _victory_boost_hint != null:
+		if _victory_boost_session.applied:
+			_victory_boost_hint.text = "已强化 +%d 攻 / +%d 生命" % [amount, amount]
+		elif _victory_boost_session.selected_entry_id >= 0:
+			_victory_boost_hint.text = "将 +%d 攻 / +%d 生命（不花金币；药水为花钱单维）" % [amount, amount]
+		else:
+			_victory_boost_hint.text = "点上区或备战纸片选人；免费攻血同加（药水为花钱单维）"
+	if _victory_boost_confirm_btn != null:
+		_victory_boost_confirm_btn.disabled = (
+			_victory_boost_animating or not _victory_boost_session.can_confirm()
+		)
+	if _victory_boost_skip_btn != null:
+		_victory_boost_skip_btn.disabled = (
+			_victory_boost_animating or _victory_boost_session.applied
+		)
+		_victory_boost_skip_btn.text = "跳过强化"
+	if _encounter_label != null:
+		_encounter_label.text = "免费强化"
+	if _phase_label != null:
+		_phase_label.text = "免费强化"
+		_phase_label.modulate = Color.WHITE
+	if _pop_label != null and _deck_state != null:
+		_pop_label.text = "入座 %d 备战 %d" % [
+			_deck_state.get_seated_count(),
+			_deck_state.get_bench_count(),
+		]
+	if _gold_label != null and _economy != null:
+		_gold_label.text = UiStatIcons.format_gold_label(_economy.gold)
+
+
+func _on_victory_boost_unit_pressed(entry_id: int) -> void:
+	if _phase != Phase.VICTORY_BOOST or _victory_boost_animating or _victory_boost_session == null:
+		return
+	if _victory_boost_session.applied:
+		return
+	if not _victory_boost_session.select_entry(entry_id):
+		return
+	_sync_victory_boost_arena()
+	_refresh_victory_boost_hud()
+
+
+func _on_victory_boost_confirm_pressed() -> void:
+	if _phase != Phase.VICTORY_BOOST or _victory_boost_animating or _victory_boost_session == null:
+		return
+	if not _victory_boost_session.can_confirm():
+		return
+	_victory_boost_animating = true
+	_refresh_victory_boost_hud()
+	if not _victory_boost_session.apply_boost():
+		_victory_boost_animating = false
+		_refresh_victory_boost_hud()
+		return
+	_sync_victory_boost_arena()
+	_refresh_victory_boost_hud()
+	var hold := victory_boost_confirm_hold_seconds
+	if hold > 0.001:
+		await get_tree().create_timer(hold).timeout
+	## 短停后必须发出完成信号，避免 Run 侧 await 挂死。
+	if _phase == Phase.VICTORY_BOOST:
+		exit_victory_boost(true)
+	victory_boost_finished.emit(true)
+
+
+func _on_victory_boost_skip_pressed() -> void:
+	if _phase != Phase.VICTORY_BOOST or _victory_boost_animating or _victory_boost_session == null:
+		return
+	if _victory_boost_session.applied:
+		return
+	_victory_boost_session.skip()
+	exit_victory_boost(true)
+	victory_boost_finished.emit(false)
 
 
 func _bind_recruit_session() -> void:
@@ -3855,9 +4126,9 @@ func _ensure_bench_row() -> void:
 
 
 func _rebuild_bench_slots() -> void:
-	## 招募：备战夹在队伍半场与招募半场之间（midline）；准备/战斗仍在友方半场下方。
+	## 招募 / 免费强化：备战夹在队伍半场与下半场之间（midline）；准备/战斗仍在友方半场下方。
 	var row_y := -1
-	if _phase == Phase.RECRUIT:
+	if _phase == Phase.RECRUIT or _phase == Phase.VICTORY_BOOST:
 		row_y = BoardHalf.midline_row(_board_size.y)
 	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
@@ -3876,15 +4147,20 @@ func _sync_arena_bench() -> void:
 	var show_bench := (
 		_phase == Phase.PREPARE
 		or _phase == Phase.RECRUIT
+		or _phase == Phase.VICTORY_BOOST
 		or _phase == Phase.COMBAT
 	)
 	_arena.bench_visible = show_bench
 	_arena.bench_interactive = (
 		not _final_trial_active
-		and (_phase == Phase.PREPARE or _phase == Phase.RECRUIT)
+		and (
+			_phase == Phase.PREPARE
+			or _phase == Phase.RECRUIT
+			or _phase == Phase.VICTORY_BOOST
+		)
 	)
 	_arena.bench_slots = _bench_slots if show_bench else null
-	if _phase == Phase.PREPARE or _phase == Phase.RECRUIT:
+	if _phase == Phase.PREPARE or _phase == Phase.RECRUIT or _phase == Phase.VICTORY_BOOST:
 		_arena.bench_slide_y = 0.0
 	_sync_bench_triple_merge_hints()
 	_arena.queue_redraw()
@@ -3896,6 +4172,7 @@ func _sync_bench_triple_merge_hints() -> void:
 	_arena.bench_triple_merge_hint_entry_ids.clear()
 	if _deck_state == null:
 		return
+	## 免费强化不提示三合一。
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return
 	for entry_id in _deck_state.get_bench_triple_merge_hint_entry_ids():
@@ -3958,6 +4235,9 @@ func _refresh_hud() -> void:
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return
+	if _phase == Phase.VICTORY_BOOST:
+		_refresh_victory_boost_hud()
+		return
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
 		return
@@ -4010,6 +4290,8 @@ func _refresh_hud() -> void:
 			_phase_label.text = "胜利" if _won else "失败"
 		Phase.RECRUIT:
 			_phase_label.text = "招募"
+		Phase.VICTORY_BOOST:
+			_phase_label.text = "免费强化"
 		Phase.ENCHANT:
 			_phase_label.text = "附魔"
 		Phase.MAP_SHOP:

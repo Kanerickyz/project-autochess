@@ -1,8 +1,8 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-30
+> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-31
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
 > **产品线 0.6**：`application/config/version` 自 **`6.0.1`** 起（主菜单 `v6.0.…`）；`0.5.*` 线已结束。细则见 [CONTRIBUTING.md](../CONTRIBUTING.md)「应用版本号」。
 
@@ -15,7 +15,8 @@
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
-| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
+| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/跳过/完成） |
+| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（普/精胜后、招募前；按品阶档永久 +攻/+血；可跳过） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（七类包装；角色库筛选；战斗同主题效果另切片） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |

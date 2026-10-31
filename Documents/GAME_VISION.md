@@ -5,7 +5,7 @@
 >
 > **【设定定稿 / 表现待迁移】** 主题为中世纪幻想；`resources/units` 与 roster 中的动物名/占位图为 As-Is，换皮另开切片。  
 >
-> **【循环 To-Be】** 有准备阶段：商店 / 招募养成**队伍**（**上场座位** + **跨遭遇持久备战区 5 格**）；已入座成员全体上场；准备可换座，并可将备战与座位双向拖放（备战满则不能再拖入）；座位网格默认 4×5 铺满半场，**上场席位上限本版开局 5**（旗帜可扩，细则见玩家篇）。点开战后天**完全观战**（备战行只读、不能补人）。普通 / 精英**胜利**后进入**招募**（短名单拿人 / 换人 / **出售腾位**；点买优先上场空座；上区与备战均改持久状态），再回地图；**Boss 胜直接通关**（不进招募）。队伍内（含备战）**同角色同星满三自动三合一**。无号令；无遭遇内抽牌 / 手牌 / 准备刷新手牌。细则见 [Features/PLAYER.md](./Features/PLAYER.md)、[Features/RECRUIT.md](./Features/RECRUIT.md)。  
+> **【循环 To-Be】** 有准备阶段：商店 / 招募养成**队伍**（**上场座位** + **跨遭遇持久备战区 5 格**）；已入座成员全体上场；准备可换座，并可将备战与座位双向拖放（备战满则不能再拖入）；座位网格默认 4×5 铺满半场，**上场席位上限本版开局 5**（旗帜可扩，细则见玩家篇）。点开战后天**完全观战**（备战行只读、不能补人）。普通 / 精英**胜利**后先经**免费强化**（选人永久 +攻/+血，可跳过；见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)），再进**招募**（短名单拿人 / 换人 / **出售腾位**；点买优先上场空座；上区与备战均改持久状态），再回地图；**Boss 胜直接通关**（不进免费强化 / 招募）。队伍内（含备战）**同角色同星满三自动三合一**。无号令；无遭遇内抽牌 / 手牌 / 准备刷新手牌。细则见 [Features/PLAYER.md](./Features/PLAYER.md)、[Features/RECRUIT.md](./Features/RECRUIT.md)。  
 > **【循环 As-Is】** 主路径准备/招募/持久备战可能未对齐文档 To-Be；**文档 To-Be ≠ 已实现**。  
 >
 > **【战场 To-Be】** 双方各有可见**角色座位**（默认 4 行 × 5 列，铺满半场）；友方入座人数 = 当前**已入座**成员数（≤ 上场席位上限）；备战区成员不上场。敌方占座与人数由关卡配置。开战后为**回合制自动战**：敌我**混排**进一条固定行动队列，每回合按同序**依次**行动；每一动尽量在同一段内完成「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**），可越半场。竖屏、我下敌上见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)；推进细则见 [Features/COMBAT.md](./Features/COMBAT.md)。  
@@ -100,12 +100,12 @@
 
 ### 爬塔 Run（主模式）
 
-主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路。第一版节点：起点 / 战斗 / 精英 / 商店 / 事件 / **附魔** / Boss。节点内 **准备站位 → 开战观战 → 结算**；普通 / 精英胜 → **招募** → 回地图；**Boss 胜 → 通关**；败整局重置。地图商店做完整养成；招募做胜后短名单。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)；招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)。
+主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路。第一版节点：起点 / 战斗 / 精英 / 商店 / 事件 / **附魔** / Boss。节点内 **准备站位 → 开战观战 → 结算**；普通 / 精英胜 → **免费强化** → **招募** → 回地图；**Boss 胜 → 通关**；败整局重置。地图商店做完整养成；招募做胜后短名单；免费强化见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)；招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)。
 
 ```mermaid
 flowchart TD
     Map[MAP_选路] -->|战斗或精英| Prep[PREPARE_站位入座] --> Combat[COMBAT_观战] --> Resolve[RESOLVE]
-    Resolve -->|胜利| Recruit[RECRUIT_招募] --> Map
+    Resolve -->|胜利| Boost[VICTORY_BOOST_免费强化] --> Recruit[RECRUIT_招募] --> Map
     Resolve -->|失败| RunDefeat[RUN_DEFEAT]
     Map -->|Boss| BossPrep[PREPARE] --> BossCombat[COMBAT] --> BossResolve[RESOLVE]
     BossResolve -->|胜利| RunResult[结局宣告]
@@ -127,9 +127,10 @@ flowchart TD
 | 2 | 准备 | 载入持久占位；换座写回；点开战 | 校验座位；无手牌刷新；不推进战斗 |
 | 3 | 战斗 | 观战（可加速）；不能改阵 | 敌方按已配置座位出齐；回合制依次自动战斗；**击杀不掉金** |
 | 4 | 结算 | 查看结果 | 波次金；敌全灭胜 / 己全灭败。线性关可重开；Run 失败整局重置 |
-| 5 | 招募（仅普通 / 精英胜） | 花金招人/替换；出售腾位；刷新；重置；跳过或完成 | 改队伍与金币；可触发三合一；见招募篇 / 玩家篇。Boss 胜跳过本步直接通关 |
-| 6 | 商店（线性关波间 / Run 地图节点） | 买角色/增益；换人等 | 扣费、改队伍；席位扩展另案；细则见商店 |
-| 7 | 下一波 / 回地图 | — | `wave_index++`、回地图或关卡完成 |
+| 5 | 免费强化（仅普通 / 精英胜） | 点选队伍成员永久 +攻/+血，或不花金跳过 | 不扣金；幅度跟最高已解锁品阶；见 [胜后免费强化](./Features/VICTORY_BOOST.md)。Boss 胜跳过 |
+| 6 | 招募（仅普通 / 精英胜） | 花金招人/替换；出售腾位；刷新；跳过或完成 | 改队伍与金币；可触发三合一；见招募篇 / 玩家篇。Boss 胜跳过本步直接通关 |
+| 7 | 商店（线性关波间 / Run 地图节点） | 买角色/增益；换人等 | 扣费、改队伍；席位扩展另案；细则见商店 |
+| 8 | 下一波 / 回地图 | — | `wave_index++`、回地图或关卡完成 |
 
 **【As-Is】** 实时主路径仍可能跳过准备、战中出牌；无招募阶段。
 
