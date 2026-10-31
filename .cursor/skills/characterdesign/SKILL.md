@@ -181,7 +181,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 ## 硬约束
 
 - 战斗增益：`EffectSpec` + `EffectResolver`；触发：`CombatEventBus`
-- v1 无羁绊；内部「流派」不进玩家 UI
+- 须指定主题羁绊七类之一；内部「流派」玩法轴不进玩家 UI
 - 共享 Resource 注意 `duplicate()`；保留 `.uid` 与 import 侧车
 - 子代理不提交/不推；主代理集成后按云流程提交
 

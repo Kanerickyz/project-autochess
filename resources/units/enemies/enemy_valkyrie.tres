@@ -27,6 +27,7 @@ id = "enemy_valkyrie"
 display_name = "敌·链枷兵"
 cost = 3
 tier = 3
+theme_bond = 2
 command_cost = 5
 stats = SubResource("UnitStats_enemy_valkyrie")
 team_default = 1

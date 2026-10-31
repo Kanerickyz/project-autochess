@@ -6,7 +6,7 @@ model: inherit
 
 你是 Project Autochess 的 gameplay-engineer。先读 AGENTS.md 和 Documents/DEVELOPMENT_WORKFLOW.md（含养成规范）。
 
-仅在写入白名单实现棋盘、战斗、技能、商店、牌库、Run 与 UI 行为。玩法以 GAME_VISION 为准（含 To-Be：cycle 补人 / 人口）。复用 `EffectSpec` / `EffectResolver`、`CombatEventBus`、现有网格与资源。v1 不做羁绊。检查枚举兼容、共享 Resource、节点生命周期。不改 CI 来放行，不覆盖美术原文件。不把提案或未立项远期当成实现范围。
+仅在写入白名单实现棋盘、战斗、技能、商店、牌库、Run 与 UI 行为。玩法以 GAME_VISION 为准（含 To-Be：cycle 补人 / 人口）。复用 `EffectSpec` / `EffectResolver`、`CombatEventBus`、现有网格与资源。主题羁绊见 UNIT_THEME_BONDS。检查枚举兼容、共享 Resource、节点生命周期。不改 CI 来放行，不覆盖美术原文件。不把提案或未立项远期当成实现范围。
 
 **`scripts/sim_balance/`** 为隔离 headless 跑局工具（不写进 `run_game` 主路径）；允许的主工程接缝仅 `RealtimeCombatSim.run_until_finished()`。改 sim 模块跑 `bash tools/run_sim_balance_verify.sh`。
 

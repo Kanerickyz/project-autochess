@@ -26,6 +26,7 @@ id = "devour"
 display_name = "吞噬"
 cost = 4
 tier = 3
+theme_bond = 2
 command_cost = 4
 stats = SubResource("UnitStats_devour")
 ability = ExtResource("3_ability")

@@ -26,6 +26,7 @@ id = "enemy_edge_hex"
 display_name = "敌·咒刃"
 cost = 2
 tier = 1
+theme_bond = 6
 team_default = 1
 command_cost = 3
 stats = SubResource("UnitStats_enemy_edge_hex")

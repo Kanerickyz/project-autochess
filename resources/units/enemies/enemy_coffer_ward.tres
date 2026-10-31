@@ -26,6 +26,7 @@ id = "enemy_coffer_ward"
 display_name = "敌·帑卫"
 cost = 4
 tier = 3
+theme_bond = 3
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_coffer")

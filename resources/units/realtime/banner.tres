@@ -25,6 +25,7 @@ id = "banner"
 display_name = "旗手"
 cost = 4
 tier = 3
+theme_bond = 3
 command_cost = 4
 stats = SubResource("UnitStats_banner")
 ability = ExtResource("3_ability")

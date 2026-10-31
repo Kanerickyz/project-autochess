@@ -26,6 +26,7 @@ id = "aftershock"
 display_name = "余震"
 cost = 2
 tier = 1
+theme_bond = 2
 command_cost = 3
 stats = SubResource("UnitStats_aftershock")
 ability = ExtResource("3_ability")

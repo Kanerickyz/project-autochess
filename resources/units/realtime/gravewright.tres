@@ -25,6 +25,7 @@ id = "gravewright"
 display_name = "掘墓"
 cost = 3
 tier = 2
+theme_bond = 1
 command_cost = 4
 stats = SubResource("UnitStats_gravewright")
 ability = ExtResource("3_ability")

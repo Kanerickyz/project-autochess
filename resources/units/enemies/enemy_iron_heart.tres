@@ -25,6 +25,7 @@ id = "enemy_iron_heart"
 display_name = "敌·铁心"
 cost = 4
 tier = 2
+theme_bond = 7
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_iron_heart")

@@ -27,6 +27,7 @@ id = "enemy_knight"
 display_name = "敌·盾兵"
 cost = 2
 tier = 1
+theme_bond = 7
 command_cost = 4
 stats = SubResource("UnitStats_enemy_knight")
 team_default = 1

@@ -27,6 +27,7 @@ id = "goblin"
 display_name = "余烬"
 cost = 2
 tier = 1
+theme_bond = 2
 command_cost = 2
 stats = SubResource("UnitStats_goblin")
 ability = ExtResource("3_ability")

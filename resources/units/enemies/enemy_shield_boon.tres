@@ -26,6 +26,7 @@ id = "enemy_shield_boon"
 display_name = "敌·盾祷"
 cost = 2
 tier = 1
+theme_bond = 7
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_shield_boon")

@@ -2,6 +2,18 @@
 class_name UnitData
 extends Resource
 
+## 主题羁绊（玩家可读包装类）；见 Documents/Features/UNIT_THEME_BONDS.md。
+enum ThemeBond {
+	NONE = 0,
+	UNDEAD = 1,
+	WARRIOR = 2,
+	KNIGHT = 3,
+	ARTISAN = 4,
+	BAND = 5,
+	ARCANA = 6,
+	GUARD = 7,
+}
+
 @export var id: String = ""
 @export var display_name: String = ""
 ## 商店买进构筑库的金币。
@@ -11,10 +23,32 @@ extends Resource
 @export_range(1, 10, 1) var command_cost: int = 1
 ## -1 表示使用 EconomyConfig.default_kill_gold
 @export var kill_gold_reward: int = -1
+## 主题羁绊主归类（可招友方须非 NONE）。
+@export var theme_bond: ThemeBond = ThemeBond.NONE
 @export var stats: UnitStats
 @export var team_default: UnitInstance.Team = UnitInstance.Team.PLAYER
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
+
+
+static func theme_bond_label(bond: ThemeBond) -> String:
+	match bond:
+		ThemeBond.UNDEAD:
+			return "亡灵"
+		ThemeBond.WARRIOR:
+			return "战士"
+		ThemeBond.KNIGHT:
+			return "骑士"
+		ThemeBond.ARTISAN:
+			return "工匠"
+		ThemeBond.BAND:
+			return "军乐队"
+		ThemeBond.ARCANA:
+			return "秘术"
+		ThemeBond.GUARD:
+			return "护卫"
+		_:
+			return "未定"
 
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、对砍例外、足迹策略机。

@@ -26,6 +26,7 @@ id = "blood_wage"
 display_name = "血饷"
 cost = 3
 tier = 2
+theme_bond = 3
 command_cost = 3
 stats = SubResource("UnitStats_bloodwage")
 ability = ExtResource("3_ability")

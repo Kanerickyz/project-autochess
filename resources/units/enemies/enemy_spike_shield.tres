@@ -25,6 +25,7 @@ id = "enemy_spike_shield"
 display_name = "敌·刺盾"
 cost = 2
 tier = 1
+theme_bond = 7
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_spike_shield")

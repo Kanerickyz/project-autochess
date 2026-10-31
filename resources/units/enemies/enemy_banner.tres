@@ -25,6 +25,7 @@ id = "enemy_banner"
 display_name = "敌·旗手"
 cost = 4
 tier = 3
+theme_bond = 3
 team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_banner")

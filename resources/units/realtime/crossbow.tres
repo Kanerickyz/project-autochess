@@ -27,6 +27,7 @@ id = "crossbow"
 display_name = "弩手"
 cost = 2
 tier = 1
+theme_bond = 4
 command_cost = 3
 stats = SubResource("UnitStats_crossbow")
 ability = ExtResource("3_ability")

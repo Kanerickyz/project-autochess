@@ -19,7 +19,7 @@
 - **已实现（招募主路径）**：角色候选槽锁定（刷新保留）；观战手动倍速 1×/2×/3×（`RealtimeBattleController.time_scale`）
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
-- **未创建** `resources/traits/`（v1 不含羁绊）
+- **主题羁绊**：`UnitData.theme_bond` 七类枚举（分类 + 角色库筛选）；战斗同主题团队效果另切片，目录可后补 `resources/traits/`
 - 版本控制忽略 `.godot/`、`android/`、本地 `.artifacts/`、编辑器 `*.tscn*.tmp`
 
 可在编辑器中 F5 验证棋盘。文档中的 **To-Be** 若与 As-Is 冲突，以代码与本节为准。
@@ -75,8 +75,8 @@ flowchart TB
 
 设计原则：
 
-1. **数据驱动**：单位、联动技能用 `Resource`，便于策划迭代与 mod 扩展（**v1 不含 Trait/羁绊**）。
-2. **效果描述统一**：所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。远期若加羁绊，须复用同一管线，禁止另写一套 Buff。
+1. **数据驱动**：单位、联动技能、**主题羁绊分类**用 `Resource` / 枚举，便于策划迭代与 mod 扩展。
+2. **效果描述统一**：所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。主题羁绊的战斗团队效果须复用同一管线，禁止另写一套 Buff。
 3. **战斗事件单一入口**：触发类逻辑只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接修改其他单位属性。
 4. **模拟与表现分离**：战斗结果可先由纯逻辑算出，再由场景播放动画（避免帧率影响平衡）。
 5. **信号 / 事件总线**：流程与 UI 用**控制器显式信号**（`BoardController` / `RunGameController`）连接，**不**采用全局 `EventBus` Autoload；**战斗内触发不走全局 Bus**，避免跨局泄漏。
@@ -229,7 +229,7 @@ extends Resource
 @export var cost: int
 @export var tier: int = 1          # 1–6，商店 roll 与默认 cost 对齐
 @export var base_stats: UnitStats
-@export var tags: Array[StringName] = []  # 技能目标筛选用，非羁绊计数
+@export var tags: Array[StringName] = []  # 技能目标筛选用（与 theme_bond 主题羁绊分列）
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
 @export var icon: Texture2D  # UI 头像；留空则色块占位
@@ -240,13 +240,12 @@ extends Resource
 - **牌库永久加成**：`DeckEntry.bonus_attack` / `bonus_max_hp`；同步进场上实例的攻击与生命上限
 - **联动技能（Ability）**：`UnitData.ability`（**必填**）+ 可选 `passives`；`AbilityData` 持有 `Array[EffectSpec]`，战斗内由 `CombatEventBus` 驱动
 - **增益（Buff） / 事件选项**：商店与事件的**非战斗永久改写**走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`），**不**默认并入 `get_all_effect_specs()`。凡会进入战斗触发的效果必须挂 `EffectSpec`（见 BUFF_SYSTEM）
-- **tags**：供 `allies_with_tag` 等目标选择使用；**v1 不做**「凑 N 个同 tag 触发团队增益」的 Trait 系统
-
-**远期 Trait（非 v1）**：若加入 `TraitData` / `TraitSystem`，按 [GAME_VISION.md](./GAME_VISION.md) 约定复用 `EffectSpec`，不在 v1 目录与里程碑中实现。
+- **tags**：供 `allies_with_tag` 等目标选择使用
+- **主题羁绊**：`UnitData.theme_bond`（七类）；角色库可筛；战斗「凑 N」团队效果另切片，须复用 `EffectSpec`
 
 ### 3.6 UI Layer
 
-- 场景：`scenes/ui/` 下分 ShopPanel、HandPanel、BoardView、PlayerHUD（v1 无羁绊面板）
+- 场景：`scenes/ui/` 下分 ShopPanel、HandPanel、BoardView、PlayerHUD、角色库（含主题筛选）
 - To-Be 弹窗：`DeckReplaceModal`、`BuffAttachModal`（由 `SkillAttachModal` 迁移）
 - UI 只调用 **Service / Facade**（如 `MatchFacade.buy_unit(slot)`），不直接改棋盘数组
 - 单位 tooltip：展示联动技能说明（`EffectSpec` 的 `@export_multiline` 描述或自动生成）

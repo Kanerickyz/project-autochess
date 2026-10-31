@@ -25,6 +25,7 @@ id = "relic_aegis"
 display_name = "圣骸"
 cost = 3
 tier = 2
+theme_bond = 1
 command_cost = 4
 stats = SubResource("UnitStats_relic_aegis")
 ability = ExtResource("3_ability")

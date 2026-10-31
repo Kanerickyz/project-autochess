@@ -25,6 +25,7 @@ id = "enemy_wardrum"
 display_name = "敌·鼓手"
 cost = 3
 tier = 2
+theme_bond = 5
 team_default = 1
 command_cost = 3
 stats = SubResource("UnitStats_enemy_wardrum")

@@ -26,6 +26,7 @@ id = "wood_drum"
 display_name = "木鼓"
 cost = 2
 tier = 1
+theme_bond = 5
 command_cost = 2
 stats = SubResource("UnitStats_wood_drum")
 ability = ExtResource("3_ability")
