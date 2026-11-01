@@ -337,6 +337,21 @@ func hide_info() -> void:
 	visible = false
 
 
+## 角色本体侧栏主题段：空串=省略（NONE / 未定不展示）。道具与附属卡不走此路径。
+static func _theme_side_label_from_info(info: Dictionary) -> String:
+	if bool(info.get("is_item", false)) or bool(info.get("is_attachment", false)):
+		return ""
+	if info.has("theme_label"):
+		return String(info.get("theme_label", "")).strip_edges()
+	if info.has("theme_bond"):
+		var bond: int = int(info.get("theme_bond", UnitData.ThemeBond.NONE))
+		if bond == UnitData.ThemeBond.NONE:
+			return ""
+		var label := UnitData.theme_bond_label(bond as UnitData.ThemeBond)
+		return "" if label == "未定" else label
+	return ""
+
+
 func _apply_content(info: Dictionary) -> void:
 	var is_player := bool(info.get("side_player", true))
 	var is_item := bool(info.get("is_item", false))
@@ -371,7 +386,9 @@ func _apply_content(info: Dictionary) -> void:
 	else:
 		var tier := int(info.get("tier", 0))
 		var side := "我方" if is_player else "敌方"
-		_side_label.text = "%s · T%d" % [side, tier] if tier > 0 else side
+		var base := "%s · T%d" % [side, tier] if tier > 0 else side
+		var theme := _theme_side_label_from_info(info)
+		_side_label.text = "%s · %s" % [base, theme] if not theme.is_empty() else base
 		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT if is_player else ENEMY_ACCENT)
 	_style.border_color = INK
 	_attack_badge.visible = not is_item
