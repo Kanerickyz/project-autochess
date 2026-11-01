@@ -33,6 +33,8 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
 ## 短按落盘后展示 +N/+N 反馈再进招募的短停（秒）；≤0 瞬切。
 @export_range(0.0, 2.0, 0.05) var victory_boost_confirm_hold_seconds: float = 0.5
+## 战斗结束后、胜负结算界面弹出前的停顿（秒）；≤0 立刻弹出。
+@export_range(0.0, 3.0, 0.05) var result_overlay_delay_seconds: float = 1.0
 
 var last_seed: int = 0
 
@@ -153,6 +155,8 @@ var _victory_boost_hint: Label
 var _victory_boost_confirm_btn: Button
 var _victory_boost_skip_btn: Button
 var _victory_boost_animating: bool = false
+## 取消过期的胜负界面延迟弹出（进点/继续/重开时递增）。
+var _result_overlay_show_token: int = 0
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -418,6 +422,7 @@ func start_encounter(
 	_floor_gold = 0
 	_selected_entry_id = -1
 	_lock_phase_active = false
+	_result_overlay_show_token += 1
 	_result_overlay.visible = false
 	_board_size = encounter.get_board_size(_level.get_board_size())
 
@@ -1081,6 +1086,7 @@ func restart_sandbox_prepare() -> void:
 func continue_after_result() -> void:
 	if _phase != Phase.RESULT:
 		return
+	_result_overlay_show_token += 1
 	if _boss_final_trial_offer:
 		_boss_final_trial_offer = false
 		_update_result_action_buttons()
@@ -4154,11 +4160,28 @@ func _on_combat_finished(won: bool) -> void:
 		if _continue_button != null:
 			_continue_button.text = "继续"
 		_update_result_action_buttons()
-	_result_overlay.visible = true
 	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
 	_set_phase(Phase.RESULT)
 	_update_tape_controls()
 	combat_resolved.emit(won)
+	_reveal_result_overlay_after_delay()
+
+
+## 战斗结束后稍停再弹出胜负界面；token 过期或已离开 RESULT 则作废。
+func _reveal_result_overlay_after_delay() -> void:
+	_result_overlay_show_token += 1
+	var token := _result_overlay_show_token
+	if _result_overlay != null:
+		_result_overlay.visible = false
+	var delay := result_overlay_delay_seconds
+	if delay > 0.001:
+		await get_tree().create_timer(delay).timeout
+	if token != _result_overlay_show_token:
+		return
+	if _phase != Phase.RESULT:
+		return
+	if _result_overlay != null:
+		_result_overlay.visible = true
 
 
 func _on_gold_changed(_amount: int) -> void:

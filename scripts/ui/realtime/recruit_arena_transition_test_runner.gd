@@ -61,6 +61,7 @@ func _test_recruit_arena_transition() -> void:
 	battle.rng_seed = 7777
 	battle.half_exit_seconds = 0.0
 	battle.recruit_enter_seconds = 0.0
+	battle.result_overlay_delay_seconds = 0.0
 	root.add_child(battle)
 	await process_frame
 	battle.setup(deck, economy, level)
