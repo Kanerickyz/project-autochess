@@ -98,13 +98,16 @@ func _check_layout() -> void:
 			pair_w <= px * RealtimeArenaView.STAT_BADGE_ROW_MAX_CELL_W + 0.05,
 			"fitted atk/hp pair fits one cell at px %.0f" % px
 		)
-		var trio := view.get_fitted_stat_badge_size(px, 3)
-		var trio_gap := trio.y * RealtimeArenaView.STAT_BADGE_GAP_MUL
-		var trio_w := trio.x * 3.0 + trio_gap * 2.0
+		## 护甲改次行居中：单枚拟合须落在单格内；不再要求 trio 同排≤单格。
+		var armor_badge := view.get_fitted_stat_badge_size(px, 1)
 		_expect(
-			trio_w <= px * RealtimeArenaView.STAT_BADGE_ROW_MAX_CELL_W + 0.05,
-			"fitted atk/hp/armor row fits one cell at px %.0f" % px
+			armor_badge.x <= px * RealtimeArenaView.STAT_BADGE_ROW_MAX_CELL_W + 0.05,
+			"fitted armor secondary row fits one cell at px %.0f" % px
 		)
+		var stack2 := view.get_stat_badge_stack_extent(px, 2)
+		var stack3 := view.get_stat_badge_stack_extent(px, 3)
+		_expect(stack2 > pair.y + 0.01, "two-row stack taller than pair at px %.0f" % px)
+		_expect(stack3 > stack2 + 0.01, "three-row stack taller than two-row at px %.0f" % px)
 	view.free()
 
 

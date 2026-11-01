@@ -119,16 +119,18 @@ const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
-const STAT_BADGE_HEIGHT_MUL := 0.42
-const STAT_BADGE_MIN_HEIGHT := 11.0
-const STAT_BADGE_MAX_HEIGHT := 24.0
+const STAT_BADGE_HEIGHT_MUL := 0.56
+const STAT_BADGE_MIN_HEIGHT := 13.5
+const STAT_BADGE_MAX_HEIGHT := 32.0
 ## 一行徽章总宽不超过该比例×格宽，避免邻格脚下数值互叠。
-const STAT_BADGE_ROW_MAX_CELL_W := 0.96
-## 同排徽章间距（相对徽章高度）；略疏一点避免贴图软边看起来粘在一起。
-const STAT_BADGE_GAP_MUL := 0.12
+const STAT_BADGE_ROW_MAX_CELL_W := 0.99
+## 同排徽章间距（相对徽章高度）；略紧以给放大后的攻血留横向。
+const STAT_BADGE_GAP_MUL := 0.08
+## 次行相对同排 gap 的行距倍率（护甲/金分行居中）。
+const STAT_BADGE_ROW_GAP_MUL := 1.6
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
-const STAT_NUMBER_MAX_WIDTH := 0.42
+const STAT_NUMBER_MAX_WIDTH := 0.48
 ## 受击闪白：modulate 拉高到接近纯白，墨线仍保留轮廓。
 const SPRITE_FLASH_MUL := 5.0
 ## 镜头震动时背景外扩，避免露边。
@@ -2147,8 +2149,8 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
-	## 脚下可能有攻/血一行 + 价签第二行，预留两行高度避免信息卡盖住数字。
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
+	## 脚下攻/血 + 可选护甲/价签分行，按三行上限预留脚点避免信息卡盖住数字。
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_stack_extent(px, 3))
 	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
@@ -2179,7 +2181,7 @@ func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) 
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_stack_extent(px, 3))
 	var bounds := get_board_rect()
 	_info_card.show_info_combat_compact(info, foot, bounds, slide_dir)
 	## 战斗播报默认不竖排装备/状态详附卡；短标走结算拍结果通道。
@@ -2480,8 +2482,8 @@ func inspect_at(local_pos: Vector2) -> Dictionary:
 	for info: Dictionary in _collect_inspectables():
 		var center: Vector2 = info["center"]
 		var feet_y := center.y + px * 0.38
-		var badge_h := get_fitted_stat_badge_size(px, 2).y
-		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_h * 2.35)
+		var badge_stack := get_stat_badge_stack_extent(px, 3)
+		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_stack + 2.0)
 		if not hit.has_point(local_pos):
 			continue
 		var d := local_pos.distance_squared_to(center)
@@ -4435,7 +4437,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
-		## 攻/血缩进单格；价签第二行（见 _draw_stat_badges）。
+		## 攻/血同排；护甲/价签分行居中（见 _draw_stat_badges）。
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
 		)
@@ -5065,7 +5067,21 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 	return Vector2(h * aspect, h)
 
 
-## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
+## 脚下标签纵向占位：攻血一行 + 可选护甲/金分行（最多三行）。用于点选与信息卡脚点。
+func get_stat_badge_stack_extent(px: float, rows: int = 3) -> float:
+	var pair := get_fitted_stat_badge_size(px, 2)
+	var secondary := get_fitted_stat_badge_size(px, 1)
+	var row_gap := pair.y * STAT_BADGE_GAP_MUL * STAT_BADGE_ROW_GAP_MUL
+	var n := clampi(rows, 1, 3)
+	if n <= 1:
+		return pair.y * 1.05
+	if n == 2:
+		return pair.y + row_gap + secondary.y
+	return pair.y + row_gap + secondary.y + row_gap + secondary.y
+
+
+## 脚下纸片标签：攻 + 血同排（按 count=2 拟合）；护甲/金币各自居中次行，避免三枚同排挤小攻血。
+## 有护甲无金 → 第二行护甲；有金无护甲 → 第二行金；两者都有 → 护甲第二行、金第三行。
 ## pulse_key 非空时按字典里的 atk/hp scale 以徽章中心缩放整枚纸片。
 func _draw_stat_badges(
 	center: Vector2,
@@ -5081,38 +5097,36 @@ func _draw_stat_badges(
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
-	var primary_count := 2 + (1 if show_armor else 0)
 	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
-	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
+	## 攻血始终按 pair 拟合，不再因护甲改用 trio。
+	var badge := get_fitted_stat_badge_size(px, 2, max_w)
 	var gap := badge.y * STAT_BADGE_GAP_MUL
+	var row_gap := gap * STAT_BADGE_ROW_GAP_MUL
 	var top := center.y + px * 0.38 + badge.y * 0.05
-	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
+	var total_w := badge.x * 2.0 + gap
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
 	var atk_scale := get_stat_badge_pulse_scale(pulse_key, &"atk")
 	var hp_scale := get_stat_badge_pulse_scale(pulse_key, &"hp")
-	var slot := 0
-	var atk_rect := _scaled_badge_rect(
-		Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge), atk_scale
-	)
-	slot += 1
+	var atk_rect := _scaled_badge_rect(Rect2(Vector2(x0, top), badge), atk_scale)
 	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
-	var hp_rect := _scaled_badge_rect(
-		Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge), hp_scale
-	)
-	slot += 1
+	var hp_rect := _scaled_badge_rect(Rect2(Vector2(x0 + badge.x + gap, top), badge), hp_scale)
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
+	var next_top := top + badge.y + row_gap
 	if show_armor:
-		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		var armor_badge := get_fitted_stat_badge_size(px, 1, max_w)
+		var armor_half := armor_badge.x * 0.5
+		var armor_cx := clampf(center.x, armor_half, maxf(armor_half, size.x - armor_half))
+		var armor_rect := Rect2(Vector2(armor_cx - armor_half, next_top), armor_badge)
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
+		next_top += armor_badge.y + row_gap
 	if show_gold:
-		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
+		## 价签居中：无护甲时第二行，有护甲时第三行。
 		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
-		var gold_top := top + badge.y + gap * 1.6
 		var gold_half := gold_badge.x * 0.5
 		var gold_cx := clampf(center.x, gold_half, maxf(gold_half, size.x - gold_half))
-		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
+		var gold_rect := Rect2(Vector2(gold_cx - gold_half, next_top), gold_badge)
 		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
 		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
 
@@ -5130,7 +5144,7 @@ func _draw_stat_badge(
 ) -> void:
 	draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
 	var text := str(maxi(0, value))
-	var font_size := maxi(8, int(rect.size.y * 0.62))
+	var font_size := maxi(8, int(rect.size.y * 0.72))
 	var max_w := rect.size.x * STAT_NUMBER_MAX_WIDTH
 	var text_w := STAT_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	if text_w > max_w:
