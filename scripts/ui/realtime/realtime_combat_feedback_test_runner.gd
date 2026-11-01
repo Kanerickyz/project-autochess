@@ -18,9 +18,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_mapper_and_arena_direct()
+	_test_compact_card_and_stat_missile()
 	await _test_effect_resolved_feedback_on_arena()
 	await _test_rider_enemy_death_feedback()
 	await _test_basic_attack_does_not_float()
+	await _test_basic_attack_does_not_spawn_missile()
 	await _test_timestop_queue_blocks_sim()
 	await _test_tape_next_skips_stuck_timestop()
 	await _test_awaiting_resolve_recovers_next_frame()
@@ -191,6 +193,43 @@ func _test_mapper_and_arena_direct() -> void:
 	arena.queue_free()
 
 
+func _test_compact_card_and_stat_missile() -> void:
+	## 缩卡短于详卡；弹入物可生成且不炸。
+	var arena := RealtimeArenaView.new()
+	arena.board_size = Vector2i(5, 8)
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	var unit := UnitInstance.from_unit_data(
+		load(RIDER_PATH) as UnitData, Vector2i(2, 6), UnitInstance.Team.PLAYER
+	)
+	arena.show_skill_trigger_info(unit, true, 6, 3, Vector2(2.5, 6.5), "敌亡叠攻", [])
+	_expect(arena.is_info_card_visible(), "compact: skill trigger shows card")
+	_expect(arena._info_card.is_compact_mode(), "compact: combat broadcast uses compact skin")
+	_expect(
+		arena._info_card.size.x <= RealtimeUnitInfoCard.COMPACT_CARD_WIDTH + 8.0,
+		"compact: card width near COMPACT_CARD_WIDTH",
+	)
+	arena.yield_combat_skill_broadcast()
+	## 淡出异步；立刻断言已解除播报钉扎即可。
+	_expect(not arena._combat_broadcast_info, "compact: yield clears broadcast flag")
+
+	var before_missiles := arena.get_stat_missile_fx_count()
+	arena.spawn_stat_missile(
+		RealtimeEffectFeedback.KIND_STAT, Vector2(1.5, 6.5), Vector2(3.5, 4.5), 2
+	)
+	_expect(arena.get_stat_missile_fx_count() > before_missiles, "missile: spawn creates node")
+	arena.spawn_stat_missile(
+		RealtimeEffectFeedback.KIND_HEAL, Vector2(2.5, 6.5), Vector2(2.5, 5.5), 3
+	)
+	arena.spawn_stat_missile(
+		RealtimeEffectFeedback.KIND_DAMAGE, Vector2(2.5, 6.5), Vector2(2.5, 3.5), 4
+	)
+	_expect(arena.get_stat_missile_fx_count() >= 3, "missile: damage/heal/stat all spawn")
+	arena.clear_fx()
+	_expect(arena.get_stat_missile_fx_count() == 0, "missile: clear_fx removes missiles")
+	arena.queue_free()
+
+
 func _test_effect_resolved_feedback_on_arena() -> void:
 	var battle := _make_battle(4242)
 	await process_frame
@@ -337,6 +376,44 @@ func _test_basic_attack_does_not_float() -> void:
 	_expect(arena.get_feedback_count() == before, "atk: basic-attack events do not add float text")
 	_expect(not battle.is_timestop_blocking(), "atk: basic-attack does not enter timestop queue")
 
+	battle.queue_free()
+	await process_frame
+
+
+func _test_basic_attack_does_not_spawn_missile() -> void:
+	## 普攻路径不得生成弹入物（§5.4 / §6）。
+	var battle := _make_battle(43)
+	await process_frame
+	_expect(_seat_first_hand(battle), "atk-missile: seat")
+	_expect(battle.try_start_combat(), "atk-missile: start")
+	var arena := battle.get_arena()
+	arena.clear_fx()
+	var before := arena.get_stat_missile_fx_count()
+	var target: UnitInstance = null
+	for item in battle.get_sim().get_units():
+		var rt := item as RtUnit
+		if rt.is_player():
+			target = rt.unit
+			break
+	_expect(target != null, "atk-missile: player unit")
+	if target != null and battle._bus != null:
+		var dmg := CombatEventPayload.new()
+		dmg.source = target
+		dmg.target = target
+		dmg.amount = 5
+		battle._bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, dmg)
+		battle._bus.emit_event(CombatEvents.ON_ATTACK_HIT, dmg)
+	var atk_sim := battle.get_sim()
+	if atk_sim != null and atk_sim.get_effect_resolver() != null:
+		atk_sim.get_effect_resolver().clear_pending()
+	battle._timestop_queue.clear()
+	if atk_sim != null:
+		atk_sim.release_presentation()
+	await process_frame
+	_expect(
+		arena.get_stat_missile_fx_count() == before,
+		"atk-missile: basic-attack does not spawn stat missile",
+	)
 	battle.queue_free()
 	await process_frame
 

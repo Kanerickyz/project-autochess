@@ -6,6 +6,10 @@ extends PanelContainer
 
 const CARD_WIDTH := 236.0
 const PORTRAIT_SIZE := Vector2(56.0, 64.0)
+## 战斗播报缩卡（COMBAT_FEEDBACK §5.2.1）：肖像 + 技能短名，明显窄于详卡。
+const COMPACT_CARD_WIDTH := 168.0
+const COMPACT_PORTRAIT_SIZE := Vector2(40.0, 46.0)
+const COMPACT_SKILL_MAX_CHARS := 16
 const BADGE_HEIGHT := 22.0
 const MARGIN_PX := 6.0
 const PAPER := Color(0.97, 0.92, 0.79, 0.98)
@@ -16,6 +20,7 @@ const ENEMY_ACCENT := Color(0.69, 0.23, 0.20, 1.0)
 
 const POP_IN_SEC := 0.18
 const SWITCH_SEC := 0.22
+const FADE_OUT_SEC := 0.12
 ## 主卡下方附属卡：略晚于主卡弹出，多张之间错峰。
 const ATTACHMENT_STAGGER_SEC := 0.07
 const ATTACHMENT_POP_DELAY_SEC := 0.12
@@ -63,10 +68,12 @@ class StatBadge:
 var _portrait: TextureRect
 var _name_label: Label
 var _side_label: Label
+var _badges_row: HBoxContainer
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
 var _armor_badge: StatBadge
 var _gold_badge: StatBadge
+var _rule_sep: ColorRect
 var _skills_label: RichTextLabel
 var _style: StyleBoxFlat
 var _motion: Tween
@@ -76,6 +83,7 @@ var _follow_offset := Vector2.ZERO
 var _base_rotation := 0.0
 var _base_scale := 1.0
 var _open := false
+var _compact_mode := false
 
 
 func _init() -> void:
@@ -127,26 +135,26 @@ func _init() -> void:
 	_side_label.add_theme_font_size_override("font_size", 12)
 	titles.add_child(_side_label)
 
-	var badges := HBoxContainer.new()
-	badges.add_theme_constant_override("separation", 4)
-	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	titles.add_child(badges)
+	_badges_row = HBoxContainer.new()
+	_badges_row.add_theme_constant_override("separation", 4)
+	_badges_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	titles.add_child(_badges_row)
 	_attack_badge = _make_badge(RealtimeArenaView.STAT_ATTACK_TEX)
-	badges.add_child(_attack_badge)
+	_badges_row.add_child(_attack_badge)
 	_hp_badge = _make_badge(RealtimeArenaView.STAT_HP_TEX)
-	badges.add_child(_hp_badge)
+	_badges_row.add_child(_hp_badge)
 	_armor_badge = _make_badge(UiStatIcons.armor_texture())
 	_armor_badge.visible = false
-	badges.add_child(_armor_badge)
+	_badges_row.add_child(_armor_badge)
 	_gold_badge = _make_badge(UiStatIcons.gold_texture())
 	_gold_badge.visible = false
-	badges.add_child(_gold_badge)
+	_badges_row.add_child(_gold_badge)
 
-	var rule := ColorRect.new()
-	rule.color = Color(INK, 0.35)
-	rule.custom_minimum_size = Vector2(0.0, 2.0)
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(rule)
+	_rule_sep = ColorRect.new()
+	_rule_sep.color = Color(INK, 0.35)
+	_rule_sep.custom_minimum_size = Vector2(0.0, 2.0)
+	_rule_sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_rule_sep)
 
 	_skills_label = RichTextLabel.new()
 	_skills_label.bbcode_enabled = true
@@ -206,6 +214,7 @@ func show_stack_attachment(
 	slide_dir: float,
 	stagger_index: int,
 ) -> void:
+	_set_compact_layout(false)
 	_apply_content(info)
 	reset_size()
 	var card_size := get_combined_minimum_size()
@@ -232,6 +241,7 @@ func show_info(
 	stack_below: bool = false,
 ) -> void:
 	var was_open := _open and visible
+	_set_compact_layout(false)
 	_apply_content(info)
 	reset_size()
 	var card_size := get_combined_minimum_size()
@@ -251,10 +261,12 @@ func show_info(
 
 
 ## 观战技能/增益播报：在触发者列内贴战斗区底边展示详卡（水平居中；不压住脚下剪影）。
+## 长按详卡路径保留；战斗技能展示步改走 show_info_combat_compact。
 func show_info_combat_below_unit(
 	info: Dictionary, unit_foot: Vector2, bounds: Rect2, slide_dir: float = 0.0
 ) -> void:
 	var was_open := _open and visible
+	_set_compact_layout(false)
 	_apply_content(info)
 	reset_size()
 	var card_size := get_combined_minimum_size()
@@ -271,6 +283,54 @@ func show_info_combat_below_unit(
 		_snap_rest(target)
 	else:
 		_play_pop_in(target)
+
+
+## 战斗技能展示步 ①：缩卡（肖像 + 单位名 + 技能短名一行）；不铺详卡正文/徽章。
+func show_info_combat_compact(
+	info: Dictionary, unit_foot: Vector2, bounds: Rect2, slide_dir: float = 0.0
+) -> void:
+	var was_open := _open and visible
+	_set_compact_layout(true)
+	_apply_content(info)
+	reset_size()
+	var card_size := get_combined_minimum_size()
+	size = card_size
+	pivot_offset = card_size * 0.5
+	var target := _compute_position_combat_column_bottom(unit_foot, bounds, card_size)
+	_rest_position = target
+	_follow_offset = Vector2.ZERO
+	visible = true
+	_open = true
+	if was_open and absf(slide_dir) > 0.01:
+		_play_switch(target, slide_dir)
+	elif was_open:
+		_snap_rest(target)
+	else:
+		_play_pop_in(target)
+
+
+func is_compact_mode() -> bool:
+	return _compact_mode
+
+
+func is_open() -> bool:
+	return _open and visible
+
+
+## 展示步 ①→②：收卡让路（淡出后 hide）；speed_scale 跟 presentation_time_scale。
+func fade_hide_for_yield(speed_scale: float = 1.0) -> void:
+	if not _open or not visible:
+		hide_info()
+		return
+	_kill_motion()
+	_kill_reel_tween()
+	var speed := maxf(0.25, speed_scale)
+	_motion = create_tween()
+	_motion.set_speed_scale(speed)
+	_motion.tween_property(self, "modulate:a", 0.0, FADE_OUT_SEC).set_trans(Tween.TRANS_QUAD).set_ease(
+		Tween.EASE_IN
+	)
+	_motion.tween_callback(hide_info)
 
 
 ## 按住滑动时：卡面轻跟手指并微倾，类似小丑牌悬停跟手。
@@ -334,6 +394,7 @@ func hide_info() -> void:
 	scale = Vector2.ONE
 	modulate = Color.WHITE
 	_set_shadow_lift(false)
+	_set_compact_layout(false)
 	visible = false
 
 
@@ -352,6 +413,32 @@ static func _theme_side_label_from_info(info: Dictionary) -> String:
 	return ""
 
 
+func _set_compact_layout(compact: bool) -> void:
+	_compact_mode = compact
+	var width := COMPACT_CARD_WIDTH if compact else CARD_WIDTH
+	custom_minimum_size = Vector2(width, 0.0)
+	if _portrait != null:
+		_portrait.custom_minimum_size = COMPACT_PORTRAIT_SIZE if compact else PORTRAIT_SIZE
+	if _name_label != null:
+		_name_label.add_theme_font_size_override("font_size", 15 if compact else 18)
+	if _side_label != null:
+		_side_label.visible = not compact
+	if _badges_row != null:
+		_badges_row.visible = not compact
+	if _rule_sep != null:
+		_rule_sep.visible = not compact
+	if _skills_label != null:
+		_skills_label.custom_minimum_size = Vector2(width - 20.0, 0.0)
+		_skills_label.autowrap_mode = (
+			TextServer.AUTOWRAP_OFF if compact else TextServer.AUTOWRAP_WORD_SMART
+		)
+		_skills_label.add_theme_font_size_override("normal_font_size", 13 if compact else 14)
+	if _style != null:
+		_style.set_content_margin_all(8.0 if compact else 10.0)
+		_style.set_border_width_all(2 if compact else 3)
+		_style.set_corner_radius_all(8 if compact else 10)
+
+
 func _apply_content(info: Dictionary) -> void:
 	var is_player := bool(info.get("side_player", true))
 	var is_item := bool(info.get("is_item", false))
@@ -359,6 +446,18 @@ func _apply_content(info: Dictionary) -> void:
 	_portrait.texture = info.get("texture") as Texture2D
 	_portrait.visible = not is_attachment and _portrait.texture != null
 	_name_label.text = String(info.get("name", "未知"))
+	if _compact_mode:
+		_style.border_color = PLAYER_ACCENT if is_player else ENEMY_ACCENT
+		_attack_badge.visible = false
+		_hp_badge.visible = false
+		if _armor_badge != null:
+			_armor_badge.visible = false
+		if _gold_badge != null:
+			_gold_badge.visible = false
+		_skills_label.clear()
+		var skill_short := _compact_skill_line(String(info.get("skills", "")))
+		_skills_label.append_text(skill_short)
+		return
 	if is_attachment:
 		var kind_label := String(info.get("attachment_kind_label", "附属"))
 		_side_label.text = kind_label
@@ -419,6 +518,29 @@ func _apply_content(info: Dictionary) -> void:
 		_gold_badge.queue_redraw()
 	_skills_label.clear()
 	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), is_item))
+
+
+## 缩卡技能行：去 BBCode/换行后截断为一行短名。
+func _compact_skill_line(raw: String) -> String:
+	var plain := raw.strip_edges()
+	if plain.is_empty() or plain == "无技能":
+		return "技能"
+	## 去掉常见 BBCode 标签，保留可读短文。
+	var cleaned := plain
+	cleaned = cleaned.replace("[b]", "").replace("[/b]", "")
+	cleaned = cleaned.replace("\n", " ")
+	while cleaned.find("[") >= 0:
+		var open_i := cleaned.find("[")
+		var close_i := cleaned.find("]", open_i)
+		if close_i < 0:
+			break
+		cleaned = cleaned.substr(0, open_i) + cleaned.substr(close_i + 1)
+	cleaned = cleaned.strip_edges()
+	if cleaned.is_empty():
+		return "技能"
+	if cleaned.length() > COMPACT_SKILL_MAX_CHARS:
+		return cleaned.substr(0, COMPACT_SKILL_MAX_CHARS) + "…"
+	return cleaned
 
 
 func _compute_position(

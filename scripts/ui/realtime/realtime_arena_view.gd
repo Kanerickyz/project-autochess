@@ -80,12 +80,20 @@ const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
 const ELLIPSE_SEGMENTS := 28
 ## 技能因果飘字（COMBAT_FEEDBACK）：基础寿命；加速时缩短但不短于下限。
+## §5.4：大号飘字降辅；弹入物为主通道时用更短更弱的辅飘字。
 const FEEDBACK_SECONDS := 0.85
 const FEEDBACK_MIN_SECONDS := 0.35
+const FEEDBACK_SOFT_SECONDS := 0.48
+const FEEDBACK_SOFT_MIN_SECONDS := 0.22
 const FEEDBACK_MERGE_WINDOW := 0.28
 const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
+const FEEDBACK_SOFT_FLOAT_TILES := 0.32
 const CALLOUT_SECONDS := 0.45
+## 技能结算弹入物（攻/心纸片飞向目标）。
+const STAT_MISSILE_SEC := 0.28
+const STAT_MISSILE_PAPER_SCALE := 0.22
+const STAT_MISSILE_ARC_TILES := 0.28
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
 const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
@@ -271,6 +279,8 @@ var _recruit_empty_seat_press: int = -1
 var _party_speech_bubble: PartySpeechBubble
 ## 产金反馈金币层（TextureRect + Tween；clear_fx 时清空）。
 var _gold_coin_layer: Control
+## 技能弹入物层（TextureRect + Tween；clear_fx 时清空）。
+var _stat_missile_layer: Control
 ## 地图商店货架拖拽：map_shop_offers 数组下标。
 var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
@@ -681,6 +691,7 @@ func add_skill_callout(center: Vector2, text: String = "", is_player: bool = tru
 
 
 ## 技能因果反馈：kind=damage/heal/stat/label/gold；同单位短窗可合并。
+## soft=true：辅飘字（更短更弱），配合弹入物主通道（§5.4）。
 func add_feedback_popup(
 	kind: StringName,
 	text: String,
@@ -690,13 +701,18 @@ func add_feedback_popup(
 	amount: int = 0,
 	merge_key: String = "",
 	tip: String = "",
+	soft: bool = false,
 ) -> void:
 	if text.is_empty() and tip.is_empty():
 		return
 	var key := merge_key
 	if key.is_empty():
 		key = "%d|%s" % [unit_id, String(kind)]
-	var duration := _feedback_duration_for_scale(presentation_time_scale)
+	var duration := (
+		_feedback_soft_duration_for_scale(presentation_time_scale)
+		if soft
+		else _feedback_duration_for_scale(presentation_time_scale)
+	)
 	## 短合并窗：同 merge_key 且仍存活 → 合计数字或刷新短标。
 	if unit_id >= 0:
 		for fb in _feedback:
@@ -720,6 +736,7 @@ func add_feedback_popup(
 			fb["t0"] = _fx_clock
 			fb["duration"] = duration
 			fb["center"] = center
+			fb["soft"] = soft or bool(fb.get("soft", false))
 			return
 	_feedback.append({
 		"kind": kind,
@@ -732,6 +749,7 @@ func add_feedback_popup(
 		"merge_key": key,
 		"t0": _fx_clock,
 		"duration": duration,
+		"soft": soft,
 	})
 	_trim_feedback_for_unit(unit_id)
 
@@ -835,6 +853,127 @@ func _ensure_gold_coin_layer() -> Control:
 	return _gold_coin_layer
 
 
+## 技能因果弹入物：小图标纸片从 from_tile 飞向 to_tile；到点回调（目标轻 hit 等）。
+## 纯表现 Tween；随 presentation_time_scale 加速。普攻路径不得调用。
+func spawn_stat_missile(
+	kind: StringName,
+	from_tile: Vector2,
+	to_tile: Vector2,
+	amount: int = 0,
+	on_arrive: Callable = Callable(),
+) -> void:
+	var tex := _stat_missile_texture(kind, amount)
+	if tex == null:
+		if on_arrive.is_valid():
+			on_arrive.call()
+		return
+	var layer := _ensure_stat_missile_layer()
+	var px := get_cell_px()
+	var paper_px := _typical_paper_height_px(px) * STAT_MISSILE_PAPER_SCALE
+	var start := tile_to_local(from_tile)
+	var end := tile_to_local(to_tile)
+	var missile := TextureRect.new()
+	missile.texture = tex
+	missile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	missile.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	missile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	missile.size = Vector2(paper_px, paper_px)
+	missile.pivot_offset = missile.size * 0.5
+	missile.position = start - missile.pivot_offset
+	missile.scale = Vector2(0.72, 0.72)
+	missile.modulate = _stat_missile_modulate(kind)
+	layer.add_child(missile)
+	var mid := (start + end) * 0.5 + Vector2(0.0, -STAT_MISSILE_ARC_TILES * px)
+	var speed := maxf(0.25, presentation_time_scale)
+	var fly := STAT_MISSILE_SEC
+	var tw := create_tween()
+	tw.set_speed_scale(speed)
+	## 两段折线近似上弧：起飞放大 → 落点略缩 → 回调命中。
+	tw.set_parallel(true)
+	tw.tween_property(missile, "position", mid - missile.pivot_offset, fly * 0.45) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(missile, "scale", Vector2(1.12, 1.12), fly * 0.45) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(false)
+	tw.set_parallel(true)
+	tw.tween_property(missile, "position", end - missile.pivot_offset, fly * 0.55) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(missile, "scale", Vector2(0.88, 0.88), fly * 0.55) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.set_parallel(false)
+	tw.tween_callback(
+		func() -> void:
+			if on_arrive.is_valid():
+				on_arrive.call()
+			if is_instance_valid(missile):
+				missile.queue_free()
+	)
+
+
+func get_stat_missile_fx_count() -> int:
+	if _stat_missile_layer == null or not is_instance_valid(_stat_missile_layer):
+		return 0
+	return _stat_missile_layer.get_child_count()
+
+
+func _ensure_stat_missile_layer() -> Control:
+	if _stat_missile_layer != null and is_instance_valid(_stat_missile_layer):
+		return _stat_missile_layer
+	_stat_missile_layer = Control.new()
+	_stat_missile_layer.name = "StatMissileFxLayer"
+	_stat_missile_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stat_missile_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_stat_missile_layer.z_index = 8
+	add_child(_stat_missile_layer)
+	return _stat_missile_layer
+
+
+func _stat_missile_texture(kind: StringName, amount: int) -> Texture2D:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return STAT_ATTACK_TEX
+		RealtimeEffectFeedback.KIND_HEAL:
+			return STAT_HP_TEX
+		RealtimeEffectFeedback.KIND_STAT:
+			## 负血类走心；默认攻纸片（脚下跳变仍靠标签）。
+			if amount < 0:
+				return STAT_HP_TEX
+			return STAT_ATTACK_TEX
+		_:
+			return STAT_ATTACK_TEX
+
+
+func _stat_missile_modulate(kind: StringName) -> Color:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return Color(1.0, 0.55, 0.42, 1.0)
+		RealtimeEffectFeedback.KIND_HEAL:
+			return Color(0.55, 1.0, 0.68, 1.0)
+		RealtimeEffectFeedback.KIND_STAT:
+			return Color(1.0, 0.92, 0.55, 1.0)
+		_:
+			return Color.WHITE
+
+
+## 对格子上的单位播轻 hit（技能弹入命中 / Reel 无卡）。
+func play_unit_light_hit_at(tile_pos: Vector2, amount: int = 1) -> void:
+	if _motion == null or sim == null:
+		return
+	var best: RtUnit = null
+	var best_d2 := 0.55 * 0.55
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or not rt.is_alive():
+			continue
+		var d2 := rt.position.distance_squared_to(tile_pos)
+		if d2 <= best_d2:
+			best_d2 = d2
+			best = rt
+	if best != null:
+		_motion.speed_scale = presentation_time_scale
+		_motion.play_light_hit(best, amount)
+
+
 ## 典型单格角色纸片绘制高度（与 `_draw_unit_sprite` 同口径），供金币缩放对齐。
 func _typical_paper_height_px(px: float) -> float:
 	var half := _resolve_visual_half(0.0, 0.7, 1.6) * px
@@ -855,6 +994,7 @@ func clear_fx() -> void:
 	_motion.clear()
 	clear_merge_fx()
 	_clear_gold_coin_fx()
+	_clear_stat_missile_fx()
 	_cancel_press()
 
 
@@ -864,6 +1004,17 @@ func _clear_gold_coin_fx() -> void:
 		return
 	for child in _gold_coin_layer.get_children():
 		child.queue_free()
+
+
+func _clear_stat_missile_fx() -> void:
+	if _stat_missile_layer == null or not is_instance_valid(_stat_missile_layer):
+		_stat_missile_layer = null
+		return
+	## 立刻摘掉并 free，避免 queue_free 当帧仍计入 get_child_count。
+	while _stat_missile_layer.get_child_count() > 0:
+		var child := _stat_missile_layer.get_child(0)
+		_stat_missile_layer.remove_child(child)
+		child.free()
 
 
 ## 出击 / 回位 action tween 是否仍在播（供控制器门控下一动；不含 idle/flash/残影）。
@@ -896,6 +1047,11 @@ func play_unit_death(rt: RtUnit) -> void:
 func _feedback_duration_for_scale(scale: float) -> float:
 	var s := maxf(0.25, scale)
 	return clampf(FEEDBACK_SECONDS / s, FEEDBACK_MIN_SECONDS, FEEDBACK_SECONDS)
+
+
+func _feedback_soft_duration_for_scale(scale: float) -> float:
+	var s := maxf(0.25, scale)
+	return clampf(FEEDBACK_SOFT_SECONDS / s, FEEDBACK_SOFT_MIN_SECONDS, FEEDBACK_SOFT_SECONDS)
 
 
 func _format_merged_feedback_text(kind: StringName, amount: int, fallback: String) -> String:
@@ -1855,22 +2011,21 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	queue_redraw()
 
 
-## 战斗内技能播报：详卡贴在棋盘区底边、触发者列内；可叠状态/装备附属卡栈。
+## 战斗内技能播报：缩卡贴棋盘区底边、触发者列内（§5.2.1）；默认不叠详附卡。
 func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
 	_combat_broadcast_info = true
 	_shown_info = info
 	_begin_inspect_focus(info, slide_dir)
-	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
 	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var bounds := get_board_rect()
-	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
-	_show_info_attachments(attachments, bounds, slide_dir, false)
+	_info_card.show_info_combat_compact(info, foot, bounds, slide_dir)
+	## 战斗播报默认不竖排装备/状态详附卡；短标走结算拍结果通道。
 	queue_redraw()
 
 
@@ -2006,8 +2161,8 @@ func bump_combat_skill_info_visibility(extra_seconds: float) -> void:
 		_auto_info_until_clock = until
 
 
-## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
-## skills_override 非空时只展示本条触发（RichText / BBCode）。
+## 技能触发时弹出战斗缩卡（肖像 + 技能短名）；skills_override 为短名/一行文案。
+## attachments 参数保留兼容，战斗播报默认不展示详附卡栈。
 func show_skill_trigger_info(
 	unit: UnitInstance,
 	is_player: bool,
@@ -2022,7 +2177,11 @@ func show_skill_trigger_info(
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
-	info["attachments"] = attachments
+	## 缩卡不挂详附卡；参数保留以免调用方破坏。
+	## 战斗缩卡不叠详附卡；attachments 仅保留签名兼容。
+	info["attachments"] = []
+	if attachments.is_empty():
+		pass
 	if not skills_override.is_empty():
 		info["skills"] = skills_override
 	_show_combat_broadcast_info_card(info)
@@ -2031,7 +2190,23 @@ func show_skill_trigger_info(
 	bump_combat_skill_info_visibility(life)
 
 
-## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
+## 展示步 ①→②：收卡让路，把场地还给弹入/形变。
+func yield_combat_skill_broadcast() -> void:
+	if not _combat_broadcast_info:
+		return
+	_combat_skill_info_pin = 0
+	_auto_info_until_clock = -1.0
+	_hide_info_attachments()
+	if _info_card != null and _info_card.visible:
+		_info_card.fade_hide_for_yield(presentation_time_scale)
+	else:
+		_hide_all_info_cards()
+	_combat_broadcast_info = false
+	_clear_inspect_focus()
+	queue_redraw()
+
+
+## 展示步 ①：整张**战斗技能介绍卡**（主卡 / 缩卡）。
 func play_combat_skill_info_reel_intro() -> void:
 	_schedule_settlement_reel_shake(_info_card)
 
@@ -2058,10 +2233,19 @@ func _settlement_reel_amplitude_for_card(card: RealtimeUnitInfoCard) -> float:
 
 func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
 	var card := _pick_reel_info_card(payload)
-	if card != null:
+	if card != null and card.visible:
 		card.play_settlement_reel_shake(
 			presentation_time_scale, _settlement_reel_amplitude_for_card(card)
 		)
+		return
+	## 卡已让路：抖触发者轻 punch，不挡目标区。
+	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	if owner == null or sim == null or _motion == null:
+		return
+	var rt: RtUnit = sim.find_unit(owner)
+	if rt != null:
+		_motion.speed_scale = presentation_time_scale
+		_motion.play_light_hit(rt, 1)
 
 
 func _pick_reel_info_card(payload: CombatEventPayload) -> RealtimeUnitInfoCard:
@@ -4830,10 +5014,14 @@ func _draw_feedback(px: float) -> void:
 			continue
 		var t := clampf((_fx_clock - float(fb["t0"])) / life, 0.0, 1.0)
 		var is_player := bool(fb["player"])
-		## 友方优先可读：字号更大、更不透明；敌方保下限。
-		var base_size := 16 if is_player else 13
+		var soft := bool(fb.get("soft", false))
+		## 友方优先可读；soft 辅飘字更小更淡（弹入为主通道）。
+		var base_size := (11 if soft else 16) if is_player else (10 if soft else 13)
 		var alpha := (1.0 - t * 0.85) * (1.0 if is_player else 0.78)
-		var float_y := -FEEDBACK_FLOAT_TILES * px * t
+		if soft:
+			alpha *= 0.55
+		var float_span := FEEDBACK_SOFT_FLOAT_TILES if soft else FEEDBACK_FLOAT_TILES
+		var float_y := -float_span * px * t
 		var center := tile_to_local(fb["center"]) + Vector2(0.0, float_y - px * 0.35)
 		var kind: StringName = fb["kind"]
 		var color := _feedback_color(kind, is_player)
@@ -4841,12 +5029,12 @@ func _draw_feedback(px: float) -> void:
 		var main_text := String(fb["text"])
 		var tip := String(fb.get("tip", ""))
 		if not main_text.is_empty():
-			var font_size := base_size + (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0)
+			var font_size := base_size + (0 if soft else (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0))
 			_draw_feedback_string(font, center, main_text, font_size, color)
 			center.y -= float(font_size) + 2.0
 		if not tip.is_empty():
 			var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
-			_draw_feedback_string(font, center, tip, maxi(10, base_size - 3), tip_color)
+			_draw_feedback_string(font, center, tip, maxi(9, base_size - 2), tip_color)
 
 
 func _feedback_color(kind: StringName, is_player: bool) -> Color:

@@ -3828,6 +3828,9 @@ func _start_next_skill_card() -> void:
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
 func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
+	## ①→②：先收卡让路，再结算演出（COMBAT_FEEDBACK §5.2.1）。
+	if _arena != null:
+		_arena.yield_combat_skill_broadcast()
 	## 先进入 RESULT，保证即便 resolve 中途 SCRIPT ERROR，时停也不会粘在 AWAITING_RESOLVE。
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(null, time_scale)
@@ -3839,11 +3842,6 @@ func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(payload, time_scale)
-	if _arena != null:
-		var scale := maxf(0.25, time_scale)
-		_arena.bump_combat_skill_info_visibility(
-			RealtimeTimestopQueue.RESULT_PAUSE_SECONDS / scale + 0.15
-		)
 	if payload != null:
 		_present_effect_result(payload, true)
 
@@ -3923,17 +3921,20 @@ func _drain_pending_effects_silent() -> void:
 		guard += 1
 
 
-## 锁阵等：介绍卡 + 结果数字（已结算）。
+## 锁阵等：缩卡播报 → 收卡让路 → 弹入/结果（已结算）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
 	_register_combo_for_skill_intro(owner)
 	_arm_combat_skill_info_visibility()
 	_show_skill_trigger_info_card(payload)
+	if _arena != null:
+		_arena.yield_combat_skill_broadcast()
 	_present_effect_result(payload, with_callout)
 	_release_combat_skill_info_visibility()
 
 
 ## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
+## damage/heal/stat 走弹入物主通道 + 辅飘字；产金保留金币纸片。
 func _present_effect_result(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
@@ -3942,6 +3943,9 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 	var callout_center := Vector2.ZERO
 	var callout_player := true
 	var saw_center := false
+	var owner_tile := _resolve_feedback_center(
+		payload.effect_owner if payload.effect_owner != null else payload.source, payload
+	)
 	for pop in pops:
 		var target: UnitInstance = pop.get("target")
 		var center := _resolve_feedback_center(target, payload)
@@ -3953,17 +3957,48 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 		if bool(pop.get("show_tip", false)):
 			tip = String(pop.get("tip", ""))
 		var amount := int(pop.get("amount", 0))
-		_arena.add_feedback_popup(
-			pop["kind"],
-			String(pop["text"]),
-			center,
-			bool(pop.get("is_player", true)),
-			int(pop.get("unit_id", -1)),
-			amount,
-			String(pop.get("merge_key", "")),
-			tip,
+		var kind: StringName = pop["kind"]
+		var use_missile := (
+			kind == RealtimeEffectFeedback.KIND_DAMAGE
+			or kind == RealtimeEffectFeedback.KIND_HEAL
+			or kind == RealtimeEffectFeedback.KIND_STAT
 		)
-		if pop["kind"] == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
+		if use_missile:
+			var hit_amount := maxi(1, absi(amount))
+			var to_tile := center
+			_arena.spawn_stat_missile(
+				kind,
+				owner_tile,
+				to_tile,
+				amount,
+				func() -> void:
+					if _arena != null:
+						_arena.play_unit_light_hit_at(to_tile, hit_amount),
+			)
+			## 辅飘字降噪，不与弹入抢读。
+			_arena.add_feedback_popup(
+				kind,
+				String(pop["text"]),
+				center,
+				bool(pop.get("is_player", true)),
+				int(pop.get("unit_id", -1)),
+				amount,
+				String(pop.get("merge_key", "")),
+				tip,
+				true,
+			)
+		else:
+			_arena.add_feedback_popup(
+				kind,
+				String(pop["text"]),
+				center,
+				bool(pop.get("is_player", true)),
+				int(pop.get("unit_id", -1)),
+				amount,
+				String(pop.get("merge_key", "")),
+				tip,
+			)
+		if kind == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
 			_arena.spawn_gold_coin_burst(center, amount)
 	if with_callout:
 		if not saw_center:
@@ -4012,14 +4047,63 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: Effec
 			atk = rt.get_effective_attack()
 			hp = rt.get_current_hp()
 			tile = rt.position
-	var skills := ""
-	var attachments: Array = []
-	if trigger_spec != null:
-		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
-		attachments = UnitInfoText.attachments_for_effect_spec(owner, trigger_spec, true)
+	## 缩卡只用技能短名一行；详附卡不进战斗播报。
+	var skills := _skill_short_name_for_owner(owner, trigger_spec)
 	_arena.show_skill_trigger_info(
-		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, attachments
+		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, []
 	)
+
+
+## 战斗缩卡技能短名：优先 AbilityData.display_name / id（不走 UnitInfoText 详卡行，避免依赖详卡正文）。
+func _skill_short_name_for_owner(owner: UnitInstance, trigger_spec: EffectSpec) -> String:
+	if owner == null:
+		return ""
+	var ability := _find_ability_for_spec(owner, trigger_spec)
+	if ability != null:
+		var labeled := ability.display_name if not ability.display_name.is_empty() else ability.id
+		return _truncate_skill_short(labeled)
+	if owner.unit_data != null and owner.unit_data.ability != null:
+		var fallback := owner.unit_data.ability.display_name
+		if fallback.is_empty():
+			fallback = owner.unit_data.ability.id
+		return _truncate_skill_short(fallback)
+	return "技能"
+
+
+func _find_ability_for_spec(owner: UnitInstance, spec: EffectSpec) -> AbilityData:
+	if owner == null or spec == null:
+		return null
+	var candidates: Array[AbilityData] = []
+	if owner.unit_data != null:
+		if owner.unit_data.ability != null:
+			candidates.append(owner.unit_data.ability)
+		for passive in owner.unit_data.passives:
+			if passive != null:
+				candidates.append(passive)
+	for attached in owner.attached_abilities:
+		if attached != null:
+			candidates.append(attached)
+	for ability in candidates:
+		for owned in ability.effect_specs:
+			if owned == spec:
+				return ability
+	## 资源实例不一定同引用：退回 id 匹配。
+	var spec_id := String(spec.resource_path) if spec.resource_path != "" else ""
+	if not spec_id.is_empty():
+		for ability in candidates:
+			for owned in ability.effect_specs:
+				if owned != null and owned.resource_path == spec_id:
+					return ability
+	return null
+
+
+func _truncate_skill_short(raw: String, max_chars: int = 16) -> String:
+	var text := raw.strip_edges().replace("\n", " ")
+	if text.is_empty():
+		return "技能"
+	if text.length() > max_chars:
+		return text.substr(0, max_chars) + "…"
+	return text
 
 
 func _on_combat_finished(won: bool) -> void:
