@@ -59,6 +59,7 @@ func _test_battle_controller_rules() -> void:
 	battle.rng_seed = 4242
 	## Headless：跳过胜后半场退出演出，直接验证 continue 语义。
 	battle.half_exit_seconds = 0.0
+	battle.result_overlay_delay_seconds = 0.0
 	root.add_child(battle)
 	await process_frame
 	battle.setup(deck, economy, level)
