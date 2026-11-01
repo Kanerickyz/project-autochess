@@ -410,6 +410,12 @@ func _try_buy_on_seat(slot_index: int, is_consumable: bool, seat_index: int) -> 
 		return
 	if is_consumable and bool(result.get("destroyed", false)):
 		_hint_label.text = "生命归零，角色已销毁"
+	elif is_consumable and result.has("theme_affected"):
+		var n := int(result.get("theme_affected", 0))
+		if n <= 0:
+			_hint_label.text = "已购买（无人命中）"
+		else:
+			_hint_label.text = "主题药水已生效（%d 人）" % n
 	elif is_consumable:
 		_hint_label.text = "已使用消耗品"
 	elif bool(result.get("kept_new", true)):

@@ -133,6 +133,7 @@ func try_refresh_consumables() -> Dictionary:
 
 
 ## 拖消耗品到角色：扣金、永久改攻血、槽空。金不足/非法目标失败且货架保留。
+## 主题药水：拖放仅为确认；对当下队伍（含备战）该主题全员写攻/血；0 命中仍扣金清槽。
 func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	var failed := {"result": BuyResult.FAILED, "reason": "failed", "entry": null}
 	if not _open or _deck == null or _economy == null:
@@ -150,6 +151,18 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
+	if item.is_theme_potion():
+		var affected := _apply_theme_potion_snapshot(item)
+		_consumable_offers[slot_index] = null
+		_deck.deck_changed.emit()
+		shop_changed.emit()
+		return {
+			"result": BuyResult.OK,
+			"reason": "",
+			"entry": entry,
+			"destroyed": false,
+			"theme_affected": affected,
+		}
 	entry.bonus_attack += item.bonus_attack
 	if item.bonus_max_hp > 0:
 		_deck.add_bonus_max_hp(entry, item.bonus_max_hp)
@@ -171,6 +184,26 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		"entry": entry,
 		"destroyed": destroyed,
 	}
+
+
+## 当下快照：入座 + 备战中 theme_bond 匹配者各写一次；返回命中人数（可为 0）。
+func _apply_theme_potion_snapshot(item: MapShopConsumableData) -> int:
+	if item == null or _deck == null or not item.is_theme_potion():
+		return 0
+	var bond: UnitData.ThemeBond = item.theme_bond
+	var hit := 0
+	for member in _deck.get_entries():
+		if member == null or member.unit == null:
+			continue
+		if member.unit.theme_bond != bond:
+			continue
+		member.bonus_attack += item.bonus_attack
+		if item.bonus_max_hp > 0:
+			_deck.add_bonus_max_hp(member, item.bonus_max_hp)
+		elif item.bonus_max_hp < 0:
+			member.bonus_max_hp += item.bonus_max_hp
+		hit += 1
+	return hit
 
 
 ## 拖装备到角色：扣金；已有装备时旧/新随机留一件，不退金；槽空。

@@ -32,6 +32,13 @@ static func make_code_defaults() -> MapShopConfig:
 		_make_consumable("big_hp_potion", "大生命魔药", 2, -1, 5, ICON_HP),
 		_make_consumable("big_atk_potion", "大力量魔药", 2, 5, -1, ICON_ATK),
 		_make_consumable("qunbolong", "群伯龙", 5, 10, -5, ICON_RARE),
+		_make_theme_potion("theme_undead", "亡灵药水", UnitData.ThemeBond.UNDEAD),
+		_make_theme_potion("theme_warrior", "战士药水", UnitData.ThemeBond.WARRIOR),
+		_make_theme_potion("theme_knight", "骑士药水", UnitData.ThemeBond.KNIGHT),
+		_make_theme_potion("theme_artisan", "工匠药水", UnitData.ThemeBond.ARTISAN),
+		_make_theme_potion("theme_band", "军乐队药水", UnitData.ThemeBond.BAND),
+		_make_theme_potion("theme_arcana", "秘术药水", UnitData.ThemeBond.ARCANA),
+		_make_theme_potion("theme_guard", "护卫药水", UnitData.ThemeBond.GUARD),
 	]
 	config.equipment_pool = [
 		_make_equipment("armor_t1", "护甲 I", 1, 2, ICON_ARMOR),
@@ -45,6 +52,9 @@ const ICON_HP := "res://resources/map_shop/icons/big_hp_potion_icon.tres"
 const ICON_ATK := "res://resources/map_shop/icons/big_atk_potion_icon.tres"
 const ICON_RARE := "res://resources/map_shop/icons/qunbolong_icon.tres"
 const ICON_ARMOR := "res://resources/map_shop/icons/armor_icon.tres"
+const DEFAULT_THEME_POTION_COST := 3
+const DEFAULT_THEME_POTION_ATK := 2
+const DEFAULT_THEME_POTION_HP := 2
 
 
 static func _make_consumable(
@@ -54,6 +64,7 @@ static func _make_consumable(
 	atk: int,
 	hp: int,
 	icon_path: String = "",
+	theme_bond: UnitData.ThemeBond = UnitData.ThemeBond.NONE,
 ) -> MapShopConsumableData:
 	var item := MapShopConsumableData.new()
 	item.id = id
@@ -61,9 +72,27 @@ static func _make_consumable(
 	item.cost = cost
 	item.bonus_attack = atk
 	item.bonus_max_hp = hp
+	item.theme_bond = theme_bond
 	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
 		item.icon = load(icon_path) as Texture2D
 	return item
+
+
+static func _make_theme_potion(
+	id: String,
+	name: String,
+	theme_bond: UnitData.ThemeBond,
+) -> MapShopConsumableData:
+	## 主题药水暂复用大力药图标占位。
+	return _make_consumable(
+		id,
+		name,
+		DEFAULT_THEME_POTION_COST,
+		DEFAULT_THEME_POTION_ATK,
+		DEFAULT_THEME_POTION_HP,
+		ICON_ATK,
+		theme_bond,
+	)
 
 
 static func _make_equipment(
