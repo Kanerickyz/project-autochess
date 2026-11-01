@@ -2663,7 +2663,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"tier": entry.unit.tier if entry.unit != null else 0,
 		"theme_label": _theme_label_for_unit_data(entry.unit),
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
-		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
+		"hp": maxi(1, DeckUpgradeService.get_display_current_hp(entry)),
 		"armor": entry.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"attachments": UnitInfoText.collect_info_attachments_from_entry(entry, true),
@@ -3880,7 +3880,7 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 			_draw_stat_badges(
 				tile_to_local(center_tile) + off,
 				DeckUpgradeService.get_display_attack(entry),
-				DeckUpgradeService.get_display_max_hp(entry),
+				DeckUpgradeService.get_display_current_hp(entry),
 				0.95,
 				px,
 				entry.get_armor_block(),
@@ -3992,7 +3992,7 @@ func _draw_victory_boost_focus_array(px: float) -> void:
 			_idle_seed_for(entry.get_unit_id(), 200 + entry.entry_id),
 		)
 		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_max_hp(entry)
+		var hp := DeckUpgradeService.get_display_current_hp(entry)
 		_draw_stat_badges(
 			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
 		)
@@ -4258,7 +4258,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+			hp = maxi(1, DeckUpgradeService.get_display_current_hp(entry))
 		var center_local := tile_to_local(center_tile) + off
 		_draw_stat_badges(
 			center_local, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
@@ -4327,7 +4327,7 @@ func _draw_catalog_units(px: float) -> void:
 		var armor := 0
 		if deck_entry != null and stats != null:
 			atk = maxi(1, stats.attack + deck_entry.bonus_attack)
-			hp = maxi(1, stats.max_hp + deck_entry.bonus_max_hp)
+			hp = maxi(1, DeckUpgradeService.get_display_current_hp(deck_entry))
 			armor = deck_entry.get_armor_block()
 		else:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
@@ -4613,7 +4613,7 @@ func _draw_prepare_slots(px: float) -> void:
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+			hp = maxi(1, DeckUpgradeService.get_display_current_hp(entry))
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
@@ -4682,7 +4682,7 @@ func _draw_bench_row(px: float) -> void:
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
 		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_max_hp(entry)
+		var hp := DeckUpgradeService.get_display_current_hp(entry)
 		_draw_stat_badges(
 			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
 		)

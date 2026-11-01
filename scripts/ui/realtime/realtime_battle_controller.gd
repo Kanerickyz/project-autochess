@@ -1842,17 +1842,24 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 
 ## 开战锁阵回退：座位未带出指挥官时再生成（不占 deploy_cap）。
 func _spawn_commander_into_sim() -> void:
-	if _sim == null or _run_state == null:
+	if _sim == null:
 		return
 	if _sim.find_commander_rt() != null:
 		return
 	if _deck_state != null:
 		_deck_state.ensure_commander()
 	var entry := _deck_state.get_commander_entry() if _deck_state != null else null
-	var max_hp_hint := RunState.COMMANDER_MAX_HP
-	if entry != null:
-		max_hp_hint = DeckUpgradeService.get_display_max_hp(entry)
-	if _run_state.get_commander_hp(max_hp_hint) <= 0:
+	var current_hp := 0
+	if _deck_state != null:
+		current_hp = _deck_state.get_commander_current_hp()
+	elif _run_state != null:
+		var max_hp_hint := RunState.COMMANDER_MAX_HP
+		if entry != null:
+			max_hp_hint = DeckUpgradeService.get_display_max_hp(entry)
+		current_hp = _run_state.get_commander_hp(max_hp_hint)
+	else:
+		return
+	if current_hp <= 0:
 		## 已阵亡不应再进遭遇；防守：仍不生成，交由开局检查。
 		return
 	var preferred := _commander_preferred_cell(entry)
@@ -1873,10 +1880,16 @@ func _spawn_commander_into_sim() -> void:
 
 
 func _apply_commander_hp_to_unit(unit: UnitInstance) -> void:
-	if unit == null or _run_state == null:
+	if unit == null:
 		return
 	var max_hp := maxi(1, unit.get_effective_max_hp())
-	unit.current_hp = clampi(_run_state.get_commander_hp(max_hp), 1, max_hp)
+	## 跨遭遇持久：优先 DeckEntry / RunState 当前血，新战斗不回满。
+	var hp := max_hp
+	if _deck_state != null:
+		hp = _deck_state.get_commander_current_hp()
+	elif _run_state != null:
+		hp = _run_state.get_commander_hp(max_hp)
+	unit.current_hp = clampi(hp, 1, max_hp)
 
 
 func _commander_preferred_cell(entry: DeckEntry = null) -> Vector2i:
@@ -1898,14 +1911,21 @@ func _commander_preferred_cell(entry: DeckEntry = null) -> Vector2i:
 
 
 func _persist_commander_hp_from_sim() -> void:
-	if _run_state == null or _sim == null:
+	if _sim == null:
 		return
 	var cmd := _sim.find_commander_rt()
 	if cmd == null or cmd.unit == null:
-		_run_state.set_commander_hp(0)
+		if _deck_state != null:
+			_deck_state.set_commander_current_hp(0)
+		elif _run_state != null:
+			_run_state.set_commander_hp(0)
 		return
-	var max_hp := maxi(1, cmd.unit.get_effective_max_hp())
-	_run_state.set_commander_hp(cmd.unit.current_hp, max_hp)
+	var hp := cmd.unit.current_hp
+	if _deck_state != null:
+		_deck_state.set_commander_current_hp(hp)
+	elif _run_state != null:
+		var max_hp := maxi(1, cmd.unit.get_effective_max_hp())
+		_run_state.set_commander_hp(hp, max_hp)
 
 
 func _set_phase(phase: Phase) -> void:

@@ -233,8 +233,12 @@ static func _count_player_star2(team_entries: Array) -> int:
 static func _player_roster_count(team_entries: Array) -> int:
 	var n := 0
 	for entry in team_entries:
-		if entry != null:
-			n += 1
+		if entry == null:
+			continue
+		## 指挥官不占上场席位上限，也不计入敌方预算用的玩家队规模。
+		if entry is DeckEntry and (entry as DeckEntry).is_commander():
+			continue
+		n += 1
 	return maxi(1, n)
 
 

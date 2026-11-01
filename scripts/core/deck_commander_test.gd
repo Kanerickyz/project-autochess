@@ -10,6 +10,8 @@ static func run_all() -> bool:
 	ok = _check("unsellable_and_no_bench", _test_unsellable_and_no_bench()) and ok
 	ok = _check("boost_bumps_run_hp", _test_boost_bumps_run_hp()) and ok
 	ok = _check("roster_unit_count_ignores_commander", _test_roster_unit_count()) and ok
+	ok = _check("hp_persists_across_set", _test_hp_persists_across_set()) and ok
+	ok = _check("starter_empty_cap_two", _test_starter_empty_cap_two()) and ok
 	return ok
 
 
@@ -110,17 +112,20 @@ static func _test_boost_bumps_run_hp() -> bool:
 	var run_state := RunState.new()
 	deck.set_run_state(run_state)
 	var cmd := deck.ensure_commander()
-	var before := run_state.get_commander_hp()
+	var before := deck.get_commander_current_hp()
 	deck.add_bonus_max_hp(cmd, 5)
 	var new_max := DeckUpgradeService.get_display_max_hp(cmd)
 	if new_max != RunState.COMMANDER_MAX_HP + 5:
 		push_error("boost: max hp want %d got %d" % [RunState.COMMANDER_MAX_HP + 5, new_max])
 		return false
-	if run_state.get_commander_hp(new_max) != before + 5:
+	if deck.get_commander_current_hp() != before + 5:
 		push_error(
 			"boost: current hp want %d got %d"
-			% [before + 5, run_state.get_commander_hp(new_max)]
+			% [before + 5, deck.get_commander_current_hp()]
 		)
+		return false
+	if run_state.get_commander_hp(new_max) != before + 5:
+		push_error("boost: RunState hp out of sync")
 		return false
 	return true
 
@@ -135,5 +140,67 @@ static func _test_roster_unit_count() -> bool:
 	deck.add_entry(knight)
 	if deck.get_roster_unit_count() != 1:
 		push_error("roster: want 1 after add knight")
+		return false
+	return true
+
+
+static func _test_hp_persists_across_set() -> bool:
+	var deck := _make_deck()
+	var run_state := RunState.new()
+	deck.set_run_state(run_state)
+	var cmd := deck.ensure_commander()
+	var max_hp := DeckUpgradeService.get_display_max_hp(cmd)
+	deck.set_commander_current_hp(maxi(1, max_hp - 37))
+	if deck.get_commander_current_hp() != max_hp - 37:
+		push_error("persist: deck current hp not saved")
+		return false
+	if run_state.get_commander_hp(max_hp) != max_hp - 37:
+		push_error("persist: RunState not synced")
+		return false
+	## 模拟下场开战前 ensure：不得回满。
+	deck.ensure_commander()
+	if deck.get_commander_current_hp() != max_hp - 37:
+		push_error("persist: ensure_commander restored hp")
+		return false
+	if DeckUpgradeService.get_display_current_hp(cmd) != max_hp - 37:
+		push_error("persist: display current should stay damaged")
+		return false
+	if DeckUpgradeService.get_display_max_hp(cmd) != max_hp:
+		push_error("persist: display max should stay full")
+		return false
+	return true
+
+
+static func _test_starter_empty_cap_two() -> bool:
+	var cfg := load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig
+	if cfg == null:
+		push_error("starter: missing realtime_starter_deck")
+		return false
+	if cfg.max_size != 2:
+		push_error("starter: max_size want 2 got %d" % cfg.max_size)
+		return false
+	if not cfg.starting_units.is_empty() or cfg.starting_count != 0:
+		push_error("starter: should be empty roster")
+		return false
+	var deck := DeckState.new()
+	deck.configure(cfg)
+	deck.reset_from_config()
+	deck.ensure_commander()
+	if deck.get_roster_unit_count() != 0:
+		push_error("starter: roster should be empty after reset+commander")
+		return false
+	if deck.get_max_size() != 2:
+		push_error("starter: runtime max_size want 2")
+		return false
+	if DeckState.SEAT_CAP_HARD_MAX != 6:
+		push_error("starter: hard max want 6")
+		return false
+	## 旗帜可扩到 6
+	while deck.get_max_size() < DeckState.SEAT_CAP_HARD_MAX:
+		if not deck.try_increase_seat_cap(1):
+			push_error("starter: banner expand failed at %d" % deck.get_max_size())
+			return false
+	if deck.get_max_size() != 6 or not deck.is_seat_cap_maxed():
+		push_error("starter: should reach hard max 6")
 		return false
 	return true

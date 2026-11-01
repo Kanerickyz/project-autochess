@@ -22,6 +22,8 @@ var bench_slot_index: int = -1
 var seat_assign_seq: int = 0
 ## 附魔熔印者等 runtime 主技能；优先于 unit.ability。
 var runtime_main_ability: AbilityData = null
+## 指挥官跨遭遇当前生命；-1 = 尚未写入（开战按满血）。普通成员忽略，每场仍满血开局。
+var persisted_current_hp: int = -1
 
 
 func get_unit_id() -> String:
