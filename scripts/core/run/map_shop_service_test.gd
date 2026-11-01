@@ -13,6 +13,9 @@ static func run_all() -> bool:
 	_check("refresh_consumables", _test_refresh())
 	_check("equipment_conflict_no_refund", _test_equipment_conflict())
 	_check("triple_merge_keeps_one_equipment", _test_triple_merge_equipment())
+	_check("theme_potion_snapshot_includes_bench", _test_theme_potion_snapshot_includes_bench())
+	_check("theme_potion_zero_hit_still_buys", _test_theme_potion_zero_hit_still_buys())
+	_check("theme_pool_has_seven", _test_theme_pool_has_seven())
 	if _failures == 0:
 		print("MapShopServiceTest: all tests passed")
 	else:
@@ -73,6 +76,98 @@ static func _make_economy(gold: int) -> RunEconomy:
 	while econ.gold > gold:
 		econ.spend(econ.gold - gold)
 	return econ
+
+
+static func _test_theme_pool_has_seven() -> bool:
+	var cfg := MapShopConfig.load_or_default()
+	var themes: Dictionary = {}
+	for item in cfg.get_consumable_pool():
+		var c := item as MapShopConsumableData
+		if c == null or not c.is_theme_potion():
+			continue
+		themes[int(c.theme_bond)] = true
+		if c.bonus_attack != 2 or c.bonus_max_hp != 2 or c.cost != 3:
+			return false
+	return themes.size() == 7
+
+
+## 战士药水：入座 + 备战同主题各 +2/+2；拖放目标可为非该主题。
+static func _test_theme_potion_snapshot_includes_bench() -> bool:
+	var warrior := _make_unit("w")
+	warrior.theme_bond = UnitData.ThemeBond.WARRIOR
+	var knight := _make_unit("k")
+	knight.theme_bond = UnitData.ThemeBond.KNIGHT
+	var deck := DeckState.new()
+	deck.configure(DeckConfig.new())
+	var seated_w := deck.add_entry(warrior)
+	var bench_w := deck.add_entry(warrior)
+	var seated_k := deck.add_entry(knight)
+	if seated_w == null or bench_w == null or seated_k == null:
+		return false
+	deck.try_place_on_bench(bench_w.entry_id, 0)
+	var econ := _make_economy(10)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	var svc := MapShopService.new()
+	var config := MapShopConfig.make_code_defaults()
+	config.consumable_pool = [
+		MapShopConfig._make_theme_potion("theme_warrior", "战士药水", UnitData.ThemeBond.WARRIOR),
+	]
+	config.equipment_pool = []
+	svc.configure(config, econ, deck, rng)
+	svc.open_shop()
+	svc._consumable_offers[0] = config.consumable_pool[0]
+	var gold_before := econ.gold
+	## 拖到骑士确认购买。
+	var result := svc.try_buy_consumable_on_entry(0, seated_k.entry_id)
+	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
+		return false
+	if int(result.get("theme_affected", -1)) != 2:
+		return false
+	if seated_w.bonus_attack != 2 or seated_w.bonus_max_hp != 2:
+		return false
+	if bench_w.bonus_attack != 2 or bench_w.bonus_max_hp != 2:
+		return false
+	if seated_k.bonus_attack != 0 or seated_k.bonus_max_hp != 0:
+		return false
+	if econ.gold != gold_before - 3:
+		return false
+	if svc.get_consumable_offer(0) != null:
+		return false
+	return true
+
+
+## 无人命中该主题：仍扣金清槽，属性不变。
+static func _test_theme_potion_zero_hit_still_buys() -> bool:
+	var knight := _make_unit("k2")
+	knight.theme_bond = UnitData.ThemeBond.KNIGHT
+	var deck := _make_deck(knight)
+	var entry := deck.get_entries()[0]
+	var econ := _make_economy(10)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 22
+	var svc := MapShopService.new()
+	var config := MapShopConfig.make_code_defaults()
+	config.consumable_pool = [
+		MapShopConfig._make_theme_potion("theme_undead", "亡灵药水", UnitData.ThemeBond.UNDEAD),
+	]
+	config.equipment_pool = []
+	svc.configure(config, econ, deck, rng)
+	svc.open_shop()
+	svc._consumable_offers[0] = config.consumable_pool[0]
+	var gold_before := econ.gold
+	var result := svc.try_buy_consumable_on_entry(0, entry.entry_id)
+	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
+		return false
+	if int(result.get("theme_affected", -1)) != 0:
+		return false
+	if entry.bonus_attack != 0 or entry.bonus_max_hp != 0:
+		return false
+	if econ.gold != gold_before - 3:
+		return false
+	if svc.get_consumable_offer(0) != null:
+		return false
+	return true
 
 
 static func _test_buy_consumable() -> bool:
