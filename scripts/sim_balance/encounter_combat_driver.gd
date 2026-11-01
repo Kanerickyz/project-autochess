@@ -68,6 +68,10 @@ static func run_encounter(params: Dictionary) -> Dictionary:
 		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 		if unit == null:
 			continue
+		if unit.is_commander:
+			var max_hp := maxi(1, unit.get_effective_max_hp())
+			var hp := DeckUpgradeService.get_display_current_hp(entry)
+			unit.current_hp = clampi(hp, 1, max_hp)
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
 		sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))

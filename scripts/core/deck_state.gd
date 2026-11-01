@@ -45,9 +45,15 @@ func add_bonus_max_hp(entry: DeckEntry, delta: int) -> void:
 		return
 	entry.bonus_max_hp += delta
 	notify_max_hp_gained(delta)
-	if entry.is_commander() and _run_state != null:
+	if entry.is_commander():
 		var new_max := DeckUpgradeService.get_display_max_hp(entry)
-		_run_state.set_commander_hp(_run_state.commander_hp + delta, new_max)
+		## 涨上限时当前血同步 +delta（带伤不回满）。
+		if entry.persisted_current_hp < 0:
+			entry.persisted_current_hp = new_max
+		else:
+			entry.persisted_current_hp = clampi(entry.persisted_current_hp + delta, 0, new_max)
+		if _run_state != null:
+			_run_state.set_commander_hp(entry.persisted_current_hp, new_max)
 
 
 func configure(config: DeckConfig) -> void:
@@ -98,6 +104,7 @@ func reset_from_config() -> void:
 func ensure_commander() -> DeckEntry:
 	var existing := get_commander_entry()
 	if existing != null:
+		_sync_commander_persisted_hp(existing)
 		if existing.seat_index < 0:
 			_seat_commander(existing)
 			deck_changed.emit()
@@ -107,8 +114,46 @@ func ensure_commander() -> DeckEntry:
 	var entry := _create_entry(COMMANDER_UNIT_DATA)
 	_entries.append(entry)
 	_seat_commander(entry)
+	_sync_commander_persisted_hp(entry)
 	deck_changed.emit()
 	return entry
+
+
+## 开战 / UI：指挥官当前血（跨遭遇）；无写入时视为满血。
+func get_commander_current_hp() -> int:
+	var entry := get_commander_entry()
+	if entry == null:
+		if _run_state != null:
+			return _run_state.get_commander_hp()
+		return RunState.COMMANDER_MAX_HP
+	return DeckUpgradeService.get_display_current_hp(entry)
+
+
+## 战斗结束写回指挥官当前血（同时同步 RunState）。
+func set_commander_current_hp(hp: int) -> void:
+	var entry := get_commander_entry()
+	var max_hp := RunState.COMMANDER_MAX_HP
+	if entry != null:
+		max_hp = maxi(1, DeckUpgradeService.get_display_max_hp(entry))
+		entry.persisted_current_hp = clampi(hp, 0, max_hp)
+	if _run_state != null:
+		_run_state.set_commander_hp(hp, max_hp)
+
+
+func _sync_commander_persisted_hp(entry: DeckEntry) -> void:
+	if entry == null or not entry.is_commander():
+		return
+	var max_hp := maxi(1, DeckUpgradeService.get_display_max_hp(entry))
+	if entry.persisted_current_hp < 0:
+		## 优先继承 RunState（同局已开战），否则满血开局。
+		if _run_state != null and _run_state.commander_hp > 0:
+			entry.persisted_current_hp = clampi(_run_state.commander_hp, 1, max_hp)
+		else:
+			entry.persisted_current_hp = max_hp
+	else:
+		entry.persisted_current_hp = clampi(entry.persisted_current_hp, 0, max_hp)
+	if _run_state != null:
+		_run_state.set_commander_hp(entry.persisted_current_hp, max_hp)
 
 
 func get_commander_entry() -> DeckEntry:
@@ -953,6 +998,7 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.seat_index = source.seat_index
 	entry.bench_slot_index = source.bench_slot_index
 	entry.seat_assign_seq = source.seat_assign_seq
+	entry.persisted_current_hp = source.persisted_current_hp
 	if source.runtime_main_ability != null:
 		entry.runtime_main_ability = source.runtime_main_ability.duplicate(true) as AbilityData
 	return entry
