@@ -88,12 +88,12 @@ static func _test_theme_pool_has_seven() -> bool:
 		if c == null or not c.is_theme_potion():
 			continue
 		themes[int(c.theme_bond)] = true
-		if c.bonus_attack != 2 or c.bonus_max_hp != 2 or c.cost != 3:
+		if c.cost != 3:
 			return false
 	return themes.size() == 7
 
 
-## 战士药水：入座 + 备战同主题各 +2/+2；拖放目标可为非该主题。
+## 战士药水：入座 + 备战同主题展示攻/生命翻倍；拖放目标可为非该主题。
 static func _test_theme_potion_snapshot_includes_bench() -> bool:
 	var warrior := _make_unit("w")
 	warrior.theme_bond = UnitData.ThemeBond.WARRIOR
@@ -107,6 +107,8 @@ static func _test_theme_potion_snapshot_includes_bench() -> bool:
 	if seated_w == null or bench_w == null or seated_k == null:
 		return false
 	deck.try_place_on_bench(bench_w.entry_id, 0)
+	var atk0 := DeckUpgradeService.get_display_attack(seated_w)
+	var hp0 := DeckUpgradeService.get_display_max_hp(seated_w)
 	var econ := _make_economy(10)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 21
@@ -126,9 +128,13 @@ static func _test_theme_potion_snapshot_includes_bench() -> bool:
 		return false
 	if int(result.get("theme_affected", -1)) != 2:
 		return false
-	if seated_w.bonus_attack != 2 or seated_w.bonus_max_hp != 2:
+	if DeckUpgradeService.get_display_attack(seated_w) != atk0 * 2:
 		return false
-	if bench_w.bonus_attack != 2 or bench_w.bonus_max_hp != 2:
+	if DeckUpgradeService.get_display_max_hp(seated_w) != hp0 * 2:
+		return false
+	if DeckUpgradeService.get_display_attack(bench_w) != atk0 * 2:
+		return false
+	if DeckUpgradeService.get_display_max_hp(bench_w) != hp0 * 2:
 		return false
 	if seated_k.bonus_attack != 0 or seated_k.bonus_max_hp != 0:
 		return false

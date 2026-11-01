@@ -1,7 +1,7 @@
 class_name MapShopConsumableData
 extends Resource
 ## 地图商店消耗品：战斗外永久改队伍成员攻/血加成（可负）。
-## theme_bond != NONE：主题药水——对当下队伍快照（含备战）该主题全员写攻/血。
+## theme_bond != NONE：主题药水——对当下队伍快照（含备战）该主题全员展示攻/生命翻倍。
 
 @export var id: String = ""
 @export var display_name: String = ""
@@ -28,9 +28,9 @@ func get_icon() -> Texture2D:
 
 
 func get_effect_summary() -> String:
-	var parts: PackedStringArray = []
 	if is_theme_potion():
-		parts.append("%s全队" % UnitData.theme_bond_label(theme_bond))
+		return "%s全队：攻/生命×2" % UnitData.theme_bond_label(theme_bond)
+	var parts: PackedStringArray = []
 	if bonus_attack != 0:
 		parts.append("%+d 攻" % bonus_attack)
 	if bonus_max_hp != 0:

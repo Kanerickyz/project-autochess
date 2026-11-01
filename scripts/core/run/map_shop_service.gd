@@ -203,7 +203,7 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	}
 
 
-## 当下快照：入座 + 备战中 theme_bond 匹配者各写一次；返回命中人数（可为 0）。
+## 当下快照：入座 + 备战中 theme_bond 匹配者展示攻/生命各翻倍；返回命中人数（可为 0）。
 func _apply_theme_potion_snapshot(item: MapShopConsumableData) -> int:
 	if item == null or _deck == null or not item.is_theme_potion():
 		return 0
@@ -214,11 +214,13 @@ func _apply_theme_potion_snapshot(item: MapShopConsumableData) -> int:
 			continue
 		if member.unit.theme_bond != bond:
 			continue
-		member.bonus_attack += item.bonus_attack
-		if item.bonus_max_hp > 0:
-			_deck.add_bonus_max_hp(member, item.bonus_max_hp)
-		elif item.bonus_max_hp < 0:
-			member.bonus_max_hp += item.bonus_max_hp
+		var atk_now := DeckUpgradeService.get_display_attack(member)
+		var hp_now := DeckUpgradeService.get_display_max_hp(member)
+		## 再加等量加成 → 展示值 ×2；不改护甲装备。
+		if atk_now > 0:
+			member.bonus_attack += atk_now
+		if hp_now > 0:
+			_deck.add_bonus_max_hp(member, hp_now)
 		hit += 1
 	return hit
 
