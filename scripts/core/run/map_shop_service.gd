@@ -38,8 +38,7 @@ func is_open() -> bool:
 
 func open_shop() -> void:
 	_open = true
-	roll_consumables()
-	roll_equipment()
+	roll_shelf()
 	shop_changed.emit()
 
 
@@ -90,32 +89,42 @@ func can_refresh() -> bool:
 	return _open and can_afford(get_refresh_cost())
 
 
-func roll_consumables() -> void:
+## 合并消耗品+装备池，按资源 id 去重后无放回抽满 shelf_slot_count；再按类型拆成两行。
+func roll_shelf() -> void:
 	_consumable_offers.clear()
-	if _config == null:
-		return
-	var pool := _config.get_consumable_pool()
-	var slots := _config.get_consumable_slot_count()
-	for _i in slots:
-		if pool.is_empty():
-			_consumable_offers.append(null)
-			continue
-		var pick: MapShopConsumableData = pool[_rng.randi_range(0, pool.size() - 1)]
-		_consumable_offers.append(pick)
-
-
-func roll_equipment() -> void:
 	_equipment_offers.clear()
 	if _config == null:
 		return
-	var pool := _config.get_equipment_pool()
-	var slots := _config.get_equipment_slot_count()
-	for _i in slots:
-		if pool.is_empty():
-			_equipment_offers.append(null)
+	var by_id: Dictionary = {}
+	for item in _config.get_consumable_pool():
+		var c := item as MapShopConsumableData
+		if c == null or c.id.is_empty():
 			continue
-		var pick: EquipmentData = pool[_rng.randi_range(0, pool.size() - 1)]
-		_equipment_offers.append(pick)
+		by_id[c.id] = {"kind": &"consumable", "res": c}
+	for item in _config.get_equipment_pool():
+		var e := item as EquipmentData
+		if e == null or e.id.is_empty():
+			continue
+		by_id[e.id] = {"kind": &"equipment", "res": e}
+	var bag: Array = by_id.values()
+	_shuffle_inplace(bag)
+	var take := mini(_config.get_shelf_slot_count(), bag.size())
+	for i in take:
+		var entry: Dictionary = bag[i]
+		if entry.get("kind", &"") == &"equipment":
+			_equipment_offers.append(entry.get("res"))
+		else:
+			_consumable_offers.append(entry.get("res"))
+
+
+## 兼容旧名：整架重抽。
+func roll_consumables() -> void:
+	roll_shelf()
+
+
+func roll_equipment() -> void:
+	## 装备行由 roll_shelf 一并填充；单独调用时整架重抽以保持唯一。
+	roll_shelf()
 
 
 func try_refresh_consumables() -> Dictionary:
@@ -127,9 +136,17 @@ func try_refresh_consumables() -> Dictionary:
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
-	roll_consumables()
+	roll_shelf()
 	shop_changed.emit()
 	return {"result": BuyResult.OK, "reason": ""}
+
+
+func _shuffle_inplace(arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
 
 
 ## 拖消耗品到角色：扣金、永久改攻血、槽空。金不足/非法目标失败且货架保留。

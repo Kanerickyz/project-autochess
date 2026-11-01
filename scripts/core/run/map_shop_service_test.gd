@@ -16,6 +16,8 @@ static func run_all() -> bool:
 	_check("theme_potion_snapshot_includes_bench", _test_theme_potion_snapshot_includes_bench())
 	_check("theme_potion_zero_hit_still_buys", _test_theme_potion_zero_hit_still_buys())
 	_check("theme_pool_has_seven", _test_theme_pool_has_seven())
+	_check("shelf_six_unique_ids", _test_shelf_six_unique_ids())
+	_check("shelf_no_duplicate_theme_potion", _test_shelf_no_duplicate_theme_bond())
 	if _failures == 0:
 		print("MapShopServiceTest: all tests passed")
 	else:
@@ -116,7 +118,7 @@ static func _test_theme_potion_snapshot_includes_bench() -> bool:
 	config.equipment_pool = []
 	svc.configure(config, econ, deck, rng)
 	svc.open_shop()
-	svc._consumable_offers[0] = config.consumable_pool[0]
+	svc._consumable_offers = [config.consumable_pool[0]]
 	var gold_before := econ.gold
 	## 拖到骑士确认购买。
 	var result := svc.try_buy_consumable_on_entry(0, seated_k.entry_id)
@@ -154,7 +156,7 @@ static func _test_theme_potion_zero_hit_still_buys() -> bool:
 	config.equipment_pool = []
 	svc.configure(config, econ, deck, rng)
 	svc.open_shop()
-	svc._consumable_offers[0] = config.consumable_pool[0]
+	svc._consumable_offers = [config.consumable_pool[0]]
 	var gold_before := econ.gold
 	var result := svc.try_buy_consumable_on_entry(0, entry.entry_id)
 	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
@@ -186,8 +188,8 @@ static func _test_buy_consumable() -> bool:
 	config.equipment_pool = []
 	svc.configure(config, econ, deck, rng)
 	svc.open_shop()
-	## 强制第一槽为大力药。
-	svc._consumable_offers[0] = config.consumable_pool[0]
+	## 强制单槽大力药报价。
+	svc._consumable_offers = [config.consumable_pool[0]]
 	var atk_before := entry.bonus_attack
 	var hp_before := entry.bonus_max_hp
 	var gold_before := econ.gold
@@ -224,7 +226,7 @@ static func _test_consumable_destroys_at_zero_hp() -> bool:
 	config.equipment_pool = []
 	svc.configure(config, econ, deck, rng)
 	svc.open_shop()
-	svc._consumable_offers[0] = config.consumable_pool[0]
+	svc._consumable_offers = [config.consumable_pool[0]]
 	var gold_before := econ.gold
 	var result := svc.try_buy_consumable_on_entry(0, entry_id)
 	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
@@ -255,7 +257,7 @@ static func _test_cant_afford() -> bool:
 	var config := MapShopConfig.make_code_defaults()
 	svc.configure(config, econ, deck, rng)
 	svc.open_shop()
-	svc._consumable_offers[0] = MapShopConfig._make_consumable("qunbolong", "群伯龙", 5, 10, -5)
+	svc._consumable_offers = [MapShopConfig._make_consumable("qunbolong", "群伯龙", 5, 10, -5)]
 	var offer_before := svc.get_consumable_offer(0)
 	var result := svc.try_buy_consumable_on_entry(0, entry.entry_id)
 	if int(result.get("result", -1)) != MapShopService.BuyResult.FAILED:
@@ -283,8 +285,66 @@ static func _test_refresh() -> bool:
 		return false
 	if econ.gold != gold_before - 2:
 		return false
-	if svc.get_consumable_offers().size() != 3:
+	var total := svc.get_consumable_offers().size() + svc.get_equipment_offers().size()
+	if total != MapShopConfig.DEFAULT_SHELF_SLOTS:
 		return false
+	return true
+
+
+static func _collect_shelf_ids(svc: MapShopService) -> Array[String]:
+	var ids: Array[String] = []
+	for item in svc.get_consumable_offers():
+		var c := item as MapShopConsumableData
+		if c != null:
+			ids.append(c.id)
+	for item in svc.get_equipment_offers():
+		var e := item as EquipmentData
+		if e != null:
+			ids.append(e.id)
+	return ids
+
+
+static func _test_shelf_six_unique_ids() -> bool:
+	var deck := _make_deck(_make_unit())
+	var econ := _make_economy(20)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var svc := MapShopService.new()
+	svc.configure(MapShopConfig.make_code_defaults(), econ, deck, rng)
+	for _n in 12:
+		svc.open_shop()
+		var ids := _collect_shelf_ids(svc)
+		if ids.size() != MapShopConfig.DEFAULT_SHELF_SLOTS:
+			return false
+		var seen: Dictionary = {}
+		for id in ids:
+			if seen.has(id):
+				return false
+			seen[id] = true
+		svc.close_shop()
+	return true
+
+
+## 同职主题药水 id 不同；全局唯一已覆盖。额外断言同 theme_bond 不会并排两瓶。
+static func _test_shelf_no_duplicate_theme_bond() -> bool:
+	var deck := _make_deck(_make_unit())
+	var econ := _make_economy(20)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var svc := MapShopService.new()
+	svc.configure(MapShopConfig.make_code_defaults(), econ, deck, rng)
+	for _n in 20:
+		svc.open_shop()
+		var bonds: Dictionary = {}
+		for item in svc.get_consumable_offers():
+			var c := item as MapShopConsumableData
+			if c == null or not c.is_theme_potion():
+				continue
+			var key := int(c.theme_bond)
+			if bonds.has(key):
+				return false
+			bonds[key] = true
+		svc.close_shop()
 	return true
 
 
@@ -308,7 +368,8 @@ static func _test_equipment_conflict() -> bool:
 		var config := MapShopConfig.make_code_defaults()
 		svc.configure(config, econ2, deck, rng)
 		svc.open_shop()
-		svc._equipment_offers[0] = new_eq
+		## 货架行长可变：强制单槽装备报价，避免空行下标赋值失败。
+		svc._equipment_offers = [new_eq]
 		var gold_before := econ2.gold
 		var result := svc.try_buy_equipment_on_entry(0, e2.entry_id)
 		if int(result.get("result", -1)) != MapShopService.BuyResult.OK:

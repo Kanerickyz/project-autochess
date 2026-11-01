@@ -1,6 +1,6 @@
 class_name MapShopBattleExtension
 extends RefCounted
-## 地图商店：Arena 上队伍 / 下货架 + 底栏（刷新消耗品 / 离开）。
+## 地图商店：Arena 上队伍 / 下货架 + 底栏（刷新货架 / 离开）。
 
 
 var _battle: RealtimeBattleController
@@ -195,7 +195,7 @@ func _ensure_hud() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hud.add_child(row)
 	_btn_refresh = Button.new()
-	_btn_refresh.text = "刷新消耗品"
+	_btn_refresh.text = "刷新货架"
 	_btn_refresh.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_refresh.pressed.connect(_on_refresh)
 	row.add_child(_btn_refresh)
@@ -211,7 +211,7 @@ func _refresh() -> void:
 		return
 	var gold := _service.get_gold()
 	var cost := _service.get_refresh_cost()
-	_stats_label.text = "%s · 刷新消耗品 %d 金" % [UiStatIcons.format_gold_label(gold), cost]
+	_stats_label.text = "%s · 刷新货架 %d 金" % [UiStatIcons.format_gold_label(gold), cost]
 	_refresh_buttons()
 	if _battle != null:
 		_battle.refresh_map_shop_chrome()
@@ -220,7 +220,7 @@ func _refresh() -> void:
 func _refresh_buttons() -> void:
 	if _btn_refresh != null and _service != null:
 		var cost := _service.get_refresh_cost()
-		_btn_refresh.text = "刷新消耗品（%d 金）" % cost
+		_btn_refresh.text = "刷新货架（%d 金）" % cost
 		_btn_refresh.disabled = _animating or not _service.can_refresh()
 	if _btn_leave != null:
 		_btn_leave.disabled = _animating
@@ -244,7 +244,7 @@ func _on_refresh() -> void:
 				set_hint("无法刷新")
 		_refresh()
 		return
-	set_hint("已刷新消耗品货架")
+	set_hint("已刷新货架")
 	_refresh()
 
 

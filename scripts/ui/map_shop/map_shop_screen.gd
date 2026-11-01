@@ -103,7 +103,7 @@ func _refresh_all() -> void:
 	_rebuild_seats()
 	if _refresh_btn != null and _service != null:
 		var cost := _service.get_refresh_cost()
-		_refresh_btn.text = "刷新消耗品（%d 金）" % cost
+		_refresh_btn.text = "刷新货架（%d 金）" % cost
 		_refresh_btn.disabled = _busy or not _service.can_refresh()
 
 
@@ -434,7 +434,7 @@ func _on_refresh_pressed() -> void:
 	if int(result.get("result", MapShopService.BuyResult.FAILED)) != MapShopService.BuyResult.OK:
 		_hint_label.text = "金币不足，无法刷新"
 	else:
-		_hint_label.text = "已刷新消耗品"
+		_hint_label.text = "已刷新货架"
 	_refresh_all()
 
 
