@@ -89,6 +89,7 @@ func _start_new_run() -> void:
 	_recruit_session.clear_taken_copies()
 	_battle.reset_final_trial_state()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
+	_battle.set_run_state(run_controller.run_state)
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
 		_battle.set_forward_tier_unlock(_is_endless())
