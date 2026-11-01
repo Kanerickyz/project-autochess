@@ -6,7 +6,8 @@ func _initialize() -> void:
 	ok = _test_spawn_budget_extrapolation() and ok
 	ok = _test_panel_floors_rise_with_f() and ok
 	ok = _test_forward_tier_unlock() and ok
-	ok = _test_endless_flat_only_knobs() and ok
+	ok = _test_endless_ladder_knobs() and ok
+	ok = _test_endless_map_product_config() and ok
 	quit(0 if ok else 1)
 
 
@@ -31,7 +32,7 @@ func _test_spawn_budget_extrapolation() -> bool:
 
 
 func _test_panel_floors_rise_with_f() -> bool:
-	## 主塔默认：层向面板下限随 F 升（无尽关闭此项，见 flat-only 断言）。
+	## 主塔默认：层向面板下限随 F 升（无尽关闭此项，改走阶梯公式）。
 	var cfg := SpawnBudgetConfig.load_or_default()
 	var atk5 := cfg.get_panel_atk_floor(5)
 	var atk15 := cfg.get_panel_atk_floor(15)
@@ -70,36 +71,54 @@ func _test_forward_tier_unlock() -> bool:
 	return true
 
 
-func _test_endless_flat_only_knobs() -> bool:
-	if not ResourceLoader.exists("res://resources/spawn/endless_spawn_budget.tres"):
-		push_error("missing endless_spawn_budget.tres")
+func _test_endless_ladder_knobs() -> bool:
+	if EndlessLadderBalance.enemy_count_for_floor(1) != 1:
+		push_error("ladder F1 count should be 1")
 		return false
-	var cfg := load("res://resources/spawn/endless_spawn_budget.tres") as SpawnBudgetConfig
-	if cfg == null:
-		push_error("endless_spawn_budget is not SpawnBudgetConfig")
+	if EndlessLadderBalance.enemy_count_for_floor(10) != 10:
+		push_error("ladder F10 count should be 10")
 		return false
-	if cfg.floor_flat_atk_per_level != 1 or cfg.floor_flat_hp_per_level != 1:
-		push_error("endless must use exactly +1/+1 per floor per unit")
+	if EndlessLadderBalance.enemy_count_for_floor(11) != 10:
+		push_error("ladder F11 count should cap at 10")
 		return false
-	if cfg.floor_star2_per_level != 0:
-		push_error("endless must not use floor star2 quota (too strong)")
+	if EndlessLadderBalance.stat_for_floor(11) != 11:
+		push_error("ladder F11 stat should be 11")
 		return false
-	if cfg.panel_floor_growth > 0.0:
-		push_error("endless must not stack panel_floor_growth on top of flat")
-		return false
-	if cfg.get_floor_flat_atk_bonus(5) != 4 or cfg.get_floor_flat_hp_bonus(5) != 4:
-		push_error("endless F5 flat bonus should be exactly 4/4")
-		return false
-	if cfg.get_floor_star2_quota(5) != 0:
-		push_error("endless F5 star2 quota should be 0")
+	if EndlessLadderBalance.UNIT_ID != "enemy_endless_dev":
+		push_error("ladder unit id mismatch")
 		return false
 	print(
-		"Endless knobs: flat F5=%d/%d star2 F5=%d panel_growth=%.2f"
+		"Endless ladder: F1=%d@%d F10=%d@%d F11=%d@%d"
 		% [
-			cfg.get_floor_flat_atk_bonus(5),
-			cfg.get_floor_flat_hp_bonus(5),
-			cfg.get_floor_star2_quota(5),
-			cfg.panel_floor_growth,
+			EndlessLadderBalance.enemy_count_for_floor(1),
+			EndlessLadderBalance.stat_for_floor(1),
+			EndlessLadderBalance.enemy_count_for_floor(10),
+			EndlessLadderBalance.stat_for_floor(10),
+			EndlessLadderBalance.enemy_count_for_floor(11),
+			EndlessLadderBalance.stat_for_floor(11),
 		]
 	)
+	return true
+
+
+func _test_endless_map_product_config() -> bool:
+	## 用文本断言产品节拍，避免依赖 board/enemy 贴图导入链才能 load().
+	const PATH := "res://resources/runs/endless_map.tres"
+	if not FileAccess.file_exists(PATH):
+		push_error("missing endless_map.tres")
+		return false
+	var text := FileAccess.get_file_as_string(PATH)
+	if text.find("endless_mode = true") < 0:
+		push_error("endless_map.tres must set endless_mode = true")
+		return false
+	if text.find("pure_combat_floors = 0") < 0:
+		push_error("endless_map pure_combat_floors should be 0")
+		return false
+	if text.find("shop_every_n_combats = 4") < 0:
+		push_error("endless_map shop_every_n_combats should be 4")
+		return false
+	if text.find("spawn_budget_override") >= 0:
+		push_error("endless_map should not set spawn_budget_override")
+		return false
+	print("Endless map product config: pure=0 every=4 no budget override")
 	return true

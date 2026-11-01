@@ -8,7 +8,6 @@
 [ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_04.tres" id="6"]
 [ext_resource type="Resource" path="res://resources/encounters/realtime/rt_combat_05.tres" id="7"]
 [ext_resource type="Script" uid="uid://ddpugoydied62" path="res://scripts/data/encounter_data.gd" id="15_enc"]
-[ext_resource type="Resource" path="res://resources/spawn/endless_spawn_budget.tres" id="16_spawn"]
 
 [resource]
 script = ExtResource("1")
@@ -22,8 +21,7 @@ shop_min_floor = 4
 board_defaults = ExtResource("2")
 combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
 endless_mode = true
-pure_combat_floors = 3
-shop_every_n_combats = 3
+pure_combat_floors = 0
+shop_every_n_combats = 4
 endless_chunk_combats = 12
 endless_append_threshold = 4
-spawn_budget_override = ExtResource("16_spawn")

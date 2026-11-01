@@ -1,6 +1,6 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-31
+> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-11-01
 >
 > 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
@@ -30,7 +30,7 @@
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
 | [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
-| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、无通关/精英/Boss、稀疏商店、成绩＝地图层深） |
+| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、同质白板阶梯敌压、每 4 场插店、成绩＝地图层深） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
 | [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒/**遗骨**；仅遭遇内叠层；遗骨死亡按层数生成骷髅；长按信息卡） |
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |

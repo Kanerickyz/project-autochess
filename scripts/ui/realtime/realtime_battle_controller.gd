@@ -47,6 +47,8 @@ var _floor_index: int = 0
 var _map_floor_count: int = 15
 ## 无尽：品阶随 F 单向解锁（不用倒数层）。
 var _forward_tier_unlock: bool = false
+## 无尽：阶梯同质白板刷敌（关闭跟队抽阵 / flat / 面板下限）。
+var _endless_ladder_spawn: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 
 
@@ -68,6 +70,15 @@ func set_forward_tier_unlock(enabled: bool) -> void:
 
 func get_forward_tier_unlock() -> bool:
 	return _forward_tier_unlock
+
+
+## 无尽阶梯刷敌：同质白板，人数/攻血跟层号；开启后绕过 budget/legacy 抽阵。
+func set_endless_ladder_spawn(enabled: bool) -> void:
+	_endless_ladder_spawn = enabled
+
+
+func get_endless_ladder_spawn() -> bool:
+	return _endless_ladder_spawn
 
 
 func reset_final_trial_state() -> void:
@@ -223,6 +234,7 @@ var _tape_next_button: Button
 const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
 const FINAL_TRIAL_DEV_UNIT := preload("res://resources/units/enemies/enemy_final_trial_dev.tres")
+const ENDLESS_LADDER_DEV_UNIT := preload("res://resources/units/enemies/enemy_endless_dev.tres")
 ## 准备横排：开战相对复制/粘贴的宽度比。
 const _PREPARE_START_STRETCH := 2.0
 const _PREPARE_SECONDARY_STRETCH := 1.0
@@ -1784,10 +1796,46 @@ func _set_phase(phase: Phase) -> void:
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
+	if _endless_ladder_spawn:
+		return _build_endless_ladder_enemy_spawns(_floor_index)
 	var budget_cfg := _get_spawn_budget_config()
 	if budget_cfg != null and budget_cfg.enabled:
 		return _roll_enemy_spawns_budget(rng, budget_cfg)
 	return _roll_enemy_spawns_legacy(rng)
+
+
+func _build_endless_ladder_enemy_spawns(floor_index: int) -> Array:
+	var spawns: Array = []
+	if _enemy_slots == null or ENDLESS_LADDER_DEV_UNIT == null:
+		return spawns
+	var count := EndlessLadderBalance.enemy_count_for_floor(floor_index)
+	var stat := EndlessLadderBalance.stat_for_floor(floor_index)
+	var seat_fill := SeatLayout.iter_seats_center_out(
+		_enemy_slots.seat_rows, _enemy_slots.seat_cols
+	)
+	var placed := 0
+	for seat_i in seat_fill:
+		if placed >= count:
+			break
+		if seat_i < 0 or seat_i >= _enemy_slots.slot_count:
+			continue
+		var cell := _enemy_slots.get_cell(seat_i)
+		var unit := UnitInstance.from_unit_data(
+			ENDLESS_LADDER_DEV_UNIT, cell, UnitInstance.Team.ENEMY
+		)
+		if unit == null or unit.stats == null:
+			continue
+		unit.stats.attack = stat
+		unit.stats.max_hp = stat
+		unit.current_hp = stat
+		unit.level = 1
+		spawns.append({
+			"unit": unit,
+			"position": _enemy_spawn_visual_position(unit, cell),
+			"seat_index": seat_i,
+		})
+		placed += 1
+	return spawns
 
 
 func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
