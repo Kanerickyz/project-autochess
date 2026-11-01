@@ -29,16 +29,17 @@ func reset_progress() -> void:
 	map_state = MapState.new()
 
 
-func get_commander_hp() -> int:
-	return clampi(commander_hp, 0, COMMANDER_MAX_HP)
+func get_commander_hp(max_hp: int = COMMANDER_MAX_HP) -> int:
+	return clampi(commander_hp, 0, maxi(0, max_hp))
 
 
-func set_commander_hp(hp: int) -> void:
-	commander_hp = clampi(hp, 0, COMMANDER_MAX_HP)
+## max_hp：当前有效上限（含队伍强化）；缺省为开局底值。
+func set_commander_hp(hp: int, max_hp: int = COMMANDER_MAX_HP) -> void:
+	commander_hp = clampi(hp, 0, maxi(0, max_hp))
 
 
-func is_commander_alive() -> bool:
-	return get_commander_hp() > 0
+func is_commander_alive(max_hp: int = COMMANDER_MAX_HP) -> bool:
+	return get_commander_hp(max_hp) > 0
 
 
 func mark_run_started() -> void:

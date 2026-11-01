@@ -10,6 +10,7 @@ signal triple_merged(product: DeckEntry, consumed_seats: Array)
 const SEAT_CAP_HARD_MAX := 6
 ## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
 const BENCH_CAPACITY := 5
+const COMMANDER_UNIT_DATA := preload("res://resources/units/realtime/commander.tres")
 
 var _config: DeckConfig
 var _level_config: LevelConfig
@@ -22,10 +23,16 @@ var _seat_cap_override: int = -1
 ## 三合一装备冲突等随机；可注入以便测试。
 var _rng: RandomNumberGenerator
 var _run_stat_ledger: RunStatLedger
+## 指挥官当前生命（跨遭遇）；强化最大生命时同步抬当前血。
+var _run_state: RunState
 
 
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
 	_run_stat_ledger = ledger
+
+
+func set_run_state(state: RunState) -> void:
+	_run_state = state
 
 
 func notify_max_hp_gained(delta: int) -> void:
@@ -38,6 +45,9 @@ func add_bonus_max_hp(entry: DeckEntry, delta: int) -> void:
 		return
 	entry.bonus_max_hp += delta
 	notify_max_hp_gained(delta)
+	if entry.is_commander() and _run_state != null:
+		var new_max := DeckUpgradeService.get_display_max_hp(entry)
+		_run_state.set_commander_hp(_run_state.commander_hp + delta, new_max)
 
 
 func configure(config: DeckConfig) -> void:
@@ -84,6 +94,51 @@ func reset_from_config() -> void:
 		add_entry(_config.starting_unit)
 
 
+## 保证队伍中有且仅有一名指挥官：默认后排中座；不占上场席位上限。
+func ensure_commander() -> DeckEntry:
+	var existing := get_commander_entry()
+	if existing != null:
+		if existing.seat_index < 0:
+			_seat_commander(existing)
+			deck_changed.emit()
+		return existing
+	if COMMANDER_UNIT_DATA == null:
+		return null
+	var entry := _create_entry(COMMANDER_UNIT_DATA)
+	_entries.append(entry)
+	_seat_commander(entry)
+	deck_changed.emit()
+	return entry
+
+
+func get_commander_entry() -> DeckEntry:
+	for entry in _entries:
+		if entry != null and entry.is_commander():
+			return entry
+	return null
+
+
+func _seat_commander(entry: DeckEntry) -> void:
+	if entry == null:
+		return
+	var preferred := SeatLayout.back_center_seat_index(get_seat_cols(), get_slot_count())
+	if preferred >= 0 and preferred < get_slot_count() and is_seat_free(preferred):
+		_set_seat(entry, preferred, true)
+		return
+	var empty := find_first_empty_seat()
+	if empty >= 0:
+		_set_seat(entry, empty, true)
+		return
+	## 网格已满：挤占后排中（原占座者退备战），保证指挥官可见可换座。
+	if preferred >= 0 and preferred < get_slot_count():
+		var occupant := get_entry_at_seat(preferred)
+		if occupant != null and occupant.entry_id != entry.entry_id:
+			occupant.seat_index = -1
+			occupant.seat_assign_seq = 0
+			_claim_first_empty_bench_slot(occupant)
+		_set_seat(entry, preferred, true)
+
+
 func get_entries() -> Array[DeckEntry]:
 	return _entries.duplicate()
 
@@ -107,26 +162,35 @@ func size() -> int:
 	return _entries.size()
 
 
-## 已入座人数（seat_index ≥ 0）；≤ 上场席位上限。
-func get_seated_count() -> int:
+## 队伍养成人数（不含指挥官）；开局招募「非空队伍」门闸等用。
+func get_roster_unit_count() -> int:
 	var n := 0
 	for entry in _entries:
-		if entry != null and entry.seat_index >= 0:
+		if entry != null and not entry.is_commander():
 			n += 1
 	return n
 
 
-## 备战区人数（seat_index < 0）；≤ BENCH_CAPACITY。
+## 已入座人数（seat_index ≥ 0，不含指挥官）；≤ 上场席位上限。
+func get_seated_count() -> int:
+	var n := 0
+	for entry in _entries:
+		if entry != null and entry.seat_index >= 0 and not entry.is_commander():
+			n += 1
+	return n
+
+
+## 备战区人数（seat_index < 0，不含指挥官）；≤ BENCH_CAPACITY。
 func get_bench_count() -> int:
 	return get_bench_entries().size()
 
 
-## 未入座成员（备战），按持久 bench_slot_index 排序。
+## 未入座成员（备战），按持久 bench_slot_index 排序。指挥官不可入备战。
 func get_bench_entries() -> Array[DeckEntry]:
 	_ensure_bench_slot_layout()
 	var out: Array[DeckEntry] = []
 	for entry in _entries:
-		if entry != null and entry.seat_index < 0:
+		if entry != null and entry.seat_index < 0 and not entry.is_commander():
 			out.append(entry)
 	out.sort_custom(func(a: DeckEntry, b: DeckEntry) -> bool:
 		var sa := a.bench_slot_index if a.bench_slot_index >= 0 else BENCH_CAPACITY
@@ -269,11 +333,13 @@ func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dic
 func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
 	if unit_data == null or level < 1 or level >= 3:
 		return false
+	if unit_data.id == "commander":
+		return false
 	var count := 0
 	for entry in _entries:
 		if entry == null or entry.unit == null:
 			continue
-		if entry.is_fused_enchant() or FusedEnchantIds.is_fused_unit_id(unit_data.id):
+		if entry.is_fused_enchant() or entry.is_commander() or FusedEnchantIds.is_fused_unit_id(unit_data.id):
 			continue
 		if entry.get_unit_id() == unit_data.id and entry.level == level:
 			count += 1
@@ -286,7 +352,7 @@ func get_bench_triple_merge_hint_entry_ids() -> PackedInt32Array:
 	for entry in _entries:
 		if entry == null or entry.unit == null:
 			continue
-		if entry.is_fused_enchant():
+		if entry.is_fused_enchant() or entry.is_commander():
 			continue
 		if entry.level >= 3:
 			continue
@@ -339,6 +405,9 @@ func add_entry(
 ) -> DeckEntry:
 	if unit_data == null:
 		return null
+	## 指挥官仅由 ensure_commander 注入，不可经商店/招募再招。
+	if unit_data.id == "commander":
+		return ensure_commander()
 	## 拥有已满但买入可立刻三合一时，允许短暂超出总拥有上限。
 	if not can_add() and not would_complete_triple_on_add(unit_data, 1):
 		return null
@@ -362,6 +431,8 @@ func replace_entry(
 	if index < 0:
 		return null
 	var old := _entries[index]
+	if old != null and old.is_commander():
+		return null
 	var inherit_seat := old.seat_index if old != null else -1
 	var entry := _create_entry(unit_data)
 	add_bonus_max_hp(entry, shop_bonus_max_hp)
@@ -398,6 +469,9 @@ func attach_buff(entry_id: int, buff: BuffCardData) -> bool:
 func remove_entry(entry_id: int) -> bool:
 	var index := _find_index(entry_id)
 	if index < 0:
+		return false
+	var doomed := _entries[index]
+	if doomed != null and doomed.is_commander():
 		return false
 	## 出售 / 移除：腾座（条目离开即可）。
 	_entries.remove_at(index)
@@ -493,6 +567,8 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 func try_place_on_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
+		return false
+	if entry.is_commander():
 		return false
 	_ensure_bench_slot_layout()
 	if target_bench_slot < 0 or target_bench_slot >= BENCH_CAPACITY:
@@ -679,7 +755,7 @@ func _find_mergeable_triple() -> Array[DeckEntry]:
 	for entry in _entries:
 		if entry == null or entry.unit == null:
 			continue
-		if entry.is_fused_enchant():
+		if entry.is_fused_enchant() or entry.is_commander():
 			continue
 		if entry.level >= 3:
 			continue

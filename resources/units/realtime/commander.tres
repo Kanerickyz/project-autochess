@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Texture2D" uid="uid://bg3btpfjsxd01" path="res://assets/sprites/placeholders/character_dev.png" id="3_icon"]
+[ext_resource type="Texture2D" uid="uid://dntj2cy6pt4ef" path="res://assets/sprites/paper_cutout/units/unit_giant_knight_blue.png" id="3_icon"]
 
 [sub_resource type="Resource" id="UnitStats_commander"]
 script = ExtResource("2_stats")
@@ -15,8 +15,8 @@ attack_windup = 0.35
 attack_reach = 2.0
 sight_range = 5.5
 body_radius = 0.7
-visual_half_width = 0.9
-visual_half_height = 1.15
+visual_half_width = 1.55
+visual_half_height = 1.65
 mass = 2.0
 projectile_speed = 0.0
 splash_radius = 0.0

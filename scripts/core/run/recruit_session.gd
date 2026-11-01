@@ -260,11 +260,14 @@ func try_recruit(
 		result["reason"] = "no_gold"
 		return result
 
-	## 拖到已占座：随时可替换（旧人不退金；旧人按星级退回空白模板份数）。
+	## 拖到已占座：随时可替换（旧人不退金；旧人按星级退回空白模板份数）。指挥官不可被替换。
 	if replace_entry_id >= 0:
 		var old_entry := deck.get_entry(replace_entry_id)
 		if old_entry == null:
 			result["reason"] = "bad_replace"
+			return result
+		if old_entry.is_commander():
+			result["reason"] = "commander_unsellable"
 			return result
 		var old_unit_id := old_entry.get_unit_id()
 		var old_star := old_entry.get_star_display_level()
@@ -360,6 +363,7 @@ func try_refresh() -> bool:
 
 
 ## 出售上区队伍成员：正常退金并腾位；按星级退回空白模板份数；变动计入快照，可 reset。
+## 指挥官不可出售。
 func try_sell(entry_id: int) -> Dictionary:
 	var result := {"ok": false, "reason": "inactive", "gold": 0, "entry_id": entry_id}
 	if not is_active or deck == null or economy == null:
@@ -367,6 +371,9 @@ func try_sell(entry_id: int) -> Dictionary:
 	var entry := deck.get_entry(entry_id)
 	if entry == null:
 		result["reason"] = "bad_entry"
+		return result
+	if entry.is_commander():
+		result["reason"] = "commander_unsellable"
 		return result
 	var unit_id := entry.get_unit_id()
 	var star := entry.get_star_display_level()
@@ -394,7 +401,8 @@ func can_finish() -> bool:
 	if not is_active:
 		return false
 	if require_nonempty_roster:
-		return deck != null and deck.size() >= 1
+		## 指挥官常驻不算「已招到人」；开局招募仍须至少一名队伍成员。
+		return deck != null and deck.get_roster_unit_count() >= 1
 	return true
 
 

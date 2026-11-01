@@ -1815,10 +1815,13 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 		if unit == null:
 			continue
+		if unit.is_commander:
+			_apply_commander_hp_to_unit(unit)
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
 
+	## 座位上若无指挥官条目（异常），回退生成；正常路径已从座位带强化出场。
 	_spawn_commander_into_sim()
 
 	for spawn in _enemy_spawns:
@@ -1837,31 +1840,50 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		_sim.add_unit(unit, place)
 
 
-## 开战锁阵：在队伍成员之后生成指挥官（不占 deploy_cap / 座位占用计数）。
+## 开战锁阵回退：座位未带出指挥官时再生成（不占 deploy_cap）。
 func _spawn_commander_into_sim() -> void:
-	if _sim == null or _run_state == null or COMMANDER_UNIT_DATA == null:
+	if _sim == null or _run_state == null:
 		return
-	if _run_state.get_commander_hp() <= 0:
+	if _sim.find_commander_rt() != null:
+		return
+	if _deck_state != null:
+		_deck_state.ensure_commander()
+	var entry := _deck_state.get_commander_entry() if _deck_state != null else null
+	var max_hp_hint := RunState.COMMANDER_MAX_HP
+	if entry != null:
+		max_hp_hint = DeckUpgradeService.get_display_max_hp(entry)
+	if _run_state.get_commander_hp(max_hp_hint) <= 0:
 		## 已阵亡不应再进遭遇；防守：仍不生成，交由开局检查。
 		return
-	var preferred := _commander_preferred_cell()
-	var unit := UnitInstance.from_unit_data(
-		COMMANDER_UNIT_DATA, preferred, UnitInstance.Team.PLAYER
-	)
+	var preferred := _commander_preferred_cell(entry)
+	var unit: UnitInstance = null
+	if entry != null:
+		unit = UnitInstance.from_deck_entry(entry, preferred, UnitInstance.Team.PLAYER)
+	elif COMMANDER_UNIT_DATA != null:
+		unit = UnitInstance.from_unit_data(
+			COMMANDER_UNIT_DATA, preferred, UnitInstance.Team.PLAYER
+		)
 	if unit == null:
 		return
 	unit.is_commander = true
-	unit.current_hp = clampi(
-		_run_state.get_commander_hp(),
-		1,
-		maxi(1, unit.get_effective_max_hp()),
-	)
+	_apply_commander_hp_to_unit(unit)
 	if unit.stats != null:
 		unit.stats.deploy_time = 0.0
 	_sim.add_unit(unit, Vector2(preferred) + Vector2(0.5, 0.5))
 
 
-func _commander_preferred_cell() -> Vector2i:
+func _apply_commander_hp_to_unit(unit: UnitInstance) -> void:
+	if unit == null or _run_state == null:
+		return
+	var max_hp := maxi(1, unit.get_effective_max_hp())
+	unit.current_hp = clampi(_run_state.get_commander_hp(max_hp), 1, max_hp)
+
+
+func _commander_preferred_cell(entry: DeckEntry = null) -> Vector2i:
+	if entry != null and entry.seat_index >= 0 and _slots != null:
+		var cell := _slots.get_cell(entry.seat_index)
+		if cell != Vector2i(-1, -1):
+			return cell
 	if _slots != null and _slots.slot_count > 0:
 		var seat_i := SeatLayout.back_center_seat_index(_slots.seat_cols, _slots.slot_count)
 		var cell := _slots.get_cell(seat_i)
@@ -1882,7 +1904,8 @@ func _persist_commander_hp_from_sim() -> void:
 	if cmd == null or cmd.unit == null:
 		_run_state.set_commander_hp(0)
 		return
-	_run_state.set_commander_hp(cmd.unit.current_hp)
+	var max_hp := maxi(1, cmd.unit.get_effective_max_hp())
+	_run_state.set_commander_hp(cmd.unit.current_hp, max_hp)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -2158,26 +2181,41 @@ func _disconnect_economy() -> void:
 
 
 ## 按 DeckState 持久占位填充准备座位；备战（seat_index=-1）不上座、不自动填空。
+## 指挥官始终入座展示，不计入 deploy_cap。
 func _load_persistent_seats_into_prepare() -> void:
 	var rows := _slots.seat_rows if _slots.seat_rows > 0 else DeckConfig.DEFAULT_SEAT_ROWS
 	var cols := _slots.seat_cols if _slots.seat_cols > 0 else DeckConfig.DEFAULT_SEAT_COLS
 	_slots.configure_grid(rows, cols, _board_size, false)
 	if _deck_state == null:
 		return
+	_deck_state.ensure_commander()
 	## 仅修复「座位下标合法但被他人占用」的冲突；不把备战自动塞进空座。
+	## 指挥官冲突时优先保住指挥官座（对方退备战）。
 	for entry in _deck_state.get_entries():
 		if entry == null or entry.seat_index < 0:
 			continue
 		if entry.seat_index >= _slots.slot_count:
-			## 越界占位视为备战，避免开战幽灵座。
-			entry.seat_index = -1
-			entry.seat_assign_seq = 0
+			if entry.is_commander():
+				## 指挥官不可备战：重寻合法座。
+				entry.seat_index = -1
+				entry.seat_assign_seq = 0
+				_deck_state.ensure_commander()
+			else:
+				entry.seat_index = -1
+				entry.seat_assign_seq = 0
 			continue
 		var at := _deck_state.get_entry_at_seat(entry.seat_index)
 		if at != null and at.entry_id != entry.entry_id:
-			## 冲突：后来者退回备战（不抢空座）。
-			entry.seat_index = -1
-			entry.seat_assign_seq = 0
+			if entry.is_commander():
+				at.seat_index = -1
+				at.seat_assign_seq = 0
+			elif at.is_commander():
+				entry.seat_index = -1
+				entry.seat_assign_seq = 0
+			else:
+				## 冲突：后来者退回备战（不抢空座）。
+				entry.seat_index = -1
+				entry.seat_assign_seq = 0
 	var placed := 0
 	## 按落座时间序放入，便于开战生成序与板子 seq 一致。
 	var ordered: Array[DeckEntry] = []
@@ -2189,7 +2227,18 @@ func _load_persistent_seats_into_prepare() -> void:
 			return a.seat_index < b.seat_index
 		return a.seat_assign_seq < b.seat_assign_seq
 	)
+	## 先放指挥官（不占 cap），再放其余受 cap 约束的成员。
 	for entry in ordered:
+		if entry == null or not entry.is_commander():
+			continue
+		if entry.seat_index < 0 or entry.seat_index >= _slots.slot_count:
+			continue
+		if not _slots.is_empty(entry.seat_index):
+			continue
+		_slots.try_assign_with_seq(entry.seat_index, entry, entry.seat_assign_seq)
+	for entry in ordered:
+		if entry == null or entry.is_commander():
+			continue
 		if placed >= _deploy_cap:
 			break
 		if entry.seat_index < 0 or entry.seat_index >= _slots.slot_count:
@@ -3180,6 +3229,7 @@ func _rebuild_recruit_team_slots() -> void:
 	if _recruit_session == null or _recruit_session.deck == null:
 		return
 	var deck := _recruit_session.deck
+	deck.ensure_commander()
 	## 只放已入座成员；备战不自动填上区空座。
 	for entry in deck.get_entries():
 		if entry == null or entry.seat_index < 0:
@@ -3441,7 +3491,11 @@ func _on_recruit_sell(entry_id: int) -> void:
 			_recruit_hint.text = "已出售，获得 %d 金" % int(result.get("gold", 0))
 		return
 	if _recruit_hint != null:
-		_recruit_hint.text = "无法出售（%s）" % String(result.get("reason", "unknown"))
+		var reason := String(result.get("reason", "unknown"))
+		if reason == "commander_unsellable":
+			_recruit_hint.text = "指挥官不可出售"
+		else:
+			_recruit_hint.text = "无法出售（%s）" % reason
 
 
 func _on_recruit_candidate_pressed(candidate_index: int) -> void:

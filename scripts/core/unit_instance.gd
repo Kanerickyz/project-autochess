@@ -99,6 +99,7 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	sync_from_deck_entry(unit, entry)
 	unit.current_hp = unit.get_effective_max_hp()
+	unit.is_commander = entry.is_commander()
 	return unit
 
 

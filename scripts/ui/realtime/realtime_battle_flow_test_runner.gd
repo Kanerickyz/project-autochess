@@ -213,13 +213,17 @@ func _test_battle_controller_rules() -> void:
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: second encounter PREPARE")
 	_expect(battle.get_slot_board().occupied_count() >= 1, "controller: second prepare auto-seated")
-	_expect(deck.get_bench_count() == deck.size() - deck.get_seated_count(), "controller: bench = unseated members")
+	var cmd_n := 1 if deck.get_commander_entry() != null else 0
+	_expect(
+		deck.get_bench_count() == deck.size() - deck.get_seated_count() - cmd_n,
+		"controller: bench = unseated members (excl. commander)"
+	)
 	## clear_seat 后的成员应仍在备战，不被准备阶段自动填座。
 	var bench_before := deck.get_bench_count()
 	_expect(bench_before >= 1, "controller: some members remain on bench after earlier clear")
 	_expect(
-		battle.get_slot_board().occupied_count() == deck.get_seated_count(),
-		"controller: prepare occupied matches seated only (no auto-fill from bench)"
+		battle.get_slot_board().occupied_count() == deck.get_seated_count() + cmd_n,
+		"controller: prepare occupied = seated + commander (no auto-fill from bench)"
 	)
 	## Arena 备战：半场下方虚拟行 + hit-test；Dock 行恒隐藏。
 	var arena_bench := battle.get_arena()

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://carmorerred001"
-path="res://.godot/imported/unit_armorer_red.png-armorerred.ctex"
+uid="uid://c84xnax7kvxvo"
+path="res://.godot/imported/unit_armorer_red.png-c61be49844e43298e2c7226a688c4729.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/sprites/paper_cutout/units/unit_armorer_red.png"
-dest_files=["res://.godot/imported/unit_armorer_red.png-armorerred.ctex"]
+dest_files=["res://.godot/imported/unit_armorer_red.png-c61be49844e43298e2c7226a688c4729.ctex"]
 
 [params]
 
