@@ -2318,6 +2318,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"name": entry.get_display_name(),
 		"side_player": true,
 		"tier": entry.unit.tier if entry.unit != null else 0,
+		"theme_label": _theme_label_for_unit_data(entry.unit),
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
 		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
 		"armor": entry.get_armor_block(),
@@ -2352,6 +2353,7 @@ func _info_from_unit_data(
 		"name": UnitInfoText.get_display_name_from_unit_data(data) + star_tag,
 		"side_player": true,
 		"tier": data.tier,
+		"theme_label": _theme_label_for_unit_data(data),
 		"attack": atk * stat_mult,
 		"hp": hp * stat_mult,
 		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level, true),
@@ -2375,6 +2377,7 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"name": UnitInfoText.get_display_name(unit),
 		"side_player": is_player,
 		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
+		"theme_label": _theme_label_for_unit_data(unit.unit_data),
 		"attack": attack,
 		"hp": hp,
 		"armor": unit.get_armor_block(),
@@ -2384,6 +2387,14 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
+
+
+## 介绍卡侧栏主题类名；NONE / 无数据 → 空串（省略，不写「未定」）。
+func _theme_label_for_unit_data(data: UnitData) -> String:
+	if data == null or data.theme_bond == UnitData.ThemeBond.NONE:
+		return ""
+	var label := UnitData.theme_bond_label(data.theme_bond)
+	return "" if label == "未定" else label
 
 
 ## 招募半场道具：与地图商店同用 RealtimeUnitInfoCard（is_item）。
