@@ -23,4 +23,5 @@ consumable_pool = Array[ExtResource("2_cons")]([ExtResource("c_hp"), ExtResource
 equipment_pool = Array[ExtResource("3_eq")]([ExtResource("e_t1"), ExtResource("e_t2"), ExtResource("e_t3")])
 consumable_slot_count = 3
 equipment_slot_count = 3
+shelf_slot_count = 6
 refresh_cost = 2
