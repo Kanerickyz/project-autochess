@@ -1,6 +1,9 @@
 class_name RunState
 extends RefCounted
 
+## 指挥官开局 / 满血上限（与 resources/units/realtime/commander.tres 对齐）。
+const COMMANDER_MAX_HP := 100
+
 var rng_seed: int = 0
 var map_state: MapState = MapState.new()
 var run_depth: int = 0
@@ -11,6 +14,8 @@ var final_trial_floors_cleared: int = 0
 var current_node_id: int = -1
 ## 本局开始时刻（引擎 ticks msec）；用于远征统计现实用时，不受战斗倍速影响。
 var run_started_at_msec: int = 0
+## 指挥官当前生命：跨遭遇继承；开局 / 整局重置为满血。
+var commander_hp: int = COMMANDER_MAX_HP
 
 
 func reset_progress() -> void:
@@ -20,7 +25,20 @@ func reset_progress() -> void:
 	final_trial_floors_cleared = 0
 	current_node_id = -1
 	run_started_at_msec = 0
+	commander_hp = COMMANDER_MAX_HP
 	map_state = MapState.new()
+
+
+func get_commander_hp() -> int:
+	return clampi(commander_hp, 0, COMMANDER_MAX_HP)
+
+
+func set_commander_hp(hp: int) -> void:
+	commander_hp = clampi(hp, 0, COMMANDER_MAX_HP)
+
+
+func is_commander_alive() -> bool:
+	return get_commander_hp() > 0
 
 
 func mark_run_started() -> void:

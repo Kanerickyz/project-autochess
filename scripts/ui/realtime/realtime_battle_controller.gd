@@ -132,6 +132,8 @@ var _last_resolved_payload: CombatEventPayload = null
 var _preserve_half_slide_for_recruit: bool = false
 var _run_stat_ledger: RunStatLedger
 var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
+## Run 局内状态（指挥官血等）；非 Run / 测试可为空 → 不生成指挥官。
+var _run_state: RunState = null
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
@@ -241,6 +243,7 @@ const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
 const FINAL_TRIAL_DEV_UNIT := preload("res://resources/units/enemies/enemy_final_trial_dev.tres")
 const ENDLESS_LADDER_DEV_UNIT := preload("res://resources/units/enemies/enemy_endless_dev.tres")
+const COMMANDER_UNIT_DATA := preload("res://resources/units/realtime/commander.tres")
 ## 准备横排：开战相对复制/粘贴的宽度比。
 const _PREPARE_START_STRETCH := 2.0
 const _PREPARE_SECONDARY_STRETCH := 1.0
@@ -345,6 +348,11 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
 	_refresh_hud()
+
+
+## 注入 RunState：开战生成指挥官并跨遭遇继承血量。沙盒/单测可不调。
+func set_run_state(run_state: RunState) -> void:
+	_run_state = run_state
 
 
 func _connect_deck_merge() -> void:
@@ -1811,6 +1819,8 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
 
+	_spawn_commander_into_sim()
+
 	for spawn in _enemy_spawns:
 		var place: Vector2 = spawn["position"]
 		var seat_i: int = int(spawn.get("seat_index", -1))
@@ -1825,6 +1835,54 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, place)
+
+
+## 开战锁阵：在队伍成员之后生成指挥官（不占 deploy_cap / 座位占用计数）。
+func _spawn_commander_into_sim() -> void:
+	if _sim == null or _run_state == null or COMMANDER_UNIT_DATA == null:
+		return
+	if _run_state.get_commander_hp() <= 0:
+		## 已阵亡不应再进遭遇；防守：仍不生成，交由开局检查。
+		return
+	var preferred := _commander_preferred_cell()
+	var unit := UnitInstance.from_unit_data(
+		COMMANDER_UNIT_DATA, preferred, UnitInstance.Team.PLAYER
+	)
+	if unit == null:
+		return
+	unit.is_commander = true
+	unit.current_hp = clampi(
+		_run_state.get_commander_hp(),
+		1,
+		maxi(1, unit.get_effective_max_hp()),
+	)
+	if unit.stats != null:
+		unit.stats.deploy_time = 0.0
+	_sim.add_unit(unit, Vector2(preferred) + Vector2(0.5, 0.5))
+
+
+func _commander_preferred_cell() -> Vector2i:
+	if _slots != null and _slots.slot_count > 0:
+		var seat_i := SeatLayout.back_center_seat_index(_slots.seat_cols, _slots.slot_count)
+		var cell := _slots.get_cell(seat_i)
+		if cell != Vector2i(-1, -1):
+			return cell
+	## 回退：玩家半场底排中列。
+	var mid_row := BoardHalf.midline_row(_board_size.y)
+	var back_y := _board_size.y - 1
+	if back_y <= mid_row:
+		back_y = mini(_board_size.y - 1, mid_row + 1)
+	return Vector2i(_board_size.x / 2, back_y)
+
+
+func _persist_commander_hp_from_sim() -> void:
+	if _run_state == null or _sim == null:
+		return
+	var cmd := _sim.find_commander_rt()
+	if cmd == null or cmd.unit == null:
+		_run_state.set_commander_hp(0)
+		return
+	_run_state.set_commander_hp(cmd.unit.current_hp)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -4201,6 +4259,7 @@ func _truncate_skill_short(raw: String, max_chars: int = 16) -> String:
 func _on_combat_finished(won: bool) -> void:
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
+	_persist_commander_hp_from_sim()
 	_timestop_queue.clear()
 	_skill_settlement_fx_tail = false
 	_combo_reset_after_skill_tail = false
@@ -4220,6 +4279,7 @@ func _on_combat_finished(won: bool) -> void:
 		_floor_gold = _economy.grant_floor_gold(_floor_index)
 	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
+	var lose_detail := "指挥官阵亡" if (_run_state != null) else "我方全灭"
 	if _final_trial_active:
 		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
 		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
@@ -4235,14 +4295,14 @@ func _on_combat_finished(won: bool) -> void:
 	elif _combat_sandbox_mode:
 		_result_detail.text = (
 			"沙盒·用时 %s" % _format_time(_sim.elapsed_seconds)
-			if won else "沙盒·用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
+			if won else "沙盒·用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
 		)
 		if _continue_button != null:
 			_continue_button.text = "再来一局"
 	else:
 		_result_detail.text = (
 			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
-			if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
+			if won else "用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
 		)
 		if _boss_final_trial_offer:
 			_result_detail.text += "\n可继续通关，或挑战最终试炼"
