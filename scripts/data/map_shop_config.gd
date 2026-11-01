@@ -58,8 +58,9 @@ const ICON_ATK := "res://resources/map_shop/icons/big_atk_potion_icon.tres"
 const ICON_RARE := "res://resources/map_shop/icons/qunbolong_icon.tres"
 const ICON_ARMOR := "res://resources/map_shop/icons/armor_icon.tres"
 const DEFAULT_THEME_POTION_COST := 3
-const DEFAULT_THEME_POTION_ATK := 2
-const DEFAULT_THEME_POTION_HP := 2
+## 主题药水效果为翻倍，不再读 flat bonus；字段保留 0 以免摘要误导。
+const DEFAULT_THEME_POTION_ATK := 0
+const DEFAULT_THEME_POTION_HP := 0
 
 
 static func _make_consumable(
