@@ -80,9 +80,11 @@ func _is_endless() -> bool:
 func _start_new_run() -> void:
 	_run_stat_ledger.reset()
 	deck_state.set_run_stat_ledger(_run_stat_ledger)
+	deck_state.set_run_state(run_controller.run_state)
 	_pending_end_victory = false
 	_pending_end_snapshot = null
 	deck_state.reset_from_config()
+	deck_state.ensure_commander()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()

@@ -137,6 +137,7 @@ archetype_by_unit_id = {
 "bus": &"ram",
 "chick": &"slime",
 "coffer_ward": &"coffer_ward",
+"commander": &"giant_knight",
 "crossbow": &"crossbow",
 "dirge_horn": &"dirge_horn",
 "devour": &"devour",

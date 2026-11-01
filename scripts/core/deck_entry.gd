@@ -40,6 +40,11 @@ func get_display_name() -> String:
 	return "未知"
 
 
+## 场上指挥官条目：可换座 / 可强化；不占上场席位上限；不可出售、不可入备战、不参与三合一。
+func is_commander() -> bool:
+	return get_unit_id() == "commander"
+
+
 func is_fused_enchant() -> bool:
 	return FusedEnchantIds.is_fused_unit_id(get_unit_id())
 
