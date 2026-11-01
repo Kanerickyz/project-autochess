@@ -390,7 +390,7 @@ func step(dt: float) -> void:
 			break
 
 
-## 技能播报时停：打断后续固定步；队列清空后由控制器 release。
+## 观战演出门闩（出击 tween 等）：打断后续固定步；技能缩卡不再走此路径。
 func hold_for_presentation() -> void:
 	presentation_hold = true
 	_input_seconds = fixed_step_count * FIXED_DT

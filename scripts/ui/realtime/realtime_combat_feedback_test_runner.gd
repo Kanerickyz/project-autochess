@@ -480,7 +480,7 @@ func _test_basic_attack_does_not_spawn_missile() -> void:
 
 
 func _test_timestop_queue_blocks_sim() -> void:
-	## 先卡再结算：待结算批次入队后先阻塞并展示，卡拍结束才写入真值。
+	## 先卡再结算：缩卡期挡下一拍播报，但不 presentation_hold 冻场；收卡后才写入真值。
 	var battle := _make_battle(99)
 	await process_frame
 	_expect(_seat_first_hand(battle), "timestop: seat one unit")
@@ -489,11 +489,11 @@ func _test_timestop_queue_blocks_sim() -> void:
 	var arena := battle.get_arena()
 	arena.clear_fx()
 	battle._timestop_queue.clear()
+	battle._skill_settlement_fx_tail = false
 	var resolver := sim.get_effect_resolver()
 	if resolver != null:
 		resolver.clear_pending()
 	sim.release_presentation()
-	var steps_before := sim.fixed_step_count
 	var target: UnitInstance = null
 	for item in sim.get_units():
 		var rt := item as RtUnit
@@ -530,7 +530,9 @@ func _test_timestop_queue_blocks_sim() -> void:
 	_expect(target.current_hp == hp_before, "timestop: hp unchanged during card")
 	for _i in 3:
 		await process_frame
-	_expect(sim.fixed_step_count == steps_before, "timestop: sim steps frozen while queue active")
+	_expect(not sim.presentation_hold, "timestop: skill card does not hold sim")
+	_expect(battle.is_timestop_blocking(), "timestop: card still presenting")
+	_expect(target.current_hp == hp_before, "timestop: hp still unchanged during card")
 
 	## 加速耗尽卡拍+结果拍（约 1.0+0.4 / scale）
 	battle.time_scale = 8.0
@@ -543,7 +545,7 @@ func _test_timestop_queue_blocks_sim() -> void:
 	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
 	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied after card")
 	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
-	_expect(not sim.presentation_hold, "timestop: presentation hold released")
+	## 缩卡路径本身不 hold；终局可能已切 RESULT，不在此断言出击 tween 残留 hold。
 
 	battle.queue_free()
 	await process_frame

@@ -181,9 +181,11 @@ var _tape_boundary_pending: bool = false
 var _tape_completed_turns: int = 0
 var _tape_rewinding: bool = false
 var _tape_stats_disabled: bool = false
-## 时停/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
+## 技能播报/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
 const PRESENTATION_STUCK_SECONDS := 3.5
 var _presentation_block_elapsed: float = 0.0
+## 结果拍计时已结束、仍等弹入等结算 FX 播完再开下一张缩卡（不 hold sim）。
+var _skill_settlement_fx_tail: bool = false
 ## Boss 胜后可选最终试炼；进行中阵容锁定、连续波次。
 var _final_trial_active: bool = false
 var _final_trial_wave_index: int = 0
@@ -624,6 +626,9 @@ func _release_combat_skill_info_visibility() -> void:
 
 
 func is_timestop_blocking() -> bool:
+	## 含结算 FX 尾：挡住下一张缩卡；不表示全场 presentation_hold。
+	if _skill_settlement_fx_tail:
+		return true
 	return _timestop_queue != null and _timestop_queue.is_blocking()
 
 
@@ -1733,6 +1738,7 @@ func _begin_combat_from_prepare() -> void:
 	## COMBAT.md §6.5：友方入座时间序 → 敌方配置书写序 → 清手牌 → 锁操作 → 游戏开始。
 	_lock_phase_active = true
 	_timestop_queue.clear()
+	_skill_settlement_fx_tail = false
 	_reset_combo_display()
 	_reset_tape_state()
 
@@ -2066,6 +2072,7 @@ func _teardown_sim() -> void:
 	_lock_phase_active = false
 	if _timestop_queue != null:
 		_timestop_queue.clear()
+	_skill_settlement_fx_tail = false
 	if _sim != null:
 		_sim.dispose()
 		_sim = null
@@ -2523,6 +2530,7 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	var target := maxi(0, target_turns)
 	_tape_rewinding = true
 	_timestop_queue.clear()
+	_skill_settlement_fx_tail = false
 	_tape_stats_disabled = true
 	_stat_collector.unbind_bus()
 	_spawn_combat_sim_from_lock(true)
@@ -3709,11 +3717,9 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 	if _lock_phase_active or _phase != Phase.COMBAT:
 		_present_effect_feedback(payload, true)
 		return
-	## 非门控路径（兼容）：已结算则只播结果拍。
-	if _timestop_queue.is_blocking():
+	## 非门控路径（兼容）：已结算则只播结果拍（不 hold sim）。
+	if _timestop_queue.is_blocking() or _skill_settlement_fx_tail:
 		return
-	if _sim != null:
-		_sim.hold_for_presentation()
 	if _timestop_queue.enqueue_resolved(payload, time_scale):
 		_present_effect_result(payload, true)
 
@@ -3728,7 +3734,12 @@ func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
 		_arena.sync_combat_motion_now()
 
 
-## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
+## 弹入等结算 FX 是否仍在飞（用于挡住下一张缩卡，不冻 sim）。
+func _skill_settlement_fx_busy() -> bool:
+	return _arena != null and _arena.get_stat_missile_fx_count() > 0
+
+
+## 战斗推进：有待结算技能则插入展示步；技能缩卡/结果拍不 hold sim（COMBAT_FEEDBACK §5.2）。
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
 		return
@@ -3741,37 +3752,50 @@ func _tick_combat_presentation(delta: float) -> void:
 		and not _sim.has_pending_effects()
 	):
 		_sim.try_seed_action_queue()
-	## 用户已点「下一动」：优先拆掉时停/出击门闩，否则 step_once 永远进不了步进循环（假死）。
+	## 用户已点「下一动」：优先拆掉播报/出击门闩，否则 step_once 永远进不了步进循环（假死）。
 	if _tape_step_once and (
 		(_timestop_queue != null and _timestop_queue.is_blocking())
+		or _skill_settlement_fx_tail
 		or _sim.has_pending_effects()
 		or (_arena != null and _arena.has_active_combat_action_tween() and not _sim.is_actor_turn_active())
 	):
 		_unstick_combat_presentation()
-	if _timestop_queue.is_blocking():
-		_sim.hold_for_presentation()
-		## 跨帧仍停在 AWAITING_RESOLVE：上一拍 card_done 处理中断，强制收拍以免假死。
-		if _timestop_queue.is_awaiting_resolve():
-			_resolve_skill_card_safe()
-			_presentation_block_elapsed = 0.0
-			return
+	## 结果拍计时已完、仍等弹入尾：不 hold，不清下一张卡。
+	if _skill_settlement_fx_tail:
 		_presentation_block_elapsed += delta
 		if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
 			_unstick_combat_presentation()
 			_presentation_block_elapsed = 0.0
-			return
-		var done := _timestop_queue.tick(delta, time_scale)
-		if done == &"card_done":
-			_resolve_skill_card_safe()
-		elif done == &"result_done":
+		elif not _skill_settlement_fx_busy():
+			_skill_settlement_fx_tail = false
 			_on_skill_result_done()
 			_presentation_block_elapsed = 0.0
-		return
-	if _sim.has_pending_effects():
-		_sim.hold_for_presentation()
+	elif _timestop_queue.is_blocking():
+		## 跨帧仍停在 AWAITING_RESOLVE：上一拍 card_done 处理中断，强制收拍以免假死。
+		if _timestop_queue.is_awaiting_resolve():
+			_resolve_skill_card_safe()
+			_presentation_block_elapsed = 0.0
+		else:
+			_presentation_block_elapsed += delta
+			if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
+				_unstick_combat_presentation()
+				_presentation_block_elapsed = 0.0
+			else:
+				var done := _timestop_queue.tick(delta, time_scale)
+				if done == &"card_done":
+					_resolve_skill_card_safe()
+				elif done == &"result_done":
+					if _skill_settlement_fx_busy():
+						_skill_settlement_fx_tail = true
+						_presentation_block_elapsed = 0.0
+					else:
+						_on_skill_result_done()
+						_presentation_block_elapsed = 0.0
+		## 不 return：缩卡/结果拍期间仍允许 sim.step（卡叠画面上）。
+	elif _sim.has_pending_effects():
 		_presentation_block_elapsed = 0.0
 		_start_next_skill_card()
-		return
+		## 不 return：开卡后同帧仍可步进。
 	## 一动已交权且出击/回位仍在播：保持 hold，勿在 windup（turn 仍 active）时因 tween 卡住。
 	var action_busy := _arena != null and _arena.has_active_combat_action_tween()
 	if action_busy and not _sim.is_actor_turn_active():
@@ -3782,7 +3806,12 @@ func _tick_combat_presentation(delta: float) -> void:
 			_presentation_block_elapsed = 0.0
 			_sim.release_presentation()
 		return
-	_presentation_block_elapsed = 0.0
+	if (
+		not _timestop_queue.is_blocking()
+		and not _skill_settlement_fx_tail
+		and not _sim.has_pending_effects()
+	):
+		_presentation_block_elapsed = 0.0
 	## 一动逻辑已结束且演出排空：兑现暂停 / 下一动停住。
 	if _tape_boundary_pending:
 		_tape_boundary_pending = false
@@ -3795,13 +3824,15 @@ func _tick_combat_presentation(delta: float) -> void:
 	if _tape_paused and not _tape_step_once:
 		_sim.release_presentation()
 		return
+	## 技能缩卡/结果拍不 hold；出击 tween 已在上方 return。此处释放以免粘住。
 	_sim.release_presentation()
 	## 下一动 / 请求暂停：按固定步推进，避免倍速一帧连跳多动。
 	if _tape_step_once or _tape_pause_requested:
 		var guard := 0
 		while guard < 360 and not _sim.is_finished():
+			if _skill_settlement_fx_tail:
+				return
 			if _sim.has_pending_effects():
-				_sim.hold_for_presentation()
 				_start_next_skill_card()
 				return
 			if _tape_boundary_pending:
@@ -3821,7 +3852,6 @@ func _tick_combat_presentation(delta: float) -> void:
 				return
 		## 本动尾巴技能仍须演完再停。
 		if _sim.has_pending_effects():
-			_sim.hold_for_presentation()
 			_start_next_skill_card()
 			return
 		if _tape_boundary_pending:
@@ -3872,6 +3902,7 @@ func _on_skill_card_done() -> void:
 
 
 func _on_skill_result_done() -> void:
+	_skill_settlement_fx_tail = false
 	## 「下一动」推进中：勿再开下一张介绍卡，改为静默排空待结算，否则会再次挡步进。
 	if _tape_step_once and _sim != null and _sim.has_pending_effects():
 		_drain_pending_effects_silent()
@@ -3901,8 +3932,9 @@ func _on_skill_result_done() -> void:
 		_sim.release_presentation()
 
 
-## 「下一动」/看门狗：拆掉时停、待结算队列与出击 tween，恢复可步进状态。
+## 「下一动」/看门狗：拆掉技能播报、待结算队列与出击 tween，恢复可步进状态。
 func _unstick_combat_presentation() -> void:
+	_skill_settlement_fx_tail = false
 	if _arena != null:
 		if _arena.has_active_combat_action_tween():
 			_arena.finish_combat_action_tweens()
@@ -4164,8 +4196,11 @@ func _on_combat_finished(won: bool) -> void:
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
 	_timestop_queue.clear()
+	_skill_settlement_fx_tail = false
 	_combo_reset_after_skill_tail = false
 	_release_combat_skill_info_visibility()
+	if _sim != null:
+		_sim.release_presentation()
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	_floor_gold = 0
