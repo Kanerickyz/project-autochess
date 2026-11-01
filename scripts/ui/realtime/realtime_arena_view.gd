@@ -94,6 +94,10 @@ const CALLOUT_SECONDS := 0.45
 const STAT_MISSILE_SEC := 0.28
 const STAT_MISSILE_PAPER_SCALE := 0.22
 const STAT_MISSILE_ARC_TILES := 0.28
+## 脚下攻/血纸片标签跳变（COMBAT_FEEDBACK §5.4）：整枚放大再缩回。
+const STAT_BADGE_PULSE_PEAK := 1.32
+const STAT_BADGE_PULSE_UP_SEC := 0.12
+const STAT_BADGE_PULSE_DOWN_SEC := 0.18
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
 const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
@@ -281,6 +285,10 @@ var _party_speech_bubble: PartySpeechBubble
 var _gold_coin_layer: Control
 ## 技能弹入物层（TextureRect + Tween；clear_fx 时清空）。
 var _stat_missile_layer: Control
+## 脚下攻/血标签 pulse：unit_key → {atk: float, hp: float}；战斗用 u{instance_id}，胜后/药水用 e{entry_id}。
+var _stat_badge_scales: Dictionary = {}
+## unit_key → {atk: Tween, hp: Tween}
+var _stat_badge_pulse_tweens: Dictionary = {}
 ## 地图商店货架拖拽：map_shop_offers 数组下标。
 var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
@@ -959,6 +967,75 @@ func _stat_missile_modulate(kind: StringName) -> Color:
 func play_unit_light_hit_at(tile_pos: Vector2, amount: int = 1) -> void:
 	if _motion == null or sim == null:
 		return
+	var best := _find_alive_rt_near(tile_pos)
+	if best != null:
+		_motion.speed_scale = presentation_time_scale
+		_motion.play_light_hit(best, amount)
+
+
+## 脚下攻/血纸片标签 scale 跳变。which: &"atk" | &"hp" | &"both"。
+func pulse_stat_badges(unit_key: String, which: StringName) -> void:
+	if unit_key.is_empty():
+		return
+	var pulse_atk := which == &"atk" or which == &"both"
+	var pulse_hp := which == &"hp" or which == &"both"
+	if not pulse_atk and not pulse_hp:
+		return
+	if not _stat_badge_scales.has(unit_key):
+		_stat_badge_scales[unit_key] = {"atk": 1.0, "hp": 1.0}
+	if pulse_atk:
+		_start_stat_badge_pulse(unit_key, &"atk")
+	if pulse_hp:
+		_start_stat_badge_pulse(unit_key, &"hp")
+
+
+## 按最近存活单位解析 key（与 play_unit_light_hit_at 同口径），再 pulse。
+func pulse_stat_badges_at(tile_pos: Vector2, which: StringName) -> void:
+	var best := _find_alive_rt_near(tile_pos)
+	if best == null or best.unit == null:
+		return
+	pulse_stat_badges("u%d" % best.unit.instance_id, which)
+
+
+func get_stat_badge_pulse_scale(unit_key: String, which: StringName) -> float:
+	if unit_key.is_empty() or not _stat_badge_scales.has(unit_key):
+		return 1.0
+	var scales: Dictionary = _stat_badge_scales[unit_key]
+	match which:
+		&"atk":
+			return float(scales.get("atk", 1.0))
+		&"hp":
+			return float(scales.get("hp", 1.0))
+		_:
+			return 1.0
+
+
+func has_active_stat_badge_pulse(unit_key: String = "") -> bool:
+	if unit_key.is_empty():
+		for key in _stat_badge_scales.keys():
+			if has_active_stat_badge_pulse(String(key)):
+				return true
+		return false
+	if not _stat_badge_scales.has(unit_key):
+		return false
+	var scales: Dictionary = _stat_badge_scales[unit_key]
+	if absf(float(scales.get("atk", 1.0)) - 1.0) > 0.001:
+		return true
+	if absf(float(scales.get("hp", 1.0)) - 1.0) > 0.001:
+		return true
+	if not _stat_badge_pulse_tweens.has(unit_key):
+		return false
+	var tweens: Dictionary = _stat_badge_pulse_tweens[unit_key]
+	for tw_v in tweens.values():
+		var tw := tw_v as Tween
+		if tw != null and is_instance_valid(tw) and tw.is_running():
+			return true
+	return false
+
+
+func _find_alive_rt_near(tile_pos: Vector2) -> RtUnit:
+	if sim == null:
+		return null
 	var best: RtUnit = null
 	var best_d2 := 0.55 * 0.55
 	for item in sim.get_units():
@@ -969,9 +1046,88 @@ func play_unit_light_hit_at(tile_pos: Vector2, amount: int = 1) -> void:
 		if d2 <= best_d2:
 			best_d2 = d2
 			best = rt
-	if best != null:
-		_motion.speed_scale = presentation_time_scale
-		_motion.play_light_hit(best, amount)
+	return best
+
+
+func _start_stat_badge_pulse(unit_key: String, which: StringName) -> void:
+	_kill_stat_badge_pulse_tween(unit_key, which)
+	var field := "atk" if which == &"atk" else "hp"
+	var scales: Dictionary = _stat_badge_scales[unit_key]
+	scales[field] = 1.0
+	var speed := maxf(0.25, presentation_time_scale)
+	var peak := STAT_BADGE_PULSE_PEAK
+	var tw := create_tween()
+	tw.set_speed_scale(speed)
+	tw.tween_method(
+		func(v: float) -> void:
+			_set_stat_badge_scale(unit_key, field, v),
+		1.0,
+		peak,
+		STAT_BADGE_PULSE_UP_SEC,
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_method(
+		func(v: float) -> void:
+			_set_stat_badge_scale(unit_key, field, v),
+		peak,
+		1.0,
+		STAT_BADGE_PULSE_DOWN_SEC,
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	if not _stat_badge_pulse_tweens.has(unit_key):
+		_stat_badge_pulse_tweens[unit_key] = {}
+	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
+	bucket[field] = tw
+	tw.finished.connect(
+		func() -> void:
+			_on_stat_badge_pulse_finished(unit_key, field, tw)
+	)
+
+
+func _set_stat_badge_scale(unit_key: String, field: String, value: float) -> void:
+	if not _stat_badge_scales.has(unit_key):
+		_stat_badge_scales[unit_key] = {"atk": 1.0, "hp": 1.0}
+	(_stat_badge_scales[unit_key] as Dictionary)[field] = value
+
+
+func _kill_stat_badge_pulse_tween(unit_key: String, which: StringName) -> void:
+	if not _stat_badge_pulse_tweens.has(unit_key):
+		return
+	var field := "atk" if which == &"atk" else "hp"
+	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
+	var tw := bucket.get(field) as Tween
+	if tw != null and is_instance_valid(tw):
+		tw.kill()
+	bucket.erase(field)
+	if bucket.is_empty():
+		_stat_badge_pulse_tweens.erase(unit_key)
+
+
+func _on_stat_badge_pulse_finished(unit_key: String, field: String, tw: Tween) -> void:
+	if not _stat_badge_pulse_tweens.has(unit_key):
+		return
+	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
+	if bucket.get(field) == tw:
+		bucket.erase(field)
+	if bucket.is_empty():
+		_stat_badge_pulse_tweens.erase(unit_key)
+	if _stat_badge_scales.has(unit_key):
+		(_stat_badge_scales[unit_key] as Dictionary)[field] = 1.0
+		var scales: Dictionary = _stat_badge_scales[unit_key]
+		if (
+			absf(float(scales.get("atk", 1.0)) - 1.0) <= 0.001
+			and absf(float(scales.get("hp", 1.0)) - 1.0) <= 0.001
+		):
+			_stat_badge_scales.erase(unit_key)
+
+
+func _clear_stat_badge_pulses() -> void:
+	for key in _stat_badge_pulse_tweens.keys():
+		var bucket: Dictionary = _stat_badge_pulse_tweens[key]
+		for tw_v in bucket.values():
+			var tw := tw_v as Tween
+			if tw != null and is_instance_valid(tw):
+				tw.kill()
+	_stat_badge_pulse_tweens.clear()
+	_stat_badge_scales.clear()
 
 
 ## 典型单格角色纸片绘制高度（与 `_draw_unit_sprite` 同口径），供金币缩放对齐。
@@ -995,6 +1151,7 @@ func clear_fx() -> void:
 	clear_merge_fx()
 	_clear_gold_coin_fx()
 	_clear_stat_missile_fx()
+	_clear_stat_badge_pulses()
 	_cancel_press()
 
 
@@ -3834,7 +3991,9 @@ func _draw_victory_boost_focus_array(px: float) -> void:
 		)
 		var atk := DeckUpgradeService.get_display_attack(entry)
 		var hp := DeckUpgradeService.get_display_max_hp(entry)
-		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+		_draw_stat_badges(
+			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
+		)
 		if bool(item.get("is_bench", false)):
 			var label_pos := center + Vector2(-px * 0.42, px * 0.58)
 			draw_string(
@@ -4099,7 +4258,9 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		var center_local := tile_to_local(center_tile) + off
-		_draw_stat_badges(center_local, atk, hp, alpha, px, entry.get_armor_block())
+		_draw_stat_badges(
+			center_local, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
+		)
 		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
 			_draw_victory_boost_selection(center_local, px)
 	if _merge_active:
@@ -4520,7 +4681,9 @@ func _draw_bench_row(px: float) -> void:
 		)
 		var atk := DeckUpgradeService.get_display_attack(entry)
 		var hp := DeckUpgradeService.get_display_max_hp(entry)
-		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+		_draw_stat_badges(
+			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
+		)
 		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
 			_draw_victory_boost_selection(center, px)
 	## 小标签：备战
@@ -4609,6 +4772,9 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
+		var pulse_key := ""
+		if rt.unit != null:
+			pulse_key = "u%d" % rt.unit.instance_id
 		_draw_stat_badges(
 			center,
 			rt.get_effective_attack(),
@@ -4616,6 +4782,9 @@ func _draw_units(px: float) -> void:
 			alpha,
 			px,
 			rt.unit.get_armor_block() if rt.unit != null else 0,
+			-1,
+			true,
+			pulse_key,
 		)
 	_draw_corpses(px)
 
@@ -4897,6 +5066,7 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 
 
 ## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
+## pulse_key 非空时按字典里的 atk/hp scale 以徽章中心缩放整枚纸片。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -4906,6 +5076,7 @@ func _draw_stat_badges(
 	armor: int = 0,
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
+	pulse_key: String = "",
 ) -> void:
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
@@ -4919,11 +5090,17 @@ func _draw_stat_badges(
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
+	var atk_scale := get_stat_badge_pulse_scale(pulse_key, &"atk")
+	var hp_scale := get_stat_badge_pulse_scale(pulse_key, &"hp")
 	var slot := 0
-	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	var atk_rect := _scaled_badge_rect(
+		Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge), atk_scale
+	)
 	slot += 1
 	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
-	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	var hp_rect := _scaled_badge_rect(
+		Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge), hp_scale
+	)
 	slot += 1
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
 	if show_armor:
@@ -4938,6 +5115,14 @@ func _draw_stat_badges(
 		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
 		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
 		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
+
+
+func _scaled_badge_rect(rect: Rect2, scale: float) -> Rect2:
+	if absf(scale - 1.0) <= 0.001:
+		return rect
+	var c := rect.get_center()
+	var sz := rect.size * scale
+	return Rect2(c - sz * 0.5, sz)
 
 
 func _draw_stat_badge(

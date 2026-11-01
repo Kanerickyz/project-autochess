@@ -2974,6 +2974,9 @@ func _on_victory_boost_unit_pressed(entry_id: int) -> void:
 		_sync_victory_boost_arena(false)
 		_refresh_victory_boost_hud()
 		return
+	if _arena != null:
+		## 攻血同加：脚下攻+血纸片一起跳变（entry key，与战斗 u{instance_id} 区分）。
+		_arena.pulse_stat_badges("e%d" % entry_id, &"both")
 	_sync_victory_boost_arena(false)
 	_refresh_victory_boost_hud()
 	var hold := victory_boost_confirm_hold_seconds
@@ -3430,6 +3433,16 @@ func _on_recruit_item_drop(item_slot: int, entry_id: int) -> void:
 func _try_apply_recruit_potion(item_slot: int, entry_id: int) -> void:
 	if _recruit_shop == null or not _recruit_shop.is_open() or _deck_state == null:
 		return
+	var potion_item := _recruit_shop.get_item_offer(item_slot)
+	var pulse_which := &""
+	if potion_item != null:
+		match potion_item.item_type:
+			PrepareItemData.ItemType.HP_POTION:
+				pulse_which = &"hp"
+			PrepareItemData.ItemType.ATK_POTION:
+				pulse_which = &"atk"
+			_:
+				pulse_which = &""
 	var result := _recruit_shop.try_buy_potion_on_entry(item_slot, _deck_state, entry_id)
 	_recruit_pending_item_slot = -1
 	if int(result.get("result", RecruitShopService.BuyResult.FAILED)) != RecruitShopService.BuyResult.OK:
@@ -3443,6 +3456,8 @@ func _try_apply_recruit_potion(item_slot: int, entry_id: int) -> void:
 				_show_recruit_item_hint("无法使用道具")
 		_sync_recruit_arena()
 		return
+	if _arena != null and pulse_which != &"":
+		_arena.pulse_stat_badges("e%d" % entry_id, pulse_which)
 	_show_recruit_item_hint("道具已生效")
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
@@ -3972,14 +3987,16 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 		if use_missile:
 			var hit_amount := maxi(1, absi(amount))
 			var to_tile := center
+			var pulse_which := _stat_badge_pulse_which(
+				kind, pop.get("stat_name", &"") as StringName
+			)
+			var pulse_unit_id := int(pop.get("unit_id", -1))
 			_arena.spawn_stat_missile(
 				kind,
 				owner_tile,
 				to_tile,
 				amount,
-				func() -> void:
-					if _arena != null:
-						_arena.play_unit_light_hit_at(to_tile, hit_amount),
+				_on_stat_missile_arrive.bind(to_tile, hit_amount, pulse_which, pulse_unit_id),
 			)
 			## 辅飘字降噪，不与弹入抢读。
 			_arena.add_feedback_popup(
@@ -4013,6 +4030,37 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 			if owner != null:
 				callout_player = owner.team == UnitInstance.Team.PLAYER
 		_arena.add_skill_callout(callout_center, "", callout_player)
+
+
+## 弹入命中后脚下标签脉冲：damage/heal→hp；stat 仅 attack→atk、max_hp→hp。
+func _stat_badge_pulse_which(kind: StringName, stat_name: StringName) -> StringName:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE, RealtimeEffectFeedback.KIND_HEAL:
+			return &"hp"
+		RealtimeEffectFeedback.KIND_STAT:
+			match stat_name:
+				&"attack":
+					return &"atk"
+				&"max_hp":
+					return &"hp"
+				_:
+					return &""
+		_:
+			return &""
+
+
+func _on_stat_missile_arrive(
+	to_tile: Vector2, hit_amount: int, pulse_which: StringName, pulse_unit_id: int
+) -> void:
+	if _arena == null:
+		return
+	_arena.play_unit_light_hit_at(to_tile, hit_amount)
+	if pulse_which == &"":
+		return
+	if pulse_unit_id >= 0:
+		_arena.pulse_stat_badges("u%d" % pulse_unit_id, pulse_which)
+	else:
+		_arena.pulse_stat_badges_at(to_tile, pulse_which)
 
 
 func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload) -> Vector2:
