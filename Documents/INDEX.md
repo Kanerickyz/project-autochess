@@ -16,7 +16,7 @@
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/跳过/完成） |
-| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（普/精胜后、招募前；按品阶档永久 +攻/+血；可跳过） |
+| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（暗场居中阵列、短按即 +攻/+血；可跳过；招募前） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（七类包装；角色库筛选；战斗同主题效果另切片） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |

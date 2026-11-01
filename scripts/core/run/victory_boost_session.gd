@@ -98,6 +98,13 @@ func apply_boost() -> bool:
 	return true
 
 
+## 短按落盘：选中并立即写入（无二次确认）。
+func apply_to_entry(entry_id: int) -> bool:
+	if not select_entry(entry_id):
+		return false
+	return apply_boost()
+
+
 func end() -> void:
 	is_active = false
 	session_changed.emit()

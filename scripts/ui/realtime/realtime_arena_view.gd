@@ -178,12 +178,20 @@ var ally_half_slide_y: float = 0.0
 var bench_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 胜后免费强化：上半场队伍 + 中缝备战；下区无货架，点选纸片；不拖拽换座。
+## 胜后免费强化：暗场 + 整队居中可选阵列；短按落盘；不拖拽换座。
 var victory_boost_active: bool = false
-## 当前选中成员；≥0 时画选中环与 +N/+N 预览。
+## 当前选中成员；≥0 时画选中环与 +N/+N 预览/反馈。
 var victory_boost_selected_id: int = -1
 ## 本档幅度（攻血同加点数），用于选中预览。
 var victory_boost_amount: int = 1
+## 落盘后反馈态：选中纸片高亮，其余压暗。
+var victory_boost_applied: bool = false
+## 0=原位，1=屏中阵列到位（进场 Tween）。
+var victory_boost_focus_t: float = 1.0
+## 暗场不透明度倍率 0..1。
+var victory_boost_dim_alpha: float = 0.0
+## Array[Dictionary]：{entry_id, entry, is_bench, origin, focus}
+var victory_boost_focus_roster: Array = []
 ## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
@@ -1183,7 +1191,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_bench_press_id = -1
 
 
-## 免费强化：只点选上区/备战纸片；长按信息卡；禁止拖拽换座。
+## 免费强化：短按居中阵列纸片落盘；长按信息卡松手不落盘；禁止拖拽换座。
 func _gui_input_victory_boost(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
@@ -1195,21 +1203,10 @@ func _gui_input_victory_boost(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if mb.button_index != MOUSE_BUTTON_LEFT:
 			return
-		var board_cell := tile_to_cell(local_to_tile(mb.position))
 		if mb.pressed:
 			_bench_press_id = -1
 			_recruit_team_press_id = -1
-			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
-			if bench_entry >= 0:
-				_bench_press_id = bench_entry
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					victory_boost_unit_pressed.emit.bind(bench_entry),
-				)
-				accept_event()
-				return
-			var entry_id := _find_recruit_team_entry_at(board_cell)
+			var entry_id := find_victory_boost_focus_entry_at(mb.position)
 			if entry_id >= 0:
 				_recruit_team_press_id = entry_id
 				_begin_press(
@@ -1219,6 +1216,7 @@ func _gui_input_victory_boost(event: InputEvent) -> void:
 				)
 				accept_event()
 				return
+			## 暗场空白：可长按空白无 tap；不选人。
 			_begin_press(mb.position, inspect_at(mb.position), Callable())
 			accept_event()
 			return
@@ -2157,13 +2155,18 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	if victory_boost_active:
-		if recruit_team_slots != null:
-			for i in recruit_team_slots.cells.size():
-				var entry := recruit_team_slots.get_entry(i)
-				if entry != null:
-					var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-					out.append(_info_from_entry(entry, tile_to_local(tile) + enemy_off))
-		_append_bench_inspectables(out)
+		for item in victory_boost_focus_roster:
+			if not (item is Dictionary):
+				continue
+			var boost_entry: DeckEntry = item.get("entry") as DeckEntry
+			if boost_entry == null:
+				continue
+			var center := _victory_boost_item_draw_pos(item as Dictionary)
+			out.append(_info_from_entry(
+				boost_entry,
+				center,
+				"boost:%d" % int(item.get("entry_id", boost_entry.entry_id)),
+			))
 		return out
 	if map_shop_active:
 		if recruit_team_slots != null:
@@ -3163,12 +3166,110 @@ func clear_victory_boost_mode() -> void:
 	victory_boost_active = false
 	victory_boost_selected_id = -1
 	victory_boost_amount = 1
+	victory_boost_applied = false
+	victory_boost_focus_t = 1.0
+	victory_boost_dim_alpha = 0.0
+	victory_boost_focus_roster.clear()
 	if not recruit_active and not map_shop_active:
 		recruit_team_slots = null
 	_recruit_team_press_id = -1
 	_bench_press_id = -1
 	_clear_drag_visual()
 	queue_redraw()
+
+
+## 构建居中可选阵列：entries 为 {entry: DeckEntry, is_bench: bool}；原地算 origin/focus。
+func set_victory_boost_focus_roster(
+	entries: Array,
+	seat_rows: int = -1,
+	seat_cols: int = -1,
+) -> void:
+	victory_boost_focus_roster = _layout_victory_boost_focus(entries, seat_rows, seat_cols)
+	queue_redraw()
+
+
+func find_victory_boost_focus_entry_at(local_pos: Vector2) -> int:
+	if not victory_boost_active or victory_boost_focus_roster.is_empty():
+		return -1
+	var px := get_cell_px()
+	var best_id := -1
+	var best_d := INF
+	for item in victory_boost_focus_roster:
+		if not (item is Dictionary):
+			continue
+		var center := _victory_boost_item_draw_pos(item as Dictionary)
+		var hit := Rect2(center.x - px * 0.55, center.y - px * 0.7, px * 1.1, px * 1.4)
+		if not hit.has_point(local_pos):
+			continue
+		var d := local_pos.distance_squared_to(center)
+		if d < best_d:
+			best_d = d
+			best_id = int(item.get("entry_id", -1))
+	return best_id
+
+
+func _victory_boost_item_draw_pos(item: Dictionary) -> Vector2:
+	var origin: Vector2 = item.get("origin", Vector2.ZERO) as Vector2
+	var focus: Vector2 = item.get("focus", origin) as Vector2
+	var t := clampf(victory_boost_focus_t, 0.0, 1.0)
+	## 轻微 ease-out：进场末段更稳。
+	var eased := 1.0 - (1.0 - t) * (1.0 - t)
+	return origin.lerp(focus, eased)
+
+
+func _layout_victory_boost_focus(
+	entries: Array,
+	seat_rows: int = -1,
+	seat_cols: int = -1,
+) -> Array:
+	var out: Array = []
+	var px := get_cell_px()
+	var rect := get_board_rect()
+	if entries.is_empty() or px <= 0.0:
+		return out
+	var n := entries.size()
+	var cols := mini(5, n)
+	if n > 5:
+		cols = clampi(int(ceil(sqrt(float(n)))), 3, 5)
+	var rows := int(ceil(float(n) / float(cols)))
+	var spacing := px * 1.22
+	var total_w := float(maxi(0, cols - 1)) * spacing
+	var total_h := float(maxi(0, rows - 1)) * spacing
+	## 略偏上，给底栏 HUD 留空。
+	var start := rect.get_center() + Vector2(-total_w * 0.5, -total_h * 0.5 - px * 0.35)
+	var rows_n := seat_rows if seat_rows > 0 else DeckConfig.DEFAULT_SEAT_ROWS
+	var cols_n := seat_cols if seat_cols > 0 else DeckConfig.DEFAULT_SEAT_COLS
+	var ally_slots := PrepareSlotBoard.new()
+	ally_slots.configure_grid(rows_n, cols_n, board_size, false)
+	var mid := BoardHalf.midline_row(board_size.y)
+	var bench_placed := 0
+	for i in n:
+		var info: Variant = entries[i]
+		if not (info is Dictionary):
+			continue
+		var entry: DeckEntry = (info as Dictionary).get("entry") as DeckEntry
+		if entry == null:
+			continue
+		var is_bench := bool((info as Dictionary).get("is_bench", entry.seat_index < 0))
+		var origin := rect.get_center()
+		if is_bench:
+			var bx := float(bench_placed % maxi(1, board_size.x)) + 0.5
+			origin = tile_to_local(Vector2(bx, float(mid) + 0.5))
+			bench_placed += 1
+		elif entry.seat_index >= 0 and entry.seat_index < ally_slots.cells.size():
+			var cell: Vector2i = ally_slots.cells[entry.seat_index]
+			origin = tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
+		var col := i % cols
+		var row := int(i / cols)
+		var focus := start + Vector2(float(col) * spacing, float(row) * spacing)
+		out.append({
+			"entry_id": entry.entry_id,
+			"entry": entry,
+			"is_bench": is_bench,
+			"origin": origin,
+			"focus": focus,
+		})
+	return out
 
 
 ## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
@@ -3304,9 +3405,8 @@ func _draw() -> void:
 		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_team_seat_hint(px)
 	elif victory_boost_active:
-		_draw_victory_boost_zone_labels(px, mid, enemy_off, ally_off)
-		_draw_recruit_team(px, enemy_off)
-		_draw_bench_row(px)
+		_draw_victory_boost_dim(rect)
+		_draw_victory_boost_focus_array(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -3446,14 +3546,108 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
-func _draw_victory_boost_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
-	var rect := get_board_rect()
+func _draw_victory_boost_dim(rect: Rect2) -> void:
+	var a := clampf(victory_boost_dim_alpha, 0.0, 1.0)
+	if a <= 0.001:
+		return
+	## 渐变压暗：上半略深、中部可读，盖住战场/残骸色调。
+	var top := Color(0.02, 0.03, 0.05, 0.72 * a)
+	var mid_c := Color(0.04, 0.05, 0.07, 0.58 * a)
+	var bot := Color(0.03, 0.04, 0.06, 0.66 * a)
+	var h := rect.size.y
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, h * 0.38)), top)
+	draw_rect(Rect2(rect.position + Vector2(0.0, h * 0.32), Vector2(rect.size.x, h * 0.36)), mid_c)
+	draw_rect(Rect2(rect.position + Vector2(0.0, h * 0.62), Vector2(rect.size.x, h * 0.38)), bot)
 	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.55), 11, 18)
-	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
-	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-	draw_string(font, bot_pos, "免费强化", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.85, 1.0, 0.78, 0.9))
+	var title_size := clampi(int(get_cell_px() * 0.42), 12, 20)
+	var title_pos := rect.position + Vector2(get_cell_px() * 0.3, get_cell_px() * 0.55)
+	draw_string(
+		font, title_pos, "免费强化", HORIZONTAL_ALIGNMENT_LEFT, -1, title_size,
+		Color(0.85, 1.0, 0.78, 0.92 * a)
+	)
+
+
+func _draw_victory_boost_focus_array(px: float) -> void:
+	if victory_boost_focus_roster.is_empty():
+		return
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.30), 9, 14)
+	var ordered: Array = victory_boost_focus_roster.duplicate()
+	## 长按焦点置顶；落盘选中也置顶。
+	if _info_shown or victory_boost_selected_id >= 0:
+		var focus_at := -1
+		for i in ordered.size():
+			var it: Variant = ordered[i]
+			if not (it is Dictionary):
+				continue
+			var eid := int((it as Dictionary).get("entry_id", -1))
+			if victory_boost_selected_id >= 0 and eid == victory_boost_selected_id:
+				focus_at = i
+				break
+			if _info_shown:
+				var center := _victory_boost_item_draw_pos(it as Dictionary)
+				var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
+				if center.distance_squared_to(focus_c) <= _inspect_focus_hit_r2():
+					focus_at = i
+					break
+		if focus_at >= 0 and focus_at < ordered.size() - 1:
+			var focus_item: Variant = ordered[focus_at]
+			ordered.remove_at(focus_at)
+			ordered.append(focus_item)
+	for item_v in ordered:
+		if not (item_v is Dictionary):
+			continue
+		var item := item_v as Dictionary
+		var entry: DeckEntry = item.get("entry") as DeckEntry
+		if entry == null:
+			continue
+		var center := _victory_boost_item_draw_pos(item)
+		var selected := entry.entry_id == victory_boost_selected_id
+		var alpha := 0.92
+		if victory_boost_applied and not selected:
+			alpha = 0.28
+		elif victory_boost_applied and selected:
+			alpha = 1.0
+		var stats := entry.unit.stats if entry.unit != null else null
+		var radius := stats.body_radius if stats != null else 0.7
+		var vwx := stats.get_visual_half_width() if stats != null else 0.0
+		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var center_tile := local_to_tile(center)
+		var pose: RealtimeUnitMotion.Pose = null
+		if victory_boost_applied and selected:
+			pose = RealtimeUnitMotion.Pose.new()
+			pose.scale = Vector2.ONE * 1.08
+			pose.flash = 0.35
+			pose.shadow_mul = 1.25
+		_draw_body(
+			center_tile,
+			radius,
+			vwx,
+			vhy,
+			PLAYER_COLOR,
+			alpha,
+			entry.get_display_name(),
+			px,
+			true,
+			Vector2.ZERO,
+			true,
+			entry.get_unit_id(),
+			pose,
+			Vector2.ZERO,
+			1.0,
+			_idle_seed_for(entry.get_unit_id(), 200 + entry.entry_id),
+		)
+		var atk := DeckUpgradeService.get_display_attack(entry)
+		var hp := DeckUpgradeService.get_display_max_hp(entry)
+		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+		if bool(item.get("is_bench", false)):
+			var label_pos := center + Vector2(-px * 0.42, px * 0.58)
+			draw_string(
+				font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+				Color(0.92, 0.96, 1.0, 0.88 * alpha)
+			)
+		if selected:
+			_draw_victory_boost_selection(center, px)
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
