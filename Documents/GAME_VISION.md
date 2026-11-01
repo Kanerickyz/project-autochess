@@ -11,7 +11,7 @@
 > **【战场 To-Be】** 双方各有可见**角色座位**（默认 4 行 × 5 列，铺满半场）；友方入座人数 = 当前**已入座**成员数（≤ 上场席位上限）；备战区成员不上场。敌方占座与人数由关卡配置。开战后为**回合制自动战**：敌我**混排**进一条固定行动队列，每回合按同序**依次**行动；每一动尽量在同一段内完成「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**），可越半场。竖屏、我下敌上见 [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md)；推进细则见 [Features/COMBAT.md](./Features/COMBAT.md)。  
 > **【战场 As-Is】** Run 主路径**战斗时钟已落地为回合制依次行动**（敌我混排队列；一动内八向格步）；座位几何部分已落地。准备/招募等循环仍可能未对齐文档 To-Be。  
 >
-> **【本版范围】** 地图实装战斗 / 精英 / Boss；**地图商店**按 [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) 可玩（本切片：消耗品＋装备＋半场换座，**不含买人**）；事件、附魔仍为占位节点。附魔规则已定稿：**双献祭熔合熔印者**（见 [Features/ENCHANT.md](./Features/ENCHANT.md)）。角色为 Content 三十二人基础兵种（可招与敌池镜像同步）；流派联动以资源挂载为准。
+> **【本版范围】** 地图实装战斗 / 精英 / Boss；**地图商店**按 [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) 可玩（本切片：消耗品＋装备＋半场换座，**不含买人**）；事件仍为占位节点。**【用户新共识 · 2026-11-01】** 地图**不刷**未知（?）与附魔节点（份额归战斗）。附魔熔合规则另见 [Features/ENCHANT.md](./Features/ENCHANT.md)（本版地图不投放）。角色为 Content 三十二人基础兵种（可招与敌池镜像同步）；流派联动以资源挂载为准。
 
 ## 一句话
 
@@ -100,7 +100,7 @@
 
 ### 爬塔 Run（主模式）
 
-主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路。第一版节点：起点 / 战斗 / 精英 / 商店 / 事件 / **附魔** / Boss。节点内 **准备站位 → 开战观战 → 结算**；普通 / 精英胜 → **免费强化** → **招募** → 回地图；**Boss 胜 → 通关**；败整局重置。地图商店做完整养成；招募做胜后短名单；免费强化见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)；招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)。
+主菜单 [`run_game.tscn`](../scenes/main/run_game.tscn)：Act 地图选路。第一版节点：起点 / 战斗 / 精英 / 商店 / 事件 / Boss（**不刷**未知与附魔）。节点内 **准备站位 → 开战观战 → 结算**；普通 / 精英胜 → **免费强化** → **招募** → 回地图；**Boss 胜 → 通关**；败整局重置。地图商店做完整养成；招募做胜后短名单；免费强化见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；节点细则见 [Features/MAP.md](./Features/MAP.md)；招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)。
 
 ```mermaid
 flowchart TD
@@ -114,7 +114,6 @@ flowchart TD
     BossResolve -->|失败| RunDefeat
     Map --> ShopNode[SHOP] --> Map
     Map --> Event[EVENT] --> Map
-    Map --> Enchant[ENCHANT_附魔] --> Map
 ```
 
 数据：`RunMapConfig` + `MapGenerator` → `MapState`；单次战斗 `EncounterData.wave`。见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.1。

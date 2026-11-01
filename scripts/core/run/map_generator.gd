@@ -2,25 +2,25 @@ class_name MapGenerator
 extends RefCounted
 
 ## 未定型连通节点的类型权重（其余填 COMBAT）。
-const _WEIGHT_MYSTERY := 0.10
+## MYSTERY / ENCHANT 权重为 0：主爬塔地图不再刷这两类，份额并入战斗。
+const _WEIGHT_MYSTERY := 0.0
 const _WEIGHT_ELITE := 0.08
 const _WEIGHT_SHOP := 0.05
 ## 事件节点略稀于商店，避免幕内事件过密。
 const _WEIGHT_EVENT := 0.04
-const _WEIGHT_ENCHANT := 0.08
+const _WEIGHT_ENCHANT := 0.0
 
 ## 邻接/兄弟约束：这些类型不可与已连接父节点或同父兄弟相同。
 const _UNIQUE_ADJ_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.ELITE,
 	MapNodeType.Type.SHOP,
-	MapNodeType.Type.ENCHANT,
 ]
 
+## 旧存档 MYSTERY 解析池：不含 ENCHANT；地图已不刷 MYSTERY。
 const _MYSTERY_RESOLVE_TYPES: Array[MapNodeType.Type] = [
 	MapNodeType.Type.COMBAT,
 	MapNodeType.Type.EVENT,
 	MapNodeType.Type.SHOP,
-	MapNodeType.Type.ENCHANT,
 ]
 
 ## 拓扑剪枝：同父兄弟若在该层数内前向可达集合相同，视为无信息分叉。
@@ -80,19 +80,12 @@ static func generate(config: RunMapConfig, rng: RandomNumberGenerator) -> MapSta
 static func resolve_mystery(
 	node: MapNodeRuntime,
 	rng: RandomNumberGenerator,
-	config: RunMapConfig = null,
+	_config: RunMapConfig = null,
 ) -> void:
+	## _config 保留签名供旧存档调用；解析池已不含 ENCHANT，无需按层过滤。
 	if node == null or node.data == null or node.get_node_type() != MapNodeType.Type.MYSTERY:
 		return
-	var pool: Array[MapNodeType.Type] = []
-	for t in _MYSTERY_RESOLVE_TYPES:
-		if (
-			t == MapNodeType.Type.ENCHANT
-			and config != null
-			and node.data.floor < _resolve_enchant_min_floor(config)
-		):
-			continue
-		pool.append(t)
+	var pool: Array[MapNodeType.Type] = _MYSTERY_RESOLVE_TYPES.duplicate()
 	if pool.is_empty():
 		pool = [MapNodeType.Type.COMBAT]
 	var pick := pool[rng.randi_range(0, pool.size() - 1)]
@@ -481,6 +474,7 @@ static func _build_type_bucket(count: int, rng: RandomNumberGenerator) -> Array[
 	var result: Array[MapNodeType.Type] = []
 	if count <= 0:
 		return result
+	## MYSTERY / ENCHANT 权重为 0 → 不入桶；未定型剩余填 COMBAT。
 	var specs: Array[Dictionary] = [
 		{"type": MapNodeType.Type.MYSTERY, "weight": _WEIGHT_MYSTERY},
 		{"type": MapNodeType.Type.ELITE, "weight": _WEIGHT_ELITE},
