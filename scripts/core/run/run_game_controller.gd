@@ -92,10 +92,16 @@ func _start_new_run() -> void:
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
 		_battle.set_forward_tier_unlock(_is_endless())
-		if run_controller.map_config.spawn_budget_override != null:
-			_battle.set_spawn_budget_config(run_controller.map_config.spawn_budget_override)
-		else:
+		## 无尽走阶梯同质白板刷敌，不依赖 spawn_budget 加压。
+		if _is_endless():
+			_battle.set_endless_ladder_spawn(true)
 			_battle.set_spawn_budget_config(null)
+		else:
+			_battle.set_endless_ladder_spawn(false)
+			if run_controller.map_config.spawn_budget_override != null:
+				_battle.set_spawn_budget_config(run_controller.map_config.spawn_budget_override)
+			else:
+				_battle.set_spawn_budget_config(null)
 	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
 	_suppress_map_show = true
