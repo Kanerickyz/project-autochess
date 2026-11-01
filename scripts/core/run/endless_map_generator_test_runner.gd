@@ -75,31 +75,31 @@ func _test_endless_ladder_knobs() -> bool:
 	if EndlessLadderBalance.enemy_count_for_floor(1) != 1:
 		push_error("ladder F1 count should be 1")
 		return false
-	if EndlessLadderBalance.enemy_count_for_floor(10) != 10:
-		push_error("ladder F10 count should be 10")
+	if EndlessLadderBalance.enemy_count_for_floor(6) != 6:
+		push_error("ladder F6 count should be 6")
 		return false
-	if EndlessLadderBalance.enemy_count_for_floor(11) != 10:
-		push_error("ladder F11 count should cap at 10")
+	if EndlessLadderBalance.enemy_count_for_floor(11) != 6:
+		push_error("ladder F11 count should cap at 6")
 		return false
-	if EndlessLadderBalance.stat_for_floor(11) != 12:
-		push_error("ladder F11 stat should be 12")
+	if EndlessLadderBalance.stat_for_floor(7) != 8:
+		push_error("ladder F7 stat should be 8")
 		return false
-	if EndlessLadderBalance.stat_for_floor(15) != 20:
-		push_error("ladder F15 stat should be 20")
+	if EndlessLadderBalance.stat_for_floor(11) != 16:
+		push_error("ladder F11 stat should be 16")
 		return false
-	if EndlessLadderBalance.stat_for_floor(20) != 30:
-		push_error("ladder F20 stat should be 30")
+	if EndlessLadderBalance.stat_for_floor(15) != 24:
+		push_error("ladder F15 stat should be 24")
 		return false
 	if EndlessLadderBalance.UNIT_ID != "enemy_endless_dev":
 		push_error("ladder unit id mismatch")
 		return false
 	print(
-		"Endless ladder: F1=%d@%d F10=%d@%d F11=%d@%d"
+		"Endless ladder: F1=%d@%d F6=%d@%d F11=%d@%d"
 		% [
 			EndlessLadderBalance.enemy_count_for_floor(1),
 			EndlessLadderBalance.stat_for_floor(1),
-			EndlessLadderBalance.enemy_count_for_floor(10),
-			EndlessLadderBalance.stat_for_floor(10),
+			EndlessLadderBalance.enemy_count_for_floor(6),
+			EndlessLadderBalance.stat_for_floor(6),
 			EndlessLadderBalance.enemy_count_for_floor(11),
 			EndlessLadderBalance.stat_for_floor(11),
 		]
