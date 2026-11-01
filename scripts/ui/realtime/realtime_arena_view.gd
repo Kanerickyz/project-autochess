@@ -2773,7 +2773,7 @@ func _info_from_recruit_item_index(index: int, half_off: Vector2) -> Dictionary:
 			)
 		PrepareItemData.ItemType.BANNER:
 			kind_label = "道具"
-			skills = "上场席位上限 +1（最高 10）；不扩备战格数。\n点击购买，即时扣金；已满 10 席时本行不出旗帜。价格随本局成功购买次数升高。"
+			skills = "上场席位上限 +1（最高 6）；不扩备战格数。\n点击购买，即时扣金；已满 6 席时本行不出旗帜。价格随本局成功购买次数升高。"
 		_:
 			skills = "招募道具。"
 	return {
