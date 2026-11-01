@@ -193,6 +193,8 @@
 | **多目标** | FIFO 或短合并窗错峰；不得无表现跳数；加速随 `presentation_time_scale` 缩短 |
 | **实现边界** | Tween **仅表现**；挂展示步 ② / 效果已结算订阅；**不在** `EffectResolver` 写动画 |
 
+**【As-Is】** 弹入物 `spawn_stat_missile` + 目标 `play_light_hit` 已接；脚下攻/血纸片标签 `pulse_stat_badges` scale 跳变已接（胜后强化 / 招募药水同机制）。
+
 ---
 
 ## 6. 何时必须反馈【设计定稿】

@@ -19,6 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_mapper_and_arena_direct()
 	_test_compact_card_and_stat_missile()
+	_test_stat_badge_pulse()
 	await _test_effect_resolved_feedback_on_arena()
 	await _test_rider_enemy_death_feedback()
 	await _test_basic_attack_does_not_float()
@@ -106,6 +107,7 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(pops[0]["kind"] == RealtimeEffectFeedback.KIND_STAT, "mapper: kind=stat")
 		_expect(String(pops[0]["text"]).find("50") >= 0, "mapper: text contains 50")
 		_expect(String(pops[0]["text"]).find("攻") >= 0, "mapper: text contains 攻")
+		_expect(pops[0].get("stat_name", &"") == &"attack", "mapper: STAT popup carries stat_name")
 
 	var spawn_action := EffectAction.new()
 	spawn_action.action_type = EffectAction.Type.SPAWN_UNIT
@@ -227,6 +229,65 @@ func _test_compact_card_and_stat_missile() -> void:
 	_expect(arena.get_stat_missile_fx_count() >= 3, "missile: damage/heal/stat all spawn")
 	arena.clear_fx()
 	_expect(arena.get_stat_missile_fx_count() == 0, "missile: clear_fx removes missiles")
+	arena.queue_free()
+
+
+func _test_stat_badge_pulse() -> void:
+	## 脚下攻/血标签 Tween 跳变：API 写入 scale≠1；clear_fx 清零。不测视觉帧。
+	var arena := RealtimeArenaView.new()
+	arena.board_size = Vector2i(5, 8)
+	arena.size = Vector2(393, 700)
+	root.add_child(arena)
+	var key := "u42"
+	_expect(not arena.has_active_stat_badge_pulse(key), "pulse: idle has no active pulse")
+	_expect(
+		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0),
+		"pulse: default atk scale is 1",
+	)
+	arena.pulse_stat_badges(key, &"atk")
+	_expect(arena.has_active_stat_badge_pulse(key), "pulse: atk pulse is active")
+	_expect(
+		not is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0)
+		or arena.has_active_stat_badge_pulse(key),
+		"pulse: atk scale moved or tween running",
+	)
+	arena.pulse_stat_badges(key, &"hp")
+	_expect(arena.has_active_stat_badge_pulse(key), "pulse: hp pulse keeps active")
+	arena.pulse_stat_badges("e7", &"both")
+	_expect(arena.has_active_stat_badge_pulse("e7"), "pulse: both pulses entry key")
+	_expect(
+		arena.has_active_stat_badge_pulse(),
+		"pulse: any-key helper sees active pulse",
+	)
+	arena.clear_fx()
+	_expect(not arena.has_active_stat_badge_pulse(), "pulse: clear_fx clears all pulses")
+	_expect(
+		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0),
+		"pulse: clear_fx resets atk scale",
+	)
+	_expect(
+		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"hp"), 1.0),
+		"pulse: clear_fx resets hp scale",
+	)
+	## pulse_stat_badges_at：无单位时静默；有存活单位时写入 u{instance_id}。
+	arena.pulse_stat_badges_at(Vector2(2.5, 6.5), &"hp")
+	_expect(not arena.has_active_stat_badge_pulse(), "pulse: at() without sim is no-op")
+	var sim := RealtimeCombatSim.new()
+	arena.sim = sim
+	var unit := UnitInstance.from_unit_data(
+		load(RIDER_PATH) as UnitData, Vector2i(2, 6), UnitInstance.Team.PLAYER
+	)
+	var rt := RtUnit.new(unit, Vector2(2.5, 6.5))
+	rt.skip_deploy()
+	sim._units.append(rt)
+	arena.pulse_stat_badges_at(Vector2(2.5, 6.5), &"hp")
+	var near_key := "u%d" % unit.instance_id
+	_expect(
+		arena.has_active_stat_badge_pulse(near_key),
+		"pulse: pulse_stat_badges_at resolves nearest unit",
+	)
+	arena.clear_fx()
+	_expect(not arena.has_active_stat_badge_pulse(near_key), "pulse: clear after at()")
 	arena.queue_free()
 
 
