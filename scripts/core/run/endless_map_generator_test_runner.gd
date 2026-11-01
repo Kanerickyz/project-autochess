@@ -81,8 +81,14 @@ func _test_endless_ladder_knobs() -> bool:
 	if EndlessLadderBalance.enemy_count_for_floor(11) != 10:
 		push_error("ladder F11 count should cap at 10")
 		return false
-	if EndlessLadderBalance.stat_for_floor(11) != 11:
-		push_error("ladder F11 stat should be 11")
+	if EndlessLadderBalance.stat_for_floor(11) != 12:
+		push_error("ladder F11 stat should be 12")
+		return false
+	if EndlessLadderBalance.stat_for_floor(15) != 20:
+		push_error("ladder F15 stat should be 20")
+		return false
+	if EndlessLadderBalance.stat_for_floor(20) != 30:
+		push_error("ladder F20 stat should be 30")
 		return false
 	if EndlessLadderBalance.UNIT_ID != "enemy_endless_dev":
 		push_error("ladder unit id mismatch")
