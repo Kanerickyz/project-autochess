@@ -46,6 +46,17 @@ func _initialize() -> void:
 		catalog.get_texture("knight", true) != catalog.get_texture("knight", false),
 		"player and enemy sprites differ",
 	)
+	## 指挥官外观：敌方 Boss（giant_knight）蓝色纸片；独立 archetype，不与红 Boss 抢键。
+	_expect(catalog.get_archetype("commander") == &"commander", "commander has own archetype")
+	var cmd_tex := catalog.get_texture("commander", true)
+	var boss_blue := catalog.get_texture("giant_knight", true)
+	_expect(cmd_tex != null and boss_blue != null, "commander and boss blue textures load")
+	if cmd_tex != null and boss_blue != null:
+		_expect(cmd_tex == boss_blue, "commander uses blue giant_knight art")
+		_expect(
+			cmd_tex != catalog.get_texture("giant_knight", false),
+			"commander is blue, not red boss art",
+		)
 	_check_layout()
 	if _failures == 0:
 		print("UnitArtCatalogTest: all passed (%d units)" % checked)
