@@ -9,6 +9,7 @@ static func run_all() -> bool:
 	var passed := true
 	passed = _test_amount_by_tier() and passed
 	passed = _test_apply_writes_bonus() and passed
+	passed = _test_apply_to_entry_one_shot() and passed
 	passed = _test_skip_no_change() and passed
 	passed = _test_empty_roster() and passed
 	if passed:
@@ -74,6 +75,32 @@ static func _test_apply_writes_bonus() -> bool:
 		return false
 	if session.can_confirm():
 		push_error("victory_boost: should not confirm again after apply")
+		return false
+	return true
+
+
+static func _test_apply_to_entry_one_shot() -> bool:
+	var deck := _make_deck([ARCHER])
+	if deck.size() <= 0:
+		push_error("victory_boost: no unit for apply_to_entry")
+		return false
+	var entry := deck.get_entries()[0] as DeckEntry
+	var atk0 := entry.bonus_attack
+	var hp0 := entry.bonus_max_hp
+	var session := VictoryBoostSession.new()
+	session.configure(deck, 1, 15, false)
+	session.begin()
+	if not session.apply_to_entry(entry.entry_id):
+		push_error("victory_boost: apply_to_entry failed")
+		return false
+	if entry.bonus_attack != atk0 + 1 or entry.bonus_max_hp != hp0 + 1:
+		push_error("victory_boost: apply_to_entry bonus mismatch")
+		return false
+	if not session.applied:
+		push_error("victory_boost: apply_to_entry should set applied")
+		return false
+	if session.apply_to_entry(entry.entry_id):
+		push_error("victory_boost: second apply_to_entry should fail")
 		return false
 	return true
 
