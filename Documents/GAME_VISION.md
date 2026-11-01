@@ -114,7 +114,6 @@ flowchart TD
     BossResolve -->|失败| RunDefeat
     Map --> ShopNode[SHOP] --> Map
     Map --> Event[EVENT] --> Map
-    Map --> Enchant[ENCHANT_附魔] --> Map
 ```
 
 数据：`RunMapConfig` + `MapGenerator` → `MapState`；单次战斗 `EncounterData.wave`。见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3.1。
