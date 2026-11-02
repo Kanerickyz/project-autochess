@@ -75,33 +75,36 @@ func _test_endless_ladder_knobs() -> bool:
 	if EndlessLadderBalance.enemy_count_for_floor(1) != 1:
 		push_error("ladder F1 count should be 1")
 		return false
-	if EndlessLadderBalance.enemy_count_for_floor(10) != 10:
-		push_error("ladder F10 count should be 10")
+	if EndlessLadderBalance.enemy_count_for_floor(10) != 1:
+		push_error("ladder F10 count should be 1")
 		return false
-	if EndlessLadderBalance.enemy_count_for_floor(11) != 10:
-		push_error("ladder F11 count should cap at 10")
+	if EndlessLadderBalance.enemy_count_for_floor(11) != 1:
+		push_error("ladder F11 count should be 1")
 		return false
-	if EndlessLadderBalance.stat_for_floor(11) != 12:
-		push_error("ladder F11 stat should be 12")
+	if EndlessLadderBalance.attack_for_floor(1) != 1 or EndlessLadderBalance.hp_for_floor(1) != 10:
+		push_error("ladder F1 should be 1 atk / 10 hp")
 		return false
-	if EndlessLadderBalance.stat_for_floor(15) != 20:
-		push_error("ladder F15 stat should be 20")
+	if EndlessLadderBalance.attack_for_floor(2) != 2 or EndlessLadderBalance.hp_for_floor(2) != 15:
+		push_error("ladder F2 should be 2 atk / 15 hp")
 		return false
-	if EndlessLadderBalance.stat_for_floor(20) != 30:
-		push_error("ladder F20 stat should be 30")
+	if EndlessLadderBalance.attack_for_floor(3) != 3 or EndlessLadderBalance.hp_for_floor(3) != 20:
+		push_error("ladder F3 should be 3 atk / 20 hp")
 		return false
 	if EndlessLadderBalance.UNIT_ID != "enemy_endless_dev":
 		push_error("ladder unit id mismatch")
 		return false
 	print(
-		"Endless ladder: F1=%d@%d F10=%d@%d F11=%d@%d"
+		"Endless ladder: F1=%d@%d/%d F2=%d@%d/%d F3=%d@%d/%d"
 		% [
 			EndlessLadderBalance.enemy_count_for_floor(1),
-			EndlessLadderBalance.stat_for_floor(1),
-			EndlessLadderBalance.enemy_count_for_floor(10),
-			EndlessLadderBalance.stat_for_floor(10),
-			EndlessLadderBalance.enemy_count_for_floor(11),
-			EndlessLadderBalance.stat_for_floor(11),
+			EndlessLadderBalance.attack_for_floor(1),
+			EndlessLadderBalance.hp_for_floor(1),
+			EndlessLadderBalance.enemy_count_for_floor(2),
+			EndlessLadderBalance.attack_for_floor(2),
+			EndlessLadderBalance.hp_for_floor(2),
+			EndlessLadderBalance.enemy_count_for_floor(3),
+			EndlessLadderBalance.attack_for_floor(3),
+			EndlessLadderBalance.hp_for_floor(3),
 		]
 	)
 	return true

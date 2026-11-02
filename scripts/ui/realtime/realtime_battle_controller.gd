@@ -1949,7 +1949,8 @@ func _build_endless_ladder_enemy_spawns(floor_index: int) -> Array:
 	if _enemy_slots == null or ENDLESS_LADDER_DEV_UNIT == null:
 		return spawns
 	var count := EndlessLadderBalance.enemy_count_for_floor(floor_index)
-	var stat := EndlessLadderBalance.stat_for_floor(floor_index)
+	var atk := EndlessLadderBalance.attack_for_floor(floor_index)
+	var hp := EndlessLadderBalance.hp_for_floor(floor_index)
 	var seat_fill := SeatLayout.iter_seats_center_out(
 		_enemy_slots.seat_rows, _enemy_slots.seat_cols
 	)
@@ -1965,9 +1966,9 @@ func _build_endless_ladder_enemy_spawns(floor_index: int) -> Array:
 		)
 		if unit == null or unit.stats == null:
 			continue
-		unit.stats.attack = stat
-		unit.stats.max_hp = stat
-		unit.current_hp = stat
+		unit.stats.attack = atk
+		unit.stats.max_hp = hp
+		unit.current_hp = hp
 		unit.level = 1
 		spawns.append({
 			"unit": unit,
