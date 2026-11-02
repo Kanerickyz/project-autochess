@@ -3,15 +3,13 @@
 [ext_resource type="Script" uid="uid://d2ngrsrlgvip5" path="res://scripts/data/deck_config.gd" id="1_deck"]
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Resource" uid="uid://cpgo0w7bkfvj3" path="res://resources/deck/default_level_config.tres" id="2_level"]
-[ext_resource type="Resource" path="res://resources/units/realtime/knight.tres" id="u_knight"]
-[ext_resource type="Resource" path="res://resources/units/realtime/archer.tres" id="u_archer"]
 
 [resource]
 script = ExtResource("1_deck")
-starting_units = Array[ExtResource("1_unit")]([ExtResource("u_knight"), ExtResource("u_archer")])
-starting_count = 2
-max_size = 6
-max_board_units = 6
+starting_units = Array[ExtResource("1_unit")]([])
+starting_count = 0
+max_size = 5
+max_board_units = 5
 draw_count = 4
 hand_width = 4
 seat_rows = 4
