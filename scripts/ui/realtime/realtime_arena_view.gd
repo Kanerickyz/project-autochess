@@ -2689,6 +2689,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"name": entry.get_display_name(),
 		"side_player": true,
 		"tier": entry.unit.tier if entry.unit != null else 0,
+		"profession_label": _profession_label_for_unit_data(entry.unit),
 		"theme_label": _theme_label_for_unit_data(entry.unit),
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
 		"hp": maxi(1, DeckUpgradeService.get_display_current_hp(entry)),
@@ -2724,6 +2725,7 @@ func _info_from_unit_data(
 		"name": UnitInfoText.get_display_name_from_unit_data(data) + star_tag,
 		"side_player": true,
 		"tier": data.tier,
+		"profession_label": _profession_label_for_unit_data(data),
 		"theme_label": _theme_label_for_unit_data(data),
 		"attack": atk * stat_mult,
 		"hp": hp * stat_mult,
@@ -2750,6 +2752,7 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"name": UnitInfoText.get_display_name(unit),
 		"side_player": is_player,
 		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
+		"profession_label": _profession_label_for_unit_data(unit.unit_data),
 		"theme_label": _theme_label_for_unit_data(unit.unit_data),
 		"attack": attack,
 		"hp": hp,
@@ -2760,6 +2763,13 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
+
+
+## 介绍卡侧栏行为职业；无数据 → 空串。
+func _profession_label_for_unit_data(data: UnitData) -> String:
+	if data == null:
+		return ""
+	return UnitData.combat_profession_label(data.combat_profession)
 
 
 ## 介绍卡侧栏主题类名；NONE / 无数据 → 空串（省略，不写「未定」）。
