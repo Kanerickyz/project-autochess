@@ -7,7 +7,7 @@ signal triple_merged(product: DeckEntry, consumed_seats: Array)
 
 ## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 4×5=20）。
 ## 上场席位上限硬顶（旗帜可扩至此；开局默认见 DeckConfig.max_size）。
-const SEAT_CAP_HARD_MAX := 6
+const SEAT_CAP_HARD_MAX := 10
 ## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
 const BENCH_CAPACITY := 5
 const COMMANDER_UNIT_DATA := preload("res://resources/units/realtime/commander.tres")

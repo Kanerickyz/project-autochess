@@ -140,19 +140,13 @@ func get_floor_star2_quota(floor_index: int) -> int:
 	return maxi(0, maxi(1, floor_index) - 1) * floor_star2_per_level
 
 
-## 敌方人数硬顶（与玩家队伍上限 / EnemyBudgetSpawner.MAX_SEATS_HARD 对齐）。
-const ENEMY_COUNT_HARD_MAX := 6
-
-
-## 普通关：第 F 层人数闭区间 [F, F＋1]（F≥1；floor_index≤0 按第 1 层），再夹到硬顶。
+## 普通关：第 F 层人数闭区间 [F, F＋1]（F≥1；floor_index≤0 按第 1 层）。
 static func combat_enemy_count_bounds(floor_index: int) -> Vector2i:
 	var floor_f := maxi(1, floor_index)
 	## 第 1 层仅 1 敌，避免开局人数碾压。
 	if floor_f <= 1:
 		return Vector2i(1, 1)
-	var lo := mini(floor_f, ENEMY_COUNT_HARD_MAX)
-	var hi := mini(floor_f + 1, ENEMY_COUNT_HARD_MAX)
-	return Vector2i(lo, maxi(lo, hi))
+	return Vector2i(floor_f, floor_f + 1)
 
 
 ## 按节点类型掷敌方目标人数（不含座位硬顶裁切）。
@@ -170,12 +164,11 @@ func roll_enemy_count(
 	if node_type == MapNodeType.Type.ELITE:
 		## 第一关：精英不得超过玩家人数。
 		if is_first_floor(floor_index):
-			return mini(n, ENEMY_COUNT_HARD_MAX)
-		var elite_n := n
+			return n
 		if rng != null and rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
-			elite_n = n + 2
-		return mini(elite_n, ENEMY_COUNT_HARD_MAX)
-	## 普通战斗：与层号绑定，在 [F, F＋1] 内掷点（已含硬顶）。
+			return n + 2
+		return n
+	## 普通战斗：与层号绑定，在 [F, F＋1] 内掷点。
 	var bounds := combat_enemy_count_bounds(floor_index)
 	if rng != null:
 		return rng.randi_range(bounds.x, bounds.y)

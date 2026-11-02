@@ -12,7 +12,7 @@ static func run_all() -> bool:
 	ok = _check("seat_cap_banner", _test_seat_cap_banner()) and ok
 	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
 	ok = _check("recruit_shop_potion", _test_recruit_shop_potion()) and ok
-	ok = _check("banner_excluded_at_cap", _test_banner_excluded_at_cap()) and ok
+	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
 	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
 	if ok:
 		print("RecruitShopFloorGoldTest: all passed")
@@ -109,22 +109,22 @@ static func _test_kill_gold_noop() -> bool:
 
 
 static func _test_seat_cap_banner() -> bool:
-	var deck := _make_deck(4)
-	if deck.get_max_size() != 4:
+	var deck := _make_deck(5)
+	if deck.get_max_size() != 5:
 		return false
 	if not deck.try_increase_seat_cap(1):
 		return false
-	if deck.get_max_size() != 5:
+	if deck.get_max_size() != 6:
 		return false
-	## 升到硬顶 6
-	while deck.get_max_size() < DeckState.SEAT_CAP_HARD_MAX:
+	## 升到 10
+	while deck.get_max_size() < 10:
 		if not deck.try_increase_seat_cap(1):
 			return false
 	if not deck.is_seat_cap_maxed():
 		return false
 	if deck.try_increase_seat_cap(1):
 		return false
-	return deck.get_max_size() == DeckState.SEAT_CAP_HARD_MAX
+	return deck.get_max_size() == 10
 
 
 static func _test_recruit_shop_potion() -> bool:
@@ -162,9 +162,9 @@ static func _test_recruit_shop_potion() -> bool:
 	return entry.bonus_max_hp == hp_before + 1 and entry.bonus_attack == atk_before + 1
 
 
-static func _test_banner_excluded_at_cap() -> bool:
-	var deck := _make_deck(DeckState.SEAT_CAP_HARD_MAX)
-	## 强制 override 到硬顶
+static func _test_banner_excluded_at_cap10() -> bool:
+	var deck := _make_deck(10)
+	## 强制 override 到 10
 	while not deck.is_seat_cap_maxed():
 		deck.try_increase_seat_cap(1)
 	var cfg := RecruitShopConfig.make_code_defaults()
@@ -178,9 +178,9 @@ static func _test_banner_excluded_at_cap() -> bool:
 	return true
 
 
-## 同一招募阶段可多次买旗帜，直到席位满硬顶。
+## 同一招募阶段可多次买旗帜，直到席位满 10。
 static func _test_banner_repeatable_until_cap() -> bool:
-	var deck := _make_deck(4)
+	var deck := _make_deck(5)
 	var cfg := RecruitShopConfig.make_code_defaults()
 	var econ := _make_economy(40)
 	var shop := RecruitShopService.new()
@@ -196,7 +196,7 @@ static func _test_banner_repeatable_until_cap() -> bool:
 	if banner_slot < 0:
 		return false
 	var buys := 0
-	while not deck.is_seat_cap_maxed() and buys < DeckState.SEAT_CAP_HARD_MAX:
+	while not deck.is_seat_cap_maxed() and buys < 10:
 		var r := shop.try_buy_banner(banner_slot, deck)
 		if int(r.get("result", -1)) != RecruitShopService.BuyResult.OK:
 			return false

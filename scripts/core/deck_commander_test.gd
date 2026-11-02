@@ -11,7 +11,7 @@ static func run_all() -> bool:
 	ok = _check("boost_bumps_run_hp", _test_boost_bumps_run_hp()) and ok
 	ok = _check("roster_unit_count_ignores_commander", _test_roster_unit_count()) and ok
 	ok = _check("hp_persists_across_set", _test_hp_persists_across_set()) and ok
-	ok = _check("starter_empty_cap_two", _test_starter_empty_cap_two()) and ok
+	ok = _check("starter_empty_cap_five_hard_ten", _test_starter_empty_cap_five_hard_ten()) and ok
 	return ok
 
 
@@ -171,36 +171,35 @@ static func _test_hp_persists_across_set() -> bool:
 	return true
 
 
-static func _test_starter_empty_cap_two() -> bool:
+static func _test_starter_empty_cap_five_hard_ten() -> bool:
 	var cfg := load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig
 	if cfg == null:
 		push_error("starter: missing realtime_starter_deck")
 		return false
-	if cfg.max_size != 2:
-		push_error("starter: max_size want 2 got %d" % cfg.max_size)
+	if cfg.max_size != 5:
+		push_error("starter: max_size want 5 got %d" % cfg.max_size)
 		return false
 	if not cfg.starting_units.is_empty() or cfg.starting_count != 0:
-		push_error("starter: should be empty roster")
+		push_error("starter: want empty starting roster")
 		return false
 	var deck := DeckState.new()
 	deck.configure(cfg)
 	deck.reset_from_config()
 	deck.ensure_commander()
 	if deck.get_roster_unit_count() != 0:
-		push_error("starter: roster should be empty after reset+commander")
+		push_error("starter: roster want 0 after reset+commander")
 		return false
-	if deck.get_max_size() != 2:
-		push_error("starter: runtime max_size want 2")
+	if deck.get_max_size() != 5:
+		push_error("starter: runtime max_size want 5")
 		return false
-	if DeckState.SEAT_CAP_HARD_MAX != 6:
-		push_error("starter: hard max want 6")
+	if DeckState.SEAT_CAP_HARD_MAX != 10:
+		push_error("starter: hard max want 10")
 		return false
-	## 旗帜可扩到 6
 	while deck.get_max_size() < DeckState.SEAT_CAP_HARD_MAX:
 		if not deck.try_increase_seat_cap(1):
 			push_error("starter: banner expand failed at %d" % deck.get_max_size())
 			return false
-	if deck.get_max_size() != 6 or not deck.is_seat_cap_maxed():
-		push_error("starter: should reach hard max 6")
+	if deck.get_max_size() != 10 or not deck.is_seat_cap_maxed():
+		push_error("starter: should reach hard max 10")
 		return false
 	return true
