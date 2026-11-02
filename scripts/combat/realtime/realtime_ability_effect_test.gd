@@ -155,7 +155,11 @@ static func _test_mount_bindings() -> bool:
 
 
 static func _make_from_data(data: UnitData, team: UnitInstance.Team) -> UnitInstance:
-	return UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	## 测例显式挂技能：生产路径友方/敌方均不读模板 unit.ability。
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	if data != null and data.ability != null:
+		unit.main_ability_override = data.ability
+	return unit
 
 
 static func _dummy(team: UnitInstance.Team, hp: int = 100000, overrides: Dictionary = {}) -> UnitInstance:
@@ -524,6 +528,7 @@ static func _gravewright_hurt_nearby_weak_expect(star_level: int, expected_weak:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var digger := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
+	digger.bind_template_ability_for_tests()
 	digger.level = star_level
 	var adjacent := UnitInstance.from_unit_data(
 		_load_unit("res://resources/units/enemies/enemy_knight.tres"),
@@ -1640,6 +1645,7 @@ static func _test_death_spawn_pack_star2() -> bool:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var ember := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	ember.bind_template_ability_for_tests()
 	ember.level = 2
 	ember.current_hp = 0
 	grid.place(ember, Vector2i(9, 20))
@@ -2395,6 +2401,7 @@ static func _test_turn_start_strike_weakest_damage() -> bool:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var assailant := UnitInstance.from_unit_data(data, Vector2i(4, 26), UnitInstance.Team.PLAYER)
+	assailant.bind_template_ability_for_tests()
 	assailant.level = 2
 	## 用占位敌，避免依赖敌镜像身体预算（盾卫已降为 T1 4/1）。
 	var victim := _dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0})
@@ -2502,6 +2509,7 @@ static func _test_devour_lr_absorb_and_kill() -> bool:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var devourer := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	devourer.bind_template_ability_for_tests()
 	var left := UnitInstance.from_unit_data(fodder_data, Vector2i(8, 20), UnitInstance.Team.PLAYER)
 	left.stats.attack = 3
 	left.stats.max_hp = 5
@@ -2677,6 +2685,7 @@ static func _test_devour_star2_skips_boss() -> bool:
 	var pipeline := DamagePipeline.new(bus, grid)
 	var resolver := EffectResolver.new(grid, bus, pipeline)
 	var devourer := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	devourer.bind_template_ability_for_tests()
 	devourer.level = 2
 	var boss_data := fodder_data.duplicate(true) as UnitData
 	boss_data.is_boss_leader = true

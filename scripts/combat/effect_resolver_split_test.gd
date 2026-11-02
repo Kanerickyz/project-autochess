@@ -54,6 +54,7 @@ static func _run_combat_start(grid: BoardGrid) -> EffectResolver:
 
 static func _slime(cell: Vector2i, team: UnitInstance.Team, current_hp: int = -1) -> UnitInstance:
 	var unit := UnitInstance.from_unit_data(SLIME_UNIT, cell, team)
+	unit.bind_template_ability_for_tests()
 	if current_hp >= 0:
 		unit.current_hp = current_hp
 	return unit

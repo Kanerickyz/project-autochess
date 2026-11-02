@@ -14,6 +14,8 @@ static func run_all() -> bool:
 	_check("assassin_ignores_taunt_priority", _test_assassin_priority())
 	_check("ranged_crit_multiplier_path", _test_ranged_crit_path())
 	_check("deck_skills_from_ability_equipment", _test_deck_skills_from_equipment())
+	_check("enemy_blank_template_ability", _test_enemy_blank_template_ability())
+	_check("info_card_profession_rules", _test_info_card_profession_rules())
 	if _failures == 0:
 		print("CombatProfessionRulesTest: all tests passed")
 	else:
@@ -163,3 +165,47 @@ static func _test_deck_skills_from_equipment() -> bool:
 		return false
 	var abs := entry.get_equipment_abilities()
 	return abs.size() == 2
+
+
+## 敌方 / 无牌库：模板 ability 不生效（与友方空装对齐）。
+static func _test_enemy_blank_template_ability() -> bool:
+	var data := UnitData.new()
+	data.id = "enemy_with_template"
+	data.combat_profession = UnitData.CombatProfession.RANGED
+	data.stats = UnitStats.new()
+	data.stats.max_hp = 4
+	data.stats.attack = 2
+	var ab := AbilityData.new()
+	ab.id = "should_not_auto_bind"
+	data.ability = ab
+	var enemy := UnitInstance.from_unit_data(data, Vector2i(1, 1), UnitInstance.Team.ENEMY)
+	if enemy.get_main_ability() != null:
+		return false
+	if not enemy.get_all_effect_specs().is_empty():
+		return false
+	enemy.bind_template_ability_for_tests()
+	return enemy.get_main_ability() != null and enemy.get_main_ability().id == "should_not_auto_bind"
+
+
+## 长按介绍卡技能区展示职业词条，且不把模板 ability 当自带技能。
+static func _test_info_card_profession_rules() -> bool:
+	var data := UnitData.new()
+	data.id = "info_u"
+	data.combat_profession = UnitData.CombatProfession.ASSASSIN
+	data.stats = UnitStats.new()
+	var ab := AbilityData.new()
+	ab.id = "catalog_only"
+	ab.display_name = "不该出现的自带技"
+	data.ability = ab
+	var from_data := UnitInfoText.get_skills_block_from_unit_data(data, 1, false)
+	if not from_data.contains("【职业·刺客】"):
+		return false
+	if from_data.contains("不该出现的自带技") or from_data.contains("技能装（图鉴）"):
+		return false
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, UnitInstance.Team.ENEMY)
+	var from_inst := UnitInfoText.get_skills_block(unit, false)
+	if not from_inst.contains("【职业·刺客】"):
+		return false
+	if from_inst.contains("不该出现的自带技"):
+		return false
+	return true
