@@ -29,6 +29,8 @@ enum ThemeBond {
 @export var team_default: UnitInstance.Team = UnitInstance.Team.PLAYER
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
+## 装备槽上限（0～3）；多数角色默认 1。见 Features/EQUIPMENT.md。
+@export_range(0, 3, 1) var equipment_slot_count: int = 1
 
 
 static func theme_bond_label(bond: ThemeBond) -> String:

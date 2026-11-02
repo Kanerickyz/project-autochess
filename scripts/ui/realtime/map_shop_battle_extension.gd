@@ -189,7 +189,7 @@ func _ensure_hud() -> void:
 	_hint_label = Label.new()
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.text = "拖下半场货架到上半场角色购买；拖队伍换座"
+	_hint_label.text = "拖货架到角色购买；短点角色看装备/卸载；拖队伍换座"
 	_hud.add_child(_hint_label)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

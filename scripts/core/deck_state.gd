@@ -10,6 +10,8 @@ signal triple_merged(product: DeckEntry, consumed_seats: Array)
 const SEAT_CAP_HARD_MAX := 10
 ## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
 const BENCH_CAPACITY := 5
+## 队伍级装备暂存栏格数（EQUIPMENT.md；数值可调）。
+const EQUIPMENT_STASH_CAPACITY := 8
 const COMMANDER_UNIT_DATA := preload("res://resources/units/realtime/commander.tres")
 
 var _config: DeckConfig
@@ -20,11 +22,14 @@ var _next_entry_id: int = 0
 var _next_seat_seq: int = 0
 ## 运行时席位上限；-1 表示沿用 DeckConfig.max_size（旗帜写入此字段，避免污染共享 .tres）。
 var _seat_cap_override: int = -1
-## 三合一装备冲突等随机；可注入以便测试。
+## 三合一等随机；可注入以便测试（装备合并已不依赖 RNG）。
 var _rng: RandomNumberGenerator
 var _run_stat_ledger: RunStatLedger
 ## 指挥官当前生命（跨遭遇）；强化最大生命时同步抬当前血。
 var _run_state: RunState
+## 队伍级装备暂存（整局持久；卸载与三合一溢出）。
+var _equipment_stash: Array[EquipmentData] = []
+var _equipment_stash_piece_max: Array[int] = []
 
 
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
@@ -85,6 +90,8 @@ func reset_from_config() -> void:
 	_next_entry_id = 0
 	_next_seat_seq = 0
 	_seat_cap_override = -1
+	_equipment_stash.clear()
+	_equipment_stash_piece_max.clear()
 	if _config == null:
 		deck_changed.emit()
 		return
@@ -98,6 +105,85 @@ func reset_from_config() -> void:
 		return
 	for _i in _config.starting_count:
 		add_entry(_config.starting_unit)
+
+
+func get_equipment_stash_capacity() -> int:
+	return EQUIPMENT_STASH_CAPACITY
+
+
+func get_equipment_stash() -> Array[EquipmentData]:
+	return _equipment_stash.duplicate()
+
+
+func get_equipment_stash_count() -> int:
+	return _equipment_stash.size()
+
+
+func is_equipment_stash_full() -> bool:
+	return _equipment_stash.size() >= EQUIPMENT_STASH_CAPACITY
+
+
+## 卸下 entry 第 slot_index 件装备进暂存。成功返回 {ok:true,...}；满暂存 / 非法返回 ok:false。
+func unequip_to_stash(entry_id: int, slot_index: int) -> Dictionary:
+	var failed := {"ok": false, "reason": "failed"}
+	var entry := get_entry(entry_id)
+	if entry == null:
+		failed["reason"] = "no_entry"
+		return failed
+	if is_equipment_stash_full():
+		failed["reason"] = "stash_full"
+		return failed
+	var taken := entry.take_equipment_at(slot_index)
+	if taken.is_empty() or taken.get("item") == null:
+		failed["reason"] = "empty_slot"
+		return failed
+	var item: EquipmentData = taken["item"] as EquipmentData
+	var piece_max := int(taken.get("piece_max", item.get_armor_block() if item != null else 0))
+	_equipment_stash.append(item)
+	_equipment_stash_piece_max.append(maxi(0, piece_max))
+	deck_changed.emit()
+	return {"ok": true, "reason": "", "item": item}
+
+
+## 从暂存挂到有空槽的角色。成功清空该暂存格。
+func try_equip_from_stash(stash_index: int, entry_id: int) -> Dictionary:
+	var failed := {"ok": false, "reason": "failed"}
+	if stash_index < 0 or stash_index >= _equipment_stash.size():
+		failed["reason"] = "bad_stash_index"
+		return failed
+	var entry := get_entry(entry_id)
+	if entry == null:
+		failed["reason"] = "no_entry"
+		return failed
+	if not entry.has_empty_equipment_slot():
+		failed["reason"] = "slots_full"
+		return failed
+	var item: EquipmentData = _equipment_stash[stash_index]
+	var piece_max := (
+		int(_equipment_stash_piece_max[stash_index])
+		if stash_index < _equipment_stash_piece_max.size()
+		else (item.get_armor_block() if item != null else 0)
+	)
+	if not entry.try_receive_equipment_instance(item, piece_max):
+		failed["reason"] = "slots_full"
+		return failed
+	_equipment_stash.remove_at(stash_index)
+	if stash_index < _equipment_stash_piece_max.size():
+		_equipment_stash_piece_max.remove_at(stash_index)
+	deck_changed.emit()
+	return {"ok": true, "reason": "", "entry": entry}
+
+
+## 三合一溢出等：尝试把一件装备推进暂存；满则失败且不吞件（调用方保留）。
+func try_push_equipment_to_stash(item: EquipmentData, piece_max: int = -1) -> bool:
+	if item == null:
+		return false
+	if is_equipment_stash_full():
+		return false
+	var cap := piece_max if piece_max >= 0 else item.get_armor_block()
+	_equipment_stash.append(item)
+	_equipment_stash_piece_max.append(maxi(0, cap))
+	return true
 
 
 ## 保证队伍中有且仅有一名指挥官：默认后排中座；不占上场席位上限。
@@ -860,11 +946,8 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	var consumed_seats: Array = []
 	for src in [a, b, c]:
 		consumed_seats.append(src.seat_index if src != null else -1)
-	## MAP_SHOP §5.2：参与合成成员的装备中随机留一件，其余消失不退金。
-	var merged_eq := _pick_merge_equipment([a, b, c])
-	product.equipment = merged_eq
-	if merged_eq != null:
-		product.equipment_armor_max = merged_eq.get_armor_block()
+	## EQUIPMENT §9：参与成员全部装备填入产物槽（高档护甲优先）；溢出进队伍暂存。
+	_merge_equipments_into_product(product, [a, b, c])
 	_merge_attached_buffs(product, [a, b, c])
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
@@ -873,22 +956,54 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	return product
 
 
-func _pick_merge_equipment(sources: Array) -> EquipmentData:
-	var candidates: Array[EquipmentData] = []
+## 收集来源装备，按护甲满额降序填产物槽；放不下的进暂存（暂存满则丢弃并告警）。
+func _merge_equipments_into_product(product: DeckEntry, sources: Array) -> void:
+	if product == null:
+		return
+	var pieces: Array[Dictionary] = []
 	for item in sources:
 		var entry := item as DeckEntry
-		if entry != null and entry.equipment != null:
-			candidates.append(entry.equipment)
-	if candidates.is_empty():
-		return null
-	var picked: EquipmentData
-	if candidates.size() == 1:
-		picked = candidates[0]
-	else:
-		var rng := _ensure_rng()
-		picked = candidates[rng.randi_range(0, candidates.size() - 1)]
-	## 合成结果持有独立副本，避免与源条目或池资源串改。
-	return picked.duplicate(true) as EquipmentData if picked != null else null
+		if entry == null:
+			continue
+		for i in entry.equipments.size():
+			var eq: EquipmentData = entry.equipments[i]
+			if eq == null:
+				continue
+			var piece_max := (
+				int(entry.equipment_piece_max[i])
+				if i < entry.equipment_piece_max.size()
+				else eq.get_armor_block()
+			)
+			var copy := eq.duplicate(true) as EquipmentData
+			if copy == null:
+				continue
+			## 挂到产物前先回满（合成在非战斗阶段）。
+			copy.armor_block = maxi(0, piece_max)
+			pieces.append({"item": copy, "piece_max": maxi(0, piece_max)})
+	pieces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var am := int(a.get("piece_max", 0))
+		var bm := int(b.get("piece_max", 0))
+		if am != bm:
+			return am > bm
+		var ai: EquipmentData = a.get("item") as EquipmentData
+		var bi: EquipmentData = b.get("item") as EquipmentData
+		var aid := ai.id if ai != null else ""
+		var bid := bi.id if bi != null else ""
+		return aid < bid
+	)
+	var overflow_dropped := 0
+	for piece in pieces:
+		var eq: EquipmentData = piece.get("item") as EquipmentData
+		var piece_max := int(piece.get("piece_max", 0))
+		if product.has_empty_equipment_slot():
+			product.try_receive_equipment_instance(eq, piece_max)
+			continue
+		if not try_push_equipment_to_stash(eq, piece_max):
+			overflow_dropped += 1
+	if overflow_dropped > 0:
+		push_warning(
+			"DeckState: triple merge dropped %d equipment(s); stash full" % overflow_dropped
+		)
 
 
 ## 落座时间最早（seq 最小且 >0）；皆未入座则 null。
@@ -950,17 +1065,33 @@ func _remove_entries_by_ids(ids: Array) -> void:
 	_entries = kept
 
 
-## 招募进门快照：深拷贝条目（含 entry_id / 等级 / 增益 / 持久占位 / 席位上限）。
+## 招募进门快照：深拷贝条目（含 entry_id / 等级 / 增益 / 持久占位 / 席位上限 / 装备暂存）。
 func capture_roster() -> Dictionary:
 	var copies: Array[DeckEntry] = []
 	for entry in _entries:
 		if entry != null:
 			copies.append(_clone_entry(entry))
+	var stash_copies: Array[EquipmentData] = []
+	var stash_maxes: Array[int] = []
+	for i in _equipment_stash.size():
+		var eq: EquipmentData = _equipment_stash[i]
+		if eq != null:
+			stash_copies.append(eq.duplicate(true) as EquipmentData)
+		else:
+			stash_copies.append(null)
+		var pm := (
+			int(_equipment_stash_piece_max[i])
+			if i < _equipment_stash_piece_max.size()
+			else (eq.get_armor_block() if eq != null else 0)
+		)
+		stash_maxes.append(pm)
 	return {
 		"entries": copies,
 		"next_entry_id": _next_entry_id,
 		"next_seat_seq": _next_seat_seq,
 		"seat_cap_override": _seat_cap_override,
+		"equipment_stash": stash_copies,
+		"equipment_stash_piece_max": stash_maxes,
 	}
 
 
@@ -973,6 +1104,17 @@ func restore_roster(snapshot: Dictionary) -> void:
 	_next_entry_id = int(snapshot.get("next_entry_id", _next_entry_id))
 	_next_seat_seq = int(snapshot.get("next_seat_seq", 0))
 	_seat_cap_override = int(snapshot.get("seat_cap_override", -1))
+	_equipment_stash.clear()
+	_equipment_stash_piece_max.clear()
+	var stash_src: Array = snapshot.get("equipment_stash", [])
+	var stash_max_src: Array = snapshot.get("equipment_stash_piece_max", [])
+	for i in stash_src.size():
+		var eq_item = stash_src[i]
+		if eq_item is EquipmentData:
+			var eq := (eq_item as EquipmentData).duplicate(true) as EquipmentData
+			_equipment_stash.append(eq)
+			var pm := int(stash_max_src[i]) if i < stash_max_src.size() else (eq.get_armor_block() if eq != null else 0)
+			_equipment_stash_piece_max.append(maxi(0, pm))
 	if _next_seat_seq <= 0:
 		for entry in _entries:
 			if entry != null:
@@ -991,10 +1133,21 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.experience = source.experience
 	entry.bonus_attack = source.bonus_attack
 	entry.bonus_max_hp = source.bonus_max_hp
-	if source.equipment != null:
-		entry.equipment = source.equipment.duplicate(true) as EquipmentData
-	else:
-		entry.equipment = null
+	entry.equipments.clear()
+	entry.equipment_piece_max.clear()
+	for i in source.equipments.size():
+		var eq: EquipmentData = source.equipments[i]
+		if eq == null:
+			continue
+		var copy := eq.duplicate(true) as EquipmentData
+		entry.equipments.append(copy)
+		var pm := (
+			int(source.equipment_piece_max[i])
+			if i < source.equipment_piece_max.size()
+			else copy.get_armor_block()
+		)
+		entry.equipment_piece_max.append(maxi(0, pm))
+	entry._recompute_equipment_armor_max()
 	entry.seat_index = source.seat_index
 	entry.bench_slot_index = source.bench_slot_index
 	entry.seat_assign_seq = source.seat_assign_seq
