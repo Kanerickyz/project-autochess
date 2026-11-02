@@ -14,7 +14,7 @@
 
 | 文件 | 摘要 |
 |------|------|
-| （暂无） | 新想法放这里，并在本表加一行 |
+| [what-is-the-player-building.md](./what-is-the-player-building.md) | 玩家构筑对象/方式、Tier 与养成、强度维度、乐趣（2026-11-02） |
 
 ## 模板（可选）
 
