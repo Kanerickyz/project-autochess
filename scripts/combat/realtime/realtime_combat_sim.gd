@@ -690,13 +690,15 @@ func _advance_current_actor() -> void:
 		_end_current_actor_turn()
 		return
 
-	if (
-		rt.is_boss_leader()
-		and decision.teleport_cell != Vector2i(-1, -1)
-		and _actor_steps_left > 0
-	):
+	if decision.teleport_cell != Vector2i(-1, -1) and _actor_steps_left > 0:
 		rt.state = RtUnit.State.MOVING
-		if _boss_try_teleport(rt, decision.teleport_cell):
+		var teleported := false
+		if rt.is_boss_leader():
+			teleported = _boss_try_teleport(rt, decision.teleport_cell)
+		elif _is_cell_free_for(rt, decision.teleport_cell):
+			_move_unit_to_cell(rt, decision.teleport_cell)
+			teleported = true
+		if teleported:
 			_actor_steps_left -= 1
 			return
 
@@ -750,9 +752,26 @@ func _try_complete_current_actor_attack() -> bool:
 	return true
 
 
+## 远程职业普攻暴击率 / 倍率（只放大进护甲前伤害；技能装伤害不走此路径）。
+const RANGED_BASIC_CRIT_CHANCE := 0.05
+const RANGED_BASIC_CRIT_MULT := 1.5
+
+
+## 纯函数：远程普攻暴击倍率路径（roll < chance 时 × mult）；供测例与 _fire 共用。
+static func apply_ranged_basic_crit(damage: int, is_ranged_profession: bool, roll: float) -> int:
+	if not is_ranged_profession or damage <= 0:
+		return damage
+	if roll >= RANGED_BASIC_CRIT_CHANCE:
+		return damage
+	return maxi(1, int(round(float(damage) * RANGED_BASIC_CRIT_MULT)))
+
+
 func _fire(rt: RtUnit) -> void:
 	var stats := rt.get_stats()
 	var damage := rt.unit.get_effective_attack()
+	## 远程普攻：5% 暴击 ×1.5（仅普攻；技能装伤害不经 _fire）。
+	var is_ranged := rt.unit != null and rt.unit.is_ranged_profession()
+	damage = apply_ranged_basic_crit(damage, is_ranged, _rng.randf())
 	var target := rt.target
 	rt.last_attack_time = elapsed_seconds
 	unit_attacked.emit(rt, target)

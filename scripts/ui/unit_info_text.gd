@@ -132,12 +132,20 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	var main_ab := entry.get_main_ability()
-	if main_ab != null:
+	## 友方开战技能来自技能装；空装不展示模板 unit.ability。
+	if entry.runtime_main_ability != null:
+		var main_ab := entry.runtime_main_ability
 		var scale := 1
 		if entry.get_star_display_level() > 0:
 			scale = UnitInstance.ability_value_multiplier_for(main_ab, entry.level)
 		lines.append(format_ability("技能", main_ab, scale, with_stat_icons, entry.level))
+	for ab in entry.get_equipment_abilities():
+		if ab == null:
+			continue
+		var escale := 1
+		if entry.get_star_display_level() > 0:
+			escale = UnitInstance.ability_value_multiplier_for(ab, entry.level)
+		lines.append(format_ability("技能装", ab, escale, with_stat_icons, entry.level))
 	for passive in entry.unit.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)
@@ -158,10 +166,18 @@ static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = f
 	if equipment == null:
 		return ""
 	var title := equipment.get_display_name()
+	if equipment.is_ability_kind():
+		var ab := equipment.get_ability()
+		var ab_name := ""
+		if ab != null:
+			ab_name = ab.display_name if not ab.display_name.is_empty() else ab.id
+		if with_stat_icons:
+			return "【技能装】%s — %s" % [title, ab_name if not ab_name.is_empty() else "战斗技能"]
+		return "【技能装】%s" % title
 	var block := equipment.get_armor_block()
 	if with_stat_icons:
-		return "【装备】%s — 受伤时抵挡 %d 点伤害" % [title, block]
-	return "【装备】%s — 护甲 %d" % [title, block]
+		return "【护甲】%s — 受伤时抵挡 %d 点伤害" % [title, block]
+	return "【护甲】%s — 护甲 %d" % [title, block]
 
 
 static func get_equipment_attachment_skills_block(
@@ -172,6 +188,11 @@ static func get_equipment_attachment_skills_block(
 ) -> String:
 	if equipment == null:
 		return ""
+	if equipment.is_ability_kind():
+		var ab := equipment.get_ability()
+		if ab == null:
+			return "技能装（空效果）"
+		return format_ability("技能装", ab, 1, with_stat_icons)
 	var block := equipment.get_armor_block()
 	var lines: PackedStringArray = []
 	if with_stat_icons:
@@ -195,17 +216,18 @@ static func build_equipment_attachment_info(
 		return {}
 	if max_armor <= 0:
 		max_armor = equipment.get_armor_block()
+	var kind_label := "技能装" if equipment.is_ability_kind() else "护甲"
 	return {
 		"is_attachment": true,
 		"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
 		"equipment_id": equipment.id,
-		"attachment_kind_label": "装备",
+		"attachment_kind_label": kind_label,
 		"name": equipment.get_display_name(),
 		"side_player": true,
 		"tier": 0,
 		"attack": 0,
 		"hp": 0,
-		"armor": maxi(0, current_armor),
+		"armor": 0 if equipment.is_ability_kind() else maxi(0, current_armor),
 		"skills": get_equipment_attachment_skills_block(
 			equipment, current_armor, max_armor, with_stat_icons
 		),

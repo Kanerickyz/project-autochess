@@ -50,6 +50,7 @@ static func make_code_defaults() -> MapShopConfig:
 		_make_equipment("armor_t2", "护甲 II", 2, 6, ICON_ARMOR),
 		_make_equipment("armor_t3", "护甲 III", 4, 10, ICON_ARMOR),
 	]
+	config.equipment_pool.append_array(_make_skill_equipment_defaults())
 	return config
 
 
@@ -61,6 +62,10 @@ const DEFAULT_THEME_POTION_COST := 3
 ## 主题药水效果为翻倍，不再读 flat bonus；字段保留 0 以免摘要误导。
 const DEFAULT_THEME_POTION_ATK := 0
 const DEFAULT_THEME_POTION_HP := 0
+## 技能装默认售价（占位；数值可后调）。
+const DEFAULT_SKILL_EQUIP_COST := 3
+## 从角色模板 ability 生成技能装时扫描的友方单位目录。
+const REALTIME_UNITS_DIR := "res://resources/units/realtime"
 
 
 static func _make_consumable(
@@ -112,10 +117,75 @@ static func _make_equipment(
 	item.id = id
 	item.display_name = name
 	item.cost = cost
+	item.kind = EquipmentData.Kind.ARMOR
 	item.armor_block = block
 	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
 		item.icon = load(icon_path) as Texture2D
 	return item
+
+
+static func _make_ability_equipment(
+	id: String,
+	name: String,
+	ability: AbilityData,
+	cost: int = DEFAULT_SKILL_EQUIP_COST,
+	icon_path: String = ICON_ATK,
+) -> EquipmentData:
+	var item := EquipmentData.new()
+	item.id = id
+	item.display_name = name
+	item.cost = cost
+	item.kind = EquipmentData.Kind.ABILITY
+	item.armor_block = 0
+	item.ability = ability
+	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
+		item.icon = load(icon_path) as Texture2D
+	return item
+
+
+## 扫描 realtime 友方单位：有 ability 则生成 skill_<unit_id> 装备（按 ability.id 去重）。
+static func _make_skill_equipment_defaults() -> Array[EquipmentData]:
+	var out: Array[EquipmentData] = []
+	var seen_ability: Dictionary = {}
+	var dir := DirAccess.open(REALTIME_UNITS_DIR)
+	if dir == null:
+		return out
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".tres"):
+			var path := REALTIME_UNITS_DIR.path_join(file_name)
+			var loaded := load(path)
+			var unit := loaded as UnitData
+			if (
+				unit != null
+				and unit.ability != null
+				and not unit.id.is_empty()
+				and not unit.id.begins_with("boss_")
+				and unit.id != "commander"
+			):
+				var ab := unit.ability
+				var ab_key := ab.id if not ab.id.is_empty() else ab.resource_path
+				if not ab_key.is_empty() and not seen_ability.has(ab_key):
+					seen_ability[ab_key] = true
+					var skill_name := ab.display_name
+					if skill_name.is_empty():
+						skill_name = unit.display_name if not unit.display_name.is_empty() else unit.id
+					var eq_id := "skill_%s" % unit.id
+					out.append(
+						_make_ability_equipment(
+							eq_id,
+							"技·%s" % skill_name,
+							ab,
+							DEFAULT_SKILL_EQUIP_COST + maxi(0, unit.tier - 1),
+						)
+					)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	out.sort_custom(func(a: EquipmentData, b: EquipmentData) -> bool:
+		return a.id < b.id
+	)
+	return out
 
 
 func get_consumable_pool() -> Array[MapShopConsumableData]:
@@ -132,9 +202,22 @@ func get_equipment_pool() -> Array[EquipmentData]:
 	if equipment_pool.is_empty():
 		return make_code_defaults().equipment_pool
 	var out: Array[EquipmentData] = []
+	var seen: Dictionary = {}
+	var has_ability := false
 	for item in equipment_pool:
-		if item != null:
-			out.append(item)
+		if item == null or item.id.is_empty():
+			continue
+		out.append(item)
+		seen[item.id] = true
+		if item.is_ability_kind():
+			has_ability = true
+	## .tres 若仍只有护甲，运行时补齐技能装 code defaults。
+	if not has_ability:
+		for skill in _make_skill_equipment_defaults():
+			if skill == null or skill.id.is_empty() or seen.has(skill.id):
+				continue
+			out.append(skill)
+			seen[skill.id] = true
 	return out
 
 

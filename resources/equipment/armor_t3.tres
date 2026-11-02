@@ -9,4 +9,5 @@ id = "armor_t3"
 display_name = "护甲 III"
 icon = ExtResource("2_icon")
 cost = 4
+kind = 0
 armor_block = 10

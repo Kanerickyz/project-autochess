@@ -58,7 +58,7 @@ static func _test_entry_equipment_attachment() -> bool:
 static func _test_entry_multi_equipment_attachments() -> bool:
 	var entry := DeckEntry.new()
 	var unit := UnitData.new()
-	unit.equipment_slot_count = 2
+	unit.combat_profession = UnitData.CombatProfession.ASSASSIN
 	entry.unit = unit
 	var eq1 := EquipmentData.new()
 	eq1.id = "armor_t1"
