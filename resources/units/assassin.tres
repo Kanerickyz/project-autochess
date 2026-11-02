@@ -18,5 +18,7 @@ id = "assassin"
 display_name = "刺客"
 cost = 2
 tier = 2
+combat_profession = 3
+equipment_slot_count = 2
 stats = SubResource("UnitStats_assassin")
 ability = ExtResource("3_ability")

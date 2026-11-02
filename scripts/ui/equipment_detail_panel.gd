@@ -223,11 +223,14 @@ func _make_slot_cell(entry: DeckEntry, index: int) -> Control:
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_font_size_override("font_size", 11)
 	col.add_child(name_l)
-	var armor_l := Label.new()
-	armor_l.text = "甲 %d" % eq.get_armor_block()
-	armor_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	armor_l.add_theme_font_size_override("font_size", 11)
-	col.add_child(armor_l)
+	var detail_l := Label.new()
+	if eq.is_ability_kind():
+		detail_l.text = "技能"
+	else:
+		detail_l.text = "甲 %d" % eq.get_armor_block()
+	detail_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail_l.add_theme_font_size_override("font_size", 11)
+	col.add_child(detail_l)
 	if not _readonly:
 		var btn := Button.new()
 		btn.text = "卸载"

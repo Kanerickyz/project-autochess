@@ -2210,6 +2210,13 @@ static func _blood_acolyte_setup(seed: int) -> Dictionary:
 	deck.configure(deck_cfg)
 	var entry := deck.add_entry(data)
 	entry.level = 2
+	## 友方技能来自技能装：测例把模板 ability 挂上。
+	if data.ability != null:
+		var skill_eq := EquipmentData.new()
+		skill_eq.id = "skill_blood_acolyte_test"
+		skill_eq.kind = EquipmentData.Kind.ABILITY
+		skill_eq.ability = data.ability
+		entry.attach_equipment(skill_eq)
 	var sim := _new_sim()
 	sim.configure(ARENA, seed)
 	sim.set_deck_state(deck)

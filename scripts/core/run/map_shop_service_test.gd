@@ -356,10 +356,10 @@ static func _test_shelf_no_duplicate_theme_bond() -> bool:
 	return true
 
 
-## 默认 1 槽：已有装备时再买失败、不扣金、货架保留（废除随机覆盖）。
+## 近战 1 槽：已有装备时再买失败、不扣金、货架保留（废除随机覆盖）。
 static func _test_equipment_slots_full_rejects() -> bool:
 	var unit := _make_unit()
-	unit.equipment_slot_count = 1
+	unit.combat_profession = UnitData.CombatProfession.MELEE
 	var deck := _make_deck(unit)
 	var entry := deck.get_entries()[0]
 	var old_eq := MapShopConfig._make_equipment("armor_t1", "护甲 I", 1, 2)
@@ -389,10 +389,10 @@ static func _test_equipment_slots_full_rejects() -> bool:
 	return true
 
 
-## 2 槽角色：已有一件时可再买挂上第二件。
+## 刺客 2 槽：已有一件时可再买挂上第二件。
 static func _test_equipment_second_slot_ok() -> bool:
 	var unit := _make_unit()
-	unit.equipment_slot_count = 2
+	unit.combat_profession = UnitData.CombatProfession.ASSASSIN
 	var deck := _make_deck(unit)
 	var entry := deck.get_entries()[0]
 	var old_eq := MapShopConfig._make_equipment("armor_t1", "护甲 I", 1, 2)
@@ -420,7 +420,7 @@ static func _test_equipment_second_slot_ok() -> bool:
 
 static func _test_triple_merge_equipment() -> bool:
 	var unit := _make_unit("merge_u")
-	unit.equipment_slot_count = 1
+	unit.combat_profession = UnitData.CombatProfession.MELEE
 	var deck := _make_deck(unit, 0)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -474,7 +474,7 @@ static func _test_triple_merge_equipment() -> bool:
 
 static func _test_unequip_stash_reequip() -> bool:
 	var unit := _make_unit()
-	unit.equipment_slot_count = 1
+	unit.combat_profession = UnitData.CombatProfession.MELEE
 	var deck := _make_deck(unit)
 	var entry := deck.get_entries()[0]
 	var eq := MapShopConfig._make_equipment("armor_t2", "护甲 II", 2, 6)
