@@ -44,6 +44,7 @@
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
 | [Reference/RISK_OF_RAIN_2.md](./Reference/RISK_OF_RAIN_2.md) | **Risk of Rain 2** 基础版道具 / 装备 / 技能参考（外部资料） |
 | [Reference/MASTER_OF_PIECE.md](./Reference/MASTER_OF_PIECE.md) | **弈战征途 / Master of Piece** 系统 / 道具 / 机制参考（外部资料） |
+| [ideas/INDEX.md](./ideas/INDEX.md) | **随机想法**（非正式备忘；非 Features/Content 定稿） |
 
 ## 编辑器插件（策划工具）
 
