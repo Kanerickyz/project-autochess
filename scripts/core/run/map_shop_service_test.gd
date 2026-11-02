@@ -11,8 +11,10 @@ static func run_all() -> bool:
 	_check("consumable_destroys_at_zero_hp", _test_consumable_destroys_at_zero_hp())
 	_check("cant_afford_keeps_shelf", _test_cant_afford())
 	_check("refresh_consumables", _test_refresh())
-	_check("equipment_conflict_no_refund", _test_equipment_conflict())
-	_check("triple_merge_keeps_one_equipment", _test_triple_merge_equipment())
+	_check("equipment_slots_full_rejects", _test_equipment_slots_full_rejects())
+	_check("equipment_second_slot_ok", _test_equipment_second_slot_ok())
+	_check("triple_merge_fills_slots_by_armor", _test_triple_merge_equipment())
+	_check("unequip_to_stash_and_reequip", _test_unequip_stash_reequip())
 	_check("theme_potion_snapshot_includes_bench", _test_theme_potion_snapshot_includes_bench())
 	_check("theme_potion_zero_hit_still_buys", _test_theme_potion_zero_hit_still_buys())
 	_check("theme_pool_has_seven", _test_theme_pool_has_seven())
@@ -354,51 +356,71 @@ static func _test_shelf_no_duplicate_theme_bond() -> bool:
 	return true
 
 
-static func _test_equipment_conflict() -> bool:
+## 默认 1 槽：已有装备时再买失败、不扣金、货架保留（废除随机覆盖）。
+static func _test_equipment_slots_full_rejects() -> bool:
 	var unit := _make_unit()
+	unit.equipment_slot_count = 1
 	var deck := _make_deck(unit)
 	var entry := deck.get_entries()[0]
 	var old_eq := MapShopConfig._make_equipment("armor_t1", "护甲 I", 1, 2)
 	var new_eq := MapShopConfig._make_equipment("armor_t3", "护甲 III", 4, 10)
 	entry.attach_equipment(old_eq)
-	## seed 选出使 randf()<0.5 → kept_new=true 与 false 都能测：固定两次。
-	var kept_new_count := 0
-	var kept_old_count := 0
-	for seed in [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]:
-		var e2 := deck.get_entries()[0]
-		e2.attach_equipment(old_eq)
-		var econ2 := _make_economy(20)
-		var rng := RandomNumberGenerator.new()
-		rng.seed = seed
-		var svc := MapShopService.new()
-		var config := MapShopConfig.make_code_defaults()
-		svc.configure(config, econ2, deck, rng)
-		svc.open_shop()
-		## 货架行长可变：强制单槽装备报价，避免空行下标赋值失败。
-		svc._equipment_offers = [new_eq]
-		var gold_before := econ2.gold
-		var result := svc.try_buy_equipment_on_entry(0, e2.entry_id)
-		if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
-			return false
-		if econ2.gold != gold_before - 4:
-			return false
-		if bool(result.get("kept_new", false)):
-			kept_new_count += 1
-			if e2.equipment == null or e2.equipment.id != new_eq.id:
-				return false
-		else:
-			kept_old_count += 1
-			if e2.equipment == null or e2.equipment.id != old_eq.id:
-				return false
-	## 10 次应至少出现两种结果（概率极低全同，但 seed 范围够）。
-	if kept_new_count == 0 or kept_old_count == 0:
-		push_warning("equipment conflict RNG skew; seeds may need adjust")
-		## 不硬失败：至少扣金与不退金已验证。
+	var econ := _make_economy(20)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var svc := MapShopService.new()
+	svc.configure(MapShopConfig.make_code_defaults(), econ, deck, rng)
+	svc.open_shop()
+	svc._equipment_offers = [new_eq]
+	var gold_before := econ.gold
+	var result := svc.try_buy_equipment_on_entry(0, entry.entry_id)
+	if int(result.get("result", -1)) != MapShopService.BuyResult.FAILED:
+		return false
+	if String(result.get("reason", "")) != "slots_full":
+		return false
+	if econ.gold != gold_before:
+		return false
+	if svc.get_equipment_offer(0) == null or svc.get_equipment_offer(0).id != new_eq.id:
+		return false
+	if entry.get_equipment_occupied() != 1:
+		return false
+	if entry.equipment == null or entry.equipment.id != old_eq.id:
+		return false
+	return true
+
+
+## 2 槽角色：已有一件时可再买挂上第二件。
+static func _test_equipment_second_slot_ok() -> bool:
+	var unit := _make_unit()
+	unit.equipment_slot_count = 2
+	var deck := _make_deck(unit)
+	var entry := deck.get_entries()[0]
+	var old_eq := MapShopConfig._make_equipment("armor_t1", "护甲 I", 1, 2)
+	var new_eq := MapShopConfig._make_equipment("armor_t2", "护甲 II", 2, 6)
+	entry.attach_equipment(old_eq)
+	var econ := _make_economy(20)
+	var svc := MapShopService.new()
+	svc.configure(MapShopConfig.make_code_defaults(), econ, deck, RandomNumberGenerator.new())
+	svc.open_shop()
+	svc._equipment_offers = [new_eq]
+	var gold_before := econ.gold
+	var result := svc.try_buy_equipment_on_entry(0, entry.entry_id)
+	if int(result.get("result", -1)) != MapShopService.BuyResult.OK:
+		return false
+	if econ.gold != gold_before - 2:
+		return false
+	if entry.get_equipment_occupied() != 2:
+		return false
+	if entry.get_armor_block() != 8:
+		return false
+	if svc.get_equipment_offer(0) != null:
+		return false
 	return true
 
 
 static func _test_triple_merge_equipment() -> bool:
 	var unit := _make_unit("merge_u")
+	unit.equipment_slot_count = 1
 	var deck := _make_deck(unit, 0)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -440,7 +462,37 @@ static func _test_triple_merge_equipment() -> bool:
 	if deck.size() != 1:
 		return false
 	var product: DeckEntry = deck.get_entries()[0]
-	if product == null or product.equipment == null:
+	if product == null or product.get_equipment_occupied() != 1:
 		return false
-	var id := product.equipment.id
-	return id == "armor_t1" or id == "armor_t2" or id == "armor_t3"
+	## 高档护甲优先：产物应挂 armor_t3；其余进暂存。
+	if product.equipment == null or product.equipment.id != "armor_t3":
+		return false
+	if deck.get_equipment_stash_count() != 2:
+		return false
+	return true
+
+
+static func _test_unequip_stash_reequip() -> bool:
+	var unit := _make_unit()
+	unit.equipment_slot_count = 1
+	var deck := _make_deck(unit)
+	var entry := deck.get_entries()[0]
+	var eq := MapShopConfig._make_equipment("armor_t2", "护甲 II", 2, 6)
+	entry.attach_equipment(eq)
+	var unequip := deck.unequip_to_stash(entry.entry_id, 0)
+	if not bool(unequip.get("ok", false)):
+		return false
+	if entry.get_equipment_occupied() != 0:
+		return false
+	if deck.get_equipment_stash_count() != 1:
+		return false
+	var re := deck.try_equip_from_stash(0, entry.entry_id)
+	if not bool(re.get("ok", false)):
+		return false
+	if entry.get_equipment_occupied() != 1:
+		return false
+	if entry.get_armor_block() != 6:
+		return false
+	if deck.get_equipment_stash_count() != 0:
+		return false
+	return true

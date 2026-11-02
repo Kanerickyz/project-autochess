@@ -217,16 +217,25 @@ static func collect_info_attachments_from_entry(
 	entry: DeckEntry, with_stat_icons: bool = true
 ) -> Array:
 	var out: Array = []
-	if entry == null or entry.equipment == null:
+	if entry == null or entry.equipments.is_empty():
 		return out
-	var max_armor := entry.equipment_armor_max
-	if max_armor <= 0:
-		max_armor = entry.equipment.get_armor_block()
-	var info := build_equipment_attachment_info(
-		entry.equipment, entry.get_armor_block(), max_armor, with_stat_icons
-	)
-	if not info.is_empty():
-		out.append(info)
+	## 多件时分件列出；单件仍一条。头图护甲用合计（调用方读 entry.get_armor_block）。
+	for i in entry.equipments.size():
+		var eq: EquipmentData = entry.equipments[i]
+		if eq == null:
+			continue
+		var piece_max := (
+			int(entry.equipment_piece_max[i])
+			if i < entry.equipment_piece_max.size()
+			else eq.get_armor_block()
+		)
+		if piece_max <= 0:
+			piece_max = eq.get_armor_block()
+		var info := build_equipment_attachment_info(
+			eq, eq.get_armor_block(), piece_max, with_stat_icons
+		)
+		if not info.is_empty():
+			out.append(info)
 	return out
 
 
@@ -329,15 +338,24 @@ static func collect_info_attachments_from_unit(
 		return []
 	var out: Array = []
 	var entry := unit.get_linked_deck_entry()
-	if entry != null and entry.equipment != null:
-		var max_armor := entry.equipment_armor_max
-		if max_armor <= 0:
-			max_armor = entry.equipment.get_armor_block()
-		var eq_info := build_equipment_attachment_info(
-			entry.equipment, unit.get_armor_block(), max_armor, with_stat_icons
-		)
-		if not eq_info.is_empty():
-			out.append(eq_info)
+	if entry != null and not entry.equipments.is_empty():
+		## 战斗中合计护甲在头图；附属按件列出当前/满额。
+		for i in entry.equipments.size():
+			var eq: EquipmentData = entry.equipments[i]
+			if eq == null:
+				continue
+			var piece_max := (
+				int(entry.equipment_piece_max[i])
+				if i < entry.equipment_piece_max.size()
+				else eq.get_armor_block()
+			)
+			if piece_max <= 0:
+				piece_max = eq.get_armor_block()
+			var eq_info := build_equipment_attachment_info(
+				eq, eq.get_armor_block(), piece_max, with_stat_icons
+			)
+			if not eq_info.is_empty():
+				out.append(eq_info)
 	for status_info in collect_combat_status_attachments(unit, with_stat_icons):
 		out.append(status_info)
 	return out

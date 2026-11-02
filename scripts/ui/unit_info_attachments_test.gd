@@ -6,6 +6,7 @@ static func run_all() -> bool:
 	var passed := true
 	passed = _check("entry_skills_exclude_equipment", _test_entry_skills_exclude_equipment()) and passed
 	passed = _check("entry_equipment_attachment", _test_entry_equipment_attachment()) and passed
+	passed = _check("entry_multi_equipment_attachments", _test_entry_multi_equipment_attachments()) and passed
 	passed = _check("bold_skill_trigger_bbcode", _test_bold_skill_trigger_bbcode()) and passed
 	return passed
 
@@ -52,6 +53,27 @@ static func _test_entry_equipment_attachment() -> bool:
 		return false
 	var body := String(info.get("skills", ""))
 	return body.contains("2 / 6")
+
+
+static func _test_entry_multi_equipment_attachments() -> bool:
+	var entry := DeckEntry.new()
+	var unit := UnitData.new()
+	unit.equipment_slot_count = 2
+	entry.unit = unit
+	var eq1 := EquipmentData.new()
+	eq1.id = "armor_t1"
+	eq1.display_name = "皮甲"
+	eq1.armor_block = 4
+	var eq2 := EquipmentData.new()
+	eq2.id = "armor_t2"
+	eq2.display_name = "链甲"
+	eq2.armor_block = 6
+	entry.attach_equipment(eq1)
+	entry.attach_equipment(eq2)
+	if entry.get_armor_block() != 10:
+		return false
+	var attachments := UnitInfoText.collect_info_attachments_from_entry(entry, false)
+	return attachments.size() == 2
 
 
 static func _test_bold_skill_trigger_bbcode() -> bool:

@@ -1,6 +1,6 @@
 class_name MapShopService
 extends RefCounted
-## 地图商店规则：消耗品/装备货架、刷新、购买冲突 RNG、换座写回。
+## 地图商店规则：消耗品/装备货架、刷新、购买挂装、换座写回。
 
 signal shop_changed
 
@@ -225,7 +225,7 @@ func _apply_theme_potion_snapshot(item: MapShopConsumableData) -> int:
 	return hit
 
 
-## 拖装备到角色：扣金；已有装备时旧/新随机留一件，不退金；槽空。
+## 拖装备到角色：有空槽且够金 → 扣金挂入；槽满 / 0 槽 → 失败不扣金、货架保留。
 func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	var failed := {"result": BuyResult.FAILED, "reason": "failed", "entry": null, "kept_new": false}
 	if not _open or _deck == null or _economy == null:
@@ -239,18 +239,18 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	if entry == null:
 		failed["reason"] = "no_target"
 		return failed
+	if not entry.has_empty_equipment_slot():
+		failed["reason"] = "slots_full"
+		return failed
 	var cost := maxi(0, item.cost)
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
-	var kept_new := true
-	if entry.equipment != null:
-		## 旧/新各 50% 留一件；另一件消失，不退金。
-		kept_new = _rng.randf() < 0.5
-		if kept_new:
-			entry.attach_equipment(item)
-	else:
-		entry.attach_equipment(item)
+	if not entry.attach_equipment(item):
+		## 极端：扣金后挂装失败则退金并保留货架。
+		_economy.grant(cost)
+		failed["reason"] = "slots_full"
+		return failed
 	_equipment_offers[slot_index] = null
 	_deck.deck_changed.emit()
 	shop_changed.emit()
@@ -258,7 +258,7 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		"result": BuyResult.OK,
 		"reason": "",
 		"entry": entry,
-		"kept_new": kept_new,
+		"kept_new": true,
 	}
 
 
