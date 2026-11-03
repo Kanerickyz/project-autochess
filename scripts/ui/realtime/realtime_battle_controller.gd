@@ -171,7 +171,6 @@ var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
 var _map_shop_service: MapShopService
 var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
-var _equipment_detail: EquipmentDetailPanel
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
 var _combat_sandbox_mode: bool = false
 ## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
@@ -273,7 +272,6 @@ func _ready() -> void:
 	_arena.bench_pressed.connect(_on_bench_pressed)
 	_arena.bench_empty_pressed.connect(_on_bench_empty_pressed)
 	_arena.victory_boost_unit_pressed.connect(_on_victory_boost_unit_pressed)
-	_arena.equipment_detail_requested.connect(_on_equipment_detail_requested)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	if _final_trial_button != null:
@@ -291,134 +289,12 @@ func _ready() -> void:
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
-	_ensure_equipment_detail_panel()
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = false
 	_refresh_hud()
-
-
-func _ensure_equipment_detail_panel() -> void:
-	if _equipment_detail != null:
-		return
-	_equipment_detail = EquipmentDetailPanel.new()
-	_equipment_detail.name = "EquipmentDetailPanel"
-	add_child(_equipment_detail)
-	_equipment_detail.unequip_requested.connect(_on_equipment_unequip_requested)
-	_equipment_detail.equip_from_stash_requested.connect(_on_equipment_equip_from_stash)
-	_equipment_detail.closed.connect(_on_equipment_detail_closed)
-
-
-func _equipment_detail_writable() -> bool:
-	return (
-		_phase == Phase.MAP_SHOP
-		or _phase == Phase.PREPARE
-		or _phase == Phase.RECRUIT
-	)
-
-
-func _on_equipment_detail_requested(entry_id: int) -> void:
-	if entry_id < 0 or _deck_state == null:
-		return
-	## 招募待用药水：短点角色仍结算药水，不抢开详情。
-	if _phase == Phase.RECRUIT and _recruit_pending_item_slot >= 0:
-		if _is_bench_entry(entry_id):
-			_on_bench_pressed(entry_id)
-		else:
-			_on_recruit_team_pressed(entry_id)
-		return
-	## 招募：已选候选需替换时，短点仍选替换目标（拖放为主路径，点选兜底）。
-	if (
-		_phase == Phase.RECRUIT
-		and _recruit_selected_candidate >= 0
-		and _recruit_session != null
-		and _recruit_session.needs_replace_for_candidate(_recruit_selected_candidate)
-	):
-		_on_recruit_team_pressed(entry_id)
-		return
-	if _phase == Phase.RECRUIT and _recruit_animating:
-		return
-	if _phase == Phase.MAP_SHOP and _map_shop_ui.is_animating():
-		return
-	## 胜后强化 / 附魔：不改装，也不抢短按写入。
-	if _phase == Phase.VICTORY_BOOST or _phase == Phase.ENCHANT:
-		return
-	_ensure_equipment_detail_panel()
-	var readonly := not _equipment_detail_writable()
-	## 开战只读；IDLE/RESULT 也可扫读。
-	if _phase == Phase.COMBAT:
-		readonly = true
-	_equipment_detail.show_for_entry(_deck_state, entry_id, readonly)
-	if _arena != null:
-		_arena.equipment_detail_blocks_drag = _equipment_detail_writable()
-
-
-func _on_equipment_detail_closed() -> void:
-	if _arena != null:
-		_arena.equipment_detail_blocks_drag = false
-
-
-func _on_equipment_unequip_requested(entry_id: int, slot_index: int) -> void:
-	if not _equipment_detail_writable() or _deck_state == null:
-		return
-	var result := _deck_state.unequip_to_stash(entry_id, slot_index)
-	if not bool(result.get("ok", false)):
-		var reason := String(result.get("reason", ""))
-		var msg := "无法卸载"
-		match reason:
-			"stash_full":
-				msg = "暂存已满，无法卸载"
-			"empty_slot":
-				msg = "该槽无装备"
-			_:
-				msg = "无法卸载"
-		if _equipment_detail != null:
-			_equipment_detail.set_hint(msg)
-		_show_hint(msg)
-		return
-	if _equipment_detail != null:
-		_equipment_detail.set_hint("已卸入暂存")
-		_equipment_detail.refresh()
-	_refresh_after_equipment_change()
-
-
-func _on_equipment_equip_from_stash(stash_index: int, entry_id: int) -> void:
-	if not _equipment_detail_writable() or _deck_state == null:
-		return
-	var result := _deck_state.try_equip_from_stash(stash_index, entry_id)
-	if not bool(result.get("ok", false)):
-		var reason := String(result.get("reason", ""))
-		var msg := "无法挂装"
-		match reason:
-			"slots_full":
-				msg = "装备槽已满"
-			_:
-				msg = "无法挂装"
-		if _equipment_detail != null:
-			_equipment_detail.set_hint(msg)
-		_show_hint(msg)
-		return
-	if _equipment_detail != null:
-		_equipment_detail.set_hint("已从暂存挂装")
-		_equipment_detail.refresh()
-	_refresh_after_equipment_change()
-
-
-func _refresh_after_equipment_change() -> void:
-	match _phase:
-		Phase.MAP_SHOP:
-			on_map_shop_changed()
-		Phase.PREPARE:
-			_refresh_hud()
-			if _arena != null:
-				_arena.queue_redraw()
-		Phase.RECRUIT:
-			_sync_recruit_arena()
-			_refresh_recruit_hud()
-		_:
-			_refresh_hud()
 
 
 func _exit_tree() -> void:
@@ -1797,14 +1673,15 @@ func _on_map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int) -
 				_map_shop_ui.set_hint("无效目标")
 			"empty_slot":
 				_map_shop_ui.set_hint("货架已空")
-			"slots_full":
-				_map_shop_ui.set_hint("装备槽已满，无法购买")
 			_:
 				_map_shop_ui.set_hint("无法购买")
 		on_map_shop_changed()
 		return
 	if kind == &"equipment":
-		_map_shop_ui.set_hint("已装备")
+		if bool(result.get("kept_new", true)):
+			_map_shop_ui.set_hint("已装备")
+		else:
+			_map_shop_ui.set_hint("装备冲突：保留了旧装备")
 	elif bool(result.get("destroyed", false)):
 		_map_shop_ui.set_hint("生命归零，角色已销毁")
 	elif result.has("theme_affected"):
@@ -2053,9 +1930,6 @@ func _persist_commander_hp_from_sim() -> void:
 
 func _set_phase(phase: Phase) -> void:
 	_phase = phase
-	## 切阶段收起装备详情，避免开战仍挂着可写面板。
-	if _equipment_detail != null and _equipment_detail.is_open():
-		_equipment_detail.hide_panel()
 	_refresh_hud()
 	_refresh_cards()
 	phase_changed.emit(phase)

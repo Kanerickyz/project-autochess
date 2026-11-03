@@ -44,8 +44,6 @@ signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
 signal bench_empty_pressed(slot_index: int)
-## 短点友方：开装备详情（未超拖阈值、未达长按）。
-signal equipment_detail_requested(entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -298,8 +296,6 @@ var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
 var _map_shop_team_drag_id: int = -1
 var _map_shop_team_press_id: int = -1
-## 装备详情打开时锁棋盘拖座（手势与详情分离）。
-var equipment_detail_blocks_drag: bool = false
 ## 准备阶段座位拖换：按住已入座角色拖到目标座。
 var _prepare_team_drag_id: int = -1
 var _prepare_team_press_id: int = -1
@@ -1305,9 +1301,11 @@ func _gui_input(event: InputEvent) -> void:
 			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
 			var bench_slot := find_bench_slot_at_local(mb.position) if bench_visible else -1
 			if bench_entry >= 0:
-				## 短点开装备详情；准备/招募仍可拖换座。选中/上阵改由拖或空座交互。
+				## 战斗只读：仍可长按信息；准备/招募可拖与点选。
 				_bench_press_id = bench_entry if bench_interactive else -1
-				var bench_tap := equipment_detail_requested.emit.bind(bench_entry)
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
+				)
 				_begin_press(mb.position, info, bench_tap)
 			elif (
 				bench_interactive
@@ -1319,22 +1317,13 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 				return
 			elif not info.is_empty():
-				## 按在单位上：短点开装备详情；长按百科；移超 slop 则拖换座。
-				var press_cell := tile_to_cell(local_to_tile(mb.position))
-				var press_entry := -1
+				## 按在单位上：点按动作推迟到松手，按住则改为看信息；移超 slop 则拖换座。
 				if _can_prepare_seat_drag():
-					press_entry = _find_prepare_team_entry_at(press_cell)
+					var press_cell := tile_to_cell(local_to_tile(mb.position))
+					var press_entry := _find_prepare_team_entry_at(press_cell)
 					if press_entry >= 0:
 						_prepare_team_press_id = press_entry
-				var tap := board_pressed.emit.bind(local_to_tile(mb.position))
-				## 友方短点优先开详情（准备/开战）；空座等仍走 board_pressed。
-				if press_entry >= 0:
-					tap = equipment_detail_requested.emit.bind(press_entry)
-				elif _phase_allows_combat_equipment_detail():
-					var combat_id := _friendly_entry_id_from_info(info)
-					if combat_id >= 0:
-						tap = equipment_detail_requested.emit.bind(combat_id)
-				_begin_press(mb.position, info, tap)
+				_begin_press(mb.position, info, board_pressed.emit.bind(local_to_tile(mb.position)))
 			else:
 				board_pressed.emit(local_to_tile(mb.position))
 			accept_event()
@@ -1403,12 +1392,10 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
 				_recruit_empty_seat_press = -1
-				## 短点开装备详情（招募药水点选由控制器在 detail 回调里分流）。
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(bench_entry),
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
 				)
+				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
 				accept_event()
 				return
 			if (
@@ -1453,12 +1440,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
 				_recruit_empty_seat_press = -1
-				## 短点开装备详情；待用药水时由控制器分流到 recruit_team_pressed 逻辑。
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(entry_id),
-				)
+				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 				return
 			var empty_press := _find_recruit_team_seat_at(board_cell)
@@ -1576,12 +1558,7 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_map_shop_offer_drag(_map_shop_offer_press_index, motion.position)
-		elif (
-			_map_shop_team_press_id >= 0
-			and _map_shop_team_drag_id < 0
-			and not _info_shown
-			and not equipment_detail_blocks_drag
-		):
+		elif _map_shop_team_press_id >= 0 and _map_shop_team_drag_id < 0 and not _info_shown:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_map_shop_team_drag(_map_shop_team_press_id, motion.position)
@@ -1604,11 +1581,7 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 			if entry_id >= 0:
 				_map_shop_team_press_id = entry_id
 				_map_shop_offer_press_index = -1
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(entry_id),
-				)
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 			return
 		if _info_shown:
@@ -2684,7 +2657,6 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	var unit_cost := entry.unit.cost if entry.unit != null else 0
 	return {
 		"inspect_key": key,
-		"entry_id": entry.entry_id,
 		"center": center,
 		"name": entry.get_display_name(),
 		"side_player": true,
@@ -2744,8 +2716,6 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 	var unit_cost := unit.unit_data.cost if unit.unit_data != null else 0
 	return {
 		"inspect_key": "inst:%d" % unit.get_instance_id(),
-		"entry_id": unit.deck_entry_id,
-		"deck_entry_id": unit.deck_entry_id,
 		"center": center,
 		"name": UnitInfoText.get_display_name(unit),
 		"side_player": is_player,
@@ -3143,8 +3113,6 @@ func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 
 ## 准备阶段可拖已入座角色换座（开战 / 目录 / 其它半场模式除外）。
 func _can_prepare_seat_drag() -> bool:
-	if equipment_detail_blocks_drag:
-		return false
 	return (
 		prepare_slots != null
 		and not catalog_active
@@ -3157,37 +3125,11 @@ func _can_prepare_seat_drag() -> bool:
 
 
 func _can_drag_prepare_or_bench() -> bool:
-	if equipment_detail_blocks_drag:
-		return false
 	if catalog_active or map_shop_active or enchant_active or victory_boost_active:
 		return false
 	if recruit_active:
 		return bench_interactive
 	return _can_prepare_seat_drag() or (bench_visible and bench_interactive)
-
-
-## 开战观战：短点友方可开只读详情。
-func _phase_allows_combat_equipment_detail() -> bool:
-	return sim != null and sim.has_started() and not recruit_active and not map_shop_active and not enchant_active and not victory_boost_active
-
-
-func _friendly_entry_id_from_info(info: Dictionary) -> int:
-	if info.is_empty() or not bool(info.get("side_player", false)):
-		return -1
-	if info.has("entry_id"):
-		var eid := int(info.get("entry_id", -1))
-		if eid >= 0:
-			return eid
-	if info.has("deck_entry_id"):
-		var did := int(info.get("deck_entry_id", -1))
-		if did >= 0:
-			return did
-	var key := String(info.get("inspect_key", ""))
-	if key.begins_with("entry:"):
-		return int(key.substr(6))
-	if key.begins_with("bench:"):
-		return int(key.substr(6))
-	return -1
 
 
 func _find_deck_entry_on_board_or_bench(entry_id: int) -> DeckEntry:
@@ -3395,8 +3337,6 @@ func _finish_map_shop_offer_drag(cell: Vector2i) -> void:
 
 
 func _begin_map_shop_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
-	if equipment_detail_blocks_drag:
-		return
 	if entry_id < 0 or recruit_team_slots == null:
 		return
 	var entry: DeckEntry = null

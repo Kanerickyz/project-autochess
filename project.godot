@@ -11,7 +11,11 @@ config_version=5
 [application]
 
 config/name="Project Autochess"
+<<<<<<< HEAD
 config/version="6.0.31"
+=======
+config/version="6.0.26"
+>>>>>>> parent of 2950c3b (feat(equipment): 多槽、满槽拒买、详情卸载与队伍暂存 (#393))
 run/main_scene="res://scenes/main/main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://assets/branding/game_icon.png"
