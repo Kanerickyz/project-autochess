@@ -1,6 +1,6 @@
 class_name RecruitShopConfig
 extends Resource
-## 招募半场道具行配置；角色 5 槽由 RecruitConfig.candidate_count 管。
+## 招募半场道具行配置；角色槽数由 RecruitConfig.candidate_count 管。
 
 const DEFAULT_PATH := "res://resources/recruit_shop/default_recruit_shop.tres"
 const DEFAULT_POTION_COST := 1

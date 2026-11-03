@@ -32,7 +32,7 @@
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
 | [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒；仅遭遇内叠层；长按信息卡） |
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
-| [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
+| [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 3 槽＋道具行；药水永久；旗帜扩席至 10） |
 | [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备＋半场换座；本切片不含买人） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、一动内八向落格顿步越线） |

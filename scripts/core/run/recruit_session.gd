@@ -2,13 +2,13 @@ class_name RecruitSession
 extends RefCounted
 ## 招募阶段逻辑：进门快照、抽候选人、招募/替换、刷新、重置、跳过/完成。
 ## 不拥有 UI；只改 DeckState（队伍 As-Is）与 RunEconomy 金币。
-## 候选人默认 5 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
+## 候选人默认 3 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
 ## 每个可招募角色本局 9 份：招募成功才扣除，拿光后不再出现。
 
 signal session_changed
 signal session_finished(kept_changes: bool)
 
-const CANDIDATE_COUNT := 5
+const CANDIDATE_COUNT := 3
 ## 每个可招募角色在本局卡池中的份数。拿光后不再抽到。
 const COPIES_PER_CHARACTER := 9
 
