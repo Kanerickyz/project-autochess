@@ -27,6 +27,7 @@ func _run() -> void:
 		quit(1)
 		return
 	overlay.anim_scale = 0.0
+	_expect(not _ctl._battle.final_trial_enabled, "day loop: no final trial after boss")
 
 	await _tap_option(0)
 	_expect(_ctl.deck_state.get_commander_entry() != null, "commander present")

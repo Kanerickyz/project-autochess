@@ -53,6 +53,8 @@ var _forward_tier_unlock: bool = false
 var _endless_ladder_spawn: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 var encounter_label_override: String = ""
+## 十五天日程：Boss 胜即通关，不提供最终试炼。
+var final_trial_enabled: bool = true
 
 
 func get_floor_index() -> int:
@@ -1403,7 +1405,7 @@ func _finish_final_trial_after_loss() -> void:
 
 
 func _should_offer_final_trial_after_boss() -> bool:
-	if _combat_sandbox_mode or _final_trial_active:
+	if _combat_sandbox_mode or _final_trial_active or not final_trial_enabled:
 		return false
 	if not _won or _encounter == null or not _encounter.is_boss:
 		return false
@@ -4508,7 +4510,11 @@ func _on_combat_finished(won: bool) -> void:
 			_continue_button.text = "再来一局"
 	else:
 		_result_detail.text = (
-			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
+			"用时 %s  %s +%d" % [
+				_format_time(_sim.elapsed_seconds),
+				"日金" if not encounter_label_override.is_empty() else "层金",
+				_floor_gold,
+			]
 			if won else "用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
 		)
 		if _boss_final_trial_offer:

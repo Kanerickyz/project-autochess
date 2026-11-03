@@ -129,6 +129,7 @@ func _start_new_run() -> void:
 			else:
 				_battle.set_spawn_budget_config(null)
 	_battle.reset_tier_unlock_announcements()
+	_battle.final_trial_enabled = not _uses_day_loop()
 	_hide_encounter_ui()
 	_suppress_map_show = true
 	if _uses_day_loop():
