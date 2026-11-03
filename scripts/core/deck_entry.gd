@@ -2,7 +2,6 @@ class_name DeckEntry
 extends RefCounted
 
 const EQUIPMENT_SLOT_HARD_MAX := 3
-const COMMANDER_EQUIPMENT_SLOTS := 1
 
 var entry_id: int = -1
 var unit: UnitData
@@ -107,9 +106,6 @@ func get_buff_summary() -> String:
 func get_equipment_slot_count() -> int:
 	if unit == null:
 		return 1
-	## 指挥官不属于四职业槽位表：固定 1 格。
-	if is_commander():
-		return COMMANDER_EQUIPMENT_SLOTS
 	return clampi(unit.get_equipment_slot_count_resolved(), 0, EQUIPMENT_SLOT_HARD_MAX)
 
 

@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-11-03
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**【2026-11-03】主爬塔为十五天日程**（选指挥官 → 每天 招募 → 战斗 → 商店 → 战斗 → 事件 → 战斗；第 15 天 Boss 通关；胜后无强化 / 无招募），见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md)；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
 > **产品线 0.6**：`application/config/version` 自 **`6.0.1`** 起（主菜单 `v6.0.…`）；`0.5.*` 线已结束。细则见 [CONTRIBUTING.md](../CONTRIBUTING.md)「应用版本号」。
 
@@ -15,8 +15,8 @@
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
-| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（主爬塔：每日免费三选一，首日 6 次、之后每天 1 次；无尽：胜后短名单） |
-| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（仅无尽；主爬塔已废止） |
+| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/跳过/完成） |
+| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（暗场居中阵列、短按即 +攻/+血；可跳过；招募前） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（七类包装；角色库筛选；战斗同主题效果另切片） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
@@ -26,8 +26,8 @@
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含回血三条；挂载见角色库 §6） |
 | [Features/MAIN_MENU.md](./Features/MAIN_MENU.md) | **主菜单**（局外 Hub；动态营地远景视差 + 指针跟手） |
-| [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（十五天日程：一天六步、通关与失败、跨战斗状态） |
-| [Features/MAP.md](./Features/MAP.md) | **地图与节点**（仅无尽模式；主爬塔已改十五天日程） |
+| [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
+| [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
 | [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
 | [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、同质白板阶梯敌压、每 4 场插店、成绩＝地图层深） |
@@ -35,7 +35,7 @@
 | [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒/**遗骨**；仅遭遇内叠层；遗骨死亡按层数生成骷髅；长按信息卡） |
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
-| [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **商店**（主爬塔：军械/远程/魔法/消耗品四类店，装备买入暂存；无尽：地图商店节点） |
+| [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备购买入口＋半场换座；本切片不含买人） |
 | [Features/EQUIPMENT.md](./Features/EQUIPMENT.md) | **装备**（护甲+技能类共槽；职业固定格数；详情卸载、队伍暂存） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、一动内八向落格顿步越线） |
