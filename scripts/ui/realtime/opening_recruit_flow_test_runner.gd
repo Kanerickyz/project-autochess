@@ -111,7 +111,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
 	var expected_action_y := expected_cand_y + 2
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
-	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
+	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 3 slots")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		_expect(cell.y == expected_cand_y, "candidate y == recruit half row 1 (mid+1)")
