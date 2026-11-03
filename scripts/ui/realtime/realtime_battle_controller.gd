@@ -52,6 +52,7 @@ var _forward_tier_unlock: bool = false
 ## 无尽：阶梯同质白板刷敌（关闭跟队抽阵 / flat / 面板下限）。
 var _endless_ladder_spawn: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
+var encounter_label_override: String = ""
 
 
 func get_floor_index() -> int:
@@ -526,6 +527,11 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 		if _arena != null:
 			_arena.clear_fx()
 			_arena.queue_redraw()
+
+
+## 十五天日程：顶栏用「第 N 天 · 第 K 战」替代「第 N 层」；空串恢复层号。
+func set_encounter_label_override(text: String) -> void:
+	encounter_label_override = text
 
 
 ## 注入层预算配置（测试用）；null 时按 SpawnBudgetConfig.load_or_default()。
@@ -4801,7 +4807,9 @@ func _refresh_hud() -> void:
 		_encounter_label.text = "最终试炼 · 第 %d 层（%d/%d）" % [layer, stat, stat]
 	elif _encounter != null:
 		var encounter_name := _encounter.display_name
-		if _floor_index > 0:
+		if not encounter_label_override.is_empty():
+			_encounter_label.text = "%s · %s" % [encounter_label_override, encounter_name]
+		elif _floor_index > 0:
 			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
 		else:
 			_encounter_label.text = encounter_name

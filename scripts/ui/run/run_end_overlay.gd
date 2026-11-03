@@ -14,6 +14,8 @@ var _mode: Mode = Mode.HIDDEN
 var _victory: bool = false
 var _reached_floor: int = 0
 var _endless: bool = false
+## 十五天日程：败局副标题写「倒在第 N 天」。
+var day_loop: bool = false
 
 
 func _ready() -> void:
@@ -31,10 +33,13 @@ func show_result_intro(victory: bool, reached_floor: int = 0, endless: bool = fa
 	_mode = Mode.RESULT_INTRO
 	if victory:
 		_title.text = "远征完成！"
-		_subtitle.text = "你击败了 Boss"
+		_subtitle.text = "你撑过了十五天并击败了 Boss" if day_loop else "你击败了 Boss"
 	elif _endless and _reached_floor > 0:
 		_title.text = "无尽挑战结束"
 		_subtitle.text = "到达第 %d 层" % _reached_floor
+	elif day_loop and _reached_floor > 0:
+		_title.text = "远征失败"
+		_subtitle.text = "倒在第 %d 天" % _reached_floor
 	else:
 		_title.text = "远征失败"
 		_subtitle.text = "本局已结束"
