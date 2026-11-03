@@ -20,7 +20,7 @@ const MOUNT_TABLE := {
 	"apothecary": "turn_start_nearby_enemies_apply_poison",
 }
 
-const EMPTY_ABILITY_IDS := ["giant_knight", "wood_drum"]
+const EMPTY_ABILITY_IDS := ["giant_knight", "wood_drum", "golden_drum", "flower_drum", "thunder_drum"]
 
 
 static var _created: Array[RealtimeCombatSim] = []
@@ -2358,7 +2358,7 @@ static func _wipe_team_and_finish(sim: RealtimeCombatSim, team: UnitInstance.Tea
 	return sim.is_finished()
 
 
-## 弩手：友方受伤 → 疗该友方 2。
+## 弩手：友方受伤 → 疗该友方 1。
 static func _test_ally_hurt_heal_target() -> bool:
 	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
@@ -2386,17 +2386,17 @@ static func _test_ally_hurt_heal_target() -> bool:
 	var hp_mid := ally.unit.current_hp
 	sim._pipeline.apply_damage(null, ally, 2)
 	sim._drain_effects()
-	## 扣 2 后应被疗回 2 → 净 0
-	if ally.unit.current_hp != hp_mid - 2 + 2:
+	## 扣 2 后疗回 1 → 净 −1
+	if ally.unit.current_hp != hp_mid - 2 + 1:
 		push_error(
 			"ally_hurt_heal: ally hp after hurt+heal=%d, expected %d"
-			% [ally.unit.current_hp, hp_mid]
+			% [ally.unit.current_hp, hp_mid - 1]
 		)
 		return false
 	return true
 
 
-## 弩手 2★：友伤疗 6（merge_value_mult=3）。
+## 弩手 2★：友伤疗 3（merge_value_mult=3）。
 static func _test_ally_hurt_heal_target_star2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
 	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
@@ -2413,9 +2413,9 @@ static func _test_ally_hurt_heal_target_star2() -> bool:
 	ally.unit.current_hp = 12
 	sim.begin_combat()
 	var hp_mid := ally.unit.current_hp
-	sim._pipeline.apply_damage(null, ally, 6)
+	sim._pipeline.apply_damage(null, ally, 3)
 	sim._drain_effects()
-	if ally.unit.current_hp != hp_mid - 6 + 6:
+	if ally.unit.current_hp != hp_mid - 3 + 3:
 		push_error(
 			"ally_hurt_heal star2: ally hp after hurt+heal=%d, expected %d"
 			% [ally.unit.current_hp, hp_mid]
@@ -2440,9 +2440,9 @@ static func _test_ally_hurt_heal_skips_when_full() -> bool:
 	)
 	ally.unit.current_hp = 4
 	sim.begin_combat()
-	sim._pipeline.apply_damage(null, ally, 2)
+	sim._pipeline.apply_damage(null, ally, 1)
 	sim._drain_effects()
-	## 4→2，+2 疗回 4；第二弩手不应再抬血或刷多余治疗。
+	## 4→3，+1 疗回 4；第二弩手见满血应跳过。
 	if ally.unit.current_hp != 4:
 		push_error(
 			"ally_hurt_heal_full: ally hp=%d expected 4 after single heal"
