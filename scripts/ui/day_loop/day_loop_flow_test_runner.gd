@@ -36,9 +36,10 @@ func _run() -> void:
 	for i in DayRunSchedule.FIRST_DAY_RECRUIT_PICKS:
 		await _tap_option(i % DayRunSchedule.PICK_OPTION_COUNT)
 	await _wait_step(DayRunSchedule.Step.COMBAT, 1)
+	var copies := _recruited_copies()
 	_expect(
-		_ctl.deck_state.size() == 1 + DayRunSchedule.FIRST_DAY_RECRUIT_PICKS,
-		"day 1: commander + 6 recruits (got %d)" % _ctl.deck_state.size()
+		copies == DayRunSchedule.FIRST_DAY_RECRUIT_PICKS,
+		"day 1: 6 recruited copies incl. merges (got %d)" % copies
 	)
 	_expect(not overlay.is_open(), "overlay closed before battle 1")
 
@@ -70,10 +71,7 @@ func _run() -> void:
 	_expect(_ctl._day_schedule.get_recruit_pick_count() == 1, "day 2: one pick")
 	await _tap_action(&"skip")
 	await _wait_step(DayRunSchedule.Step.COMBAT, 2)
-	_expect(
-		_ctl.deck_state.size() == 1 + DayRunSchedule.FIRST_DAY_RECRUIT_PICKS,
-		"day 2 skip keeps roster"
-	)
+	_expect(_recruited_copies() == DayRunSchedule.FIRST_DAY_RECRUIT_PICKS, "day 2 skip keeps roster")
 
 	_ctl._on_encounter_completed(false)
 	await _frames(4)
@@ -90,6 +88,15 @@ func _expect(condition: bool, label: String) -> void:
 	else:
 		_failures += 1
 		push_error("DayLoopFlowTest: FAIL %s" % label)
+
+
+## 三合一会合并同角色：按 3^(level-1) 折算回招入份数。
+func _recruited_copies() -> int:
+	var n := 0
+	for e in _ctl.deck_state.get_entries():
+		if not e.is_commander():
+			n += int(pow(3, maxi(0, e.level - 1)))
+	return n
 
 
 func _frames(n: int) -> void:
