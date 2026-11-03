@@ -22,7 +22,7 @@
 | **修改角色** | 改显示名、身体数值、攻击方式、主技能挂载、入池范围 |
 | **不适用** | 熔印者（附魔产物，见 [Features/ENCHANT.md](../Features/ENCHANT.md)）；Boss 高威胁位（见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)） |
 
-第一版不做种族/职业羁绊；**不对玩家挂流派标签**（内部轴备注仅策划用，见 UNIT_ABILITIES §2.5）。
+每名可招友方须挂 **主主题**（必有）与可选 **辅主题**，见 [Features/UNIT_THEME_BONDS.md](../Features/UNIT_THEME_BONDS.md) 与 [UNITS_ROSTER.md](./UNITS_ROSTER.md)；**不对玩家挂内部流派名**（坚韧/冲锋等仅策划用，见 UNIT_ABILITIES §2.5）。
 
 ## 2. 开工前信息（合同）
 
@@ -37,6 +37,7 @@
 | **攻击方式** | 是 | 近战单体 / 远程投射物 / 近战溅射（由 `projectile_speed`、`splash_radius` 组合决定，见 UNITS §4.2） |
 | **生命 / 攻击** | 是 | 友方单维常用 **1–10 整数**；其它战斗字段可对表同定位角色 |
 | **主技能** | 视情况 | 自带技能单位：绑定已有 `AbilityData` 或新建条目；白板可留空 |
+| **主主题 / 辅主题** | 友方必填主 | 八主题之一；辅可选；见 [UNIT_THEME_BONDS](../Features/UNIT_THEME_BONDS.md) |
 | **花费 / 品阶** | 友方入店 | `cost`、`tier`；与 [UNITS_ROSTER](./UNITS_ROSTER.md) §3.3 品阶尺一致（频率主轴） |
 | **内部轴 / 流派偏好** | 建议 | 仅写进 Content 内部备注列，不进玩家 UI |
 | **入池** | 视投放 | 招募 `default_recruit_config.tres`、敌池 `resources/spawn/*`、关卡 `enemy_pool` 等 |
@@ -101,8 +102,8 @@ DEV 阶段友方用蓝、敌方用红，便于半场辨认；终稿仍走纸剪�
 
 ## 6. 硬约束（与 AGENTS 一致）
 
-- 战斗增益只经 `EffectSpec` + `EffectResolver`；触发经 `CombatEventBus`  
-- v1 不做羁绊；商店养成对象是**队伍**，不是遭遇内抽牌  
+- 战斗增益与主题团队层只经 `EffectSpec` + `EffectResolver`；触发经 `CombatEventBus`  
+- 可招友方须有主主题（见主题羁绊）；商店养成对象是**队伍**，不是遭遇内抽牌  
 - 当前不做的能力不写进 Content 规格（见 [DEVELOPMENT_WORKFLOW.md](../DEVELOPMENT_WORKFLOW.md) 养成规范）
 
 ## 7. 交付说明模板

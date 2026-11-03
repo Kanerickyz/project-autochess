@@ -38,7 +38,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 | --- | --- |
 | **`characterdesign`（本技能）** | 主持全流程：阶段 I 对齐 → 阶段 II 合同 → Content → 实现 |
 | **`design-brainstorm`** | **阶段 I 必用流程**（见下）；不单列时仍须满足其硬约束与返回结构 |
-| **`build-multiplicative-design`** | 阶段 I 谈技能联动 / 站位杠杆 / 增益协同时参照；乘数落技能·站位·增益，不做标签羁绊 |
+| **`build-multiplicative-design`** | 阶段 I 谈技能联动 / 站位杠杆 / 增益 / 主题羁绊时参照；主题层须走统一管线并与技能分轴 |
 | `implement` | 非角色纵切片（系统、UI、战斗管线） |
 | `verify-godot` | 轻量 / 完全跑验证 |
 
@@ -142,7 +142,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 
 **写入白名单（典型）**：`resources/units/**`、`resources/abilities/**`、池子与关卡 `.tres`、对应 `Documents/Content/*`、玩家可见时 bump `project.godot` 版本。
 
-**禁止**：另写 Buff/羁绊；主路径读 `command_cost`；合同外入池。
+**禁止**：另写主题/增益专用 Buff（须走统一效果管线）；主路径读 `command_cost`；合同外入池；漏挂主主题。
 
 #### 3. 验证
 

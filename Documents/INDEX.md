@@ -18,6 +18,7 @@
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
+| [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（八主题；上场凑人；主/辅双计；【As-Is】未实装） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
 | [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写） |
@@ -129,7 +130,7 @@ Project Autochess/
 | `resources/units/test_*.tres` | 三样本测试单位 | **M3.5 已实现** |
 | `resources/abilities/` | 单位技能资源；规则见 [UNIT_ABILITIES](./Features/UNIT_ABILITIES.md)；内容归 Content；商店技能 `.tres` **待迁出** | **M3.5+** |
 | `resources/effects/` | 可复用效果片段（可选） | 空目录（效果嵌在 ability `.tres`） |
-| `resources/traits/` | 羁绊 `.tres`（**远期**，非 v1） | 不实现 |
+| 主题羁绊资源 / 发放 | 见 [UNIT_THEME_BONDS](./Features/UNIT_THEME_BONDS.md) | **规格定稿 · 未实装** |
 | `resources/items/` | 装备（可选） | 空目录（未使用） |
 | `assets/sprites/` | 2D 精灵与图集 | 已创建（骨架） |
 | `assets/audio/` | BGM / SFX | 已创建（骨架） |
