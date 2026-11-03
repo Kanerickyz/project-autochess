@@ -29,4 +29,5 @@ tier = 2
 command_cost = 3
 stats = SubResource("UnitStats_bloodwage")
 ability = ExtResource("3_ability")
+theme_primary = &"mercenary"
 icon = ExtResource("4_icon")

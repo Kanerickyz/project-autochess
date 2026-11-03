@@ -30,4 +30,5 @@ tier = 3
 command_cost = 4
 stats = SubResource("UnitStats_berserker")
 ability = ExtResource("3_ability")
+theme_primary = &"warrior"
 icon = ExtResource("icon_tex")

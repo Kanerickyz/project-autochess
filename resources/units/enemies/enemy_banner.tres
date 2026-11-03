@@ -29,3 +29,5 @@ team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_banner")
 ability = ExtResource("3_ability")
+theme_primary = &"knight_order"
+theme_secondary = &"band"

@@ -31,3 +31,4 @@ tier = 1
 command_cost = 1
 stats = SubResource("UnitStats_skeleton")
 ability = ExtResource("3_ability")
+theme_primary = &"undead"

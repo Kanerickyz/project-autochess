@@ -32,3 +32,5 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_musketeer")
 ability = ExtResource("3_ability")
+theme_primary = &"artisan"
+theme_secondary = &"knight_order"

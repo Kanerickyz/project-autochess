@@ -30,3 +30,4 @@ tier = 1
 command_cost = 2
 stats = SubResource("UnitStats_goblin")
 ability = ExtResource("3_ability")
+theme_primary = &"undead"

@@ -29,3 +29,5 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_maul")
 ability = ExtResource("3_ability")
+theme_primary = &"warrior"
+theme_secondary = &"artisan"

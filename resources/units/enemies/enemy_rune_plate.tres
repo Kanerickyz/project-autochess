@@ -29,3 +29,4 @@ team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_rune_plate")
 ability = ExtResource("3_ability")
+theme_primary = &"guard"

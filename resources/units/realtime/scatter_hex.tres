@@ -29,4 +29,5 @@ tier = 1
 command_cost = 2
 stats = SubResource("UnitStats_scatter")
 ability = ExtResource("3_ability")
+theme_primary = &"arcane"
 icon = ExtResource("4_icon")

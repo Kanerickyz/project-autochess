@@ -30,4 +30,5 @@ team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_shield_boon")
 ability = ExtResource("3_ability")
+theme_primary = &"guard"
 icon = ExtResource("icon_tex")
