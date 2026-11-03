@@ -52,9 +52,6 @@ var _forward_tier_unlock: bool = false
 ## 无尽：阶梯同质白板刷敌（关闭跟队抽阵 / flat / 面板下限）。
 var _endless_ladder_spawn: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
-var encounter_label_override: String = ""
-## 十五天日程：Boss 胜即通关，不提供最终试炼。
-var final_trial_enabled: bool = true
 
 
 func get_floor_index() -> int:
@@ -529,11 +526,6 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 		if _arena != null:
 			_arena.clear_fx()
 			_arena.queue_redraw()
-
-
-## 十五天日程：顶栏用「第 N 天 · 第 K 战」替代「第 N 层」；空串恢复层号。
-func set_encounter_label_override(text: String) -> void:
-	encounter_label_override = text
 
 
 ## 注入层预算配置（测试用）；null 时按 SpawnBudgetConfig.load_or_default()。
@@ -1405,7 +1397,7 @@ func _finish_final_trial_after_loss() -> void:
 
 
 func _should_offer_final_trial_after_boss() -> bool:
-	if _combat_sandbox_mode or _final_trial_active or not final_trial_enabled:
+	if _combat_sandbox_mode or _final_trial_active:
 		return false
 	if not _won or _encounter == null or not _encounter.is_boss:
 		return false
@@ -4510,11 +4502,7 @@ func _on_combat_finished(won: bool) -> void:
 			_continue_button.text = "再来一局"
 	else:
 		_result_detail.text = (
-			"用时 %s  %s +%d" % [
-				_format_time(_sim.elapsed_seconds),
-				"日金" if not encounter_label_override.is_empty() else "层金",
-				_floor_gold,
-			]
+			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
 			if won else "用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
 		)
 		if _boss_final_trial_offer:
@@ -4813,9 +4801,7 @@ func _refresh_hud() -> void:
 		_encounter_label.text = "最终试炼 · 第 %d 层（%d/%d）" % [layer, stat, stat]
 	elif _encounter != null:
 		var encounter_name := _encounter.display_name
-		if not encounter_label_override.is_empty():
-			_encounter_label.text = "%s · %s" % [encounter_label_override, encounter_name]
-		elif _floor_index > 0:
+		if _floor_index > 0:
 			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
 		else:
 			_encounter_label.text = encounter_name

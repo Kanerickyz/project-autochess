@@ -107,10 +107,9 @@ static func get_skills_block_from_unit_data(
 	if data == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	var rules := UnitData.combat_profession_rules_text(data.combat_profession)
-	if not rules.is_empty():
-		lines.append(rules)
-	## 角色卡不展示模板 ability（已解绑；商店技能装另见装备详情）。
+	if data.ability != null:
+		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
+		lines.append(format_ability("技能", data.ability, scale, with_stat_icons, level))
 	for passive in data.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, level)
@@ -133,23 +132,12 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	var rules := UnitData.combat_profession_rules_text(entry.unit.combat_profession)
-	if not rules.is_empty():
-		lines.append(rules)
-	## 友方开战技能来自技能装；空装不展示模板 unit.ability。
-	if entry.runtime_main_ability != null:
-		var main_ab := entry.runtime_main_ability
+	var main_ab := entry.get_main_ability()
+	if main_ab != null:
 		var scale := 1
 		if entry.get_star_display_level() > 0:
 			scale = UnitInstance.ability_value_multiplier_for(main_ab, entry.level)
 		lines.append(format_ability("技能", main_ab, scale, with_stat_icons, entry.level))
-	for ab in entry.get_equipment_abilities():
-		if ab == null:
-			continue
-		var escale := 1
-		if entry.get_star_display_level() > 0:
-			escale = UnitInstance.ability_value_multiplier_for(ab, entry.level)
-		lines.append(format_ability("技能装", ab, escale, with_stat_icons, entry.level))
 	for passive in entry.unit.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, entry.level)
@@ -170,18 +158,10 @@ static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = f
 	if equipment == null:
 		return ""
 	var title := equipment.get_display_name()
-	if equipment.is_ability_kind():
-		var ab := equipment.get_ability()
-		var ab_name := ""
-		if ab != null:
-			ab_name = ab.display_name if not ab.display_name.is_empty() else ab.id
-		if with_stat_icons:
-			return "【技能装】%s — %s" % [title, ab_name if not ab_name.is_empty() else "战斗技能"]
-		return "【技能装】%s" % title
 	var block := equipment.get_armor_block()
 	if with_stat_icons:
-		return "【护甲】%s — 受伤时抵挡 %d 点伤害" % [title, block]
-	return "【护甲】%s — 护甲 %d" % [title, block]
+		return "【装备】%s — 受伤时抵挡 %d 点伤害" % [title, block]
+	return "【装备】%s — 护甲 %d" % [title, block]
 
 
 static func get_equipment_attachment_skills_block(
@@ -192,11 +172,6 @@ static func get_equipment_attachment_skills_block(
 ) -> String:
 	if equipment == null:
 		return ""
-	if equipment.is_ability_kind():
-		var ab := equipment.get_ability()
-		if ab == null:
-			return "技能装（空效果）"
-		return format_ability("技能装", ab, 1, with_stat_icons)
 	var block := equipment.get_armor_block()
 	var lines: PackedStringArray = []
 	if with_stat_icons:
@@ -220,18 +195,17 @@ static func build_equipment_attachment_info(
 		return {}
 	if max_armor <= 0:
 		max_armor = equipment.get_armor_block()
-	var kind_label := "技能装" if equipment.is_ability_kind() else "护甲"
 	return {
 		"is_attachment": true,
 		"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
 		"equipment_id": equipment.id,
-		"attachment_kind_label": kind_label,
+		"attachment_kind_label": "装备",
 		"name": equipment.get_display_name(),
 		"side_player": true,
 		"tier": 0,
 		"attack": 0,
 		"hp": 0,
-		"armor": 0 if equipment.is_ability_kind() else maxi(0, current_armor),
+		"armor": maxi(0, current_armor),
 		"skills": get_equipment_attachment_skills_block(
 			equipment, current_armor, max_armor, with_stat_icons
 		),
@@ -392,27 +366,11 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 		return "无技能"
 
 	var lines: PackedStringArray = []
-	var rules := UnitData.combat_profession_rules_text(unit.get_combat_profession())
-	if not rules.is_empty():
-		lines.append(rules)
-	var entry := unit.get_linked_deck_entry()
-	## 战斗中不读模板自带技能；仅 override / 技能装 / 移植。
-	if unit.main_ability_override != null:
-		var oscale := UnitInstance.ability_value_multiplier_for(
-			unit.main_ability_override, unit.level
-		)
+	if unit.unit_data.ability != null:
+		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(
-			format_ability("技能", unit.main_ability_override, oscale, with_stat_icons, unit.level)
+			format_ability("技能", unit.unit_data.ability, scale, with_stat_icons, unit.level)
 		)
-	if entry != null:
-		for ab in entry.get_equipment_abilities():
-			if ab == null:
-				continue
-			var escale := UnitInstance.ability_value_multiplier_for(ab, unit.level)
-			lines.append(format_ability("技能装", ab, escale, with_stat_icons, unit.level))
-		for buff in entry.attached_buffs:
-			if buff != null:
-				lines.append(format_buff(buff, with_stat_icons))
 	for passive in unit.unit_data.passives:
 		if passive != null:
 			var pscale := UnitInstance.ability_value_multiplier_for(passive, unit.level)
@@ -421,6 +379,11 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 		if attached != null:
 			var ascale := UnitInstance.ability_value_multiplier_for(attached, unit.level)
 			lines.append(format_ability("移植", attached, ascale, with_stat_icons))
+	var entry := unit.get_linked_deck_entry()
+	if entry != null:
+		for buff in entry.attached_buffs:
+			if buff != null:
+				lines.append(format_buff(buff, with_stat_icons))
 	if lines.is_empty():
 		return "无技能"
 	return "\n".join(lines)

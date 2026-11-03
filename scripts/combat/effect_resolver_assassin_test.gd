@@ -33,7 +33,6 @@ static func _bus() -> CombatEventBus:
 
 static func _assassin(cell: Vector2i, team: UnitInstance.Team = UnitInstance.Team.PLAYER) -> UnitInstance:
 	var unit := UnitInstance.from_unit_data(_AssassinData, cell, team)
-	unit.bind_template_ability_for_tests()
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
 
@@ -147,13 +146,6 @@ static func _test_from_deck_entry_emits_swap_event() -> void:
 
 	var entry := DeckEntry.new()
 	entry.unit = _AssassinData
-	## 友方开战技能来自技能装；把模板 ability 挂成技能装再生成。
-	if _AssassinData.ability != null:
-		var skill_eq := EquipmentData.new()
-		skill_eq.id = "skill_assassin_test"
-		skill_eq.kind = EquipmentData.Kind.ABILITY
-		skill_eq.ability = _AssassinData.ability
-		entry.attach_equipment(skill_eq)
 	var assassin := UnitInstance.from_deck_entry(entry, Vector2i(2, 2), UnitInstance.Team.PLAYER)
 	grid.place(assassin, Vector2i(2, 2))
 	_assert_true(assassin.get_all_effect_specs().size() > 0, "deck entry assassin has specs")

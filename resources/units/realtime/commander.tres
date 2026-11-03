@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_commander"]
 script = ExtResource("2_stats")
-max_hp = 30
+max_hp = 100
 attack = 2
 attack_range = 2
 steps_per_turn = 1
@@ -29,8 +29,6 @@ display_name = "指挥官"
 cost = 0
 tier = 1
 theme_bond = 0
-combat_profession = 0
-equipment_slot_count = 1
 command_cost = 1
 stats = SubResource("UnitStats_commander")
 icon = ExtResource("3_icon")

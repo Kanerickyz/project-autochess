@@ -168,30 +168,6 @@ func restart_run() -> void:
 	start_run()
 
 
-## 十五天日程：不生成地图；阶段停在 ENCOUNTER，由日程驱动。
-func start_day_run() -> void:
-	run_state.reset_progress()
-	defeat_reached_floor = 0
-	_pending_node = null
-	_set_phase(RunPhase.ENCOUNTER)
-
-
-func register_day_combat_win() -> void:
-	run_state.completed_encounter_count += 1
-	run_state.run_depth += 1
-
-
-func complete_day_run() -> void:
-	_pending_node = null
-	_set_phase(RunPhase.RUN_COMPLETE)
-
-
-## 败局记到达天数；与地图层深共用 defeat_reached_floor。
-func fail_day_run(day: int) -> void:
-	defeat_reached_floor = maxi(1, day)
-	fail_run()
-
-
 func get_board_defaults() -> LevelData:
 	if map_config != null and map_config.board_defaults != null:
 		return map_config.board_defaults

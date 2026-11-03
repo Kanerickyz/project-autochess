@@ -25,8 +25,6 @@ deploy_time = 1.0
 [resource]
 script = ExtResource("1_unit")
 id = "giant_knight"
-combat_profession = 0
-equipment_slot_count = 1
 display_name = "召唤统领"
 cost = 6
 tier = 3

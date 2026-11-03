@@ -147,7 +147,7 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 			"cost": cost,
 			"affordable": _service.can_afford(cost) if item != null else false,
 			"label": item.get_display_name() if item != null else "",
-			"summary": item.get_summary() if item != null else "",
+			"summary": "抵挡 %d" % item.get_armor_block() if item != null else "",
 			"icon": item.get_icon() if item != null else null,
 		})
 	return out

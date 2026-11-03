@@ -127,12 +127,6 @@ static func ability_value_multiplier_for(ability: AbilityData, level: int) -> in
 	return ability_value_multiplier(level, step)
 
 
-## 把资源模板 ability 绑到 override（仅测例／工具；遭遇生成不要调用）。
-func bind_template_ability_for_tests() -> void:
-	if unit_data != null and unit_data.ability != null:
-		main_ability_override = unit_data.ability
-
-
 static func from_unit_data(data: UnitData, cell: Vector2i, team: Team) -> UnitInstance:
 	var unit := UnitInstance.new(data.id, cell, team)
 	unit.unit_data = data
@@ -187,35 +181,11 @@ func uses_teleport_move_presentation() -> bool:
 	return get_movement_pattern() == UnitStats.MovementPattern.TELEPORT
 
 
-func get_combat_profession() -> UnitData.CombatProfession:
-	if unit_data == null:
-		return UnitData.CombatProfession.MELEE
-	return unit_data.combat_profession
-
-
-func is_tank_profession() -> bool:
-	return get_combat_profession() == UnitData.CombatProfession.TANK
-
-
-func is_ranged_profession() -> bool:
-	return get_combat_profession() == UnitData.CombatProfession.RANGED
-
-
-func is_assassin_profession() -> bool:
-	return get_combat_profession() == UnitData.CombatProfession.ASSASSIN
-
-
 func get_main_ability() -> AbilityData:
 	if main_ability_override != null:
 		return main_ability_override
-	## 友方牌库条目：开战技能来自技能装（空装 = 无主技能）。
-	var entry := get_linked_deck_entry()
-	if entry != null:
-		var equipped := entry.get_equipment_abilities()
-		if not equipped.is_empty():
-			return equipped[0]
-		return null
-	## 敌方 / 无牌库：默认无自带技能（与友方空装对齐；测例可设 main_ability_override）。
+	if unit_data != null:
+		return unit_data.ability
 	return null
 
 
@@ -330,21 +300,14 @@ func _sync_armor_to_deck_entry() -> void:
 
 func get_all_effect_specs() -> Array[EffectSpec]:
 	var specs: Array[EffectSpec] = []
-	var entry := get_linked_deck_entry()
-	if entry != null:
-		## 友方：runtime 主技能 + 每件技能装各自注册（同 id 两件触发两次）。
-		if main_ability_override != null:
-			specs.append_array(main_ability_override.effect_specs)
-		for ab in entry.get_equipment_abilities():
-			if ab != null:
-				specs.append_array(ab.effect_specs)
-	elif main_ability_override != null:
-		## 无牌库（含敌方）：仅显式 override；不读模板 unit_data.ability。
-		specs.append_array(main_ability_override.effect_specs)
-	if unit_data != null:
-		for passive in unit_data.passives:
-			if passive != null:
-				specs.append_array(passive.effect_specs)
+	if unit_data == null:
+		return specs
+	var main_ab := get_main_ability()
+	if main_ab != null:
+		specs.append_array(main_ab.effect_specs)
+	for passive in unit_data.passives:
+		if passive != null:
+			specs.append_array(passive.effect_specs)
 	for attached in attached_abilities:
 		if attached != null:
 			specs.append_array(attached.effect_specs)

@@ -241,7 +241,6 @@ func try_recruit(
 	candidate_index: int,
 	replace_entry_id: int = -1,
 	seat_index: int = -1,
-	free_pick: bool = false,
 ) -> Dictionary:
 	var result := {
 		"ok": false,
@@ -256,8 +255,7 @@ func try_recruit(
 	if unit == null:
 		result["reason"] = "no_candidate"
 		return result
-	## 天内三选一招募免费。
-	var cost := 0 if free_pick else get_recruit_cost(unit)
+	var cost := get_recruit_cost(unit)
 	if not economy.can_afford(cost):
 		result["reason"] = "no_gold"
 		return result

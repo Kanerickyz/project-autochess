@@ -2,7 +2,7 @@ class_name RunState
 extends RefCounted
 
 ## 指挥官开局 / 满血上限（与 resources/units/realtime/commander.tres 对齐）。
-const COMMANDER_MAX_HP := 30
+const COMMANDER_MAX_HP := 100
 
 var rng_seed: int = 0
 var map_state: MapState = MapState.new()

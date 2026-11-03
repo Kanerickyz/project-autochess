@@ -486,9 +486,6 @@ func _apply_content(info: Dictionary) -> void:
 		var tier := int(info.get("tier", 0))
 		var side := "我方" if is_player else "敌方"
 		var base := "%s · T%d" % [side, tier] if tier > 0 else side
-		var profession := String(info.get("profession_label", "")).strip_edges()
-		if not profession.is_empty():
-			base = "%s · %s" % [base, profession]
 		var theme := _theme_side_label_from_info(info)
 		_side_label.text = "%s · %s" % [base, theme] if not theme.is_empty() else base
 		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT if is_player else ENEMY_ACCENT)
