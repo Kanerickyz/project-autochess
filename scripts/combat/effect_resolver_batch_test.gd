@@ -34,9 +34,7 @@ static func _ant(cell: Vector2i, team: UnitInstance.Team) -> UnitInstance:
 	data.stats = UnitStats.new()
 	data.stats.attack = 2
 	data.stats.max_hp = 2
-	var unit := UnitInstance.from_unit_data(data, cell, team)
-	unit.bind_template_ability_for_tests()
-	return unit
+	return UnitInstance.from_unit_data(data, cell, team)
 
 
 static func _ally(cell: Vector2i, team: UnitInstance.Team, hp: int = 2) -> UnitInstance:
@@ -151,9 +149,7 @@ static func _hedgehog(cell: Vector2i, team: UnitInstance.Team) -> UnitInstance:
 	data.stats = UnitStats.new()
 	data.stats.attack = 4
 	data.stats.max_hp = 2
-	var unit := UnitInstance.from_unit_data(data, cell, team)
-	unit.bind_template_ability_for_tests()
-	return unit
+	return UnitInstance.from_unit_data(data, cell, team)
 
 
 static func _unit(

@@ -34,7 +34,6 @@ static func _bomber(cell: Vector2i, team: UnitInstance.Team, hp: int = 3) -> Uni
 	data.stats.max_hp = 3
 	data.stats.attack = 2
 	var unit := UnitInstance.from_unit_data(data, cell, team)
-	unit.bind_template_ability_for_tests()
 	unit.current_hp = hp
 	return unit
 

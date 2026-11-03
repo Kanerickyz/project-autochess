@@ -33,7 +33,6 @@ static func _bus() -> CombatEventBus:
 
 static func _assassin(cell: Vector2i, team: UnitInstance.Team = UnitInstance.Team.PLAYER) -> UnitInstance:
 	var unit := UnitInstance.from_unit_data(_AssassinData, cell, team)
-	unit.bind_template_ability_for_tests()
 	unit.current_hp = unit.get_effective_max_hp()
 	return unit
 

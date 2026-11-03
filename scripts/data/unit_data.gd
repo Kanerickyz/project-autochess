@@ -78,19 +78,6 @@ static func combat_profession_label(prof: CombatProfession) -> String:
 			return "近战"
 
 
-## 长按介绍卡职业词条（玩家可读规则摘要）。
-static func combat_profession_rules_text(prof: CombatProfession) -> String:
-	match prof:
-		CombatProfession.TANK:
-			return "【职业·坦克】嘲讽：敌人必须优先攻击坦克；无法携带装备。"
-		CombatProfession.RANGED:
-			return "【职业·远程】攻击距离 2；普通攻击约 5% 暴击（1.5 倍，先算再进护甲）；可携带 3 件装备。"
-		CombatProfession.ASSASSIN:
-			return "【职业·刺客】无视嘲讽；优先攻击远程→刺客→近战→坦克；瞬移贴近后再出手；可携带 2 件装备。"
-		_:
-			return "【职业·近战】标准近战走打；可携带 1 件装备。"
-
-
 static func equipment_slots_for_profession(prof: CombatProfession) -> int:
 	match prof:
 		CombatProfession.TANK:

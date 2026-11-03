@@ -33,7 +33,6 @@ static func _ant(cell: Vector2i, team: UnitInstance.Team) -> UnitInstance:
 	data.stats.attack = 2
 	data.stats.max_hp = 2
 	var unit := UnitInstance.from_unit_data(data, cell, team)
-	unit.bind_template_ability_for_tests()
 	return unit
 
 
