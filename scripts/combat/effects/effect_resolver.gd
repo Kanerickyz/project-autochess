@@ -1562,6 +1562,15 @@ func _spawn_unit(
 		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
 			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
 			var pct := action.spawn_owner_base_percent
+			## 残影：1★ 按配置百分比；三合一后（2★+）生成完全体（死者基础身体 100%）。
+			var pct_ability: AbilityData = owner.get_main_ability() if owner != null else null
+			if (
+				owner != null
+				and owner.level >= 2
+				and pct_ability != null
+				and pct_ability.id == "death_spawn_weak_copy"
+			):
+				pct = 100
 			var base_atk := payload.target.stats.attack
 			var base_hp := payload.target.stats.max_hp
 			spawned.stats.attack = maxi(1, base_atk * pct / 100)

@@ -19,5 +19,6 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "deal_damage_apply_weak"
-display_name = "造成伤害时 对目标施加虚弱 1 层"
+merge_value_mult = 3
+display_name = "造成伤害时 对目标施加虚弱 1 层（三合一后 3 层）"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

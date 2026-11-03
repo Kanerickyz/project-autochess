@@ -20,7 +20,7 @@ const MOUNT_TABLE := {
 	"apothecary": "turn_start_nearby_enemies_apply_poison",
 }
 
-const EMPTY_ABILITY_IDS := ["giant_knight"]
+const EMPTY_ABILITY_IDS := ["giant_knight", "wood_drum"]
 
 
 static var _created: Array[RealtimeCombatSim] = []
@@ -69,6 +69,8 @@ static func run_all() -> bool:
 	_check("armorer_turn_start_random_ally_armor_star2", _test_armorer_turn_start_random_ally_armor_star2())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
+	_check("death_spawn_weak_copy_half", _test_death_spawn_weak_copy_half())
+	_check("death_spawn_weak_copy_full_star2", _test_death_spawn_weak_copy_full_star2())
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
@@ -1152,11 +1154,14 @@ static func _test_ally_death_self_atk_mid() -> bool:
 	return true
 
 
-## 游侠：造成伤害时对目标施加 1 层虚弱。
+## 游侠：造成伤害时对目标施加 1 层虚弱（merge_value_mult=3 → 2★ 一次 3 层）。
 static func _test_archer_deal_apply_weak() -> bool:
 	var data := _load_unit("res://resources/units/realtime/archer.tres")
 	if data == null or data.ability == null or data.ability.id != "deal_damage_apply_weak":
 		push_error("archer_weak: archer ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("archer_weak: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 55)
@@ -1182,6 +1187,33 @@ static func _test_archer_deal_apply_weak() -> bool:
 	var weak_stacks := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
 	if weak_stacks < 1:
 		push_error("archer_weak: expected weak on target, got %d stacks" % weak_stacks)
+		return false
+	## 2★：一次施加 3 层。
+	var sim2 := _new_sim()
+	sim2.configure(ARENA, 56)
+	var archer2 := sim2.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	archer2.unit.level = 2
+	archer2.unit.stats.attack_windup = 0.0
+	archer2.unit.stats.attack_interval = 0.4
+	var enemy2 := sim2.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 22.5),
+	)
+	guard = 0
+	while (
+		enemy2.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK) < 3
+		and guard < 400
+	):
+		sim2.advance_fixed_step()
+		guard += 1
+	sim2._drain_effects()
+	var weak2 := enemy2.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	if weak2 < 3:
+		push_error("archer_weak 2★: expected >=3 stacks from one hit scale, got %d" % weak2)
 		return false
 	return true
 
@@ -1579,8 +1611,8 @@ static func _test_death_spawn_pack() -> bool:
 	if data == null or data.ability == null or data.ability.id != "death_spawn_pack":
 		push_error("spawn: goblin ability not mounted")
 		return false
-	if data.ability.merge_value_mult != 4:
-		push_error("spawn: death_spawn_pack merge_value_mult expected 4")
+	if data.ability.merge_value_mult != 3:
+		push_error("spawn: death_spawn_pack merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 3)
@@ -1628,7 +1660,86 @@ static func _test_death_spawn_pack() -> bool:
 	return true
 
 
-## 余烬 2★：死亡生成 4/4 随从（merge_value_mult=4）。
+## 残影 1★：死亡生成死者基础身体 50% 的剪影。
+static func _test_death_spawn_weak_copy_half() -> bool:
+	var data := _load_unit("res://resources/units/realtime/echo_spear.tres")
+	if data == null or data.ability == null or data.ability.id != "death_spawn_weak_copy":
+		push_error("echo 1★: ability not mounted")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var echo := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	echo.stats.attack = 8
+	echo.stats.max_hp = 10
+	echo.current_hp = 0
+	grid.place(echo, Vector2i(9, 20))
+	var payload := CombatEventPayload.new()
+	payload.source = echo
+	payload.target = echo
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	var token: UnitInstance = null
+	for u in grid.get_all_units():
+		if u != null and u.id == "token_weak_copy" and u.is_alive():
+			token = u
+			break
+	if token == null or token.stats == null:
+		push_error("echo 1★: missing token_weak_copy")
+		return false
+	if token.stats.attack != 4 or token.stats.max_hp != 5:
+		push_error(
+			"echo 1★: token %d/%d expected 4/5 (50%% of 8/10)"
+			% [token.stats.attack, token.stats.max_hp]
+		)
+		return false
+	return true
+
+
+## 残影 2★：三合一后生成完全体（死者基础身体 100%）。
+static func _test_death_spawn_weak_copy_full_star2() -> bool:
+	var data := _load_unit("res://resources/units/realtime/echo_spear.tres")
+	if data == null or data.ability == null or data.ability.id != "death_spawn_weak_copy":
+		push_error("echo 2★: ability not mounted")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var echo := UnitInstance.from_unit_data(data, Vector2i(9, 20), UnitInstance.Team.PLAYER)
+	echo.level = 2
+	echo.stats.attack = 8
+	echo.stats.max_hp = 10
+	echo.current_hp = 0
+	grid.place(echo, Vector2i(9, 20))
+	var payload := CombatEventPayload.new()
+	payload.source = echo
+	payload.target = echo
+	resolver.on_event(CombatEvents.ON_DEATH, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	var token: UnitInstance = null
+	for u in grid.get_all_units():
+		if u != null and u.id == "token_weak_copy" and u.is_alive():
+			token = u
+			break
+	if token == null or token.stats == null:
+		push_error("echo 2★: missing token_weak_copy")
+		return false
+	if token.stats.attack != 8 or token.stats.max_hp != 10:
+		push_error(
+			"echo 2★: token %d/%d expected 8/10 full body"
+			% [token.stats.attack, token.stats.max_hp]
+		)
+		return false
+	return true
+
+
+## 余烬 2★：死亡生成 3/3 随从（merge_value_mult=3）。
 static func _test_death_spawn_pack_star2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "death_spawn_pack":
@@ -1657,9 +1768,9 @@ static func _test_death_spawn_pack_star2() -> bool:
 	if token == null or token.stats == null:
 		push_error("ember 2★: missing token_ember")
 		return false
-	if token.stats.attack != 4 or token.stats.max_hp != 4 or token.current_hp != 4:
+	if token.stats.attack != 3 or token.stats.max_hp != 3 or token.current_hp != 3:
 		push_error(
-			"ember 2★: token %d/%d expected 4/4"
+			"ember 2★: token %d/%d expected 3/3"
 			% [token.stats.attack, token.stats.max_hp]
 		)
 		return false
@@ -1882,14 +1993,14 @@ static func _test_death_heal_nearby_ally() -> bool:
 	return true
 
 
-## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=4 → 三合一后 4）。
+## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=3 → 三合一后 3）。
 static func _test_hurt_heal_self_2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
 	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
 		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
 		return false
-	if data.ability.merge_value_mult != 4:
-		push_error("hurt_heal_self_2: merge_value_mult expected 4")
+	if data.ability.merge_value_mult != 3:
+		push_error("hurt_heal_self_2: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
