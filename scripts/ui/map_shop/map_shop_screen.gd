@@ -103,7 +103,7 @@ func _refresh_all() -> void:
 	_rebuild_seats()
 	if _refresh_btn != null and _service != null:
 		var cost := _service.get_refresh_cost()
-		_refresh_btn.text = "刷新货架（%d 金）" % cost
+		_refresh_btn.text = "刷新消耗品（%d 金）" % cost
 		_refresh_btn.disabled = _busy or not _service.can_refresh()
 
 
@@ -273,7 +273,7 @@ func _make_seat_cell(seat_index: int) -> PanelContainer:
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.set_meta("entry_id", entry.entry_id)
 		panel.set_meta("unit_card", card)
-		if not entry.equipments.is_empty():
+		if entry.equipment != null:
 			var eq_row := HBoxContainer.new()
 			eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
 			eq_row.add_theme_constant_override("separation", 4)
@@ -404,24 +404,18 @@ func _try_buy_on_seat(slot_index: int, is_consumable: bool, seat_index: int) -> 
 		var reason := String(result.get("reason", "failed"))
 		if reason == "cant_afford":
 			_hint_label.text = "金币不足"
-		elif reason == "slots_full":
-			_hint_label.text = "装备槽已满"
 		else:
 			_hint_label.text = "购买失败"
 		_refresh_all()
 		return
 	if is_consumable and bool(result.get("destroyed", false)):
 		_hint_label.text = "生命归零，角色已销毁"
-	elif is_consumable and result.has("theme_affected"):
-		var n := int(result.get("theme_affected", 0))
-		if n <= 0:
-			_hint_label.text = "已购买（无人命中）"
-		else:
-			_hint_label.text = "主题药水已生效（%d 人）" % n
 	elif is_consumable:
 		_hint_label.text = "已使用消耗品"
-	else:
+	elif bool(result.get("kept_new", true)):
 		_hint_label.text = "已装备"
+	else:
+		_hint_label.text = "装备冲突：保留了旧装备（不退金）"
 	_refresh_all()
 
 
@@ -434,7 +428,7 @@ func _on_refresh_pressed() -> void:
 	if int(result.get("result", MapShopService.BuyResult.FAILED)) != MapShopService.BuyResult.OK:
 		_hint_label.text = "金币不足，无法刷新"
 	else:
-		_hint_label.text = "已刷新货架"
+		_hint_label.text = "已刷新消耗品"
 	_refresh_all()
 
 

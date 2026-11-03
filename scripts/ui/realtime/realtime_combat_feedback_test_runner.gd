@@ -18,12 +18,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_mapper_and_arena_direct()
-	_test_compact_card_and_stat_missile()
-	_test_stat_badge_pulse()
 	await _test_effect_resolved_feedback_on_arena()
 	await _test_rider_enemy_death_feedback()
 	await _test_basic_attack_does_not_float()
-	await _test_basic_attack_does_not_spawn_missile()
 	await _test_timestop_queue_blocks_sim()
 	await _test_tape_next_skips_stuck_timestop()
 	await _test_awaiting_resolve_recovers_next_frame()
@@ -107,7 +104,6 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(pops[0]["kind"] == RealtimeEffectFeedback.KIND_STAT, "mapper: kind=stat")
 		_expect(String(pops[0]["text"]).find("50") >= 0, "mapper: text contains 50")
 		_expect(String(pops[0]["text"]).find("攻") >= 0, "mapper: text contains 攻")
-		_expect(pops[0].get("stat_name", &"") == &"attack", "mapper: STAT popup carries stat_name")
 
 	var spawn_action := EffectAction.new()
 	spawn_action.action_type = EffectAction.Type.SPAWN_UNIT
@@ -192,102 +188,6 @@ func _test_mapper_and_arena_direct() -> void:
 	if merged.size() == 1:
 		_expect(int(merged[0]["amount"]) == 62, "arena: merged amount 62")
 		_expect(String(merged[0]["text"]).find("62") >= 0, "arena: merged text shows 62")
-	arena.queue_free()
-
-
-func _test_compact_card_and_stat_missile() -> void:
-	## 缩卡短于详卡；弹入物可生成且不炸。
-	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(5, 8)
-	arena.size = Vector2(393, 700)
-	root.add_child(arena)
-	var unit := UnitInstance.from_unit_data(
-		load(RIDER_PATH) as UnitData, Vector2i(2, 6), UnitInstance.Team.PLAYER
-	)
-	arena.show_skill_trigger_info(unit, true, 6, 3, Vector2(2.5, 6.5), "敌亡叠攻", [])
-	_expect(arena.is_info_card_visible(), "compact: skill trigger shows card")
-	_expect(arena._info_card.is_compact_mode(), "compact: combat broadcast uses compact skin")
-	_expect(
-		arena._info_card.size.x <= RealtimeUnitInfoCard.COMPACT_CARD_WIDTH + 8.0,
-		"compact: card width near COMPACT_CARD_WIDTH",
-	)
-	arena.yield_combat_skill_broadcast()
-	## 淡出异步；立刻断言已解除播报钉扎即可。
-	_expect(not arena._combat_broadcast_info, "compact: yield clears broadcast flag")
-
-	var before_missiles := arena.get_stat_missile_fx_count()
-	arena.spawn_stat_missile(
-		RealtimeEffectFeedback.KIND_STAT, Vector2(1.5, 6.5), Vector2(3.5, 4.5), 2
-	)
-	_expect(arena.get_stat_missile_fx_count() > before_missiles, "missile: spawn creates node")
-	arena.spawn_stat_missile(
-		RealtimeEffectFeedback.KIND_HEAL, Vector2(2.5, 6.5), Vector2(2.5, 5.5), 3
-	)
-	arena.spawn_stat_missile(
-		RealtimeEffectFeedback.KIND_DAMAGE, Vector2(2.5, 6.5), Vector2(2.5, 3.5), 4
-	)
-	_expect(arena.get_stat_missile_fx_count() >= 3, "missile: damage/heal/stat all spawn")
-	arena.clear_fx()
-	_expect(arena.get_stat_missile_fx_count() == 0, "missile: clear_fx removes missiles")
-	arena.queue_free()
-
-
-func _test_stat_badge_pulse() -> void:
-	## 脚下攻/血标签 Tween 跳变：API 写入 scale≠1；clear_fx 清零。不测视觉帧。
-	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(5, 8)
-	arena.size = Vector2(393, 700)
-	root.add_child(arena)
-	var key := "u42"
-	_expect(not arena.has_active_stat_badge_pulse(key), "pulse: idle has no active pulse")
-	_expect(
-		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0),
-		"pulse: default atk scale is 1",
-	)
-	arena.pulse_stat_badges(key, &"atk")
-	_expect(arena.has_active_stat_badge_pulse(key), "pulse: atk pulse is active")
-	_expect(
-		not is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0)
-		or arena.has_active_stat_badge_pulse(key),
-		"pulse: atk scale moved or tween running",
-	)
-	arena.pulse_stat_badges(key, &"hp")
-	_expect(arena.has_active_stat_badge_pulse(key), "pulse: hp pulse keeps active")
-	arena.pulse_stat_badges("e7", &"both")
-	_expect(arena.has_active_stat_badge_pulse("e7"), "pulse: both pulses entry key")
-	_expect(
-		arena.has_active_stat_badge_pulse(),
-		"pulse: any-key helper sees active pulse",
-	)
-	arena.clear_fx()
-	_expect(not arena.has_active_stat_badge_pulse(), "pulse: clear_fx clears all pulses")
-	_expect(
-		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"atk"), 1.0),
-		"pulse: clear_fx resets atk scale",
-	)
-	_expect(
-		is_equal_approx(arena.get_stat_badge_pulse_scale(key, &"hp"), 1.0),
-		"pulse: clear_fx resets hp scale",
-	)
-	## pulse_stat_badges_at：无单位时静默；有存活单位时写入 u{instance_id}。
-	arena.pulse_stat_badges_at(Vector2(2.5, 6.5), &"hp")
-	_expect(not arena.has_active_stat_badge_pulse(), "pulse: at() without sim is no-op")
-	var sim := RealtimeCombatSim.new()
-	arena.sim = sim
-	var unit := UnitInstance.from_unit_data(
-		load(RIDER_PATH) as UnitData, Vector2i(2, 6), UnitInstance.Team.PLAYER
-	)
-	var rt := RtUnit.new(unit, Vector2(2.5, 6.5))
-	rt.skip_deploy()
-	sim._units.append(rt)
-	arena.pulse_stat_badges_at(Vector2(2.5, 6.5), &"hp")
-	var near_key := "u%d" % unit.instance_id
-	_expect(
-		arena.has_active_stat_badge_pulse(near_key),
-		"pulse: pulse_stat_badges_at resolves nearest unit",
-	)
-	arena.clear_fx()
-	_expect(not arena.has_active_stat_badge_pulse(near_key), "pulse: clear after at()")
 	arena.queue_free()
 
 
@@ -441,46 +341,8 @@ func _test_basic_attack_does_not_float() -> void:
 	await process_frame
 
 
-func _test_basic_attack_does_not_spawn_missile() -> void:
-	## 普攻路径不得生成弹入物（§5.4 / §6）。
-	var battle := _make_battle(43)
-	await process_frame
-	_expect(_seat_first_hand(battle), "atk-missile: seat")
-	_expect(battle.try_start_combat(), "atk-missile: start")
-	var arena := battle.get_arena()
-	arena.clear_fx()
-	var before := arena.get_stat_missile_fx_count()
-	var target: UnitInstance = null
-	for item in battle.get_sim().get_units():
-		var rt := item as RtUnit
-		if rt.is_player():
-			target = rt.unit
-			break
-	_expect(target != null, "atk-missile: player unit")
-	if target != null and battle._bus != null:
-		var dmg := CombatEventPayload.new()
-		dmg.source = target
-		dmg.target = target
-		dmg.amount = 5
-		battle._bus.emit_event(CombatEvents.ON_DAMAGE_TAKEN, dmg)
-		battle._bus.emit_event(CombatEvents.ON_ATTACK_HIT, dmg)
-	var atk_sim := battle.get_sim()
-	if atk_sim != null and atk_sim.get_effect_resolver() != null:
-		atk_sim.get_effect_resolver().clear_pending()
-	battle._timestop_queue.clear()
-	if atk_sim != null:
-		atk_sim.release_presentation()
-	await process_frame
-	_expect(
-		arena.get_stat_missile_fx_count() == before,
-		"atk-missile: basic-attack does not spawn stat missile",
-	)
-	battle.queue_free()
-	await process_frame
-
-
 func _test_timestop_queue_blocks_sim() -> void:
-	## 先卡再结算：缩卡期挡下一拍播报，但不 presentation_hold 冻场；收卡后才写入真值。
+	## 先卡再结算：待结算批次入队后先阻塞并展示，卡拍结束才写入真值。
 	var battle := _make_battle(99)
 	await process_frame
 	_expect(_seat_first_hand(battle), "timestop: seat one unit")
@@ -489,11 +351,11 @@ func _test_timestop_queue_blocks_sim() -> void:
 	var arena := battle.get_arena()
 	arena.clear_fx()
 	battle._timestop_queue.clear()
-	battle._skill_settlement_fx_tail = false
 	var resolver := sim.get_effect_resolver()
 	if resolver != null:
 		resolver.clear_pending()
 	sim.release_presentation()
+	var steps_before := sim.fixed_step_count
 	var target: UnitInstance = null
 	for item in sim.get_units():
 		var rt := item as RtUnit
@@ -530,9 +392,7 @@ func _test_timestop_queue_blocks_sim() -> void:
 	_expect(target.current_hp == hp_before, "timestop: hp unchanged during card")
 	for _i in 3:
 		await process_frame
-	_expect(not sim.presentation_hold, "timestop: skill card does not hold sim")
-	_expect(battle.is_timestop_blocking(), "timestop: card still presenting")
-	_expect(target.current_hp == hp_before, "timestop: hp still unchanged during card")
+	_expect(sim.fixed_step_count == steps_before, "timestop: sim steps frozen while queue active")
 
 	## 加速耗尽卡拍+结果拍（约 1.0+0.4 / scale）
 	battle.time_scale = 8.0
@@ -545,7 +405,7 @@ func _test_timestop_queue_blocks_sim() -> void:
 	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
 	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied after card")
 	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
-	## 缩卡路径本身不 hold；终局可能已切 RESULT，不在此断言出击 tween 残留 hold。
+	_expect(not sim.presentation_hold, "timestop: presentation hold released")
 
 	battle.queue_free()
 	await process_frame

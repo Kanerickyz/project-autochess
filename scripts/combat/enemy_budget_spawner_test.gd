@@ -741,9 +741,7 @@ static func _test_boss_back_center_seat() -> bool:
 	)
 	if seated.size() != 1:
 		return false
-	## roll 内 seat_count 会夹到 MAX_SEATS_HARD。
-	var seat_count := mini(2 * 5, EnemyBudgetSpawner.MAX_SEATS_HARD)
-	var expect := EnemyBudgetSpawner.back_center_seat_index(5, seat_count)
+	var expect := EnemyBudgetSpawner.back_center_seat_index(5, 10)
 	return int(seated[0].get("seat_index", -1)) == expect
 
 

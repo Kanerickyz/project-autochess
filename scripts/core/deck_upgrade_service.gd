@@ -91,16 +91,6 @@ static func get_display_max_hp(entry: DeckEntry) -> int:
 	return entry.unit.stats.max_hp + entry.bonus_max_hp
 
 
-## 准备 / 招募脚下血量：指挥官显示跨遭遇当前血，其余显示满血上限。
-static func get_display_current_hp(entry: DeckEntry) -> int:
-	var max_hp := get_display_max_hp(entry)
-	if entry == null or max_hp <= 0:
-		return 0
-	if entry.is_commander() and entry.persisted_current_hp >= 0:
-		return clampi(entry.persisted_current_hp, 0, max_hp)
-	return max_hp
-
-
 static func _apply_level_up(entry: DeckEntry, config: LevelConfig, deck: DeckState = null) -> void:
 	entry.level += 1
 	entry.bonus_attack += config.bonus_attack_per_level_up

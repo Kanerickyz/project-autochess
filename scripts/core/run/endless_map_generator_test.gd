@@ -5,8 +5,7 @@ extends RefCounted
 static func run_all() -> bool:
 	var passed := true
 	passed = _test_linear_no_elite_boss() and passed
-	passed = _test_legacy_pure_combat_then_shops() and passed
-	passed = _test_product_shop_every_4() and passed
+	passed = _test_pure_combat_then_shops() and passed
 	passed = _test_combat_floors_increment() and passed
 	passed = _test_append_extends() and passed
 	passed = _test_shop_does_not_own_new_floor() and passed
@@ -17,13 +16,13 @@ static func run_all() -> bool:
 	return passed
 
 
-static func _make_config(pure_floors: int = 3, shop_every: int = 3) -> RunMapConfig:
+static func _make_config() -> RunMapConfig:
 	var config := RunMapConfig.new()
 	config.endless_mode = true
 	config.floor_count = 30
 	config.column_count = 7
-	config.pure_combat_floors = pure_floors
-	config.shop_every_n_combats = shop_every
+	config.pure_combat_floors = 3
+	config.shop_every_n_combats = 3
 	config.endless_chunk_combats = 12
 	config.endless_append_threshold = 4
 	var wave := WaveData.new()
@@ -35,22 +34,8 @@ static func _make_config(pure_floors: int = 3, shop_every: int = 3) -> RunMapCon
 	return config
 
 
-static func _walk_types(state: MapState) -> Array[MapNodeType.Type]:
-	var types: Array[MapNodeType.Type] = []
-	var cursor := state.get_node(state.start_node_id)
-	var guard := 0
-	while cursor != null and guard < 100:
-		guard += 1
-		types.append(cursor.get_effective_type())
-		var outs := cursor.get_outgoing_ids()
-		if outs.is_empty():
-			break
-		cursor = state.get_node(outs[0])
-	return types
-
-
 static func _test_linear_no_elite_boss() -> bool:
-	var config := _make_config(0, 4)
+	var config := _make_config()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var state := EndlessMapGenerator.generate(config, rng)
@@ -76,90 +61,43 @@ static func _test_linear_no_elite_boss() -> bool:
 	return true
 
 
-## 旧算法参数 pure=3/every=3：START, C1–C3, SHOP, C4…
-static func _test_legacy_pure_combat_then_shops() -> bool:
-	var config := _make_config(3, 3)
+static func _test_pure_combat_then_shops() -> bool:
+	var config := _make_config()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var state := EndlessMapGenerator.generate(config, rng)
-	var types := _walk_types(state)
+	## 期望顺序：START, C1, C2, C3, SHOP, C4, C5, C6, SHOP, C7...
+	var types: Array[MapNodeType.Type] = []
+	var cursor := state.get_node(state.start_node_id)
+	var guard := 0
+	while cursor != null and guard < 100:
+		guard += 1
+		types.append(cursor.get_effective_type())
+		var outs := cursor.get_outgoing_ids()
+		if outs.is_empty():
+			break
+		cursor = state.get_node(outs[0])
 	if types.size() < 8:
-		push_error("EndlessMapGeneratorTest: legacy chain too short %d" % types.size())
+		push_error("EndlessMapGeneratorTest: chain too short %d" % types.size())
 		return false
 	if types[0] != MapNodeType.Type.START:
 		push_error("EndlessMapGeneratorTest: first should be START")
 		return false
 	if types[1] != MapNodeType.Type.COMBAT or types[2] != MapNodeType.Type.COMBAT \
 			or types[3] != MapNodeType.Type.COMBAT:
-		push_error("EndlessMapGeneratorTest: legacy first three after start must be combat")
+		push_error("EndlessMapGeneratorTest: first three after start must be combat")
 		return false
 	if types[4] != MapNodeType.Type.SHOP:
-		push_error(
-			"EndlessMapGeneratorTest: legacy shop expected after combat 3, got %s"
-			% MapNodeType.display_name(types[4])
-		)
+		push_error("EndlessMapGeneratorTest: shop expected after combat 3, got %s" % MapNodeType.display_name(types[4]))
 		return false
 	if types[5] != MapNodeType.Type.COMBAT:
-		push_error("EndlessMapGeneratorTest: legacy combat 4 expected after first shop")
-		return false
-	return true
-
-
-## 产品节拍 pure=0/every=4：战1–4 → 店 → 战5–8 → 店…
-static func _test_product_shop_every_4() -> bool:
-	var config := _make_config(0, 4)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 13
-	var state := EndlessMapGenerator.generate(config, rng)
-	var types := _walk_types(state)
-	## START + 4 combat + shop + 4 combat + shop …
-	if types.size() < 11:
-		push_error("EndlessMapGeneratorTest: product chain too short %d" % types.size())
-		return false
-	if types[0] != MapNodeType.Type.START:
-		push_error("EndlessMapGeneratorTest: product first should be START")
-		return false
-	for i in range(1, 5):
-		if types[i] != MapNodeType.Type.COMBAT:
-			push_error(
-				"EndlessMapGeneratorTest: product types[%d] should be COMBAT, got %s"
-				% [i, MapNodeType.display_name(types[i])]
-			)
-			return false
-	if types[5] != MapNodeType.Type.SHOP:
-		push_error(
-			"EndlessMapGeneratorTest: shop expected before combat 5, got %s"
-			% MapNodeType.display_name(types[5])
-		)
-		return false
-	for i in range(6, 10):
-		if types[i] != MapNodeType.Type.COMBAT:
-			push_error(
-				"EndlessMapGeneratorTest: product types[%d] should be COMBAT, got %s"
-				% [i, MapNodeType.display_name(types[i])]
-			)
-			return false
-	if types[10] != MapNodeType.Type.SHOP:
-		push_error(
-			"EndlessMapGeneratorTest: shop expected before combat 9, got %s"
-			% MapNodeType.display_name(types[10])
-		)
-		return false
-	## 直接断言插入规则：第 5、9、13 场前插店。
-	if not EndlessMapGenerator._should_insert_shop_before(5, 0, 4):
-		push_error("EndlessMapGeneratorTest: should insert shop before F5")
-		return false
-	if EndlessMapGenerator._should_insert_shop_before(4, 0, 4):
-		push_error("EndlessMapGeneratorTest: must not insert shop before F4")
-		return false
-	if not EndlessMapGenerator._should_insert_shop_before(9, 0, 4):
-		push_error("EndlessMapGeneratorTest: should insert shop before F9")
+		push_error("EndlessMapGeneratorTest: combat 4 expected after first shop")
 		return false
 	return true
 
 
 static func _test_combat_floors_increment() -> bool:
-	var config := _make_config(0, 4)
+	var config := _make_config()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
 	var state := EndlessMapGenerator.generate(config, rng)
@@ -178,7 +116,7 @@ static func _test_combat_floors_increment() -> bool:
 
 
 static func _test_append_extends() -> bool:
-	var config := _make_config(0, 4)
+	var config := _make_config()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
 	var state := EndlessMapGenerator.generate(config, rng)
@@ -192,7 +130,7 @@ static func _test_append_extends() -> bool:
 
 
 static func _test_shop_does_not_own_new_floor() -> bool:
-	var config := _make_config(0, 4)
+	var config := _make_config()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9
 	var state := EndlessMapGenerator.generate(config, rng)

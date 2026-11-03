@@ -18,8 +18,7 @@ const HIGH_FREQ_TRIGGERS := {
 }
 
 
-## 返回 Array[Dictionary]：{kind, text, amount, target, is_player, merge_key, show_tip, tip, unit_id}
-## KIND_STAT 另带 stat_name（StringName），供脚下攻/血标签脉冲映射。
+## 返回 Array[Dictionary]：{kind, text, amount, target, is_player, merge_key, show_tip}
 static func build_popups(payload: CombatEventPayload) -> Array:
 	var result: Array = []
 	if payload == null:
@@ -107,7 +106,6 @@ static func _map_action(
 				"merge_key": "%d|stat|%s" % [unit_id, String(action.stat_name)],
 				"show_tip": false,
 				"tip": "",
-				"stat_name": action.stat_name,
 			}
 		EffectAction.Type.SPAWN_UNIT, EffectAction.Type.SPLIT_SELF:
 			var spawn_text := tip

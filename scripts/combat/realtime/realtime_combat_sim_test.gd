@@ -27,8 +27,6 @@ static func run_all() -> bool:
 	ok = _check("occupancy_no_shared_cells", _test_occupancy_no_shared_cells()) and ok
 	ok = _check("win_and_bus_death_events", _test_win_and_bus_death_events()) and ok
 	ok = _check("lose_when_no_player_alive", _test_lose_when_no_player_alive()) and ok
-	ok = _check("commander_death_loses_with_allies_alive", _test_commander_death_loses_with_allies_alive()) and ok
-	ok = _check("ally_wipe_keeps_fighting_if_commander_alive", _test_ally_wipe_keeps_fighting_if_commander_alive()) and ok
 	ok = _check("determinism_frame_rate_independent", _test_determinism_frame_rate_independent()) and ok
 	ok = _check("projectile_vanishes_when_target_dead", _test_projectile_vanishes_when_target_dead()) and ok
 	ok = _check("dead_skipped_in_queue", _test_dead_skipped_in_queue()) and ok
@@ -808,84 +806,6 @@ static func _test_lose_when_no_player_alive() -> bool:
 		push_error("lose: expected player loss")
 		return false
 	return sim.count_alive(UnitInstance.Team.PLAYER) == 0
-
-
-## 指挥官死、队友仍在 → 立刻败。
-static func _test_commander_death_loses_with_allies_alive() -> bool:
-	var sim := _new_sim()
-	sim.configure(ARENA, 81)
-	var commander := make_unit(
-		UnitInstance.Team.PLAYER,
-		{"id": "commander", "max_hp": 20, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0},
-	)
-	commander.is_commander = true
-	var ally := make_unit(
-		UnitInstance.Team.PLAYER,
-		{"id": "ally", "max_hp": 500, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0},
-	)
-	sim.add_unit(commander, Vector2(9.5, 24.5))
-	sim.add_unit(ally, Vector2(11.5, 24.5))
-	sim.add_unit(
-		make_unit(
-			UnitInstance.Team.ENEMY,
-			{"max_hp": 1000, "attack": 40, "steps_per_turn": 3, "attack_reach": 1.0, "attack_windup": 0.0},
-		),
-		Vector2(9.5, 6.5),
-	)
-	var finished_with: Array = []
-	sim.combat_finished.connect(func(won: bool) -> void: finished_with.append(won))
-	_run_until(sim, 120.0)
-	if not sim.require_commander_alive:
-		push_error("commander lose: require_commander_alive not set")
-		return false
-	if not sim.is_finished() or sim.did_player_win() or finished_with != [false]:
-		push_error("commander lose: expected loss on commander death")
-		return false
-	if sim.count_alive(UnitInstance.Team.PLAYER) <= 0:
-		push_error("commander lose: expected ally still alive when lost")
-		return false
-	return not sim.is_commander_alive()
-
-
-## 非指挥官友方全灭、指挥官仍在 → 不因全灭判负。
-static func _test_ally_wipe_keeps_fighting_if_commander_alive() -> bool:
-	var sim := _new_sim()
-	sim.configure(ARENA, 82)
-	var commander := make_unit(
-		UnitInstance.Team.PLAYER,
-		{"id": "commander", "max_hp": 800, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0},
-	)
-	commander.is_commander = true
-	var fodder := make_unit(
-		UnitInstance.Team.PLAYER,
-		{"id": "fodder", "max_hp": 30, "attack": 1, "attack_reach": 1.0, "steps_per_turn": 0},
-	)
-	sim.add_unit(commander, Vector2(7.5, 28.5))
-	var fodder_rt := sim.add_unit(fodder, Vector2(9.5, 24.5))
-	sim.add_unit(
-		make_unit(
-			UnitInstance.Team.ENEMY,
-			{"max_hp": 1000, "attack": 1, "steps_per_turn": 0, "attack_reach": 1.0},
-		),
-		Vector2(9.5, 6.5),
-	)
-	sim.begin_combat()
-	## 手动击杀非指挥官友方，保留指挥官与敌方。
-	if fodder_rt != null and fodder_rt.unit != null:
-		fodder_rt.unit.current_hp = 0
-		fodder_rt.state = RtUnit.State.DEAD
-	sim._remove_dead()
-	sim._check_finished()
-	if sim.is_finished():
-		push_error("ally wipe: should not finish while commander + enemies alive")
-		return false
-	if not sim.is_commander_alive():
-		push_error("ally wipe: commander should remain alive")
-		return false
-	if sim.count_alive(UnitInstance.Team.PLAYER) != 1:
-		push_error("ally wipe: expected only commander alive on player side")
-		return false
-	return true
 
 
 static func _build_mixed_scenario(seed_value: int) -> RealtimeCombatSim:

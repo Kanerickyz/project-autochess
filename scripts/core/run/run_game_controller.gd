@@ -27,7 +27,6 @@ var _recruit_session: RecruitSession = RecruitSession.new()
 var _map_shop_service: MapShopService = MapShopService.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
-var _victory_boost_busy: bool = false
 var _enchant_busy: bool = false
 var _map_shop_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
@@ -55,7 +54,6 @@ func _ready() -> void:
 	_battle.set_run_stat_ledger(_run_stat_ledger)
 	_battle.encounter_completed.connect(_on_encounter_completed)
 	_battle.final_trial_floors_recorded.connect(_on_final_trial_floors_recorded)
-	_battle.victory_boost_finished.connect(_on_victory_boost_finished)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
 	_battle.map_shop_finished.connect(_on_map_shop_finished)
@@ -80,31 +78,22 @@ func _is_endless() -> bool:
 func _start_new_run() -> void:
 	_run_stat_ledger.reset()
 	deck_state.set_run_stat_ledger(_run_stat_ledger)
-	deck_state.set_run_state(run_controller.run_state)
 	_pending_end_victory = false
 	_pending_end_snapshot = null
 	deck_state.reset_from_config()
-	deck_state.ensure_commander()
 	run_economy.reset()
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
 	_recruit_session.clear_taken_copies()
 	_battle.reset_final_trial_state()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
-	_battle.set_run_state(run_controller.run_state)
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
 		_battle.set_forward_tier_unlock(_is_endless())
-		## 无尽走阶梯同质白板刷敌，不依赖 spawn_budget 加压。
-		if _is_endless():
-			_battle.set_endless_ladder_spawn(true)
-			_battle.set_spawn_budget_config(null)
+		if run_controller.map_config.spawn_budget_override != null:
+			_battle.set_spawn_budget_config(run_controller.map_config.spawn_budget_override)
 		else:
-			_battle.set_endless_ladder_spawn(false)
-			if run_controller.map_config.spawn_budget_override != null:
-				_battle.set_spawn_budget_config(run_controller.map_config.spawn_budget_override)
-			else:
-				_battle.set_spawn_budget_config(null)
+			_battle.set_spawn_budget_config(null)
 	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
 	_suppress_map_show = true
@@ -122,7 +111,6 @@ func _show_map() -> void:
 	## 地图与关卡共用竞技场背景：战斗层保留在下方作世界底图，地图半透明罩上。
 	_battle_root.visible = true
 	if _battle != null:
-		_battle.exit_victory_boost(false)
 		_battle.exit_recruit()
 		_battle.exit_map_shop()
 		_battle.exit_enchant()
@@ -200,7 +188,6 @@ func _on_encounter_completed(won: bool) -> void:
 		var snap := _build_stats_snapshot(false)
 		_battle_root.visible = false
 		if _battle != null:
-			_battle.exit_victory_boost(false)
 			_battle.exit_recruit()
 		run_controller.fail_run()
 		_present_run_end_result(snap)
@@ -212,17 +199,13 @@ func _on_encounter_completed(won: bool) -> void:
 		run_economy.grant(encounter.bonus_gold)
 
 	var node_type := run_controller.get_pending_node_type()
-	## Boss / 不应招募：与招募同条件，也不进免费强化。
 	if not _recruit_session.should_offer_recruit(node_type, true):
 		_battle_root.visible = false
 		if _battle != null:
-			_battle.exit_victory_boost(false)
 			_battle.exit_recruit()
 		run_controller.complete_encounter()
 		return
 
-	## 普/精胜：免费强化（可跳过）→ 招募。开局招募不走本路径。
-	await _open_victory_boost()
 	await _open_recruit()
 
 
@@ -246,41 +229,6 @@ func _open_opening_recruit() -> void:
 	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
-
-
-## 胜后免费强化：在招募进门快照之前落盘；空队自动跳过。
-func _open_victory_boost() -> void:
-	if _victory_boost_busy:
-		return
-	if deck_state == null or deck_state.size() <= 0:
-		return
-	_victory_boost_busy = true
-	_battle_root.visible = true
-	if _battle != null:
-		_battle.set_world_backdrop_mode(false)
-	_map_screen.hide_map()
-	_placeholder_screen.hide_placeholder()
-
-	var session := VictoryBoostSession.new()
-	session.configure(
-		deck_state,
-		_recruit_map_floor(),
-		_recruit_map_floor_count(),
-		_is_endless(),
-	)
-	session.begin()
-	if not session.has_boostable_roster():
-		_victory_boost_busy = false
-		return
-	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
-	await _battle.enter_victory_boost(session, enter_s)
-	## 等玩家确认/跳过；信号由 battle 发出后 _on_victory_boost_finished 清 busy。
-	if _victory_boost_busy:
-		await _battle.victory_boost_finished
-
-
-func _on_victory_boost_finished(_applied: bool) -> void:
-	_victory_boost_busy = false
 
 
 ## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
@@ -413,14 +361,12 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 			_battle_root.visible = false
 			_map_screen.hide_map()
 			if _battle != null:
-				_battle.exit_victory_boost(false)
 				_battle.exit_recruit()
 			_present_run_end_result(_build_stats_snapshot(true))
 		RunController.RunPhase.RUN_DEFEAT:
 			_battle_root.visible = false
 			_map_screen.hide_map()
 			if _battle != null:
-				_battle.exit_victory_boost(false)
 				_battle.exit_recruit()
 
 

@@ -47,8 +47,6 @@ var presentation_hold: bool = false
 var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
-## 为 true 时：败条件改为指挥官阵亡（非友方全灭）；由开战生成指挥官时置位。
-var require_commander_alive: bool = false
 
 ## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
 var _lock_spawn_order: Array[RtUnit] = []
@@ -188,8 +186,6 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	_register_on_effect_grid(unit, rt.get_cell())
 	if unit.is_boss_leader():
 		_had_boss_leader = true
-	if unit.is_commander:
-		require_commander_alive = true
 	## 开战前：记录锁阵生成序。开战中：默认插到当前行动者之后（COMBAT §7.1 建议默认）。
 	if not _started:
 		_lock_spawn_order.append(rt)
@@ -394,7 +390,7 @@ func step(dt: float) -> void:
 			break
 
 
-## 观战演出门闩（出击 tween 等）：打断后续固定步；技能缩卡不再走此路径。
+## 技能播报时停：打断后续固定步；队列清空后由控制器 release。
 func hold_for_presentation() -> void:
 	presentation_hold = true
 	_input_seconds = fixed_step_count * FIXED_DT
@@ -1023,54 +1019,29 @@ func _remove_dead() -> void:
 func _check_finished() -> void:
 	if _finished:
 		return
-	## Boss 斩首：首领死 → 胜 + 溃散其余敌方（优先于败条件）。
+	## Boss 斩首：首领死 → 胜 + 溃散其余敌方（优先于己方全灭）。
 	if _had_boss_leader:
 		if not _has_alive_boss_leader():
 			_rout_non_leader_enemies()
 			_finish(true)
 			return
-		if _should_lose_for_player_side():
+		if count_alive(UnitInstance.Team.PLAYER) == 0 and not suppress_player_wipe_loss:
 			if not _defer_wipe_check_for_pending_effects():
 				_finish(false)
 		return
 	var player_alive := count_alive(UnitInstance.Team.PLAYER)
 	var enemy_alive := count_alive(UnitInstance.Team.ENEMY)
-	## 清敌优先：同帧敌清空（含与指挥官同归于尽）→ 胜。
-	if enemy_alive == 0:
-		if player_alive == 0:
-			if not _defer_wipe_check_for_pending_effects():
-				_finish(true)
-		else:
+	## 对砍同归于尽：同帧双方清空 → 清敌胜（见 COMBAT §7.2）
+	if enemy_alive == 0 and player_alive == 0:
+		if not _defer_wipe_check_for_pending_effects():
 			_finish(true)
 		return
-	if _should_lose_for_player_side():
-		if not _defer_wipe_check_for_pending_effects():
-			_finish(false)
-
-
-## 败：有指挥官则看指挥官是否存活；否则回退友方全灭。
-func _should_lose_for_player_side() -> bool:
-	if suppress_player_wipe_loss:
-		return false
-	if require_commander_alive:
-		return not is_commander_alive()
-	return count_alive(UnitInstance.Team.PLAYER) == 0
-
-
-func is_commander_alive() -> bool:
-	for rt in _units:
-		if rt == null or rt.unit == null or not rt.unit.is_commander:
-			continue
-		if rt.is_alive():
-			return true
-	return false
-
-
-func find_commander_rt() -> RtUnit:
-	for rt in _units:
-		if rt != null and rt.unit != null and rt.unit.is_commander:
-			return rt
-	return null
+	if player_alive == 0:
+		if not suppress_player_wipe_loss:
+			if not _defer_wipe_check_for_pending_effects():
+				_finish(false)
+	elif enemy_alive == 0:
+		_finish(true)
 
 
 ## defer 观战：队首仍有待结算技能（如禁卫 OnKill 策反）时勿判胜负。
@@ -1570,8 +1541,6 @@ func _finalize_pending_deaths() -> bool:
 		_pipeline.emit_post_kill_death_events(entry)
 		if rt != null:
 			unit_died.emit(rt)
-	## 遗骨等 ON_DEATH 即时落子：即使无后续技能批次也要同步进 RT。
-	_sync_effect_spawns_from_grid()
 	return true
 
 

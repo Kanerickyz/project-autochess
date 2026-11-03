@@ -11,13 +11,11 @@ signal combat_resolved(won: bool)
 signal final_trial_floors_recorded(floors: int)
 ## 招募阶段结束（完成/跳过）；由 Run 接线回地图。
 signal recruit_finished(kept_changes: bool)
-## 胜后免费强化结束（短按落盘=true / 跳过=false）；Run 在其后进招募。
-signal victory_boost_finished(applied: bool)
 signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, VICTORY_BOOST, ENCHANT, MAP_SHOP }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -31,10 +29,6 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var half_exit_seconds: float = 0.5
 ## 招募半场滑入秒数；≤0 瞬切。
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
-## 短按落盘后展示 +N/+N 反馈再进招募的短停（秒）；≤0 瞬切。
-@export_range(0.0, 2.0, 0.05) var victory_boost_confirm_hold_seconds: float = 0.5
-## 战斗结束后、胜负结算界面弹出前的停顿（秒）；≤0 立刻弹出。
-@export_range(0.0, 3.0, 0.05) var result_overlay_delay_seconds: float = 1.0
 
 var last_seed: int = 0
 
@@ -49,8 +43,6 @@ var _floor_index: int = 0
 var _map_floor_count: int = 15
 ## 无尽：品阶随 F 单向解锁（不用倒数层）。
 var _forward_tier_unlock: bool = false
-## 无尽：阶梯同质白板刷敌（关闭跟队抽阵 / flat / 面板下限）。
-var _endless_ladder_spawn: bool = false
 var _node_type: MapNodeType.Type = MapNodeType.Type.COMBAT
 
 
@@ -72,15 +64,6 @@ func set_forward_tier_unlock(enabled: bool) -> void:
 
 func get_forward_tier_unlock() -> bool:
 	return _forward_tier_unlock
-
-
-## 无尽阶梯刷敌：同质白板，人数/攻血跟层号；开启后绕过 budget/legacy 抽阵。
-func set_endless_ladder_spawn(enabled: bool) -> void:
-	_endless_ladder_spawn = enabled
-
-
-func get_endless_ladder_spawn() -> bool:
-	return _endless_ladder_spawn
 
 
 func reset_final_trial_state() -> void:
@@ -132,8 +115,6 @@ var _last_resolved_payload: CombatEventPayload = null
 var _preserve_half_slide_for_recruit: bool = false
 var _run_stat_ledger: RunStatLedger
 var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
-## Run 局内状态（指挥官血等）；非 Run / 测试可为空 → 不生成指挥官。
-var _run_state: RunState = null
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
@@ -147,18 +128,6 @@ var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
-## 胜后免费强化（招募前一步）。
-var _victory_boost_session: VictoryBoostSession
-var _victory_boost_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
-var _victory_boost_hud: Control
-var _victory_boost_title: Label
-var _victory_boost_amount_label: Label
-var _victory_boost_hint: Label
-var _victory_boost_confirm_btn: Button
-var _victory_boost_skip_btn: Button
-var _victory_boost_animating: bool = false
-## 取消过期的胜负界面延迟弹出（进点/继续/重开时递增）。
-var _result_overlay_show_token: int = 0
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -171,7 +140,6 @@ var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
 var _map_shop_service: MapShopService
 var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
-var _equipment_detail: EquipmentDetailPanel
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
 var _combat_sandbox_mode: bool = false
 ## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
@@ -184,11 +152,9 @@ var _tape_boundary_pending: bool = false
 var _tape_completed_turns: int = 0
 var _tape_rewinding: bool = false
 var _tape_stats_disabled: bool = false
-## 技能播报/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
+## 时停/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
 const PRESENTATION_STUCK_SECONDS := 3.5
 var _presentation_block_elapsed: float = 0.0
-## 结果拍计时已结束、仍等弹入等结算 FX 播完再开下一张缩卡（不 hold sim）。
-var _skill_settlement_fx_tail: bool = false
 ## Boss 胜后可选最终试炼；进行中阵容锁定、连续波次。
 var _final_trial_active: bool = false
 var _final_trial_wave_index: int = 0
@@ -243,8 +209,6 @@ var _tape_next_button: Button
 const DEFAULT_SANDBOX_ENEMY_ID := "enemy_skeleton"
 const DEFAULT_SANDBOX_ENCOUNTER := "res://resources/encounters/realtime/rt_combat_01.tres"
 const FINAL_TRIAL_DEV_UNIT := preload("res://resources/units/enemies/enemy_final_trial_dev.tres")
-const ENDLESS_LADDER_DEV_UNIT := preload("res://resources/units/enemies/enemy_endless_dev.tres")
-const COMMANDER_UNIT_DATA := preload("res://resources/units/realtime/commander.tres")
 ## 准备横排：开战相对复制/粘贴的宽度比。
 const _PREPARE_START_STRETCH := 2.0
 const _PREPARE_SECONDARY_STRETCH := 1.0
@@ -272,8 +236,6 @@ func _ready() -> void:
 	_arena.prepare_team_bench_drop.connect(_on_prepare_team_bench_drop)
 	_arena.bench_pressed.connect(_on_bench_pressed)
 	_arena.bench_empty_pressed.connect(_on_bench_empty_pressed)
-	_arena.victory_boost_unit_pressed.connect(_on_victory_boost_unit_pressed)
-	_arena.equipment_detail_requested.connect(_on_equipment_detail_requested)
 	_start_button.pressed.connect(_on_start_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
 	if _final_trial_button != null:
@@ -284,141 +246,18 @@ func _ready() -> void:
 	_ensure_layout_clipboard_buttons()
 	_ensure_tape_controls()
 	_ensure_recruit_hud()
-	_ensure_victory_boost_hud()
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
-	_ensure_equipment_detail_panel()
 	_result_overlay.visible = false
 	if _start_button != null:
 		_start_button.visible = false
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = false
 	_refresh_hud()
-
-
-func _ensure_equipment_detail_panel() -> void:
-	if _equipment_detail != null:
-		return
-	_equipment_detail = EquipmentDetailPanel.new()
-	_equipment_detail.name = "EquipmentDetailPanel"
-	add_child(_equipment_detail)
-	_equipment_detail.unequip_requested.connect(_on_equipment_unequip_requested)
-	_equipment_detail.equip_from_stash_requested.connect(_on_equipment_equip_from_stash)
-	_equipment_detail.closed.connect(_on_equipment_detail_closed)
-
-
-func _equipment_detail_writable() -> bool:
-	return (
-		_phase == Phase.MAP_SHOP
-		or _phase == Phase.PREPARE
-		or _phase == Phase.RECRUIT
-	)
-
-
-func _on_equipment_detail_requested(entry_id: int) -> void:
-	if entry_id < 0 or _deck_state == null:
-		return
-	## 招募待用药水：短点角色仍结算药水，不抢开详情。
-	if _phase == Phase.RECRUIT and _recruit_pending_item_slot >= 0:
-		if _is_bench_entry(entry_id):
-			_on_bench_pressed(entry_id)
-		else:
-			_on_recruit_team_pressed(entry_id)
-		return
-	## 招募：已选候选需替换时，短点仍选替换目标（拖放为主路径，点选兜底）。
-	if (
-		_phase == Phase.RECRUIT
-		and _recruit_selected_candidate >= 0
-		and _recruit_session != null
-		and _recruit_session.needs_replace_for_candidate(_recruit_selected_candidate)
-	):
-		_on_recruit_team_pressed(entry_id)
-		return
-	if _phase == Phase.RECRUIT and _recruit_animating:
-		return
-	if _phase == Phase.MAP_SHOP and _map_shop_ui.is_animating():
-		return
-	## 胜后强化 / 附魔：不改装，也不抢短按写入。
-	if _phase == Phase.VICTORY_BOOST or _phase == Phase.ENCHANT:
-		return
-	_ensure_equipment_detail_panel()
-	var readonly := not _equipment_detail_writable()
-	## 开战只读；IDLE/RESULT 也可扫读。
-	if _phase == Phase.COMBAT:
-		readonly = true
-	_equipment_detail.show_for_entry(_deck_state, entry_id, readonly)
-	if _arena != null:
-		_arena.equipment_detail_blocks_drag = _equipment_detail_writable()
-
-
-func _on_equipment_detail_closed() -> void:
-	if _arena != null:
-		_arena.equipment_detail_blocks_drag = false
-
-
-func _on_equipment_unequip_requested(entry_id: int, slot_index: int) -> void:
-	if not _equipment_detail_writable() or _deck_state == null:
-		return
-	var result := _deck_state.unequip_to_stash(entry_id, slot_index)
-	if not bool(result.get("ok", false)):
-		var reason := String(result.get("reason", ""))
-		var msg := "无法卸载"
-		match reason:
-			"stash_full":
-				msg = "暂存已满，无法卸载"
-			"empty_slot":
-				msg = "该槽无装备"
-			_:
-				msg = "无法卸载"
-		if _equipment_detail != null:
-			_equipment_detail.set_hint(msg)
-		_show_hint(msg)
-		return
-	if _equipment_detail != null:
-		_equipment_detail.set_hint("已卸入暂存")
-		_equipment_detail.refresh()
-	_refresh_after_equipment_change()
-
-
-func _on_equipment_equip_from_stash(stash_index: int, entry_id: int) -> void:
-	if not _equipment_detail_writable() or _deck_state == null:
-		return
-	var result := _deck_state.try_equip_from_stash(stash_index, entry_id)
-	if not bool(result.get("ok", false)):
-		var reason := String(result.get("reason", ""))
-		var msg := "无法挂装"
-		match reason:
-			"slots_full":
-				msg = "装备槽已满"
-			_:
-				msg = "无法挂装"
-		if _equipment_detail != null:
-			_equipment_detail.set_hint(msg)
-		_show_hint(msg)
-		return
-	if _equipment_detail != null:
-		_equipment_detail.set_hint("已从暂存挂装")
-		_equipment_detail.refresh()
-	_refresh_after_equipment_change()
-
-
-func _refresh_after_equipment_change() -> void:
-	match _phase:
-		Phase.MAP_SHOP:
-			on_map_shop_changed()
-		Phase.PREPARE:
-			_refresh_hud()
-			if _arena != null:
-				_arena.queue_redraw()
-		Phase.RECRUIT:
-			_sync_recruit_arena()
-			_refresh_recruit_hud()
-		_:
-			_refresh_hud()
 
 
 func _exit_tree() -> void:
@@ -472,11 +311,6 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
 	_refresh_hud()
-
-
-## 注入 RunState：开战生成指挥官并跨遭遇继承血量。沙盒/单测可不调。
-func set_run_state(run_state: RunState) -> void:
-	_run_state = run_state
 
 
 func _connect_deck_merge() -> void:
@@ -556,7 +390,6 @@ func start_encounter(
 	_floor_gold = 0
 	_selected_entry_id = -1
 	_lock_phase_active = false
-	_result_overlay_show_token += 1
 	_result_overlay.visible = false
 	_board_size = encounter.get_board_size(_level.get_board_size())
 
@@ -758,9 +591,6 @@ func _release_combat_skill_info_visibility() -> void:
 
 
 func is_timestop_blocking() -> bool:
-	## 含结算 FX 尾：挡住下一张缩卡；不表示全场 presentation_hold。
-	if _skill_settlement_fx_tail:
-		return true
 	return _timestop_queue != null and _timestop_queue.is_blocking()
 
 
@@ -1223,7 +1053,6 @@ func restart_sandbox_prepare() -> void:
 func continue_after_result() -> void:
 	if _phase != Phase.RESULT:
 		return
-	_result_overlay_show_token += 1
 	if _boss_final_trial_offer:
 		_boss_final_trial_offer = false
 		_update_result_action_buttons()
@@ -1478,94 +1307,12 @@ func play_half_field_exit_animation(duration: float = -1.0) -> void:
 		_arena.queue_redraw()
 
 
-## 胜后免费强化：暗场压战场 + 整队弹到屏中可选阵列；规则走 VictoryBoostSession。
-## headless：enter_seconds≤0 时瞬间到位。
-func enter_victory_boost(session: VictoryBoostSession, enter_seconds: float = -1.0) -> void:
-	if session == null:
-		push_error("RealtimeBattleController.enter_victory_boost: session is null")
-		return
-	if not is_node_ready():
-		await ready
-	## 若仍停在强化态，先清再进（防重入）。
-	if _phase == Phase.VICTORY_BOOST:
-		exit_victory_boost(false)
-	_victory_boost_session = session
-	_victory_boost_animating = true
-	_preserve_half_slide_for_recruit = false
-	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
-	_set_phase(Phase.VICTORY_BOOST)
-	_hide_combat_chrome_for_recruit()
-	_hide_recruit_hud()
-	_show_victory_boost_hud()
-	await get_tree().process_frame
-	if _arena != null:
-		_arena.clear_recruit_mode()
-		_arena.clear_map_shop_mode()
-		_arena.clear_enchant_mode()
-		## 强化态不走半场滑入：回正棋盘再压暗，避免与居中阵列抢位。
-		_arena.reset_half_slide()
-	_sync_victory_boost_arena(true)
-	_refresh_victory_boost_hud()
-	if _arena != null:
-		_arena.queue_redraw()
-	await _play_victory_boost_enter_animation(seconds)
-	_recruit_animating = false
-	_victory_boost_animating = false
-	_sync_victory_boost_arena(false)
-	_refresh_victory_boost_hud()
-
-
-## preserve_for_recruit：落盘/跳过后衔接到招募；暗场收起，不闪黑重建。
-func exit_victory_boost(preserve_for_recruit: bool = false) -> void:
-	_victory_boost_animating = false
-	_hide_victory_boost_hud()
-	_victory_boost_team_slots.clear()
-	if _victory_boost_session != null:
-		_victory_boost_session.end()
-		_victory_boost_session = null
-	if _arena != null:
-		_arena.clear_victory_boost_mode()
-		if not preserve_for_recruit:
-			_arena.reset_half_slide()
-	if not preserve_for_recruit:
-		_restore_combat_chrome_after_recruit()
-	if _phase == Phase.VICTORY_BOOST:
-		_set_phase(Phase.IDLE)
-
-
-func _play_victory_boost_enter_animation(seconds: float) -> void:
-	if _arena == null:
-		return
-	if seconds <= 0.001:
-		_arena.victory_boost_focus_t = 1.0
-		_arena.victory_boost_dim_alpha = 1.0
-		_arena.queue_redraw()
-		return
-	_arena.victory_boost_focus_t = 0.0
-	_arena.victory_boost_dim_alpha = 0.0
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(_arena, "victory_boost_focus_t", 1.0, seconds)
-	tween.tween_property(_arena, "victory_boost_dim_alpha", 1.0, seconds * 0.85)
-	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
-	await tween.finished
-	if _arena != null:
-		_arena.victory_boost_focus_t = 1.0
-		_arena.victory_boost_dim_alpha = 1.0
-		_arena.queue_redraw()
-
-
 ## 胜后进入招募：同屏半场滑入队伍（上）与候选人（下）；规则走 RecruitSession。
 ## headless：enter_seconds≤0 时瞬间到位，不 await 长动画。
 func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void:
 	if session == null:
 		push_error("RealtimeBattleController.enter_recruit: session is null")
 		return
-	## 免费强化 → 招募：清强化选中/暗场与 HUD；半场再由本函数滑入。
-	if _phase == Phase.VICTORY_BOOST:
-		exit_victory_boost(true)
 	_recruit_session = session
 	_recruit_selected_candidate = -1
 	_recruit_selected_replace_id = -1
@@ -1576,7 +1323,6 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		seconds = session.config.panel_enter_seconds
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
-	_hide_victory_boost_hud()
 	_show_recruit_hud()
 	## 等一帧让 Dock 最小高度生效，Arena 与准备同尺后再算 slide / 画单位。
 	await get_tree().process_frame
@@ -1585,7 +1331,6 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
 	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
 	if _arena != null:
-		_arena.clear_victory_boost_mode()
 		var travel := _half_slide_travel()
 		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
 		if not already_out:
@@ -1797,22 +1542,17 @@ func _on_map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int) -
 				_map_shop_ui.set_hint("无效目标")
 			"empty_slot":
 				_map_shop_ui.set_hint("货架已空")
-			"slots_full":
-				_map_shop_ui.set_hint("装备槽已满，无法购买")
 			_:
 				_map_shop_ui.set_hint("无法购买")
 		on_map_shop_changed()
 		return
 	if kind == &"equipment":
-		_map_shop_ui.set_hint("已装备")
+		if bool(result.get("kept_new", true)):
+			_map_shop_ui.set_hint("已装备")
+		else:
+			_map_shop_ui.set_hint("装备冲突：保留了旧装备")
 	elif bool(result.get("destroyed", false)):
 		_map_shop_ui.set_hint("生命归零，角色已销毁")
-	elif result.has("theme_affected"):
-		var n := int(result.get("theme_affected", 0))
-		if n <= 0:
-			_map_shop_ui.set_hint("已购买（无人命中）")
-		else:
-			_map_shop_ui.set_hint("主题药水已生效（%d 人）" % n)
 	else:
 		_map_shop_ui.set_hint("消耗品已生效")
 	on_map_shop_changed()
@@ -1840,12 +1580,10 @@ func exit_recruit() -> void:
 	_recruit_team_slots.clear()
 	if _arena != null:
 		_arena.clear_recruit_mode()
-		_arena.clear_victory_boost_mode()
 		_arena.reset_half_slide()
 	_hide_recruit_hud()
-	_hide_victory_boost_hud()
 	_restore_combat_chrome_after_recruit()
-	if _phase == Phase.RECRUIT or _phase == Phase.VICTORY_BOOST:
+	if _phase == Phase.RECRUIT:
 		_set_phase(Phase.IDLE)
 
 
@@ -1875,7 +1613,6 @@ func _begin_combat_from_prepare() -> void:
 	## COMBAT.md §6.5：友方入座时间序 → 敌方配置书写序 → 清手牌 → 锁操作 → 游戏开始。
 	_lock_phase_active = true
 	_timestop_queue.clear()
-	_skill_settlement_fx_tail = false
 	_reset_combo_display()
 	_reset_tape_state()
 
@@ -1938,14 +1675,9 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		var unit := UnitInstance.from_deck_entry(entry, cell, UnitInstance.Team.PLAYER)
 		if unit == null:
 			continue
-		if unit.is_commander:
-			_apply_commander_hp_to_unit(unit)
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
-
-	## 座位上若无指挥官条目（异常），回退生成；正常路径已从座位带强化出场。
-	_spawn_commander_into_sim()
 
 	for spawn in _enemy_spawns:
 		var place: Vector2 = spawn["position"]
@@ -1963,146 +1695,18 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		_sim.add_unit(unit, place)
 
 
-## 开战锁阵回退：座位未带出指挥官时再生成（不占 deploy_cap）。
-func _spawn_commander_into_sim() -> void:
-	if _sim == null:
-		return
-	if _sim.find_commander_rt() != null:
-		return
-	if _deck_state != null:
-		_deck_state.ensure_commander()
-	var entry := _deck_state.get_commander_entry() if _deck_state != null else null
-	var current_hp := 0
-	if _deck_state != null:
-		current_hp = _deck_state.get_commander_current_hp()
-	elif _run_state != null:
-		var max_hp_hint := RunState.COMMANDER_MAX_HP
-		if entry != null:
-			max_hp_hint = DeckUpgradeService.get_display_max_hp(entry)
-		current_hp = _run_state.get_commander_hp(max_hp_hint)
-	else:
-		return
-	if current_hp <= 0:
-		## 已阵亡不应再进遭遇；防守：仍不生成，交由开局检查。
-		return
-	var preferred := _commander_preferred_cell(entry)
-	var unit: UnitInstance = null
-	if entry != null:
-		unit = UnitInstance.from_deck_entry(entry, preferred, UnitInstance.Team.PLAYER)
-	elif COMMANDER_UNIT_DATA != null:
-		unit = UnitInstance.from_unit_data(
-			COMMANDER_UNIT_DATA, preferred, UnitInstance.Team.PLAYER
-		)
-	if unit == null:
-		return
-	unit.is_commander = true
-	_apply_commander_hp_to_unit(unit)
-	if unit.stats != null:
-		unit.stats.deploy_time = 0.0
-	_sim.add_unit(unit, Vector2(preferred) + Vector2(0.5, 0.5))
-
-
-func _apply_commander_hp_to_unit(unit: UnitInstance) -> void:
-	if unit == null:
-		return
-	var max_hp := maxi(1, unit.get_effective_max_hp())
-	## 跨遭遇持久：优先 DeckEntry / RunState 当前血，新战斗不回满。
-	var hp := max_hp
-	if _deck_state != null:
-		hp = _deck_state.get_commander_current_hp()
-	elif _run_state != null:
-		hp = _run_state.get_commander_hp(max_hp)
-	unit.current_hp = clampi(hp, 1, max_hp)
-
-
-func _commander_preferred_cell(entry: DeckEntry = null) -> Vector2i:
-	if entry != null and entry.seat_index >= 0 and _slots != null:
-		var cell := _slots.get_cell(entry.seat_index)
-		if cell != Vector2i(-1, -1):
-			return cell
-	if _slots != null and _slots.slot_count > 0:
-		var seat_i := SeatLayout.back_center_seat_index(_slots.seat_cols, _slots.slot_count)
-		var cell := _slots.get_cell(seat_i)
-		if cell != Vector2i(-1, -1):
-			return cell
-	## 回退：玩家半场底排中列。
-	var mid_row := BoardHalf.midline_row(_board_size.y)
-	var back_y := _board_size.y - 1
-	if back_y <= mid_row:
-		back_y = mini(_board_size.y - 1, mid_row + 1)
-	return Vector2i(_board_size.x / 2, back_y)
-
-
-func _persist_commander_hp_from_sim() -> void:
-	if _sim == null:
-		return
-	var cmd := _sim.find_commander_rt()
-	if cmd == null or cmd.unit == null:
-		if _deck_state != null:
-			_deck_state.set_commander_current_hp(0)
-		elif _run_state != null:
-			_run_state.set_commander_hp(0)
-		return
-	var hp := cmd.unit.current_hp
-	if _deck_state != null:
-		_deck_state.set_commander_current_hp(hp)
-	elif _run_state != null:
-		var max_hp := maxi(1, cmd.unit.get_effective_max_hp())
-		_run_state.set_commander_hp(hp, max_hp)
-
-
 func _set_phase(phase: Phase) -> void:
 	_phase = phase
-	## 切阶段收起装备详情，避免开战仍挂着可写面板。
-	if _equipment_detail != null and _equipment_detail.is_open():
-		_equipment_detail.hide_panel()
 	_refresh_hud()
 	_refresh_cards()
 	phase_changed.emit(phase)
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
-	if _endless_ladder_spawn:
-		return _build_endless_ladder_enemy_spawns(_floor_index)
 	var budget_cfg := _get_spawn_budget_config()
 	if budget_cfg != null and budget_cfg.enabled:
 		return _roll_enemy_spawns_budget(rng, budget_cfg)
 	return _roll_enemy_spawns_legacy(rng)
-
-
-func _build_endless_ladder_enemy_spawns(floor_index: int) -> Array:
-	var spawns: Array = []
-	if _enemy_slots == null or ENDLESS_LADDER_DEV_UNIT == null:
-		return spawns
-	var count := EndlessLadderBalance.enemy_count_for_floor(floor_index)
-	var atk := EndlessLadderBalance.attack_for_floor(floor_index)
-	var hp := EndlessLadderBalance.hp_for_floor(floor_index)
-	var seat_fill := SeatLayout.iter_seats_center_out(
-		_enemy_slots.seat_rows, _enemy_slots.seat_cols
-	)
-	var placed := 0
-	for seat_i in seat_fill:
-		if placed >= count:
-			break
-		if seat_i < 0 or seat_i >= _enemy_slots.slot_count:
-			continue
-		var cell := _enemy_slots.get_cell(seat_i)
-		var unit := UnitInstance.from_unit_data(
-			ENDLESS_LADDER_DEV_UNIT, cell, UnitInstance.Team.ENEMY
-		)
-		if unit == null or unit.stats == null:
-			continue
-		unit.stats.attack = atk
-		unit.stats.max_hp = hp
-		unit.current_hp = hp
-		unit.level = 1
-		spawns.append({
-			"unit": unit,
-			"position": _enemy_spawn_visual_position(unit, cell),
-			"seat_index": seat_i,
-		})
-		placed += 1
-	return spawns
 
 
 func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
@@ -2306,7 +1910,6 @@ func _teardown_sim() -> void:
 	_lock_phase_active = false
 	if _timestop_queue != null:
 		_timestop_queue.clear()
-	_skill_settlement_fx_tail = false
 	if _sim != null:
 		_sim.dispose()
 		_sim = null
@@ -2328,41 +1931,26 @@ func _disconnect_economy() -> void:
 
 
 ## 按 DeckState 持久占位填充准备座位；备战（seat_index=-1）不上座、不自动填空。
-## 指挥官始终入座展示，不计入 deploy_cap。
 func _load_persistent_seats_into_prepare() -> void:
 	var rows := _slots.seat_rows if _slots.seat_rows > 0 else DeckConfig.DEFAULT_SEAT_ROWS
 	var cols := _slots.seat_cols if _slots.seat_cols > 0 else DeckConfig.DEFAULT_SEAT_COLS
 	_slots.configure_grid(rows, cols, _board_size, false)
 	if _deck_state == null:
 		return
-	_deck_state.ensure_commander()
 	## 仅修复「座位下标合法但被他人占用」的冲突；不把备战自动塞进空座。
-	## 指挥官冲突时优先保住指挥官座（对方退备战）。
 	for entry in _deck_state.get_entries():
 		if entry == null or entry.seat_index < 0:
 			continue
 		if entry.seat_index >= _slots.slot_count:
-			if entry.is_commander():
-				## 指挥官不可备战：重寻合法座。
-				entry.seat_index = -1
-				entry.seat_assign_seq = 0
-				_deck_state.ensure_commander()
-			else:
-				entry.seat_index = -1
-				entry.seat_assign_seq = 0
+			## 越界占位视为备战，避免开战幽灵座。
+			entry.seat_index = -1
+			entry.seat_assign_seq = 0
 			continue
 		var at := _deck_state.get_entry_at_seat(entry.seat_index)
 		if at != null and at.entry_id != entry.entry_id:
-			if entry.is_commander():
-				at.seat_index = -1
-				at.seat_assign_seq = 0
-			elif at.is_commander():
-				entry.seat_index = -1
-				entry.seat_assign_seq = 0
-			else:
-				## 冲突：后来者退回备战（不抢空座）。
-				entry.seat_index = -1
-				entry.seat_assign_seq = 0
+			## 冲突：后来者退回备战（不抢空座）。
+			entry.seat_index = -1
+			entry.seat_assign_seq = 0
 	var placed := 0
 	## 按落座时间序放入，便于开战生成序与板子 seq 一致。
 	var ordered: Array[DeckEntry] = []
@@ -2374,18 +1962,7 @@ func _load_persistent_seats_into_prepare() -> void:
 			return a.seat_index < b.seat_index
 		return a.seat_assign_seq < b.seat_assign_seq
 	)
-	## 先放指挥官（不占 cap），再放其余受 cap 约束的成员。
 	for entry in ordered:
-		if entry == null or not entry.is_commander():
-			continue
-		if entry.seat_index < 0 or entry.seat_index >= _slots.slot_count:
-			continue
-		if not _slots.is_empty(entry.seat_index):
-			continue
-		_slots.try_assign_with_seq(entry.seat_index, entry, entry.seat_assign_seq)
-	for entry in ordered:
-		if entry == null or entry.is_commander():
-			continue
 		if placed >= _deploy_cap:
 			break
 		if entry.seat_index < 0 or entry.seat_index >= _slots.slot_count:
@@ -2790,7 +2367,6 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	var target := maxi(0, target_turns)
 	_tape_rewinding = true
 	_timestop_queue.clear()
-	_skill_settlement_fx_tail = false
 	_tape_stats_disabled = true
 	_stat_collector.unbind_bus()
 	_spawn_combat_sim_from_lock(true)
@@ -3067,228 +2643,6 @@ func _hide_recruit_hud() -> void:
 		_recruit_hud.visible = false
 
 
-func _ensure_victory_boost_hud() -> void:
-	if _victory_boost_hud != null and is_instance_valid(_victory_boost_hud):
-		## UX 改版：旧确认钮若仍在则隐藏。
-		if _victory_boost_confirm_btn != null and is_instance_valid(_victory_boost_confirm_btn):
-			_victory_boost_confirm_btn.visible = false
-			_victory_boost_confirm_btn.disabled = true
-		return
-	_victory_boost_hud = PanelContainer.new()
-	_victory_boost_hud.name = "VictoryBoostHud"
-	_victory_boost_hud.visible = false
-	_victory_boost_hud.mouse_filter = Control.MOUSE_FILTER_STOP
-	_victory_boost_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.10, 0.16, 0.12, 0.92)
-	style.set_content_margin_all(8.0)
-	_victory_boost_hud.add_theme_stylebox_override("panel", style)
-	var dock_box: Node = null
-	if _dock != null:
-		dock_box = _dock.get_node_or_null("DockBox")
-	if dock_box != null:
-		dock_box.add_child(_victory_boost_hud)
-	else:
-		_victory_boost_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		_victory_boost_hud.offset_top = -132.0
-		_victory_boost_hud.offset_bottom = 0.0
-		add_child(_victory_boost_hud)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	_victory_boost_hud.add_child(box)
-
-	var top := HBoxContainer.new()
-	box.add_child(top)
-	_victory_boost_title = Label.new()
-	_victory_boost_title.text = "免费强化"
-	_victory_boost_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_victory_boost_title)
-	_victory_boost_amount_label = Label.new()
-	_victory_boost_amount_label.text = "+1 / +1 · 不花金币"
-	top.add_child(_victory_boost_amount_label)
-
-	_victory_boost_hint = Label.new()
-	_victory_boost_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_victory_boost_hint.text = "短按纸片强化；长按看介绍；免费攻血同加（药水为花钱单维）"
-	box.add_child(_victory_boost_hint)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	box.add_child(row)
-	_victory_boost_skip_btn = Button.new()
-	_victory_boost_skip_btn.text = "跳过强化"
-	_victory_boost_skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_victory_boost_skip_btn.pressed.connect(_on_victory_boost_skip_pressed)
-	row.add_child(_victory_boost_skip_btn)
-	## 无「确认强化」：短按即落盘。保留变量兼容旧引用，但不加入场景。
-	_victory_boost_confirm_btn = null
-
-
-func _show_victory_boost_hud() -> void:
-	_ensure_victory_boost_hud()
-	if _victory_boost_hud != null:
-		_victory_boost_hud.visible = true
-
-
-func _hide_victory_boost_hud() -> void:
-	if _victory_boost_hud != null:
-		_victory_boost_hud.visible = false
-
-
-func _sync_victory_boost_arena(entering: bool = false) -> void:
-	if _arena == null or _victory_boost_session == null:
-		return
-	_arena.clear_recruit_mode()
-	_arena.victory_boost_active = true
-	_arena.victory_boost_selected_id = _victory_boost_session.selected_entry_id
-	_arena.victory_boost_amount = _victory_boost_session.boost_amount
-	_arena.victory_boost_applied = _victory_boost_session.applied
-	_arena.recruit_team_slots = null
-	_arena.prepare_slots = null
-	_arena.enemy_slots = null
-	_arena.enemy_previews = []
-	_arena.sim = null
-	_arena.placement_active = false
-	## 整队进居中阵列，不再画半场座位/备战行。
-	_arena.bench_visible = false
-	_arena.bench_interactive = false
-	_arena.bench_slots = null
-	var seat_rows := DeckConfig.DEFAULT_SEAT_ROWS
-	var seat_cols := DeckConfig.DEFAULT_SEAT_COLS
-	if _deck_state != null:
-		var config := _deck_state.get_config()
-		if config != null:
-			seat_rows = config.get_seat_rows()
-			seat_cols = config.get_seat_cols()
-	_arena.set_victory_boost_focus_roster(
-		_build_victory_boost_focus_entries(),
-		seat_rows,
-		seat_cols,
-	)
-	if entering:
-		_arena.victory_boost_focus_t = 0.0
-		_arena.victory_boost_dim_alpha = 0.0
-	elif _arena.victory_boost_focus_t < 0.999:
-		## 进场中途 sync 不打断 t；仅落盘反馈等完整到位后保持 1。
-		pass
-	else:
-		_arena.victory_boost_focus_t = 1.0
-		_arena.victory_boost_dim_alpha = 1.0
-	_arena.queue_redraw()
-
-
-func _build_victory_boost_focus_entries() -> Array:
-	var out: Array = []
-	if _deck_state == null:
-		return out
-	## 上场在前、备战在后，标签可读。
-	for entry in _deck_state.get_entries():
-		if entry == null or entry.seat_index < 0:
-			continue
-		out.append({"entry": entry, "is_bench": false})
-	for entry in _deck_state.get_entries():
-		if entry == null or entry.seat_index >= 0:
-			continue
-		out.append({"entry": entry, "is_bench": true})
-	return out
-
-
-func _refresh_victory_boost_hud() -> void:
-	if _victory_boost_session == null:
-		return
-	var amount := maxi(1, _victory_boost_session.boost_amount)
-	if _victory_boost_title != null:
-		_victory_boost_title.text = "免费强化"
-	if _victory_boost_amount_label != null:
-		_victory_boost_amount_label.text = "+%d / +%d · 不花金币" % [amount, amount]
-	if _victory_boost_hint != null:
-		if _victory_boost_session.applied:
-			_victory_boost_hint.text = "已强化 +%d 攻 / +%d 生命" % [amount, amount]
-		else:
-			_victory_boost_hint.text = "短按纸片强化；长按看介绍；免费攻血同加（药水为花钱单维）"
-	if _victory_boost_confirm_btn != null and is_instance_valid(_victory_boost_confirm_btn):
-		_victory_boost_confirm_btn.visible = false
-		_victory_boost_confirm_btn.disabled = true
-	if _victory_boost_skip_btn != null:
-		_victory_boost_skip_btn.disabled = (
-			_victory_boost_animating or _victory_boost_session.applied
-		)
-		_victory_boost_skip_btn.text = "跳过强化"
-	if _encounter_label != null:
-		_encounter_label.text = "免费强化"
-	if _phase_label != null:
-		_phase_label.text = "免费强化"
-		_phase_label.modulate = Color.WHITE
-	if _pop_label != null and _deck_state != null:
-		_pop_label.text = "入座 %d 备战 %d" % [
-			_deck_state.get_seated_count(),
-			_deck_state.get_bench_count(),
-		]
-	if _gold_label != null and _economy != null:
-		_gold_label.text = UiStatIcons.format_gold_label(_economy.gold)
-
-
-## 短按抬起：立即写入本档 +攻/+血，反馈后进招募（无确认钮）。
-func _on_victory_boost_unit_pressed(entry_id: int) -> void:
-	if _phase != Phase.VICTORY_BOOST or _victory_boost_animating or _victory_boost_session == null:
-		return
-	if _victory_boost_session.applied:
-		return
-	_victory_boost_animating = true
-	_refresh_victory_boost_hud()
-	if not _victory_boost_session.apply_to_entry(entry_id):
-		_victory_boost_animating = false
-		_sync_victory_boost_arena(false)
-		_refresh_victory_boost_hud()
-		return
-	if _arena != null:
-		## 攻血同加：脚下攻+血纸片一起跳变（entry key，与战斗 u{instance_id} 区分）。
-		_arena.pulse_stat_badges("e%d" % entry_id, &"both")
-	_sync_victory_boost_arena(false)
-	_refresh_victory_boost_hud()
-	var hold := victory_boost_confirm_hold_seconds
-	if hold > 0.001:
-		await get_tree().create_timer(hold).timeout
-	## 短停后必须发出完成信号，避免 Run 侧 await 挂死。
-	if _phase == Phase.VICTORY_BOOST:
-		## hold≤0（测试瞬切）时暗场也瞬收，避免多余 await。
-		await _fade_victory_boost_dim_out(0.0 if hold <= 0.001 else 0.18)
-		exit_victory_boost(true)
-	victory_boost_finished.emit(true)
-
-
-func _on_victory_boost_skip_pressed() -> void:
-	if _phase != Phase.VICTORY_BOOST or _victory_boost_animating or _victory_boost_session == null:
-		return
-	if _victory_boost_session.applied:
-		return
-	_victory_boost_animating = true
-	_refresh_victory_boost_hud()
-	_victory_boost_session.skip()
-	await _fade_victory_boost_dim_out()
-	exit_victory_boost(true)
-	victory_boost_finished.emit(false)
-
-
-func _fade_victory_boost_dim_out(seconds: float = 0.18) -> void:
-	if _arena == null or _arena.victory_boost_dim_alpha <= 0.05 or seconds <= 0.001:
-		if _arena != null:
-			_arena.victory_boost_dim_alpha = 0.0
-			_arena.queue_redraw()
-		return
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_IN)
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(_arena, "victory_boost_dim_alpha", 0.0, seconds)
-	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
-	await tween.finished
-	if _arena != null:
-		_arena.victory_boost_dim_alpha = 0.0
-		_arena.queue_redraw()
-
-
 func _bind_recruit_session() -> void:
 	if _recruit_session == null:
 		return
@@ -3376,7 +2730,6 @@ func _rebuild_recruit_team_slots() -> void:
 	if _recruit_session == null or _recruit_session.deck == null:
 		return
 	var deck := _recruit_session.deck
-	deck.ensure_commander()
 	## 只放已入座成员；备战不自动填上区空座。
 	for entry in deck.get_entries():
 		if entry == null or entry.seat_index < 0:
@@ -3638,11 +2991,7 @@ func _on_recruit_sell(entry_id: int) -> void:
 			_recruit_hint.text = "已出售，获得 %d 金" % int(result.get("gold", 0))
 		return
 	if _recruit_hint != null:
-		var reason := String(result.get("reason", "unknown"))
-		if reason == "commander_unsellable":
-			_recruit_hint.text = "指挥官不可出售"
-		else:
-			_recruit_hint.text = "无法出售（%s）" % reason
+		_recruit_hint.text = "无法出售（%s）" % String(result.get("reason", "unknown"))
 
 
 func _on_recruit_candidate_pressed(candidate_index: int) -> void:
@@ -3706,16 +3055,6 @@ func _on_recruit_item_drop(item_slot: int, entry_id: int) -> void:
 func _try_apply_recruit_potion(item_slot: int, entry_id: int) -> void:
 	if _recruit_shop == null or not _recruit_shop.is_open() or _deck_state == null:
 		return
-	var potion_item := _recruit_shop.get_item_offer(item_slot)
-	var pulse_which := &""
-	if potion_item != null:
-		match potion_item.item_type:
-			PrepareItemData.ItemType.HP_POTION:
-				pulse_which = &"hp"
-			PrepareItemData.ItemType.ATK_POTION:
-				pulse_which = &"atk"
-			_:
-				pulse_which = &""
 	var result := _recruit_shop.try_buy_potion_on_entry(item_slot, _deck_state, entry_id)
 	_recruit_pending_item_slot = -1
 	if int(result.get("result", RecruitShopService.BuyResult.FAILED)) != RecruitShopService.BuyResult.OK:
@@ -3729,8 +3068,6 @@ func _try_apply_recruit_potion(item_slot: int, entry_id: int) -> void:
 				_show_recruit_item_hint("无法使用道具")
 		_sync_recruit_arena()
 		return
-	if _arena != null and pulse_which != &"":
-		_arena.pulse_stat_badges("e%d" % entry_id, pulse_which)
 	_show_recruit_item_hint("道具已生效")
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
@@ -3982,9 +3319,11 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 	if _lock_phase_active or _phase != Phase.COMBAT:
 		_present_effect_feedback(payload, true)
 		return
-	## 非门控路径（兼容）：已结算则只播结果拍（不 hold sim）。
-	if _timestop_queue.is_blocking() or _skill_settlement_fx_tail:
+	## 非门控路径（兼容）：已结算则只播结果拍。
+	if _timestop_queue.is_blocking():
 		return
+	if _sim != null:
+		_sim.hold_for_presentation()
 	if _timestop_queue.enqueue_resolved(payload, time_scale):
 		_present_effect_result(payload, true)
 
@@ -3999,12 +3338,7 @@ func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
 		_arena.sync_combat_motion_now()
 
 
-## 弹入等结算 FX 是否仍在飞（用于挡住下一张缩卡，不冻 sim）。
-func _skill_settlement_fx_busy() -> bool:
-	return _arena != null and _arena.get_stat_missile_fx_count() > 0
-
-
-## 战斗推进：有待结算技能则插入展示步；技能缩卡/结果拍不 hold sim（COMBAT_FEEDBACK §5.2）。
+## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
 		return
@@ -4017,50 +3351,37 @@ func _tick_combat_presentation(delta: float) -> void:
 		and not _sim.has_pending_effects()
 	):
 		_sim.try_seed_action_queue()
-	## 用户已点「下一动」：优先拆掉播报/出击门闩，否则 step_once 永远进不了步进循环（假死）。
+	## 用户已点「下一动」：优先拆掉时停/出击门闩，否则 step_once 永远进不了步进循环（假死）。
 	if _tape_step_once and (
 		(_timestop_queue != null and _timestop_queue.is_blocking())
-		or _skill_settlement_fx_tail
 		or _sim.has_pending_effects()
 		or (_arena != null and _arena.has_active_combat_action_tween() and not _sim.is_actor_turn_active())
 	):
 		_unstick_combat_presentation()
-	## 结果拍计时已完、仍等弹入尾：不 hold，不清下一张卡。
-	if _skill_settlement_fx_tail:
-		_presentation_block_elapsed += delta
-		if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
-			_unstick_combat_presentation()
-			_presentation_block_elapsed = 0.0
-		elif not _skill_settlement_fx_busy():
-			_skill_settlement_fx_tail = false
-			_on_skill_result_done()
-			_presentation_block_elapsed = 0.0
-	elif _timestop_queue.is_blocking():
+	if _timestop_queue.is_blocking():
+		_sim.hold_for_presentation()
 		## 跨帧仍停在 AWAITING_RESOLVE：上一拍 card_done 处理中断，强制收拍以免假死。
 		if _timestop_queue.is_awaiting_resolve():
 			_resolve_skill_card_safe()
 			_presentation_block_elapsed = 0.0
-		else:
-			_presentation_block_elapsed += delta
-			if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
-				_unstick_combat_presentation()
-				_presentation_block_elapsed = 0.0
-			else:
-				var done := _timestop_queue.tick(delta, time_scale)
-				if done == &"card_done":
-					_resolve_skill_card_safe()
-				elif done == &"result_done":
-					if _skill_settlement_fx_busy():
-						_skill_settlement_fx_tail = true
-						_presentation_block_elapsed = 0.0
-					else:
-						_on_skill_result_done()
-						_presentation_block_elapsed = 0.0
-		## 不 return：缩卡/结果拍期间仍允许 sim.step（卡叠画面上）。
-	elif _sim.has_pending_effects():
+			return
+		_presentation_block_elapsed += delta
+		if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
+			_unstick_combat_presentation()
+			_presentation_block_elapsed = 0.0
+			return
+		var done := _timestop_queue.tick(delta, time_scale)
+		if done == &"card_done":
+			_resolve_skill_card_safe()
+		elif done == &"result_done":
+			_on_skill_result_done()
+			_presentation_block_elapsed = 0.0
+		return
+	if _sim.has_pending_effects():
+		_sim.hold_for_presentation()
 		_presentation_block_elapsed = 0.0
 		_start_next_skill_card()
-		## 不 return：开卡后同帧仍可步进。
+		return
 	## 一动已交权且出击/回位仍在播：保持 hold，勿在 windup（turn 仍 active）时因 tween 卡住。
 	var action_busy := _arena != null and _arena.has_active_combat_action_tween()
 	if action_busy and not _sim.is_actor_turn_active():
@@ -4071,12 +3392,7 @@ func _tick_combat_presentation(delta: float) -> void:
 			_presentation_block_elapsed = 0.0
 			_sim.release_presentation()
 		return
-	if (
-		not _timestop_queue.is_blocking()
-		and not _skill_settlement_fx_tail
-		and not _sim.has_pending_effects()
-	):
-		_presentation_block_elapsed = 0.0
+	_presentation_block_elapsed = 0.0
 	## 一动逻辑已结束且演出排空：兑现暂停 / 下一动停住。
 	if _tape_boundary_pending:
 		_tape_boundary_pending = false
@@ -4089,15 +3405,13 @@ func _tick_combat_presentation(delta: float) -> void:
 	if _tape_paused and not _tape_step_once:
 		_sim.release_presentation()
 		return
-	## 技能缩卡/结果拍不 hold；出击 tween 已在上方 return。此处释放以免粘住。
 	_sim.release_presentation()
 	## 下一动 / 请求暂停：按固定步推进，避免倍速一帧连跳多动。
 	if _tape_step_once or _tape_pause_requested:
 		var guard := 0
 		while guard < 360 and not _sim.is_finished():
-			if _skill_settlement_fx_tail:
-				return
 			if _sim.has_pending_effects():
+				_sim.hold_for_presentation()
 				_start_next_skill_card()
 				return
 			if _tape_boundary_pending:
@@ -4117,6 +3431,7 @@ func _tick_combat_presentation(delta: float) -> void:
 				return
 		## 本动尾巴技能仍须演完再停。
 		if _sim.has_pending_effects():
+			_sim.hold_for_presentation()
 			_start_next_skill_card()
 			return
 		if _tape_boundary_pending:
@@ -4144,9 +3459,6 @@ func _start_next_skill_card() -> void:
 ## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
 func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
-	## ①→②：先收卡让路，再结算演出（COMBAT_FEEDBACK §5.2.1）。
-	if _arena != null:
-		_arena.yield_combat_skill_broadcast()
 	## 先进入 RESULT，保证即便 resolve 中途 SCRIPT ERROR，时停也不会粘在 AWAITING_RESOLVE。
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(null, time_scale)
@@ -4158,6 +3470,11 @@ func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(payload, time_scale)
+	if _arena != null:
+		var scale := maxf(0.25, time_scale)
+		_arena.bump_combat_skill_info_visibility(
+			RealtimeTimestopQueue.RESULT_PAUSE_SECONDS / scale + 0.15
+		)
 	if payload != null:
 		_present_effect_result(payload, true)
 
@@ -4167,7 +3484,6 @@ func _on_skill_card_done() -> void:
 
 
 func _on_skill_result_done() -> void:
-	_skill_settlement_fx_tail = false
 	## 「下一动」推进中：勿再开下一张介绍卡，改为静默排空待结算，否则会再次挡步进。
 	if _tape_step_once and _sim != null and _sim.has_pending_effects():
 		_drain_pending_effects_silent()
@@ -4197,9 +3513,8 @@ func _on_skill_result_done() -> void:
 		_sim.release_presentation()
 
 
-## 「下一动」/看门狗：拆掉技能播报、待结算队列与出击 tween，恢复可步进状态。
+## 「下一动」/看门狗：拆掉时停、待结算队列与出击 tween，恢复可步进状态。
 func _unstick_combat_presentation() -> void:
-	_skill_settlement_fx_tail = false
 	if _arena != null:
 		if _arena.has_active_combat_action_tween():
 			_arena.finish_combat_action_tweens()
@@ -4239,20 +3554,17 @@ func _drain_pending_effects_silent() -> void:
 		guard += 1
 
 
-## 锁阵等：缩卡播报 → 收卡让路 → 弹入/结果（已结算）。
+## 锁阵等：介绍卡 + 结果数字（已结算）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
 	_register_combo_for_skill_intro(owner)
 	_arm_combat_skill_info_visibility()
 	_show_skill_trigger_info_card(payload)
-	if _arena != null:
-		_arena.yield_combat_skill_broadcast()
 	_present_effect_result(payload, with_callout)
 	_release_combat_skill_info_visibility()
 
 
 ## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
-## damage/heal/stat 走弹入物主通道 + 辅飘字；产金保留金币纸片。
 func _present_effect_result(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	if _arena == null or payload == null:
 		return
@@ -4261,9 +3573,6 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 	var callout_center := Vector2.ZERO
 	var callout_player := true
 	var saw_center := false
-	var owner_tile := _resolve_feedback_center(
-		payload.effect_owner if payload.effect_owner != null else payload.source, payload
-	)
 	for pop in pops:
 		var target: UnitInstance = pop.get("target")
 		var center := _resolve_feedback_center(target, payload)
@@ -4275,50 +3584,17 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 		if bool(pop.get("show_tip", false)):
 			tip = String(pop.get("tip", ""))
 		var amount := int(pop.get("amount", 0))
-		var kind: StringName = pop["kind"]
-		var use_missile := (
-			kind == RealtimeEffectFeedback.KIND_DAMAGE
-			or kind == RealtimeEffectFeedback.KIND_HEAL
-			or kind == RealtimeEffectFeedback.KIND_STAT
+		_arena.add_feedback_popup(
+			pop["kind"],
+			String(pop["text"]),
+			center,
+			bool(pop.get("is_player", true)),
+			int(pop.get("unit_id", -1)),
+			amount,
+			String(pop.get("merge_key", "")),
+			tip,
 		)
-		if use_missile:
-			var hit_amount := maxi(1, absi(amount))
-			var to_tile := center
-			var pulse_which := _stat_badge_pulse_which(
-				kind, pop.get("stat_name", &"") as StringName
-			)
-			var pulse_unit_id := int(pop.get("unit_id", -1))
-			_arena.spawn_stat_missile(
-				kind,
-				owner_tile,
-				to_tile,
-				amount,
-				_on_stat_missile_arrive.bind(to_tile, hit_amount, pulse_which, pulse_unit_id),
-			)
-			## 辅飘字降噪，不与弹入抢读。
-			_arena.add_feedback_popup(
-				kind,
-				String(pop["text"]),
-				center,
-				bool(pop.get("is_player", true)),
-				int(pop.get("unit_id", -1)),
-				amount,
-				String(pop.get("merge_key", "")),
-				tip,
-				true,
-			)
-		else:
-			_arena.add_feedback_popup(
-				kind,
-				String(pop["text"]),
-				center,
-				bool(pop.get("is_player", true)),
-				int(pop.get("unit_id", -1)),
-				amount,
-				String(pop.get("merge_key", "")),
-				tip,
-			)
-		if kind == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
+		if pop["kind"] == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
 			_arena.spawn_gold_coin_burst(center, amount)
 	if with_callout:
 		if not saw_center:
@@ -4327,37 +3603,6 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 			if owner != null:
 				callout_player = owner.team == UnitInstance.Team.PLAYER
 		_arena.add_skill_callout(callout_center, "", callout_player)
-
-
-## 弹入命中后脚下标签脉冲：damage/heal→hp；stat 仅 attack→atk、max_hp→hp。
-func _stat_badge_pulse_which(kind: StringName, stat_name: StringName) -> StringName:
-	match kind:
-		RealtimeEffectFeedback.KIND_DAMAGE, RealtimeEffectFeedback.KIND_HEAL:
-			return &"hp"
-		RealtimeEffectFeedback.KIND_STAT:
-			match stat_name:
-				&"attack":
-					return &"atk"
-				&"max_hp":
-					return &"hp"
-				_:
-					return &""
-		_:
-			return &""
-
-
-func _on_stat_missile_arrive(
-	to_tile: Vector2, hit_amount: int, pulse_which: StringName, pulse_unit_id: int
-) -> void:
-	if _arena == null:
-		return
-	_arena.play_unit_light_hit_at(to_tile, hit_amount)
-	if pulse_which == &"":
-		return
-	if pulse_unit_id >= 0:
-		_arena.pulse_stat_badges("u%d" % pulse_unit_id, pulse_which)
-	else:
-		_arena.pulse_stat_badges_at(to_tile, pulse_which)
 
 
 func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload) -> Vector2:
@@ -4398,75 +3643,22 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: Effec
 			atk = rt.get_effective_attack()
 			hp = rt.get_current_hp()
 			tile = rt.position
-	## 缩卡只用技能短名一行；详附卡不进战斗播报。
-	var skills := _skill_short_name_for_owner(owner, trigger_spec)
+	var skills := ""
+	var attachments: Array = []
+	if trigger_spec != null:
+		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
+		attachments = UnitInfoText.attachments_for_effect_spec(owner, trigger_spec, true)
 	_arena.show_skill_trigger_info(
-		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, []
+		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, attachments
 	)
-
-
-## 战斗缩卡技能短名：优先 AbilityData.display_name / id（不走 UnitInfoText 详卡行，避免依赖详卡正文）。
-func _skill_short_name_for_owner(owner: UnitInstance, trigger_spec: EffectSpec) -> String:
-	if owner == null:
-		return ""
-	var ability := _find_ability_for_spec(owner, trigger_spec)
-	if ability != null:
-		var labeled := ability.display_name if not ability.display_name.is_empty() else ability.id
-		return _truncate_skill_short(labeled)
-	if owner.unit_data != null and owner.unit_data.ability != null:
-		var fallback := owner.unit_data.ability.display_name
-		if fallback.is_empty():
-			fallback = owner.unit_data.ability.id
-		return _truncate_skill_short(fallback)
-	return "技能"
-
-
-func _find_ability_for_spec(owner: UnitInstance, spec: EffectSpec) -> AbilityData:
-	if owner == null or spec == null:
-		return null
-	var candidates: Array[AbilityData] = []
-	if owner.unit_data != null:
-		if owner.unit_data.ability != null:
-			candidates.append(owner.unit_data.ability)
-		for passive in owner.unit_data.passives:
-			if passive != null:
-				candidates.append(passive)
-	for attached in owner.attached_abilities:
-		if attached != null:
-			candidates.append(attached)
-	for ability in candidates:
-		for owned in ability.effect_specs:
-			if owned == spec:
-				return ability
-	## 资源实例不一定同引用：退回 id 匹配。
-	var spec_id := String(spec.resource_path) if spec.resource_path != "" else ""
-	if not spec_id.is_empty():
-		for ability in candidates:
-			for owned in ability.effect_specs:
-				if owned != null and owned.resource_path == spec_id:
-					return ability
-	return null
-
-
-func _truncate_skill_short(raw: String, max_chars: int = 16) -> String:
-	var text := raw.strip_edges().replace("\n", " ")
-	if text.is_empty():
-		return "技能"
-	if text.length() > max_chars:
-		return text.substr(0, max_chars) + "…"
-	return text
 
 
 func _on_combat_finished(won: bool) -> void:
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
-	_persist_commander_hp_from_sim()
 	_timestop_queue.clear()
-	_skill_settlement_fx_tail = false
 	_combo_reset_after_skill_tail = false
 	_release_combat_skill_info_visibility()
-	if _sim != null:
-		_sim.release_presentation()
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	_floor_gold = 0
@@ -4480,7 +3672,6 @@ func _on_combat_finished(won: bool) -> void:
 		_floor_gold = _economy.grant_floor_gold(_floor_index)
 	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
-	var lose_detail := "指挥官阵亡" if (_run_state != null) else "我方全灭"
 	if _final_trial_active:
 		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
 		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
@@ -4496,42 +3687,25 @@ func _on_combat_finished(won: bool) -> void:
 	elif _combat_sandbox_mode:
 		_result_detail.text = (
 			"沙盒·用时 %s" % _format_time(_sim.elapsed_seconds)
-			if won else "沙盒·用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
+			if won else "沙盒·用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
 		)
 		if _continue_button != null:
 			_continue_button.text = "再来一局"
 	else:
 		_result_detail.text = (
 			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
-			if won else "用时 %s  %s" % [_format_time(_sim.elapsed_seconds), lose_detail]
+			if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
 		)
 		if _boss_final_trial_offer:
 			_result_detail.text += "\n可继续通关，或挑战最终试炼"
 		if _continue_button != null:
 			_continue_button.text = "继续"
 		_update_result_action_buttons()
+	_result_overlay.visible = true
 	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
 	_set_phase(Phase.RESULT)
 	_update_tape_controls()
 	combat_resolved.emit(won)
-	_reveal_result_overlay_after_delay()
-
-
-## 战斗结束后稍停再弹出胜负界面；token 过期或已离开 RESULT 则作废。
-func _reveal_result_overlay_after_delay() -> void:
-	_result_overlay_show_token += 1
-	var token := _result_overlay_show_token
-	if _result_overlay != null:
-		_result_overlay.visible = false
-	var delay := result_overlay_delay_seconds
-	if delay > 0.001:
-		await get_tree().create_timer(delay).timeout
-	if token != _result_overlay_show_token:
-		return
-	if _phase != Phase.RESULT:
-		return
-	if _result_overlay != null:
-		_result_overlay.visible = true
 
 
 func _on_gold_changed(_amount: int) -> void:
@@ -4681,9 +3855,9 @@ func _ensure_bench_row() -> void:
 
 
 func _rebuild_bench_slots() -> void:
-	## 招募 / 免费强化：备战夹在队伍半场与下半场之间（midline）；准备/战斗仍在友方半场下方。
+	## 招募：备战夹在队伍半场与招募半场之间（midline）；准备/战斗仍在友方半场下方。
 	var row_y := -1
-	if _phase == Phase.RECRUIT or _phase == Phase.VICTORY_BOOST:
+	if _phase == Phase.RECRUIT:
 		row_y = BoardHalf.midline_row(_board_size.y)
 	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
@@ -4699,7 +3873,6 @@ func _sync_arena_bench() -> void:
 	_rebuild_bench_slots()
 	if _arena == null:
 		return
-	## 免费强化用居中阵列，不画备战行。
 	var show_bench := (
 		_phase == Phase.PREPARE
 		or _phase == Phase.RECRUIT
@@ -4708,10 +3881,7 @@ func _sync_arena_bench() -> void:
 	_arena.bench_visible = show_bench
 	_arena.bench_interactive = (
 		not _final_trial_active
-		and (
-			_phase == Phase.PREPARE
-			or _phase == Phase.RECRUIT
-		)
+		and (_phase == Phase.PREPARE or _phase == Phase.RECRUIT)
 	)
 	_arena.bench_slots = _bench_slots if show_bench else null
 	if _phase == Phase.PREPARE or _phase == Phase.RECRUIT:
@@ -4726,7 +3896,6 @@ func _sync_bench_triple_merge_hints() -> void:
 	_arena.bench_triple_merge_hint_entry_ids.clear()
 	if _deck_state == null:
 		return
-	## 免费强化不提示三合一。
 	if _phase != Phase.PREPARE and _phase != Phase.RECRUIT:
 		return
 	for entry_id in _deck_state.get_bench_triple_merge_hint_entry_ids():
@@ -4789,9 +3958,6 @@ func _refresh_hud() -> void:
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return
-	if _phase == Phase.VICTORY_BOOST:
-		_refresh_victory_boost_hud()
-		return
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
 		return
@@ -4844,8 +4010,6 @@ func _refresh_hud() -> void:
 			_phase_label.text = "胜利" if _won else "失败"
 		Phase.RECRUIT:
 			_phase_label.text = "招募"
-		Phase.VICTORY_BOOST:
-			_phase_label.text = "免费强化"
 		Phase.ENCHANT:
 			_phase_label.text = "附魔"
 		Phase.MAP_SHOP:

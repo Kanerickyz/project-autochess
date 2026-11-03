@@ -27,16 +27,15 @@ extends Resource
 @export var treasure_buff_pool: Array[BuffCardData] = []
 
 @export_group("Endless")
-## 无尽模式：线性普通战斗串 + 定期商店；无精英/Boss/事件；败局记到达层深。
-## 敌压由 EndlessLadderBalance 阶梯公式负责（不开跟队抽阵）。
+## 无尽模式：线性普通战斗串 + 稀疏商店；无精英/Boss/事件；败局记到达层深。
 @export var endless_mode: bool = false
-## 前若干场普通战斗不插商店；产品无尽为 0（无前段纯战斗豁免）。
-@export_range(0, 20, 1) var pure_combat_floors: int = 0
-## 每完成该场数普通战，在下一场战斗之前插入一座商店（不占层号）。产品无尽为 4。
-@export_range(1, 20, 1) var shop_every_n_combats: int = 4
+## 前若干场普通战斗不插商店。
+@export_range(0, 20, 1) var pure_combat_floors: int = 3
+## 纯战斗段之后，每完成该场数普通战插入一座商店（不占层号）。
+@export_range(1, 20, 1) var shop_every_n_combats: int = 3
 ## 初次/续写时一次追加的普通战斗层数。
 @export_range(4, 40, 1) var endless_chunk_combats: int = 12
 ## 剩余可走战斗节点少于此值时续写下一段。
 @export_range(1, 20, 1) var endless_append_threshold: int = 4
-## 历史字段：无尽现用阶梯刷敌，产品路径应留空；主塔可不填。
+## 无尽抽阵加压覆盖；空则用默认 SpawnBudgetConfig。
 @export var spawn_budget_override: SpawnBudgetConfig

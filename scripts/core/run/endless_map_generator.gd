@@ -124,7 +124,7 @@ static func highest_combat_floor(state: MapState) -> int:
 
 static func _should_insert_shop_before(combat_floor: int, pure_floors: int, shop_every: int) -> bool:
 	## 第 1 场前不插店；纯战斗段内不插；之后每 shop_every 场战斗之前插一座
-	## （产品 pure=0, every=4 → 第 5、9、13… 场前插店；旧例 pure=3, every=3 → 第 4、7、10…）。
+	## （例 pure=3, every=3 → 在第 4、7、10… 场前插店）。
 	if combat_floor <= 1:
 		return false
 	if combat_floor <= pure_floors:

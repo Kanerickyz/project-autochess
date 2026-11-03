@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://42k1vvdwwfd1"
-path="res://.godot/imported/unit_armorer_blue.png-3d8f3507614afc381000847248705a49.ctex"
+uid="uid://carmorerblue01"
+path="res://.godot/imported/unit_armorer_blue.png-armorerblue.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/sprites/paper_cutout/units/unit_armorer_blue.png"
-dest_files=["res://.godot/imported/unit_armorer_blue.png-3d8f3507614afc381000847248705a49.ctex"]
+dest_files=["res://.godot/imported/unit_armorer_blue.png-armorerblue.ctex"]
 
 [params]
 

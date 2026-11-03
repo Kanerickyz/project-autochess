@@ -3,7 +3,6 @@ extends RefCounted
 ## 战斗内技能行动播报队列（Features/COMBAT_FEEDBACK §5.2）。
 ## 两拍：SHOW_CARD（介绍卡，尚未改真值）→ RESULT（结算后结果数字/短提示）。
 ## 待结算批次仍在 EffectResolver 队里；本队列只管表现时钟与阶段。
-## 命名遗留「Timestop」：现规格不为全场时停——控制器在卡/结果拍不因本队列 hold sim。
 
 enum Phase {
 	IDLE,
@@ -16,7 +15,7 @@ enum Phase {
 
 ## 介绍卡可读时长（与 arena SKILL_INFO_SECONDS 同量级）。
 const CARD_PAUSE_SECONDS := 1.0
-## 结算后结果反馈可读时长（非全场时停）。
+## 结算后结果反馈时停。
 const RESULT_PAUSE_SECONDS := 0.4
 ## 加速后单拍墙钟下限，仍须可扫读。
 const MIN_PAUSE_SECONDS := 0.12
@@ -26,7 +25,7 @@ var _phase: int = Phase.IDLE
 var _card_owner: UnitInstance = null
 var _card_spec: EffectSpec = null
 var _result_payload: CombatEventPayload = null
-## 当前拍剩余可读时长；每帧减去 delta * time_scale（加速缩短墙钟寿命）。
+## 逻辑剩余时停；每帧减去 delta * time_scale（加速缩短墙钟寿命）。
 var _remaining: float = 0.0
 
 

@@ -53,12 +53,6 @@ const HIT_TILT := 0.32
 const HIT_SQUASH := Vector2(1.16, 0.86)
 const HIT_SHADOW_MUL := 1.65
 const HIT_FLASH_SECONDS := 0.16
-## 技能结算弹入命中：轻 punch / 压扁，幅度小于普攻对撞（COMBAT_FEEDBACK §5.4）。
-const LIGHT_HIT_KNOCK_TILES := 0.06
-const LIGHT_HIT_TILT := 0.18
-const LIGHT_HIT_SQUASH := Vector2(1.10, 0.92)
-const LIGHT_HIT_SHADOW_MUL := 1.35
-const LIGHT_HIT_SHAKE_MULT := 0.45
 ## 震屏（像素）：幅度随实际扣血；下限保证可读，上限防糊屏。
 const SHAKE_BASE_PX := 1.2
 const SHAKE_PER_DAMAGE_PX := 1.1
@@ -84,8 +78,6 @@ class Pose:
 	var tween: Tween
 	## 闪白独立淡出，不会被后续蓄力 / 冲撞 tween 打断而卡白。
 	var flash_tween: Tween
-	## 技能弹入/Reel 轻 punch：与出击 tween 分离，不挡 has_active_action_tween。
-	var fx_tween: Tween
 	## 待机呼吸：与出手 tween 分离，避免被蓄力/冲撞打断后卡在非零偏移。
 	var idle_offset := Vector2.ZERO
 	var idle_scale := Vector2.ONE
@@ -330,20 +322,6 @@ static func shake_px_for_damage(amount: int) -> float:
 	return clampf(raw, SHAKE_MIN_PX, SHAKE_MAX_PX)
 
 
-## 技能弹入命中 / Reel 无卡时：对目标做轻压扁回弹（纯表现）。
-func play_light_hit(rt: RtUnit, amount: int = 1) -> void:
-	if rt == null:
-		return
-	var tracked: Tracked = _tracked.get(rt.get_instance_id()) as Tracked
-	if tracked == null:
-		tracked = Tracked.new()
-		tracked.last_attack = rt.last_attack_time
-		tracked.last_hit = rt.last_hit_time
-		_tracked[rt.get_instance_id()] = tracked
-	var shake := shake_px_for_damage(maxi(1, amount)) * LIGHT_HIT_SHAKE_MULT
-	_play_light_hit(tracked.pose, Vector2.ZERO, shake)
-
-
 ## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深；与步进插值同步。
 ## 返回 { offset, rotation, scale, shadow_mul }（格单位 / 弧度）。
 func walk_pose(rt: RtUnit) -> Dictionary:
@@ -545,44 +523,6 @@ func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
 	_shake(shake_px)
 
 
-## 技能结算轻命中：同语汇、更小幅度；走 fx_tween，不占用出击门闩。
-func _play_light_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
-	_flash(pose)
-	_shake(shake_px)
-	## 出击/冲刺中只闪白震屏，避免抢 pose.tween。
-	if pose.lunging or _is_busy(pose):
-		return
-	if pose.fx_tween != null and pose.fx_tween.is_valid():
-		pose.fx_tween.kill()
-	pose.fx_tween = null
-	var knock := knock_dir
-	if knock.length_squared() < 0.0001:
-		knock = Vector2(0.0, 1.0)
-	else:
-		knock = knock.normalized()
-	var kicked := pose.offset + knock * LIGHT_HIT_KNOCK_TILES + Vector2(0.0, -0.03)
-	var tilt := _tilt_for_dir(knock) * LIGHT_HIT_TILT
-	var home_offset := Vector2.ZERO
-	var tween := create_tween()
-	pose.fx_tween = tween
-	tween.set_speed_scale(maxf(0.25, speed_scale))
-	tween.tween_property(pose, "offset", kicked, 0.05) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "scale", LIGHT_HIT_SQUASH, 0.05) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "rotation", pose.rotation + tilt, 0.05) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "shadow_mul", LIGHT_HIT_SHADOW_MUL, 0.05)
-	tween.tween_property(pose, "offset", home_offset, RECOVER_SECONDS) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "scale", Vector2.ONE, RECOVER_SECONDS) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "rotation", 0.0, RECOVER_SECONDS) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "shadow_mul", 1.0, RECOVER_SECONDS) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-
 func _flash(pose: Pose) -> void:
 	if pose.flash_tween != null:
 		pose.flash_tween.kill()
@@ -733,10 +673,6 @@ func _kill_all(pose: Pose) -> void:
 	if pose != null and pose.flash_tween != null:
 		pose.flash_tween.kill()
 		pose.flash_tween = null
-	if pose != null and pose.fx_tween != null and pose.fx_tween.is_valid():
-		pose.fx_tween.kill()
-	if pose != null:
-		pose.fx_tween = null
 
 
 func _prune_corpses() -> void:

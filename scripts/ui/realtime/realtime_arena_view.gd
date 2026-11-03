@@ -24,8 +24,6 @@ signal recruit_empty_seat_pressed(seat_index: int)
 signal recruit_item_pressed(item_slot: int)
 ## 招募道具行：药水拖到上区队伍成员。
 signal recruit_item_drop(item_slot: int, entry_id: int)
-## 胜后免费强化：点上区或备战纸片选中目标（长按不触发）。
-signal victory_boost_unit_pressed(entry_id: int)
 ## 附魔：队伍成员拖到时机格 A / 效果格 B。
 signal enchant_forge_drop(entry_id: int, slot: StringName)
 ## 附魔：下半场队伍换座（与招募上区同规则）。
@@ -44,8 +42,6 @@ signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
 signal bench_empty_pressed(slot_index: int)
-## 短点友方：开装备详情（未超拖阈值、未达长按）。
-signal equipment_detail_requested(entry_id: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -82,24 +78,12 @@ const HIT_FLASH_SECONDS := 0.10
 const FX_SECONDS := 0.35
 const ELLIPSE_SEGMENTS := 28
 ## 技能因果飘字（COMBAT_FEEDBACK）：基础寿命；加速时缩短但不短于下限。
-## §5.4：大号飘字降辅；弹入物为主通道时用更短更弱的辅飘字。
 const FEEDBACK_SECONDS := 0.85
 const FEEDBACK_MIN_SECONDS := 0.35
-const FEEDBACK_SOFT_SECONDS := 0.48
-const FEEDBACK_SOFT_MIN_SECONDS := 0.22
 const FEEDBACK_MERGE_WINDOW := 0.28
 const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
-const FEEDBACK_SOFT_FLOAT_TILES := 0.32
 const CALLOUT_SECONDS := 0.45
-## 技能结算弹入物（攻/心纸片飞向目标）。
-const STAT_MISSILE_SEC := 0.28
-const STAT_MISSILE_PAPER_SCALE := 0.22
-const STAT_MISSILE_ARC_TILES := 0.28
-## 脚下攻/血纸片标签跳变（COMBAT_FEEDBACK §5.4）：整枚放大再缩回。
-const STAT_BADGE_PULSE_PEAK := 1.32
-const STAT_BADGE_PULSE_UP_SEC := 0.12
-const STAT_BADGE_PULSE_DOWN_SEC := 0.18
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
 const STAT_HP_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_hp.png")
@@ -121,18 +105,16 @@ const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
-const STAT_BADGE_HEIGHT_MUL := 0.56
-const STAT_BADGE_MIN_HEIGHT := 13.5
-const STAT_BADGE_MAX_HEIGHT := 32.0
+const STAT_BADGE_HEIGHT_MUL := 0.42
+const STAT_BADGE_MIN_HEIGHT := 11.0
+const STAT_BADGE_MAX_HEIGHT := 24.0
 ## 一行徽章总宽不超过该比例×格宽，避免邻格脚下数值互叠。
-const STAT_BADGE_ROW_MAX_CELL_W := 0.99
-## 同排徽章间距（相对徽章高度）；略紧以给放大后的攻血留横向。
-const STAT_BADGE_GAP_MUL := 0.08
-## 次行相对同排 gap 的行距倍率（护甲/金分行居中）。
-const STAT_BADGE_ROW_GAP_MUL := 1.6
+const STAT_BADGE_ROW_MAX_CELL_W := 0.96
+## 同排徽章间距（相对徽章高度）；略疏一点避免贴图软边看起来粘在一起。
+const STAT_BADGE_GAP_MUL := 0.12
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
-const STAT_NUMBER_MAX_WIDTH := 0.48
+const STAT_NUMBER_MAX_WIDTH := 0.42
 ## 受击闪白：modulate 拉高到接近纯白，墨线仍保留轮廓。
 const SPRITE_FLASH_MUL := 5.0
 ## 镜头震动时背景外扩，避免露边。
@@ -194,20 +176,6 @@ var ally_half_slide_y: float = 0.0
 var bench_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 胜后免费强化：暗场 + 整队居中可选阵列；短按落盘；不拖拽换座。
-var victory_boost_active: bool = false
-## 当前选中成员；≥0 时画选中环与 +N/+N 预览/反馈。
-var victory_boost_selected_id: int = -1
-## 本档幅度（攻血同加点数），用于选中预览。
-var victory_boost_amount: int = 1
-## 落盘后反馈态：选中纸片高亮，其余压暗。
-var victory_boost_applied: bool = false
-## 0=原位，1=屏中阵列到位（进场 Tween）。
-var victory_boost_focus_t: float = 1.0
-## 暗场不透明度倍率 0..1。
-var victory_boost_dim_alpha: float = 0.0
-## Array[Dictionary]：{entry_id, entry, is_bench, origin, focus}
-var victory_boost_focus_roster: Array = []
 ## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
@@ -287,19 +255,11 @@ var _recruit_empty_seat_press: int = -1
 var _party_speech_bubble: PartySpeechBubble
 ## 产金反馈金币层（TextureRect + Tween；clear_fx 时清空）。
 var _gold_coin_layer: Control
-## 技能弹入物层（TextureRect + Tween；clear_fx 时清空）。
-var _stat_missile_layer: Control
-## 脚下攻/血标签 pulse：unit_key → {atk: float, hp: float}；战斗用 u{instance_id}，胜后/药水用 e{entry_id}。
-var _stat_badge_scales: Dictionary = {}
-## unit_key → {atk: Tween, hp: Tween}
-var _stat_badge_pulse_tweens: Dictionary = {}
 ## 地图商店货架拖拽：map_shop_offers 数组下标。
 var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
 var _map_shop_team_drag_id: int = -1
 var _map_shop_team_press_id: int = -1
-## 装备详情打开时锁棋盘拖座（手势与详情分离）。
-var equipment_detail_blocks_drag: bool = false
 ## 准备阶段座位拖换：按住已入座角色拖到目标座。
 var _prepare_team_drag_id: int = -1
 var _prepare_team_press_id: int = -1
@@ -429,8 +389,8 @@ func _notification(what: int) -> void:
 func _bench_layout_tiles() -> float:
 	if not bench_visible:
 		return 0.0
-	## 招募 / 免费强化备战在棋盘内中缝，不另占棋盘外高度。
-	if recruit_active or victory_boost_active:
+	## 招募备战在棋盘内中缝，不另占棋盘外高度。
+	if recruit_active:
 		return 0.0
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
 
@@ -705,7 +665,6 @@ func add_skill_callout(center: Vector2, text: String = "", is_player: bool = tru
 
 
 ## 技能因果反馈：kind=damage/heal/stat/label/gold；同单位短窗可合并。
-## soft=true：辅飘字（更短更弱），配合弹入物主通道（§5.4）。
 func add_feedback_popup(
 	kind: StringName,
 	text: String,
@@ -715,18 +674,13 @@ func add_feedback_popup(
 	amount: int = 0,
 	merge_key: String = "",
 	tip: String = "",
-	soft: bool = false,
 ) -> void:
 	if text.is_empty() and tip.is_empty():
 		return
 	var key := merge_key
 	if key.is_empty():
 		key = "%d|%s" % [unit_id, String(kind)]
-	var duration := (
-		_feedback_soft_duration_for_scale(presentation_time_scale)
-		if soft
-		else _feedback_duration_for_scale(presentation_time_scale)
-	)
+	var duration := _feedback_duration_for_scale(presentation_time_scale)
 	## 短合并窗：同 merge_key 且仍存活 → 合计数字或刷新短标。
 	if unit_id >= 0:
 		for fb in _feedback:
@@ -750,7 +704,6 @@ func add_feedback_popup(
 			fb["t0"] = _fx_clock
 			fb["duration"] = duration
 			fb["center"] = center
-			fb["soft"] = soft or bool(fb.get("soft", false))
 			return
 	_feedback.append({
 		"kind": kind,
@@ -763,7 +716,6 @@ func add_feedback_popup(
 		"merge_key": key,
 		"t0": _fx_clock,
 		"duration": duration,
-		"soft": soft,
 	})
 	_trim_feedback_for_unit(unit_id)
 
@@ -867,275 +819,6 @@ func _ensure_gold_coin_layer() -> Control:
 	return _gold_coin_layer
 
 
-## 技能因果弹入物：小图标纸片从 from_tile 飞向 to_tile；到点回调（目标轻 hit 等）。
-## 纯表现 Tween；随 presentation_time_scale 加速。普攻路径不得调用。
-func spawn_stat_missile(
-	kind: StringName,
-	from_tile: Vector2,
-	to_tile: Vector2,
-	amount: int = 0,
-	on_arrive: Callable = Callable(),
-) -> void:
-	var tex := _stat_missile_texture(kind, amount)
-	if tex == null:
-		if on_arrive.is_valid():
-			on_arrive.call()
-		return
-	var layer := _ensure_stat_missile_layer()
-	var px := get_cell_px()
-	var paper_px := _typical_paper_height_px(px) * STAT_MISSILE_PAPER_SCALE
-	var start := tile_to_local(from_tile)
-	var end := tile_to_local(to_tile)
-	var missile := TextureRect.new()
-	missile.texture = tex
-	missile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	missile.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	missile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	missile.size = Vector2(paper_px, paper_px)
-	missile.pivot_offset = missile.size * 0.5
-	missile.position = start - missile.pivot_offset
-	missile.scale = Vector2(0.72, 0.72)
-	missile.modulate = _stat_missile_modulate(kind)
-	layer.add_child(missile)
-	var mid := (start + end) * 0.5 + Vector2(0.0, -STAT_MISSILE_ARC_TILES * px)
-	var speed := maxf(0.25, presentation_time_scale)
-	var fly := STAT_MISSILE_SEC
-	var tw := create_tween()
-	tw.set_speed_scale(speed)
-	## 两段折线近似上弧：起飞放大 → 落点略缩 → 回调命中。
-	tw.set_parallel(true)
-	tw.tween_property(missile, "position", mid - missile.pivot_offset, fly * 0.45) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(missile, "scale", Vector2(1.12, 1.12), fly * 0.45) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.set_parallel(false)
-	tw.set_parallel(true)
-	tw.tween_property(missile, "position", end - missile.pivot_offset, fly * 0.55) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(missile, "scale", Vector2(0.88, 0.88), fly * 0.55) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.set_parallel(false)
-	tw.tween_callback(
-		func() -> void:
-			if on_arrive.is_valid():
-				on_arrive.call()
-			if is_instance_valid(missile):
-				missile.queue_free()
-	)
-
-
-func get_stat_missile_fx_count() -> int:
-	if _stat_missile_layer == null or not is_instance_valid(_stat_missile_layer):
-		return 0
-	return _stat_missile_layer.get_child_count()
-
-
-func _ensure_stat_missile_layer() -> Control:
-	if _stat_missile_layer != null and is_instance_valid(_stat_missile_layer):
-		return _stat_missile_layer
-	_stat_missile_layer = Control.new()
-	_stat_missile_layer.name = "StatMissileFxLayer"
-	_stat_missile_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stat_missile_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_stat_missile_layer.z_index = 8
-	add_child(_stat_missile_layer)
-	return _stat_missile_layer
-
-
-func _stat_missile_texture(kind: StringName, amount: int) -> Texture2D:
-	match kind:
-		RealtimeEffectFeedback.KIND_DAMAGE:
-			return STAT_ATTACK_TEX
-		RealtimeEffectFeedback.KIND_HEAL:
-			return STAT_HP_TEX
-		RealtimeEffectFeedback.KIND_STAT:
-			## 负血类走心；默认攻纸片（脚下跳变仍靠标签）。
-			if amount < 0:
-				return STAT_HP_TEX
-			return STAT_ATTACK_TEX
-		_:
-			return STAT_ATTACK_TEX
-
-
-func _stat_missile_modulate(kind: StringName) -> Color:
-	match kind:
-		RealtimeEffectFeedback.KIND_DAMAGE:
-			return Color(1.0, 0.55, 0.42, 1.0)
-		RealtimeEffectFeedback.KIND_HEAL:
-			return Color(0.55, 1.0, 0.68, 1.0)
-		RealtimeEffectFeedback.KIND_STAT:
-			return Color(1.0, 0.92, 0.55, 1.0)
-		_:
-			return Color.WHITE
-
-
-## 对格子上的单位播轻 hit（技能弹入命中 / Reel 无卡）。
-func play_unit_light_hit_at(tile_pos: Vector2, amount: int = 1) -> void:
-	if _motion == null or sim == null:
-		return
-	var best := _find_alive_rt_near(tile_pos)
-	if best != null:
-		_motion.speed_scale = presentation_time_scale
-		_motion.play_light_hit(best, amount)
-
-
-## 脚下攻/血纸片标签 scale 跳变。which: &"atk" | &"hp" | &"both"。
-func pulse_stat_badges(unit_key: String, which: StringName) -> void:
-	if unit_key.is_empty():
-		return
-	var pulse_atk := which == &"atk" or which == &"both"
-	var pulse_hp := which == &"hp" or which == &"both"
-	if not pulse_atk and not pulse_hp:
-		return
-	if not _stat_badge_scales.has(unit_key):
-		_stat_badge_scales[unit_key] = {"atk": 1.0, "hp": 1.0}
-	if pulse_atk:
-		_start_stat_badge_pulse(unit_key, &"atk")
-	if pulse_hp:
-		_start_stat_badge_pulse(unit_key, &"hp")
-
-
-## 按最近存活单位解析 key（与 play_unit_light_hit_at 同口径），再 pulse。
-func pulse_stat_badges_at(tile_pos: Vector2, which: StringName) -> void:
-	var best := _find_alive_rt_near(tile_pos)
-	if best == null or best.unit == null:
-		return
-	pulse_stat_badges("u%d" % best.unit.instance_id, which)
-
-
-func get_stat_badge_pulse_scale(unit_key: String, which: StringName) -> float:
-	if unit_key.is_empty() or not _stat_badge_scales.has(unit_key):
-		return 1.0
-	var scales: Dictionary = _stat_badge_scales[unit_key]
-	match which:
-		&"atk":
-			return float(scales.get("atk", 1.0))
-		&"hp":
-			return float(scales.get("hp", 1.0))
-		_:
-			return 1.0
-
-
-func has_active_stat_badge_pulse(unit_key: String = "") -> bool:
-	if unit_key.is_empty():
-		for key in _stat_badge_scales.keys():
-			if has_active_stat_badge_pulse(String(key)):
-				return true
-		return false
-	if not _stat_badge_scales.has(unit_key):
-		return false
-	var scales: Dictionary = _stat_badge_scales[unit_key]
-	if absf(float(scales.get("atk", 1.0)) - 1.0) > 0.001:
-		return true
-	if absf(float(scales.get("hp", 1.0)) - 1.0) > 0.001:
-		return true
-	if not _stat_badge_pulse_tweens.has(unit_key):
-		return false
-	var tweens: Dictionary = _stat_badge_pulse_tweens[unit_key]
-	for tw_v in tweens.values():
-		var tw := tw_v as Tween
-		if tw != null and is_instance_valid(tw) and tw.is_running():
-			return true
-	return false
-
-
-func _find_alive_rt_near(tile_pos: Vector2) -> RtUnit:
-	if sim == null:
-		return null
-	var best: RtUnit = null
-	var best_d2 := 0.55 * 0.55
-	for item in sim.get_units():
-		var rt := item as RtUnit
-		if rt == null or not rt.is_alive():
-			continue
-		var d2 := rt.position.distance_squared_to(tile_pos)
-		if d2 <= best_d2:
-			best_d2 = d2
-			best = rt
-	return best
-
-
-func _start_stat_badge_pulse(unit_key: String, which: StringName) -> void:
-	_kill_stat_badge_pulse_tween(unit_key, which)
-	var field := "atk" if which == &"atk" else "hp"
-	var scales: Dictionary = _stat_badge_scales[unit_key]
-	scales[field] = 1.0
-	var speed := maxf(0.25, presentation_time_scale)
-	var peak := STAT_BADGE_PULSE_PEAK
-	var tw := create_tween()
-	tw.set_speed_scale(speed)
-	tw.tween_method(
-		func(v: float) -> void:
-			_set_stat_badge_scale(unit_key, field, v),
-		1.0,
-		peak,
-		STAT_BADGE_PULSE_UP_SEC,
-	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_method(
-		func(v: float) -> void:
-			_set_stat_badge_scale(unit_key, field, v),
-		peak,
-		1.0,
-		STAT_BADGE_PULSE_DOWN_SEC,
-	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	if not _stat_badge_pulse_tweens.has(unit_key):
-		_stat_badge_pulse_tweens[unit_key] = {}
-	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
-	bucket[field] = tw
-	tw.finished.connect(
-		func() -> void:
-			_on_stat_badge_pulse_finished(unit_key, field, tw)
-	)
-
-
-func _set_stat_badge_scale(unit_key: String, field: String, value: float) -> void:
-	if not _stat_badge_scales.has(unit_key):
-		_stat_badge_scales[unit_key] = {"atk": 1.0, "hp": 1.0}
-	(_stat_badge_scales[unit_key] as Dictionary)[field] = value
-
-
-func _kill_stat_badge_pulse_tween(unit_key: String, which: StringName) -> void:
-	if not _stat_badge_pulse_tweens.has(unit_key):
-		return
-	var field := "atk" if which == &"atk" else "hp"
-	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
-	var tw := bucket.get(field) as Tween
-	if tw != null and is_instance_valid(tw):
-		tw.kill()
-	bucket.erase(field)
-	if bucket.is_empty():
-		_stat_badge_pulse_tweens.erase(unit_key)
-
-
-func _on_stat_badge_pulse_finished(unit_key: String, field: String, tw: Tween) -> void:
-	if not _stat_badge_pulse_tweens.has(unit_key):
-		return
-	var bucket: Dictionary = _stat_badge_pulse_tweens[unit_key]
-	if bucket.get(field) == tw:
-		bucket.erase(field)
-	if bucket.is_empty():
-		_stat_badge_pulse_tweens.erase(unit_key)
-	if _stat_badge_scales.has(unit_key):
-		(_stat_badge_scales[unit_key] as Dictionary)[field] = 1.0
-		var scales: Dictionary = _stat_badge_scales[unit_key]
-		if (
-			absf(float(scales.get("atk", 1.0)) - 1.0) <= 0.001
-			and absf(float(scales.get("hp", 1.0)) - 1.0) <= 0.001
-		):
-			_stat_badge_scales.erase(unit_key)
-
-
-func _clear_stat_badge_pulses() -> void:
-	for key in _stat_badge_pulse_tweens.keys():
-		var bucket: Dictionary = _stat_badge_pulse_tweens[key]
-		for tw_v in bucket.values():
-			var tw := tw_v as Tween
-			if tw != null and is_instance_valid(tw):
-				tw.kill()
-	_stat_badge_pulse_tweens.clear()
-	_stat_badge_scales.clear()
-
-
 ## 典型单格角色纸片绘制高度（与 `_draw_unit_sprite` 同口径），供金币缩放对齐。
 func _typical_paper_height_px(px: float) -> float:
 	var half := _resolve_visual_half(0.0, 0.7, 1.6) * px
@@ -1156,8 +839,6 @@ func clear_fx() -> void:
 	_motion.clear()
 	clear_merge_fx()
 	_clear_gold_coin_fx()
-	_clear_stat_missile_fx()
-	_clear_stat_badge_pulses()
 	_cancel_press()
 
 
@@ -1167,17 +848,6 @@ func _clear_gold_coin_fx() -> void:
 		return
 	for child in _gold_coin_layer.get_children():
 		child.queue_free()
-
-
-func _clear_stat_missile_fx() -> void:
-	if _stat_missile_layer == null or not is_instance_valid(_stat_missile_layer):
-		_stat_missile_layer = null
-		return
-	## 立刻摘掉并 free，避免 queue_free 当帧仍计入 get_child_count。
-	while _stat_missile_layer.get_child_count() > 0:
-		var child := _stat_missile_layer.get_child(0)
-		_stat_missile_layer.remove_child(child)
-		child.free()
 
 
 ## 出击 / 回位 action tween 是否仍在播（供控制器门控下一动；不含 idle/flash/残影）。
@@ -1210,11 +880,6 @@ func play_unit_death(rt: RtUnit) -> void:
 func _feedback_duration_for_scale(scale: float) -> float:
 	var s := maxf(0.25, scale)
 	return clampf(FEEDBACK_SECONDS / s, FEEDBACK_MIN_SECONDS, FEEDBACK_SECONDS)
-
-
-func _feedback_soft_duration_for_scale(scale: float) -> float:
-	var s := maxf(0.25, scale)
-	return clampf(FEEDBACK_SOFT_SECONDS / s, FEEDBACK_SOFT_MIN_SECONDS, FEEDBACK_SOFT_SECONDS)
 
 
 func _format_merged_feedback_text(kind: StringName, amount: int, fallback: String) -> String:
@@ -1268,9 +933,6 @@ func _gui_input(event: InputEvent) -> void:
 	if map_shop_active:
 		_gui_input_map_shop(event)
 		return
-	if victory_boost_active:
-		_gui_input_victory_boost(event)
-		return
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
@@ -1305,9 +967,11 @@ func _gui_input(event: InputEvent) -> void:
 			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
 			var bench_slot := find_bench_slot_at_local(mb.position) if bench_visible else -1
 			if bench_entry >= 0:
-				## 短点开装备详情；准备/招募仍可拖换座。选中/上阵改由拖或空座交互。
+				## 战斗只读：仍可长按信息；准备/招募可拖与点选。
 				_bench_press_id = bench_entry if bench_interactive else -1
-				var bench_tap := equipment_detail_requested.emit.bind(bench_entry)
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
+				)
 				_begin_press(mb.position, info, bench_tap)
 			elif (
 				bench_interactive
@@ -1319,22 +983,13 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 				return
 			elif not info.is_empty():
-				## 按在单位上：短点开装备详情；长按百科；移超 slop 则拖换座。
-				var press_cell := tile_to_cell(local_to_tile(mb.position))
-				var press_entry := -1
+				## 按在单位上：点按动作推迟到松手，按住则改为看信息；移超 slop 则拖换座。
 				if _can_prepare_seat_drag():
-					press_entry = _find_prepare_team_entry_at(press_cell)
+					var press_cell := tile_to_cell(local_to_tile(mb.position))
+					var press_entry := _find_prepare_team_entry_at(press_cell)
 					if press_entry >= 0:
 						_prepare_team_press_id = press_entry
-				var tap := board_pressed.emit.bind(local_to_tile(mb.position))
-				## 友方短点优先开详情（准备/开战）；空座等仍走 board_pressed。
-				if press_entry >= 0:
-					tap = equipment_detail_requested.emit.bind(press_entry)
-				elif _phase_allows_combat_equipment_detail():
-					var combat_id := _friendly_entry_id_from_info(info)
-					if combat_id >= 0:
-						tap = equipment_detail_requested.emit.bind(combat_id)
-				_begin_press(mb.position, info, tap)
+				_begin_press(mb.position, info, board_pressed.emit.bind(local_to_tile(mb.position)))
 			else:
 				board_pressed.emit(local_to_tile(mb.position))
 			accept_event()
@@ -1403,12 +1058,10 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
 				_recruit_empty_seat_press = -1
-				## 短点开装备详情（招募药水点选由控制器在 detail 回调里分流）。
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(bench_entry),
+				var bench_tap := (
+					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
 				)
+				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
 				accept_event()
 				return
 			if (
@@ -1453,12 +1106,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
 				_recruit_empty_seat_press = -1
-				## 短点开装备详情；待用药水时由控制器分流到 recruit_team_pressed 逻辑。
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(entry_id),
-				)
+				_begin_press(mb.position, inspect_at(mb.position), recruit_team_pressed.emit.bind(entry_id))
 				accept_event()
 				return
 			var empty_press := _find_recruit_team_seat_at(board_cell)
@@ -1524,47 +1172,6 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_bench_press_id = -1
 
 
-## 免费强化：短按居中阵列纸片落盘；长按信息卡松手不落盘；禁止拖拽换座。
-func _gui_input_victory_boost(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		_track_press_motion(motion.position)
-		accept_event()
-		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index != MOUSE_BUTTON_LEFT:
-			return
-		if mb.pressed:
-			_bench_press_id = -1
-			_recruit_team_press_id = -1
-			var entry_id := find_victory_boost_focus_entry_at(mb.position)
-			if entry_id >= 0:
-				_recruit_team_press_id = entry_id
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					victory_boost_unit_pressed.emit.bind(entry_id),
-				)
-				accept_event()
-				return
-			## 暗场空白：可长按空白无 tap；不选人。
-			_begin_press(mb.position, inspect_at(mb.position), Callable())
-			accept_event()
-			return
-		if _info_shown:
-			_recruit_team_press_id = -1
-			_bench_press_id = -1
-			_end_press()
-			accept_event()
-			return
-		if _end_press():
-			accept_event()
-		_recruit_team_press_id = -1
-		_bench_press_id = -1
-
-
 func _gui_input_map_shop(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
@@ -1576,12 +1183,7 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_map_shop_offer_drag(_map_shop_offer_press_index, motion.position)
-		elif (
-			_map_shop_team_press_id >= 0
-			and _map_shop_team_drag_id < 0
-			and not _info_shown
-			and not equipment_detail_blocks_drag
-		):
+		elif _map_shop_team_press_id >= 0 and _map_shop_team_drag_id < 0 and not _info_shown:
 			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
 				_cancel_press()
 				_begin_map_shop_team_drag(_map_shop_team_press_id, motion.position)
@@ -1604,11 +1206,7 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 			if entry_id >= 0:
 				_map_shop_team_press_id = entry_id
 				_map_shop_offer_press_index = -1
-				_begin_press(
-					mb.position,
-					inspect_at(mb.position),
-					equipment_detail_requested.emit.bind(entry_id),
-				)
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 			return
 		if _info_shown:
@@ -2176,8 +1774,8 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	var center: Vector2 = info["center"]
 	var px := get_cell_px()
 	var head := center + Vector2(0.0, px * (0.38 - 1.7))
-	## 脚下攻/血 + 可选护甲/价签分行，按三行上限预留脚点避免信息卡盖住数字。
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_stack_extent(px, 3))
+	## 脚下可能有攻/血一行 + 价签第二行，预留两行高度避免信息卡盖住数字。
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	## 统计/目录在 Scroll 内会被裁切：信息卡提到顶层并用视口坐标，避免被遮罩挡住技能文。
@@ -2197,21 +1795,22 @@ func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	queue_redraw()
 
 
-## 战斗内技能播报：缩卡贴棋盘区底边、触发者列内（§5.2.1）；默认不叠详附卡。
+## 战斗内技能播报：详卡贴在棋盘区底边、触发者列内；可叠状态/装备附属卡栈。
 func _show_combat_broadcast_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
 	_combat_broadcast_info = true
 	_shown_info = info
 	_begin_inspect_focus(info, slide_dir)
+	var attachments: Array = info.get("attachments", [])
 	_hide_info_attachments()
 	_info_card.top_level = false
 	var center: Vector2 = info.get("center", Vector2.ZERO)
 	var px := get_cell_px()
-	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_stat_badge_stack_extent(px, 3))
+	var foot := center + Vector2(0.0, px * 0.38) + Vector2(0.0, get_fitted_stat_badge_size(px, 2).y * 2.25)
 	var bounds := get_board_rect()
-	_info_card.show_info_combat_compact(info, foot, bounds, slide_dir)
-	## 战斗播报默认不竖排装备/状态详附卡；短标走结算拍结果通道。
+	_info_card.show_info_combat_below_unit(info, foot, bounds, slide_dir)
+	_show_info_attachments(attachments, bounds, slide_dir, false)
 	queue_redraw()
 
 
@@ -2347,8 +1946,8 @@ func bump_combat_skill_info_visibility(extra_seconds: float) -> void:
 		_auto_info_until_clock = until
 
 
-## 技能触发时弹出战斗缩卡（肖像 + 技能短名）；skills_override 为短名/一行文案。
-## attachments 参数保留兼容，战斗播报默认不展示详附卡栈。
+## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
+## skills_override 非空时只展示本条触发（RichText / BBCode）。
 func show_skill_trigger_info(
 	unit: UnitInstance,
 	is_player: bool,
@@ -2363,11 +1962,7 @@ func show_skill_trigger_info(
 	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
 	var center := tile_to_local(tile_pos) + off
 	var info := _info_from_instance(unit, is_player, attack, hp, center)
-	## 缩卡不挂详附卡；参数保留以免调用方破坏。
-	## 战斗缩卡不叠详附卡；attachments 仅保留签名兼容。
-	info["attachments"] = []
-	if attachments.is_empty():
-		pass
+	info["attachments"] = attachments
 	if not skills_override.is_empty():
 		info["skills"] = skills_override
 	_show_combat_broadcast_info_card(info)
@@ -2376,23 +1971,7 @@ func show_skill_trigger_info(
 	bump_combat_skill_info_visibility(life)
 
 
-## 展示步 ①→②：收卡让路，把场地还给弹入/形变。
-func yield_combat_skill_broadcast() -> void:
-	if not _combat_broadcast_info:
-		return
-	_combat_skill_info_pin = 0
-	_auto_info_until_clock = -1.0
-	_hide_info_attachments()
-	if _info_card != null and _info_card.visible:
-		_info_card.fade_hide_for_yield(presentation_time_scale)
-	else:
-		_hide_all_info_cards()
-	_combat_broadcast_info = false
-	_clear_inspect_focus()
-	queue_redraw()
-
-
-## 展示步 ①：整张**战斗技能介绍卡**（主卡 / 缩卡）。
+## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
 func play_combat_skill_info_reel_intro() -> void:
 	_schedule_settlement_reel_shake(_info_card)
 
@@ -2419,19 +1998,10 @@ func _settlement_reel_amplitude_for_card(card: RealtimeUnitInfoCard) -> float:
 
 func play_combat_skill_info_reel_resolve(payload: CombatEventPayload) -> void:
 	var card := _pick_reel_info_card(payload)
-	if card != null and card.visible:
+	if card != null:
 		card.play_settlement_reel_shake(
 			presentation_time_scale, _settlement_reel_amplitude_for_card(card)
 		)
-		return
-	## 卡已让路：抖触发者轻 punch，不挡目标区。
-	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
-	if owner == null or sim == null or _motion == null:
-		return
-	var rt: RtUnit = sim.find_unit(owner)
-	if rt != null:
-		_motion.speed_scale = presentation_time_scale
-		_motion.play_light_hit(rt, 1)
 
 
 func _pick_reel_info_card(payload: CombatEventPayload) -> RealtimeUnitInfoCard:
@@ -2509,8 +2079,8 @@ func inspect_at(local_pos: Vector2) -> Dictionary:
 	for info: Dictionary in _collect_inspectables():
 		var center: Vector2 = info["center"]
 		var feet_y := center.y + px * 0.38
-		var badge_stack := get_stat_badge_stack_extent(px, 3)
-		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_stack + 2.0)
+		var badge_h := get_fitted_stat_badge_size(px, 2).y
+		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_h * 2.35)
 		if not hit.has_point(local_pos):
 			continue
 		var d := local_pos.distance_squared_to(center)
@@ -2524,20 +2094,6 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
-	if victory_boost_active:
-		for item in victory_boost_focus_roster:
-			if not (item is Dictionary):
-				continue
-			var boost_entry: DeckEntry = item.get("entry") as DeckEntry
-			if boost_entry == null:
-				continue
-			var center := _victory_boost_item_draw_pos(item as Dictionary)
-			out.append(_info_from_entry(
-				boost_entry,
-				center,
-				"boost:%d" % int(item.get("entry_id", boost_entry.entry_id)),
-			))
-		return out
 	if map_shop_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
@@ -2684,14 +2240,12 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	var unit_cost := entry.unit.cost if entry.unit != null else 0
 	return {
 		"inspect_key": key,
-		"entry_id": entry.entry_id,
 		"center": center,
 		"name": entry.get_display_name(),
 		"side_player": true,
 		"tier": entry.unit.tier if entry.unit != null else 0,
-		"theme_label": _theme_label_for_unit_data(entry.unit),
 		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
-		"hp": maxi(1, DeckUpgradeService.get_display_current_hp(entry)),
+		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
 		"armor": entry.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"attachments": UnitInfoText.collect_info_attachments_from_entry(entry, true),
@@ -2724,7 +2278,6 @@ func _info_from_unit_data(
 		"name": UnitInfoText.get_display_name_from_unit_data(data) + star_tag,
 		"side_player": true,
 		"tier": data.tier,
-		"theme_label": _theme_label_for_unit_data(data),
 		"attack": atk * stat_mult,
 		"hp": hp * stat_mult,
 		"skills": UnitInfoText.get_skills_block_from_unit_data(data, level, true),
@@ -2744,13 +2297,10 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 	var unit_cost := unit.unit_data.cost if unit.unit_data != null else 0
 	return {
 		"inspect_key": "inst:%d" % unit.get_instance_id(),
-		"entry_id": unit.deck_entry_id,
-		"deck_entry_id": unit.deck_entry_id,
 		"center": center,
 		"name": UnitInfoText.get_display_name(unit),
 		"side_player": is_player,
 		"tier": unit.unit_data.tier if unit.unit_data != null else 0,
-		"theme_label": _theme_label_for_unit_data(unit.unit_data),
 		"attack": attack,
 		"hp": hp,
 		"armor": unit.get_armor_block(),
@@ -2760,14 +2310,6 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
-
-
-## 介绍卡侧栏主题类名；NONE / 无数据 → 空串（省略，不写「未定」）。
-func _theme_label_for_unit_data(data: UnitData) -> String:
-	if data == null or data.theme_bond == UnitData.ThemeBond.NONE:
-		return ""
-	var label := UnitData.theme_bond_label(data.theme_bond)
-	return "" if label == "未定" else label
 
 
 ## 招募半场道具：与地图商店同用 RealtimeUnitInfoCard（is_item）。
@@ -3143,13 +2685,10 @@ func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 
 ## 准备阶段可拖已入座角色换座（开战 / 目录 / 其它半场模式除外）。
 func _can_prepare_seat_drag() -> bool:
-	if equipment_detail_blocks_drag:
-		return false
 	return (
 		prepare_slots != null
 		and not catalog_active
 		and not recruit_active
-		and not victory_boost_active
 		and not map_shop_active
 		and not enchant_active
 		and (sim == null or not sim.has_started())
@@ -3157,37 +2696,11 @@ func _can_prepare_seat_drag() -> bool:
 
 
 func _can_drag_prepare_or_bench() -> bool:
-	if equipment_detail_blocks_drag:
-		return false
-	if catalog_active or map_shop_active or enchant_active or victory_boost_active:
+	if catalog_active or map_shop_active or enchant_active:
 		return false
 	if recruit_active:
 		return bench_interactive
 	return _can_prepare_seat_drag() or (bench_visible and bench_interactive)
-
-
-## 开战观战：短点友方可开只读详情。
-func _phase_allows_combat_equipment_detail() -> bool:
-	return sim != null and sim.has_started() and not recruit_active and not map_shop_active and not enchant_active and not victory_boost_active
-
-
-func _friendly_entry_id_from_info(info: Dictionary) -> int:
-	if info.is_empty() or not bool(info.get("side_player", false)):
-		return -1
-	if info.has("entry_id"):
-		var eid := int(info.get("entry_id", -1))
-		if eid >= 0:
-			return eid
-	if info.has("deck_entry_id"):
-		var did := int(info.get("deck_entry_id", -1))
-		if did >= 0:
-			return did
-	var key := String(info.get("inspect_key", ""))
-	if key.begins_with("entry:"):
-		return int(key.substr(6))
-	if key.begins_with("bench:"):
-		return int(key.substr(6))
-	return -1
 
 
 func _find_deck_entry_on_board_or_bench(entry_id: int) -> DeckEntry:
@@ -3395,8 +2908,6 @@ func _finish_map_shop_offer_drag(cell: Vector2i) -> void:
 
 
 func _begin_map_shop_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
-	if equipment_detail_blocks_drag:
-		return
 	if entry_id < 0 or recruit_team_slots == null:
 		return
 	var entry: DeckEntry = null
@@ -3551,8 +3062,8 @@ func clear_map_shop_mode() -> void:
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
-	## 地图商店 / 免费强化复用 recruit_team_slots；清招募时勿误清。
-	if not map_shop_active and not victory_boost_active:
+	## 地图商店复用 recruit_team_slots 画上半场；清招募时勿误清商店。
+	if not map_shop_active:
 		recruit_team_slots = null
 	recruit_candidates.clear()
 	recruit_items.clear()
@@ -3573,117 +3084,6 @@ func clear_recruit_mode() -> void:
 	clear_party_bark()
 	_clear_drag_visual()
 	queue_redraw()
-
-
-func clear_victory_boost_mode() -> void:
-	_cancel_press()
-	victory_boost_active = false
-	victory_boost_selected_id = -1
-	victory_boost_amount = 1
-	victory_boost_applied = false
-	victory_boost_focus_t = 1.0
-	victory_boost_dim_alpha = 0.0
-	victory_boost_focus_roster.clear()
-	if not recruit_active and not map_shop_active:
-		recruit_team_slots = null
-	_recruit_team_press_id = -1
-	_bench_press_id = -1
-	_clear_drag_visual()
-	queue_redraw()
-
-
-## 构建居中可选阵列：entries 为 {entry: DeckEntry, is_bench: bool}；原地算 origin/focus。
-func set_victory_boost_focus_roster(
-	entries: Array,
-	seat_rows: int = -1,
-	seat_cols: int = -1,
-) -> void:
-	victory_boost_focus_roster = _layout_victory_boost_focus(entries, seat_rows, seat_cols)
-	queue_redraw()
-
-
-func find_victory_boost_focus_entry_at(local_pos: Vector2) -> int:
-	if not victory_boost_active or victory_boost_focus_roster.is_empty():
-		return -1
-	var px := get_cell_px()
-	var best_id := -1
-	var best_d := INF
-	for item in victory_boost_focus_roster:
-		if not (item is Dictionary):
-			continue
-		var center := _victory_boost_item_draw_pos(item as Dictionary)
-		var hit := Rect2(center.x - px * 0.55, center.y - px * 0.7, px * 1.1, px * 1.4)
-		if not hit.has_point(local_pos):
-			continue
-		var d := local_pos.distance_squared_to(center)
-		if d < best_d:
-			best_d = d
-			best_id = int(item.get("entry_id", -1))
-	return best_id
-
-
-func _victory_boost_item_draw_pos(item: Dictionary) -> Vector2:
-	var origin: Vector2 = item.get("origin", Vector2.ZERO) as Vector2
-	var focus: Vector2 = item.get("focus", origin) as Vector2
-	var t := clampf(victory_boost_focus_t, 0.0, 1.0)
-	## 轻微 ease-out：进场末段更稳。
-	var eased := 1.0 - (1.0 - t) * (1.0 - t)
-	return origin.lerp(focus, eased)
-
-
-func _layout_victory_boost_focus(
-	entries: Array,
-	seat_rows: int = -1,
-	seat_cols: int = -1,
-) -> Array:
-	var out: Array = []
-	var px := get_cell_px()
-	var rect := get_board_rect()
-	if entries.is_empty() or px <= 0.0:
-		return out
-	var n := entries.size()
-	var cols := mini(5, n)
-	if n > 5:
-		cols = clampi(int(ceil(sqrt(float(n)))), 3, 5)
-	var rows := int(ceil(float(n) / float(cols)))
-	var spacing := px * 1.22
-	var total_w := float(maxi(0, cols - 1)) * spacing
-	var total_h := float(maxi(0, rows - 1)) * spacing
-	## 略偏上，给底栏 HUD 留空。
-	var start := rect.get_center() + Vector2(-total_w * 0.5, -total_h * 0.5 - px * 0.35)
-	var rows_n := seat_rows if seat_rows > 0 else DeckConfig.DEFAULT_SEAT_ROWS
-	var cols_n := seat_cols if seat_cols > 0 else DeckConfig.DEFAULT_SEAT_COLS
-	var ally_slots := PrepareSlotBoard.new()
-	ally_slots.configure_grid(rows_n, cols_n, board_size, false)
-	var mid := BoardHalf.midline_row(board_size.y)
-	var bench_placed := 0
-	for i in n:
-		var info: Variant = entries[i]
-		if not (info is Dictionary):
-			continue
-		var entry: DeckEntry = (info as Dictionary).get("entry") as DeckEntry
-		if entry == null:
-			continue
-		var is_bench := bool((info as Dictionary).get("is_bench", entry.seat_index < 0))
-		var origin := rect.get_center()
-		if is_bench:
-			var bx := float(bench_placed % maxi(1, board_size.x)) + 0.5
-			origin = tile_to_local(Vector2(bx, float(mid) + 0.5))
-			bench_placed += 1
-		elif entry.seat_index >= 0 and entry.seat_index < ally_slots.cells.size():
-			var cell: Vector2i = ally_slots.cells[entry.seat_index]
-			origin = tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
-		var col := i % cols
-		var row := int(i / cols)
-		var focus := start + Vector2(float(col) * spacing, float(row) * spacing)
-		out.append({
-			"entry_id": entry.entry_id,
-			"entry": entry,
-			"is_bench": is_bench,
-			"origin": origin,
-			"focus": focus,
-		})
-	return out
 
 
 ## 角色库：把单位按列铺满棋盘，沿用战斗剪影 / 攻血标 / 长按技能卡。
@@ -3785,7 +3185,6 @@ func _draw() -> void:
 	var showing_placement := (
 		(placement_active or _drag_active)
 		and not recruit_active
-		and not victory_boost_active
 		and not map_shop_active
 		and not catalog_active
 	)
@@ -3818,9 +3217,6 @@ func _draw() -> void:
 			_draw_map_shop_offer_drop_hint(px, mid)
 		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_team_seat_hint(px)
-	elif victory_boost_active:
-		_draw_victory_boost_dim(rect)
-		_draw_victory_boost_focus_array(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -3878,8 +3274,8 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
-	## 备战行：准备/战斗在友方半场下方；招募/免费强化已在分区内绘制。
-	if not recruit_active and not victory_boost_active:
+	## 备战行：准备/战斗在友方半场下方；招募已在候选之前绘制。
+	if not recruit_active:
 		_draw_bench_row(px)
 	_draw_fx(px)
 	_draw_feedback(px)
@@ -3940,7 +3336,7 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 			_draw_stat_badges(
 				tile_to_local(center_tile) + off,
 				DeckUpgradeService.get_display_attack(entry),
-				DeckUpgradeService.get_display_current_hp(entry),
+				DeckUpgradeService.get_display_max_hp(entry),
 				0.95,
 				px,
 				entry.get_armor_block(),
@@ -3958,112 +3354,6 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
 	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
-
-
-func _draw_victory_boost_dim(rect: Rect2) -> void:
-	var a := clampf(victory_boost_dim_alpha, 0.0, 1.0)
-	if a <= 0.001:
-		return
-	## 渐变压暗：上半略深、中部可读，盖住战场/残骸色调。
-	var top := Color(0.02, 0.03, 0.05, 0.72 * a)
-	var mid_c := Color(0.04, 0.05, 0.07, 0.58 * a)
-	var bot := Color(0.03, 0.04, 0.06, 0.66 * a)
-	var h := rect.size.y
-	draw_rect(Rect2(rect.position, Vector2(rect.size.x, h * 0.38)), top)
-	draw_rect(Rect2(rect.position + Vector2(0.0, h * 0.32), Vector2(rect.size.x, h * 0.36)), mid_c)
-	draw_rect(Rect2(rect.position + Vector2(0.0, h * 0.62), Vector2(rect.size.x, h * 0.38)), bot)
-	var font := get_theme_default_font()
-	var title_size := clampi(int(get_cell_px() * 0.42), 12, 20)
-	var title_pos := rect.position + Vector2(get_cell_px() * 0.3, get_cell_px() * 0.55)
-	draw_string(
-		font, title_pos, "免费强化", HORIZONTAL_ALIGNMENT_LEFT, -1, title_size,
-		Color(0.85, 1.0, 0.78, 0.92 * a)
-	)
-
-
-func _draw_victory_boost_focus_array(px: float) -> void:
-	if victory_boost_focus_roster.is_empty():
-		return
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.30), 9, 14)
-	var ordered: Array = victory_boost_focus_roster.duplicate()
-	## 长按焦点置顶；落盘选中也置顶。
-	if _info_shown or victory_boost_selected_id >= 0:
-		var focus_at := -1
-		for i in ordered.size():
-			var it: Variant = ordered[i]
-			if not (it is Dictionary):
-				continue
-			var eid := int((it as Dictionary).get("entry_id", -1))
-			if victory_boost_selected_id >= 0 and eid == victory_boost_selected_id:
-				focus_at = i
-				break
-			if _info_shown:
-				var center := _victory_boost_item_draw_pos(it as Dictionary)
-				var focus_c: Vector2 = _shown_info.get("center", Vector2.INF) as Vector2
-				if center.distance_squared_to(focus_c) <= _inspect_focus_hit_r2():
-					focus_at = i
-					break
-		if focus_at >= 0 and focus_at < ordered.size() - 1:
-			var focus_item: Variant = ordered[focus_at]
-			ordered.remove_at(focus_at)
-			ordered.append(focus_item)
-	for item_v in ordered:
-		if not (item_v is Dictionary):
-			continue
-		var item := item_v as Dictionary
-		var entry: DeckEntry = item.get("entry") as DeckEntry
-		if entry == null:
-			continue
-		var center := _victory_boost_item_draw_pos(item)
-		var selected := entry.entry_id == victory_boost_selected_id
-		var alpha := 0.92
-		if victory_boost_applied and not selected:
-			alpha = 0.28
-		elif victory_boost_applied and selected:
-			alpha = 1.0
-		var stats := entry.unit.stats if entry.unit != null else null
-		var radius := stats.body_radius if stats != null else 0.7
-		var vwx := stats.get_visual_half_width() if stats != null else 0.0
-		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		var center_tile := local_to_tile(center)
-		var pose: RealtimeUnitMotion.Pose = null
-		if victory_boost_applied and selected:
-			pose = RealtimeUnitMotion.Pose.new()
-			pose.scale = Vector2.ONE * 1.08
-			pose.flash = 0.35
-			pose.shadow_mul = 1.25
-		_draw_body(
-			center_tile,
-			radius,
-			vwx,
-			vhy,
-			PLAYER_COLOR,
-			alpha,
-			entry.get_display_name(),
-			px,
-			true,
-			Vector2.ZERO,
-			true,
-			entry.get_unit_id(),
-			pose,
-			Vector2.ZERO,
-			1.0,
-			_idle_seed_for(entry.get_unit_id(), 200 + entry.entry_id),
-		)
-		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_current_hp(entry)
-		_draw_stat_badges(
-			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
-		)
-		if bool(item.get("is_bench", false)):
-			var label_pos := center + Vector2(-px * 0.42, px * 0.58)
-			draw_string(
-				font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-				Color(0.92, 0.96, 1.0, 0.88 * alpha)
-			)
-		if selected:
-			_draw_victory_boost_selection(center, px)
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -4318,13 +3608,10 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, DeckUpgradeService.get_display_current_hp(entry))
-		var center_local := tile_to_local(center_tile) + off
+			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
-			center_local, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
-		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
-			_draw_victory_boost_selection(center_local, px)
 	if _merge_active:
 		_draw_merge_fx(px, off)
 
@@ -4387,7 +3674,7 @@ func _draw_catalog_units(px: float) -> void:
 		var armor := 0
 		if deck_entry != null and stats != null:
 			atk = maxi(1, stats.attack + deck_entry.bonus_attack)
-			hp = maxi(1, DeckUpgradeService.get_display_current_hp(deck_entry))
+			hp = maxi(1, stats.max_hp + deck_entry.bonus_max_hp)
 			armor = deck_entry.get_armor_block()
 		else:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
@@ -4497,7 +3784,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
-		## 攻/血同排；护甲/价签分行居中（见 _draw_stat_badges）。
+		## 攻/血缩进单格；价签第二行（见 _draw_stat_badges）。
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
 		)
@@ -4673,7 +3960,7 @@ func _draw_prepare_slots(px: float) -> void:
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, DeckUpgradeService.get_display_current_hp(entry))
+			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
 			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
@@ -4742,35 +4029,11 @@ func _draw_bench_row(px: float) -> void:
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
 		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_current_hp(entry)
-		_draw_stat_badges(
-			center, atk, hp, alpha, px, entry.get_armor_block(), -1, true, "e%d" % entry.entry_id
-		)
-		if victory_boost_active and entry.entry_id == victory_boost_selected_id:
-			_draw_victory_boost_selection(center, px)
+		var hp := DeckUpgradeService.get_display_max_hp(entry)
+		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
 	## 小标签：备战
 	var label_pos := bench_slot_center_local(0) + Vector2(-px * 0.45, -px * 0.62)
 	draw_string(font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.75))
-
-
-func _draw_victory_boost_selection(center: Vector2, px: float) -> void:
-	var amount := maxi(1, victory_boost_amount)
-	var ring_r := px * 0.48
-	draw_arc(center, ring_r, 0.0, TAU, 36, Color(0.45, 1.0, 0.55, 0.85), maxf(2.0, px * 0.07), true)
-	draw_arc(center, ring_r * 0.86, 0.0, TAU, 28, Color(0.85, 1.0, 0.7, 0.45), maxf(1.5, px * 0.045), true)
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.34), 10, 16)
-	var label := "+%d / +%d" % [amount, amount]
-	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var pos := center + Vector2(-text_size.x * 0.5, -px * 0.72)
-	draw_string(
-		font, pos + Vector2(1.0, 1.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-		Color(0.08, 0.12, 0.08, 0.55)
-	)
-	draw_string(
-		font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-		Color(0.75, 1.0, 0.7, 0.95)
-	)
 
 
 func _draw_bench_triple_merge_hint(center: Vector2, px: float) -> void:
@@ -4834,9 +4097,6 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
-		var pulse_key := ""
-		if rt.unit != null:
-			pulse_key = "u%d" % rt.unit.instance_id
 		_draw_stat_badges(
 			center,
 			rt.get_effective_attack(),
@@ -4844,9 +4104,6 @@ func _draw_units(px: float) -> void:
 			alpha,
 			px,
 			rt.unit.get_armor_block() if rt.unit != null else 0,
-			-1,
-			true,
-			pulse_key,
 		)
 	_draw_corpses(px)
 
@@ -5127,22 +4384,7 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 	return Vector2(h * aspect, h)
 
 
-## 脚下标签纵向占位：攻血一行 + 可选护甲/金分行（最多三行）。用于点选与信息卡脚点。
-func get_stat_badge_stack_extent(px: float, rows: int = 3) -> float:
-	var pair := get_fitted_stat_badge_size(px, 2)
-	var secondary := get_fitted_stat_badge_size(px, 1)
-	var row_gap := pair.y * STAT_BADGE_GAP_MUL * STAT_BADGE_ROW_GAP_MUL
-	var n := clampi(rows, 1, 3)
-	if n <= 1:
-		return pair.y * 1.05
-	if n == 2:
-		return pair.y + row_gap + secondary.y
-	return pair.y + row_gap + secondary.y + row_gap + secondary.y
-
-
-## 脚下纸片标签：攻 + 血同排（按 count=2 拟合）；护甲/金币各自居中次行，避免三枚同排挤小攻血。
-## 有护甲无金 → 第二行护甲；有金无护甲 → 第二行金；两者都有 → 护甲第二行、金第三行。
-## pulse_key 非空时按字典里的 atk/hp scale 以徽章中心缩放整枚纸片。
+## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -5152,51 +4394,38 @@ func _draw_stat_badges(
 	armor: int = 0,
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
-	pulse_key: String = "",
 ) -> void:
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
+	var primary_count := 2 + (1 if show_armor else 0)
 	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
-	## 攻血始终按 pair 拟合，不再因护甲改用 trio。
-	var badge := get_fitted_stat_badge_size(px, 2, max_w)
+	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
 	var gap := badge.y * STAT_BADGE_GAP_MUL
-	var row_gap := gap * STAT_BADGE_ROW_GAP_MUL
 	var top := center.y + px * 0.38 + badge.y * 0.05
-	var total_w := badge.x * 2.0 + gap
+	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
 	var half_span := total_w * 0.5
 	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
-	var atk_scale := get_stat_badge_pulse_scale(pulse_key, &"atk")
-	var hp_scale := get_stat_badge_pulse_scale(pulse_key, &"hp")
-	var atk_rect := _scaled_badge_rect(Rect2(Vector2(x0, top), badge), atk_scale)
+	var slot := 0
+	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	slot += 1
 	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
-	var hp_rect := _scaled_badge_rect(Rect2(Vector2(x0 + badge.x + gap, top), badge), hp_scale)
+	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+	slot += 1
 	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
-	var next_top := top + badge.y + row_gap
 	if show_armor:
-		var armor_badge := get_fitted_stat_badge_size(px, 1, max_w)
-		var armor_half := armor_badge.x * 0.5
-		var armor_cx := clampf(center.x, armor_half, maxf(armor_half, size.x - armor_half))
-		var armor_rect := Rect2(Vector2(armor_cx - armor_half, next_top), armor_badge)
+		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
-		next_top += armor_badge.y + row_gap
 	if show_gold:
-		## 价签居中：无护甲时第二行，有护甲时第三行。
+		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
 		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
+		var gold_top := top + badge.y + gap * 1.6
 		var gold_half := gold_badge.x * 0.5
 		var gold_cx := clampf(center.x, gold_half, maxf(gold_half, size.x - gold_half))
-		var gold_rect := Rect2(Vector2(gold_cx - gold_half, next_top), gold_badge)
+		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
 		var gold_text := STAT_TEXT if gold_affordable else Color(0.85, 0.22, 0.18, 1.0)
 		_draw_stat_badge(gold_rect, STAT_GOLD_TEX, gold_cost, alpha, gold_text)
-
-
-func _scaled_badge_rect(rect: Rect2, scale: float) -> Rect2:
-	if absf(scale - 1.0) <= 0.001:
-		return rect
-	var c := rect.get_center()
-	var sz := rect.size * scale
-	return Rect2(c - sz * 0.5, sz)
 
 
 func _draw_stat_badge(
@@ -5204,7 +4433,7 @@ func _draw_stat_badge(
 ) -> void:
 	draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
 	var text := str(maxi(0, value))
-	var font_size := maxi(8, int(rect.size.y * 0.72))
+	var font_size := maxi(8, int(rect.size.y * 0.62))
 	var max_w := rect.size.x * STAT_NUMBER_MAX_WIDTH
 	var text_w := STAT_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	if text_w > max_w:
@@ -5273,14 +4502,10 @@ func _draw_feedback(px: float) -> void:
 			continue
 		var t := clampf((_fx_clock - float(fb["t0"])) / life, 0.0, 1.0)
 		var is_player := bool(fb["player"])
-		var soft := bool(fb.get("soft", false))
-		## 友方优先可读；soft 辅飘字更小更淡（弹入为主通道）。
-		var base_size := (11 if soft else 16) if is_player else (10 if soft else 13)
+		## 友方优先可读：字号更大、更不透明；敌方保下限。
+		var base_size := 16 if is_player else 13
 		var alpha := (1.0 - t * 0.85) * (1.0 if is_player else 0.78)
-		if soft:
-			alpha *= 0.55
-		var float_span := FEEDBACK_SOFT_FLOAT_TILES if soft else FEEDBACK_FLOAT_TILES
-		var float_y := -float_span * px * t
+		var float_y := -FEEDBACK_FLOAT_TILES * px * t
 		var center := tile_to_local(fb["center"]) + Vector2(0.0, float_y - px * 0.35)
 		var kind: StringName = fb["kind"]
 		var color := _feedback_color(kind, is_player)
@@ -5288,12 +4513,12 @@ func _draw_feedback(px: float) -> void:
 		var main_text := String(fb["text"])
 		var tip := String(fb.get("tip", ""))
 		if not main_text.is_empty():
-			var font_size := base_size + (0 if soft else (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0))
+			var font_size := base_size + (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0)
 			_draw_feedback_string(font, center, main_text, font_size, color)
 			center.y -= float(font_size) + 2.0
 		if not tip.is_empty():
 			var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
-			_draw_feedback_string(font, center, tip, maxi(9, base_size - 2), tip_color)
+			_draw_feedback_string(font, center, tip, maxi(10, base_size - 3), tip_color)
 
 
 func _feedback_color(kind: StringName, is_player: bool) -> Color:

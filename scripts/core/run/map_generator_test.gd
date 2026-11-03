@@ -116,6 +116,7 @@ static func _test_mystery_resolves() -> bool:
 		MapNodeType.Type.COMBAT,
 		MapNodeType.Type.EVENT,
 		MapNodeType.Type.SHOP,
+		MapNodeType.Type.ENCHANT,
 	]
 	if node.resolved_type not in allowed:
 		push_error(
@@ -123,7 +124,7 @@ static func _test_mystery_resolves() -> bool:
 			% MapNodeType.display_name(node.resolved_type)
 		)
 		return false
-	## 多样本：解析池不含 ENCHANT / TREASURE / REST / ELITE / BOSS。
+	## 多样本：解析池不含 TREASURE / REST / ELITE / BOSS。
 	for seed in 40:
 		rng.seed = seed
 		var sample := MapNodeRuntime.new(data.duplicate(true) as MapNodeData)
@@ -134,9 +135,6 @@ static func _test_mystery_resolves() -> bool:
 				"MapGeneratorTest: seed %d mystery resolved to %s"
 				% [seed, MapNodeType.display_name(sample.resolved_type)]
 			)
-			return false
-		if sample.resolved_type == MapNodeType.Type.ENCHANT:
-			push_error("MapGeneratorTest: seed %d mystery resolved to ENCHANT" % seed)
 			return false
 	return true
 
@@ -161,15 +159,16 @@ static func _test_only_v1_node_types() -> bool:
 		MapNodeType.Type.BOSS,
 		MapNodeType.Type.SHOP,
 		MapNodeType.Type.EVENT,
+		MapNodeType.Type.ENCHANT,
+		MapNodeType.Type.MYSTERY,
 	]
 	var forbidden: Array[MapNodeType.Type] = [
 		MapNodeType.Type.REST,
 		MapNodeType.Type.TREASURE,
 		MapNodeType.Type.SACRIFICE,
-		MapNodeType.Type.MYSTERY,
-		MapNodeType.Type.ENCHANT,
 	]
 	var config := _make_test_config()
+	var seen: Dictionary = {}
 	for seed in 100:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed
@@ -178,10 +177,17 @@ static func _test_only_v1_node_types() -> bool:
 			var node_type := node.get_node_type()
 			if node_type in forbidden or node_type not in allowed:
 				push_error(
-					"MapGeneratorTest: seed %d produced forbidden/disallowed node type %s"
+					"MapGeneratorTest: seed %d produced non-v1 node type %s"
 					% [seed, MapNodeType.display_name(node_type)]
 				)
 				return false
+			seen[node_type] = true
+	if not seen.has(MapNodeType.Type.ENCHANT):
+		push_error("MapGeneratorTest: enchant node never generated in 100 seeds")
+		return false
+	if not seen.has(MapNodeType.Type.MYSTERY):
+		push_error("MapGeneratorTest: mystery node never generated in 100 seeds")
+		return false
 	return true
 
 
@@ -217,6 +223,7 @@ static func _test_sts_constraints() -> bool:
 	var unique_types: Array[MapNodeType.Type] = [
 		MapNodeType.Type.ELITE,
 		MapNodeType.Type.SHOP,
+		MapNodeType.Type.ENCHANT,
 	]
 	for seed in 80:
 		var rng := RandomNumberGenerator.new()
@@ -243,7 +250,6 @@ static func _test_sts_constraints() -> bool:
 					% [seed, floor_index, config.shop_min_floor]
 				)
 				return false
-			## ENCHANT 已不刷；保留 enchant_min 防御检查（永不触发）。
 			if node_type == MapNodeType.Type.ENCHANT and floor_index < config.enchant_min_floor:
 				push_error(
 					"MapGeneratorTest: seed %d enchant on floor %d < enchant_min %d"
@@ -252,7 +258,7 @@ static func _test_sts_constraints() -> bool:
 				return false
 			if node_type not in unique_types:
 				continue
-			## 父节点不可同为 ELITE/SHOP。
+			## 父节点不可同为 ELITE/SHOP/ENCHANT。
 			for other in state.nodes:
 				if node.get_id() not in other.get_outgoing_ids():
 					continue

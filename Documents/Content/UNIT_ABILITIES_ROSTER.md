@@ -68,7 +68,6 @@
 | `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart`；附近=1 格；`exclude_owner` |
 | `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | （未挂载） | 资源保留 |
 | `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
-| `hurt_nearby_allies_apply_relic_bone` | 遗骨加持 | 挨打 · 高频 | 否 | 自己受伤时，对**周围一格其他友军**施加 **遗骨 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自己）。遗骨死亡兑现见 [COMBAT_STATUS](../Features/COMBAT_STATUS.md) §2.3 | **中庸** | 骷髅将军 | `OnDamageTaken` + `NEARBY_ALLIES` + `exclude_owner`；`APPLY_COMBAT_STATUS` `relic_bone` |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | （池内；鼓手已不挂载） | 节奏 |
 | `turn_start_nearby_allies_apply_berserk` | 战鼓狂暴 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格友方**施加 **狂暴 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自身） | **中庸** | 鼓手 | `NEARBY_ALLIES` + `exclude_owner` |
 | `turn_start_random_ally_combat_armor_2` | 匠甲加护 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**随机一名其他友方**授予本场临时护甲 **+2**（三合一后 **+6**；`merge_value_mult=3`；可叠加；不含自己；结算同 MAP_SHOP §5.1；遭遇结束清除） | **中庸** | 甲胄师 | `RANDOM_ALLY` + `exclude_owner` |
@@ -90,7 +89,7 @@
 | `ally_deploy_self_atk_small` | 援军呼应 | 同伴 · 偶尔多次 | **是**（友方被生成） | 其他友方生成完成时，自己本场临时**小幅**提高攻击 | **偏弱～中庸** | （未挂载） | 成长·上场；`OnFriendSummoned`；含锁阵入座与战中召唤；不含自己上场 |
 | `deal_damage_apply_weak` | 破甲箭 | 交战 · 高频 | **否** | 造成伤害时，对**事件目标**施加 **虚弱 1 层**（可叠至战斗状态上限） | **偏弱～中庸** | 游侠 | `OnDealDamage`；普攻与技能伤害均会触发 |
 | `ally_hurt_heal_target_small` | 弦上包扎 | 同伴 · 高频 | **是**（友方受伤） | 友方受伤时，若**该友方未满血**，为其恢复 **2** 当前生命（三合一后 **6**；`merge_value_mult=3`；受击疗≤本次伤；本场技能受疗预算计在受疗友方）；已满血则不触发 | **偏弱** | 弩手 | 回血·掩护续命；`OnFriendDamageTaken`；`EVENT_TARGET_NOT_AT_MAX_HP` |
-| `ally_hurt_lr_allies_atk_hp_1` | 金鼓邻振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，持有者**正交左右邻格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；当前生命同步） | **中庸～偏强** | （未挂载；原金鼓，现白板） | `OnFriendDamageTaken` + `ORTHOGONAL_LEFT_RIGHT_ALLIES` |
+| `ally_hurt_lr_allies_atk_hp_1` | 金鼓邻振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，持有者**正交左右邻格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；当前生命同步） | **中庸～偏强** | 金鼓 | `OnFriendDamageTaken` + `ORTHOGONAL_LEFT_RIGHT_ALLIES` |
 | `ally_hurt_self_atk_hp_1` | 雷鼓自振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**自身**本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏强** | 雷鼓（**T3**） | `OnFriendDamageTaken` + `SELF` |
 | `ally_hurt_nearby_allies_atk_hp_1` | 雷鼓环振 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**持有者周围一格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；可含自己） | **偏强** | （未挂载；原雷鼓） | `OnFriendDamageTaken` + `NEARBY_ALLIES`；资源保留 |
 | `ally_hurt_random_ally_atk_hp_1` | 花鼓福点 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**随机一名友方**本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；**含自己**） | **中庸～偏强** | 花鼓 | `OnFriendDamageTaken` + `RANDOM_ALLY` |

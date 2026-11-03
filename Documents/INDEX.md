@@ -1,8 +1,8 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-11-02
+> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-30
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
 > **产品线 0.6**：`application/config/version` 自 **`6.0.1`** 起（主菜单 `v6.0.…`）；`0.5.*` 线已结束。细则见 [CONTRIBUTING.md](../CONTRIBUTING.md)「应用版本号」。
 
@@ -15,14 +15,12 @@
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
-| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/跳过/完成） |
-| [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md) | **胜后免费强化**（暗场居中阵列、短按即 +攻/+血；可跳过；招募前） |
+| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
-| [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md) | **主题羁绊**（七类包装；角色库筛选；战斗同主题效果另切片） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
-| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（五十人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写；含骷髅将军） |
+| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写） |
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含回血三条；挂载见角色库 §6） |
 | [Features/MAIN_MENU.md](./Features/MAIN_MENU.md) | **主菜单**（局外 Hub；动态营地远景视差 + 指针跟手） |
@@ -30,13 +28,12 @@
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
 | [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
 | [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
-| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、同质白板阶梯敌压、每 4 场插店、成绩＝地图层深） |
+| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、无通关/精英/Boss、稀疏商店、成绩＝地图层深） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
-| [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒/**遗骨**；仅遭遇内叠层；遗骨死亡按层数生成骷髅；长按信息卡） |
+| [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒；仅遭遇内叠层；长按信息卡） |
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
-| [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备购买入口＋半场换座；本切片不含买人） |
-| [Features/EQUIPMENT.md](./Features/EQUIPMENT.md) | **装备**（0～3 槽、满槽拒绝、详情卸载、队伍暂存、合计护甲） |
+| [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备＋半场换座；本切片不含买人） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
@@ -45,7 +42,6 @@
 | [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
 | [Reference/RISK_OF_RAIN_2.md](./Reference/RISK_OF_RAIN_2.md) | **Risk of Rain 2** 基础版道具 / 装备 / 技能参考（外部资料） |
 | [Reference/MASTER_OF_PIECE.md](./Reference/MASTER_OF_PIECE.md) | **弈战征途 / Master of Piece** 系统 / 道具 / 机制参考（外部资料） |
-| [ideas/INDEX.md](./ideas/INDEX.md) | **随机想法**（非正式备忘；非 Features/Content 定稿） |
 
 ## 编辑器插件（策划工具）
 
@@ -133,8 +129,8 @@ Project Autochess/
 | `resources/units/test_*.tres` | 三样本测试单位 | **M3.5 已实现** |
 | `resources/abilities/` | 单位技能资源；规则见 [UNIT_ABILITIES](./Features/UNIT_ABILITIES.md)；内容归 Content；商店技能 `.tres` **待迁出** | **M3.5+** |
 | `resources/effects/` | 可复用效果片段（可选） | 空目录（效果嵌在 ability `.tres`） |
-| `resources/traits/` | 主题羁绊**战斗**效果资源（可选；分类在 `UnitData.theme_bond`） | 分类已落地；战斗效果另切片 |
-| `resources/items/` | 装备资源（可选） | 空目录（未使用）；规则见 [Features/EQUIPMENT.md](./Features/EQUIPMENT.md) |
+| `resources/traits/` | 羁绊 `.tres`（**远期**，非 v1） | 不实现 |
+| `resources/items/` | 装备（可选） | 空目录（未使用） |
 | `assets/sprites/` | 2D 精灵与图集 | 已创建（骨架） |
 | `assets/audio/` | BGM / SFX | 已创建（骨架） |
 | `assets/fonts/` | UI 字体 | 见项目 Theme |

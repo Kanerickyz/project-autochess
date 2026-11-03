@@ -41,7 +41,7 @@ var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
 ## 本 Run 已播过的队伍羁绊台词 id；招募重置不清除。
 var played_party_bark_ids: PackedStringArray = PackedStringArray()
-## 本局已招募拿走的份数（unit id → 次数）。出售 / 满员替换离队按星级退回空白模板份数。
+## 本局已招募拿走的份数（unit id → 次数）。出售 / 替换离队不退回。
 var _taken_copies: Dictionary = {}
 var _snapshot_taken_copies: Dictionary = {}
 
@@ -260,17 +260,11 @@ func try_recruit(
 		result["reason"] = "no_gold"
 		return result
 
-	## 拖到已占座：随时可替换（旧人不退金；旧人按星级退回空白模板份数）。指挥官不可被替换。
+	## 拖到已占座：随时可替换（旧人不退金）。
 	if replace_entry_id >= 0:
-		var old_entry := deck.get_entry(replace_entry_id)
-		if old_entry == null:
+		if deck.get_entry(replace_entry_id) == null:
 			result["reason"] = "bad_replace"
 			return result
-		if old_entry.is_commander():
-			result["reason"] = "commander_unsellable"
-			return result
-		var old_unit_id := old_entry.get_unit_id()
-		var old_star := old_entry.get_star_display_level()
 		if not economy.spend(cost):
 			result["reason"] = "no_gold"
 			return result
@@ -279,8 +273,6 @@ func try_recruit(
 			economy.grant(cost)
 			result["reason"] = "replace_failed"
 			return result
-		## 先退旧人份数，再记新人拿走 1 份（顺序勿反）。
-		_return_copies(old_unit_id, _copies_returned_for_star(old_star))
 		_note_copy_taken(unit)
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
@@ -362,8 +354,7 @@ func try_refresh() -> bool:
 	return true
 
 
-## 出售上区队伍成员：正常退金并腾位；按星级退回空白模板份数；变动计入快照，可 reset。
-## 指挥官不可出售。
+## 出售上区队伍成员：正常退金并腾位；变动计入快照，可 reset。
 func try_sell(entry_id: int) -> Dictionary:
 	var result := {"ok": false, "reason": "inactive", "gold": 0, "entry_id": entry_id}
 	if not is_active or deck == null or economy == null:
@@ -372,17 +363,11 @@ func try_sell(entry_id: int) -> Dictionary:
 	if entry == null:
 		result["reason"] = "bad_entry"
 		return result
-	if entry.is_commander():
-		result["reason"] = "commander_unsellable"
-		return result
-	var unit_id := entry.get_unit_id()
-	var star := entry.get_star_display_level()
 	var price := DeckUpgradeService.get_sell_price(entry)
 	if not deck.remove_entry(entry_id):
 		result["reason"] = "remove_failed"
 		return result
 	economy.grant(price)
-	_return_copies(unit_id, _copies_returned_for_star(star))
 	result["ok"] = true
 	result["reason"] = "sold"
 	result["gold"] = price
@@ -401,8 +386,7 @@ func can_finish() -> bool:
 	if not is_active:
 		return false
 	if require_nonempty_roster:
-		## 指挥官常驻不算「已招到人」；开局招募仍须至少一名队伍成员。
-		return deck != null and deck.get_roster_unit_count() >= 1
+		return deck != null and deck.size() >= 1
 	return true
 
 
@@ -626,22 +610,6 @@ func _note_copy_taken(unit: UnitData) -> void:
 	if unit == null or unit.id.is_empty():
 		return
 	_taken_copies[unit.id] = _copies_taken(unit.id) + 1
-
-
-## 1★→1、2★→3、3★→9（3^(star-1)）；星级钳到 1–3。
-func _copies_returned_for_star(level: int) -> int:
-	var star := clampi(level, 1, 3)
-	var copies := 1
-	for _i in star - 1:
-		copies *= 3
-	return copies
-
-
-## 退回本局抽取池空白模板份数；taken 不低于 0（剩余 ≤9）。
-func _return_copies(unit_id: String, count: int) -> void:
-	if unit_id.is_empty() or count <= 0:
-		return
-	_taken_copies[unit_id] = maxi(0, _copies_taken(unit_id) - count)
 
 
 func _player_pool() -> Array[UnitData]:

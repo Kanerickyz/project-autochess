@@ -31,7 +31,6 @@ static func run_all() -> bool:
 	passed = _test_seat_prefer_then_bench() and passed
 	passed = _test_seat_to_bench_and_full_fails() and passed
 	passed = _test_nine_copies_leave_the_pool() and passed
-	passed = _test_sell_and_replace_return_copies_to_pool() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -1123,12 +1122,11 @@ static func _count_candidate(session: RecruitSession, unit_id: String) -> int:
 
 
 static func _buy_unit(session: RecruitSession, deck: DeckState, unit_id: String, times: int) -> bool:
-	## 出售会按星级回池；仅当总拥有已满才腾位，避免「卖了再买」冲掉 taken 计数。
 	var bought := 0
 	var guard := 0
 	while bought < times and guard < 120:
 		guard += 1
-		if not deck.can_add():
+		if deck.size() >= session.get_seat_cap():
 			var sold: Dictionary = session.try_sell(deck.get_entries()[0].entry_id)
 			if not bool(sold.get("ok", false)):
 				push_error("RecruitSessionTest: sell while taking %s failed" % unit_id)
@@ -1190,15 +1188,12 @@ static func _test_nine_copies_leave_the_pool() -> bool:
 	if not bool(sold.get("ok", false)):
 		push_error("RecruitSessionTest: sell after recruit failed")
 		return false
-	if session.get_copies_remaining(ARCHER.id) != 9:
-		push_error(
-			"RecruitSessionTest: selling a 1★ must return 1 blank copy to the pool, remaining=%d"
-			% session.get_copies_remaining(ARCHER.id)
-		)
+	if session.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: selling must not return a copy to the pool")
 		return false
 	session.reset()
 	if session.get_copies_remaining(ARCHER.id) != 9 or deck.size() != 0:
-		push_error("RecruitSessionTest: reset should restore snapshot taken_copies")
+		push_error("RecruitSessionTest: reset should return copies taken this visit")
 		return false
 
 	if not _buy_unit(session, deck, ARCHER.id, 8):
@@ -1285,7 +1280,7 @@ static func _test_nine_copies_leave_the_pool() -> bool:
 		push_error("RecruitSessionTest: replace should take a copy, got %s" % replaced.get("reason", ""))
 		return false
 	if session_replace.get_copies_remaining(ARCHER.id) != 8:
-		push_error("RecruitSessionTest: replace must consume one copy for the new unit")
+		push_error("RecruitSessionTest: replace must consume one copy")
 		return false
 
 	var deck_skip := _make_deck([], 5)
@@ -1296,169 +1291,6 @@ static func _test_nine_copies_leave_the_pool() -> bool:
 		return false
 	session_skip.skip()
 	if session_skip.get_copies_remaining(ARCHER.id) != 9 or deck_skip.size() != 0:
-		push_error("RecruitSessionTest: skip should roll back taken_copies via snapshot")
-		return false
-	return true
-
-
-static func _test_sell_and_replace_return_copies_to_pool() -> bool:
-	## 1★ 出售 +1；2★ 出售 +3；替换旧人回池+新人 -1；回池不超过 9；skip 仍回滚。
-	if RecruitSession.new()._copies_returned_for_star(1) != 1:
-		push_error("RecruitSessionTest: 1★ should return 1 copy")
-		return false
-	if RecruitSession.new()._copies_returned_for_star(2) != 3:
-		push_error("RecruitSessionTest: 2★ should return 3 copies")
-		return false
-	if RecruitSession.new()._copies_returned_for_star(3) != 9:
-		push_error("RecruitSessionTest: 3★ should return 9 copies")
-		return false
-	if RecruitSession.new()._copies_returned_for_star(0) != 1:
-		push_error("RecruitSessionTest: star clamp low should still return 1")
-		return false
-	if RecruitSession.new()._copies_returned_for_star(99) != 9:
-		push_error("RecruitSessionTest: star clamp high should return 9")
-		return false
-
-	var archer_only: Array[UnitData] = []
-	archer_only.append(ARCHER)
-	var deck := _make_deck([], 5)
-	var session := _make_custom_session(deck, _make_economy(40), archer_only, 1, 5)
-	var buy1: Dictionary = session.try_recruit(0)
-	if not bool(buy1.get("ok", false)):
-		push_error("RecruitSessionTest: 1★ sell fixture buy failed")
-		return false
-	if session.get_copies_remaining(ARCHER.id) != 8:
-		push_error("RecruitSessionTest: after 1★ buy remaining should be 8")
-		return false
-	var entry1 := buy1["entry"] as DeckEntry
-	var sold1: Dictionary = session.try_sell(entry1.entry_id)
-	if not bool(sold1.get("ok", false)):
-		push_error("RecruitSessionTest: 1★ sell failed")
-		return false
-	if session.get_copies_remaining(ARCHER.id) != 9:
-		push_error(
-			"RecruitSessionTest: 1★ sell should restore remaining to 9, got %d"
-			% session.get_copies_remaining(ARCHER.id)
-		)
-		return false
-
-	## 回池不超过 9：无 taken 时再卖预置单位，taken 不变负。
-	var deck_clamp := _make_deck([ARCHER], 5)
-	var session_clamp := _make_custom_session(deck_clamp, _make_economy(10), archer_only, 1, 6)
-	if session_clamp.get_copies_remaining(ARCHER.id) != 9:
-		push_error("RecruitSessionTest: clamp fixture should start at 9 remaining")
-		return false
-	var preseed_id := deck_clamp.get_entries()[0].entry_id
-	var sold_pre: Dictionary = session_clamp.try_sell(preseed_id)
-	if not bool(sold_pre.get("ok", false)):
-		push_error("RecruitSessionTest: selling preseeded unit failed")
-		return false
-	if session_clamp.get_copies_remaining(ARCHER.id) != 9:
-		push_error(
-			"RecruitSessionTest: return must clamp remaining ≤9 (taken≥0), got %d"
-			% session_clamp.get_copies_remaining(ARCHER.id)
-		)
-		return false
-
-	## 2★：直接改 entry.level 后出售应 +3。
-	var deck_star2 := _make_deck([], 5)
-	var session_star2 := _make_custom_session(deck_star2, _make_economy(40), archer_only, 1, 7)
-	## 先拿走 4 份，使出售 2★(+3) 后 remaining=9-4+3=8，且不会顶到 9 掩盖差额。
-	session_star2._taken_copies[ARCHER.id] = 4
-	var star2_entry := deck_star2.add_entry(ARCHER)
-	if star2_entry == null:
-		push_error("RecruitSessionTest: 2★ sell fixture add failed")
-		return false
-	star2_entry.level = 2
-	var remaining_before_2 := session_star2.get_copies_remaining(ARCHER.id)
-	if remaining_before_2 != 5:
-		push_error("RecruitSessionTest: 2★ fixture remaining before sell expected 5, got %d" % remaining_before_2)
-		return false
-	var sold2: Dictionary = session_star2.try_sell(star2_entry.entry_id)
-	if not bool(sold2.get("ok", false)):
-		push_error("RecruitSessionTest: 2★ sell failed")
-		return false
-	if session_star2.get_copies_remaining(ARCHER.id) != 8:
-		push_error(
-			"RecruitSessionTest: 2★ sell should return 3 copies (5→8), got %d"
-			% session_star2.get_copies_remaining(ARCHER.id)
-		)
-		return false
-
-	## 替换：旧人按星级回池，新人仍 -1。
-	var both: Array[UnitData] = []
-	both.append(ARCHER)
-	both.append(KNIGHT)
-	var deck_rep := _make_deck([], 5)
-	var session_rep := _make_custom_session(deck_rep, _make_economy(40), both, 2, 8)
-	session_rep.candidates = [ARCHER, KNIGHT]
-	var buy_old: Dictionary = session_rep.try_recruit(0)
-	if not bool(buy_old.get("ok", false)):
-		push_error("RecruitSessionTest: replace-return buy old failed")
-		return false
-	var old_entry := buy_old["entry"] as DeckEntry
-	if session_rep.get_copies_remaining(ARCHER.id) != 8:
-		push_error("RecruitSessionTest: after buying archer remaining should be 8")
-		return false
-	session_rep.candidates = [KNIGHT, ARCHER]
-	var buy_rep: Dictionary = session_rep.try_recruit(0, old_entry.entry_id)
-	if not bool(buy_rep.get("ok", false)):
-		push_error("RecruitSessionTest: replace-return recruit failed: %s" % buy_rep.get("reason", ""))
-		return false
-	if session_rep.get_copies_remaining(ARCHER.id) != 9:
-		push_error(
-			"RecruitSessionTest: replaced-away 1★ archer should return 1 copy, remaining=%d"
-			% session_rep.get_copies_remaining(ARCHER.id)
-		)
-		return false
-	if session_rep.get_copies_remaining(KNIGHT.id) != 8:
-		push_error(
-			"RecruitSessionTest: replacement knight should take 1 copy, remaining=%d"
-			% session_rep.get_copies_remaining(KNIGHT.id)
-		)
-		return false
-
-	## 2★ 被替换应回 3 份。
-	var deck_rep2 := _make_deck([], 5)
-	var session_rep2 := _make_custom_session(deck_rep2, _make_economy(40), both, 2, 9)
-	session_rep2._taken_copies[ARCHER.id] = 4
-	var old2 := deck_rep2.add_entry(ARCHER)
-	old2.level = 2
-	session_rep2.candidates = [KNIGHT, ARCHER]
-	var rep2: Dictionary = session_rep2.try_recruit(0, old2.entry_id)
-	if not bool(rep2.get("ok", false)):
-		push_error("RecruitSessionTest: 2★ replace failed")
-		return false
-	if session_rep2.get_copies_remaining(ARCHER.id) != 8:
-		push_error(
-			"RecruitSessionTest: replaced-away 2★ should return 3 (taken 4→1 → remaining 8), got %d"
-			% session_rep2.get_copies_remaining(ARCHER.id)
-		)
-		return false
-	if session_rep2.get_copies_remaining(KNIGHT.id) != 8:
-		push_error("RecruitSessionTest: 2★ replace must still take 1 new copy")
-		return false
-
-	## skip / reset 回滚 taken（含出售回池后的状态）。
-	var deck_skip := _make_deck([], 5)
-	var session_skip := _make_custom_session(deck_skip, _make_economy(40), archer_only, 1, 10)
-	var skip_buy: Dictionary = session_skip.try_recruit(0)
-	if not bool(skip_buy.get("ok", false)):
-		push_error("RecruitSessionTest: skip-return buy failed")
-		return false
-	var skip_entry := skip_buy["entry"] as DeckEntry
-	session_skip.try_sell(skip_entry.entry_id)
-	if session_skip.get_copies_remaining(ARCHER.id) != 9:
-		push_error("RecruitSessionTest: sell before skip should already be at 9")
-		return false
-	## 再买一次制造 taken≠快照，再 skip 应回到进门 9。
-	session_skip.candidates = [ARCHER]
-	var skip_buy2: Dictionary = session_skip.try_recruit(0)
-	if not bool(skip_buy2.get("ok", false)) or session_skip.get_copies_remaining(ARCHER.id) != 8:
-		push_error("RecruitSessionTest: second buy before skip failed")
-		return false
-	session_skip.skip()
-	if session_skip.get_copies_remaining(ARCHER.id) != 9 or deck_skip.size() != 0:
-		push_error("RecruitSessionTest: skip must restore snapshot taken_copies")
+		push_error("RecruitSessionTest: skip should return the copy taken this visit")
 		return false
 	return true

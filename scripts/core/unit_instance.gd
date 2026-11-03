@@ -20,8 +20,6 @@ var stat_modifiers: StatModifierStack = StatModifierStack.new()
 var combat_statuses: CombatStatusStack = CombatStatusStack.new()
 ## 战中召唤随从（技能生成 / Boss 衍生小兵等）；溃散与上限计数用。
 var is_combat_summon: bool = false
-## 场上指挥官：不占上场席位上限；阵亡即遭遇败；血跨遭遇由 RunState 继承。
-var is_commander: bool = false
 ## 本场由策反等效果转入友方阵营的敌方单位；无 DeckEntry，遭遇结束清场。
 var is_battle_converted: bool = false
 ## 本场已成功生成的随从只数（统计用；不设每角色上限）。
@@ -99,7 +97,6 @@ static func from_deck_entry(entry: DeckEntry, cell: Vector2i, team: Team) -> Uni
 		unit.main_ability_override = entry.runtime_main_ability.duplicate(true) as AbilityData
 	sync_from_deck_entry(unit, entry)
 	unit.current_hp = unit.get_effective_max_hp()
-	unit.is_commander = entry.is_commander()
 	return unit
 
 

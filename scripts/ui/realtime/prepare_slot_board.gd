@@ -191,11 +191,11 @@ func is_full() -> bool:
 	return occupied_count() >= slot_count and slot_count > 0
 
 
-## 是否还能再入座：未达 deploy_cap（不含指挥官），且仍有空座。
+## 是否还能再入座：未达 deploy_cap，且仍有空座。
 func can_assign_more(deploy_cap: int) -> bool:
 	if slot_count <= 0:
 		return false
-	if deployable_occupied_count() >= maxi(0, deploy_cap):
+	if occupied_count() >= maxi(0, deploy_cap):
 		return false
 	return occupied_count() < slot_count
 
@@ -205,17 +205,6 @@ func occupied_count() -> int:
 	for i in occupants.size():
 		if occupants[i] != null:
 			n += 1
-	return n
-
-
-## 计入上场席位上限的已占座人数（指挥官不占上限）。
-func deployable_occupied_count() -> int:
-	var n := 0
-	for i in occupants.size():
-		var entry := occupants[i] as DeckEntry
-		if entry == null or entry.is_commander():
-			continue
-		n += 1
 	return n
 
 

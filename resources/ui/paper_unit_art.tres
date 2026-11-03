@@ -26,7 +26,6 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_goblin_blue.png" id="b_spear_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_blue.png" id="b_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_blue.png" id="b_gravewright"]
-[ext_resource type="Texture2D" uid="uid://bgofo23sp1fan" path="res://assets/sprites/paper_cutout/units/unit_skeleton_general_blue.png" id="b_skeleton_general"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_blue.png" id="b_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_blue.png" id="b_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_blue.png" id="b_slime"]
@@ -63,7 +62,6 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_spear_goblin_red.png" id="r_spear_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_red.png" id="r_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_red.png" id="r_gravewright"]
-[ext_resource type="Texture2D" uid="uid://53hivrflre7v" path="res://assets/sprites/paper_cutout/units/unit_skeleton_general_red.png" id="r_skeleton_general"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_red.png" id="r_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_red.png" id="r_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_red.png" id="r_slime"]
@@ -137,14 +135,12 @@ archetype_by_unit_id = {
 "bus": &"ram",
 "chick": &"slime",
 "coffer_ward": &"coffer_ward",
-"commander": &"commander",
 "crossbow": &"crossbow",
 "dirge_horn": &"dirge_horn",
 "devour": &"devour",
 "edge_hex": &"edge_hex",
 "echo_spear": &"echo_spear",
 "final_trial_dev": &"final_trial_dev",
-"endless_dev": &"endless_dev",
 "paymaster": &"paymaster",
 
 "fused_enchant": &"fused_enchant",
@@ -170,14 +166,12 @@ archetype_by_unit_id = {
 "shield_boon": &"shield_boon",
 "shinobi": &"shinobi",
 "skeleton": &"skeleton",
-"skeleton_general": &"skeleton_general",
 "slime_split": &"slime",
 "soulcaller": &"soulcaller",
 "spear_goblin": &"spear_goblin",
 "spike_shield": &"spike_shield",
 "thunder_drum": &"thunder_drum",
 "token_ember": &"spear",
-"token_relic_skeleton": &"skeleton",
 "token_thick_copy": &"mirror_warden",
 "token_weak": &"skeleton",
 "token_weak_copy": &"echo_spear",
@@ -208,14 +202,12 @@ player_textures = {
 &"boss_minion_t5": ExtResource("b_valkyrie"),
 &"captain": ExtResource("b_captain"),
 &"coffer_ward": ExtResource("b_coffer_ward"),
-&"commander": ExtResource("b_giant_knight"),
 &"crossbow": ExtResource("b_crossbow"),
 &"devour": ExtResource("b_devour"),
 &"edge_hex": ExtResource("b_edge_hex"),
 &"dirge_horn": ExtResource("b_dirge_horn"),
 &"echo_spear": ExtResource("b_echo_spear"),
 &"final_trial_dev": ExtResource("dev_player"),
-&"endless_dev": ExtResource("dev_player"),
 &"fused_enchant": ExtResource("b_fused_enchant"),
 &"giant_knight": ExtResource("b_giant_knight"),
 &"goblin": ExtResource("b_goblin"),
@@ -223,7 +215,6 @@ player_textures = {
 &"flower_drum": ExtResource("b_flower_drum"),
 &"wood_drum": ExtResource("b_wood_drum"),
 &"gravewright": ExtResource("b_gravewright"),
-&"skeleton_general": ExtResource("b_skeleton_general"),
 &"horsebow": ExtResource("b_horsebow"),
 &"hunter": ExtResource("b_hunter"),
 &"iron_heart": ExtResource("b_iron_heart"),
@@ -271,14 +262,12 @@ enemy_textures = {
 &"boss_minion_t5": ExtResource("r_valkyrie"),
 &"captain": ExtResource("r_captain"),
 &"coffer_ward": ExtResource("r_coffer_ward"),
-&"commander": ExtResource("b_giant_knight"),
 &"crossbow": ExtResource("r_crossbow"),
 &"devour": ExtResource("r_devour"),
 &"edge_hex": ExtResource("r_edge_hex"),
 &"dirge_horn": ExtResource("r_dirge_horn"),
 &"echo_spear": ExtResource("r_echo_spear"),
 &"final_trial_dev": ExtResource("dev_enemy"),
-&"endless_dev": ExtResource("dev_enemy"),
 &"fused_enchant": ExtResource("r_fused_enchant"),
 &"giant_knight": ExtResource("r_giant_knight"),
 &"goblin": ExtResource("r_goblin"),
@@ -286,7 +275,6 @@ enemy_textures = {
 &"flower_drum": ExtResource("r_flower_drum"),
 &"wood_drum": ExtResource("r_wood_drum"),
 &"gravewright": ExtResource("r_gravewright"),
-&"skeleton_general": ExtResource("r_skeleton_general"),
 &"horsebow": ExtResource("r_horsebow"),
 &"hunter": ExtResource("r_hunter"),
 &"iron_heart": ExtResource("r_iron_heart"),
