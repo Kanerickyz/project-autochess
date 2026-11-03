@@ -23,6 +23,7 @@ deploy_time = 0.9
 script = ExtResource("1_unit")
 id = "golden_drum"
 display_name = "金鼓"
+theme_primary = &"band"
 cost = 3
 tier = 2
 command_cost = 3

@@ -4,7 +4,8 @@
 > 功能规则见 [Features/UNITS.md](../Features/UNITS.md)、[Features/PLAYER.md](../Features/PLAYER.md)、[Features/UNIT_THEME_BONDS.md](../Features/UNIT_THEME_BONDS.md)；本篇写**显示名、定位、主题归属、数值草案与主技能挂载**。  
 > **本版不写**：被动挂载；敌方 Boss 高威胁位见 [BOSS_ROSTER.md](./BOSS_ROSTER.md) / [Features/BOSS.md](../Features/BOSS.md)。技能效果正文见 [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md)，本篇只写挂载关系。  
 > **【包装】** 中世纪魔幻（可含亡灵 / 王权 / 魔物佣兵 / 野兽坐骑）；剪影可读优先；显示名宜短（约 2～3 字）。  
-> **【主题羁绊】** 八主题主/辅归属见 §2.1；规则见 Features 主题羁绊篇（【As-Is】资源未挂字段）。  
+> **【主题羁绊】** 八主题主/辅归属见 §2.1；规则见 Features 主题羁绊篇（【As-Is · 部分已实装】realtime / enemy 资源已挂 `theme_primary`/`theme_secondary`；成形点数仍为占位）。  
+
 > **【1:1 挂载】** 每条主技能恰好挂一名友方；技能池条目见技能库，挂载见 §6。
   
 > **【资源】** 可招募友方 **49 人**（含散咒 / 葬焰 / **爆爆** / **甲胄师** / **金鼓** / **雷鼓** / **花鼓** / **木鼓**）已写入 `resources/units/realtime/`（英文 id 见 §4）；§1 旧写「二十五人」为历史稿，以池子与 §6 为准。资源若仍有 `command_cost`，主路径应忽略。

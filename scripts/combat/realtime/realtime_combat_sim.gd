@@ -66,6 +66,8 @@ var _turn_refresh_armed_instance_id: int = -1
 var _completed_actor_turns: int = 0
 ## begin_combat 后：开战技能排空且行动队列已排出。
 var _combat_queue_seeded: bool = false
+## 本场开战锁阵时玩家已成形主题（减员不降；仅记录，敌方不享受）。
+var _formed_theme_ids: Array[StringName] = []
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -103,6 +105,7 @@ func dispose() -> void:
 	_occupancy.clear()
 	_lock_spawn_order.clear()
 	_action_queue.clear()
+	_formed_theme_ids.clear()
 	_current_actor = null
 	_actor_turn_active = false
 	_had_boss_leader = false
@@ -272,6 +275,11 @@ func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
 	return _boss_try_teleport(rt, origin)
 
 
+## 本场已成形主题 id（开战锁阵结算；减员不降）。
+func get_formed_theme_ids() -> Array[StringName]:
+	return _formed_theme_ids.duplicate()
+
+
 ## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出先友后敌行动队列。
 ## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵/时停播报后再结算并排队列。
 func begin_combat() -> void:
@@ -280,6 +288,7 @@ func begin_combat() -> void:
 	_started = true
 	_completed_actor_turns = 0
 	_combat_queue_seeded = false
+	_apply_theme_bonds_at_lock()
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
 	if defer_effect_resolve:
 		if not has_pending_effects():
@@ -469,6 +478,19 @@ func advance_fixed_step() -> void:
 func _flush_combat_start_lock() -> void:
 	_drain_effects(true)
 	_seed_action_queue_if_ready()
+
+
+## 锁阵后按上场友方结算主题成形，并把占位 EffectSpec 挂到载体（敌方不计不享受）。
+func _apply_theme_bonds_at_lock() -> void:
+	_formed_theme_ids.clear()
+	var player_units: Array = []
+	for rt in _lock_spawn_order:
+		if rt == null or rt.unit == null:
+			continue
+		if not rt.is_player():
+			continue
+		player_units.append(rt.unit)
+	_formed_theme_ids = ThemeBondService.apply_formed_bonds_to_player_units(player_units)
 
 
 func _seed_action_queue_if_ready() -> void:

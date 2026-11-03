@@ -30,4 +30,5 @@ team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_boomling")
 ability = ExtResource("3_ability")
+theme_primary = &"artisan"
 icon = ExtResource("4_icon")

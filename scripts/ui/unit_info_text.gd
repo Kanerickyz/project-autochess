@@ -101,12 +101,27 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
+## 信息卡主题行：「主题：主」或「主题：主 / 辅」；无主题返回空。
+static func get_theme_line_from_unit_data(data: UnitData) -> String:
+	if data == null:
+		return ""
+	if not UnitTheme.is_valid_id(data.theme_primary):
+		return ""
+	var primary := UnitTheme.display_name(data.theme_primary)
+	if UnitTheme.is_valid_id(data.theme_secondary) and data.theme_secondary != data.theme_primary:
+		return "主题：%s / %s" % [primary, UnitTheme.display_name(data.theme_secondary)]
+	return "主题：%s" % primary
+
+
 static func get_skills_block_from_unit_data(
 	data: UnitData, level: int = 1, with_stat_icons: bool = false
 ) -> String:
 	if data == null:
 		return "无技能"
 	var lines: PackedStringArray = []
+	var theme_line := get_theme_line_from_unit_data(data)
+	if not theme_line.is_empty():
+		lines.append(theme_line)
 	if data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
 		lines.append(format_ability("技能", data.ability, scale, with_stat_icons, level))
@@ -132,6 +147,9 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
+	var theme_line := get_theme_line_from_unit_data(entry.unit)
+	if not theme_line.is_empty():
+		lines.append(theme_line)
 	var main_ab := entry.get_main_ability()
 	if main_ab != null:
 		var scale := 1
@@ -348,6 +366,9 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 		return "无技能"
 
 	var lines: PackedStringArray = []
+	var theme_line := get_theme_line_from_unit_data(unit.unit_data)
+	if not theme_line.is_empty():
+		lines.append(theme_line)
 	if unit.unit_data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(

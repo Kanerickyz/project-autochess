@@ -29,4 +29,5 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_shinobi")
 ability = ExtResource("3_ability")
+theme_primary = &"arcane"
 icon = ExtResource("icon_tex")

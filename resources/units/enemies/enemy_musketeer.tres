@@ -33,3 +33,5 @@ command_cost = 4
 stats = SubResource("UnitStats_enemy_musketeer")
 team_default = 1
 ability = ExtResource("3_ability")
+theme_primary = &"artisan"
+theme_secondary = &"knight_order"

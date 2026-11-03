@@ -30,4 +30,6 @@ team_default = 1
 command_cost = 4
 stats = SubResource("UnitStats_enemy_coffer")
 ability = ExtResource("3_ability")
+theme_primary = &"guard"
+theme_secondary = &"mercenary"
 icon = ExtResource("4_icon")

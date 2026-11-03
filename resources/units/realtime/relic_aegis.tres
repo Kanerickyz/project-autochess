@@ -28,3 +28,4 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_relic_aegis")
 ability = ExtResource("3_ability")
+theme_primary = &"undead"

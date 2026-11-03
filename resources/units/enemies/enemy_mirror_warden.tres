@@ -29,3 +29,4 @@ team_default = 1
 command_cost = 5
 stats = SubResource("UnitStats_enemy_mirror_warden")
 ability = ExtResource("3_ability")
+theme_primary = &"knight_order"

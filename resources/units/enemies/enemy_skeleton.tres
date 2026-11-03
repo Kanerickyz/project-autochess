@@ -32,3 +32,4 @@ command_cost = 1
 stats = SubResource("UnitStats_enemy_skeleton")
 team_default = 1
 ability = ExtResource("3_ability")
+theme_primary = &"undead"

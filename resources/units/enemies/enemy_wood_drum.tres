@@ -26,6 +26,7 @@ display_name = "敌·木鼓"
 cost = 2
 tier = 1
 team_default = 1
+theme_primary = &"band"
 command_cost = 2
 stats = SubResource("UnitStats_enemy_wood_drum")
 icon = ExtResource("4_icon")
