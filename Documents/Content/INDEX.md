@@ -8,8 +8,9 @@
 | 目录 | 负责 |
 |------|------|
 | [Features/UNITS.md](../Features/UNITS.md) | 友方 / 敌方 / 生成的代理角色；属性大类；攻击方式；索敌与生命周期 |
+| [Features/UNIT_THEME_BONDS.md](../Features/UNIT_THEME_BONDS.md) | 主题羁绊规则（八主题；上场凑人） |
 | [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、自带技能/白板、事件联动与强度维度（规则） |
-| **本目录** | 角色库、**独立技能内容池**与 **1:1** 主技能挂载表 |
+| **本目录** | 角色库（含主题归属）、**独立技能内容池**与 **1:1** 主技能挂载表 |
 | [Reference/](../Reference/) | 外部游戏摘录；非正式名单 |
 
 旧网格工具环里的动物占位单位**不是**本目录内容；勿与实时主路径角色库混读。
@@ -18,7 +19,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（四十九人 · 含散咒/葬焰/爆爆/金鼓/雷鼓/花鼓/木鼓；§6 与技能 1:1；realtime 资源已写） |
+| [UNITS_ROSTER.md](./UNITS_ROSTER.md) | **友方角色库**（四十九人 · §2.1 主题归属 · §6 与技能 1:1；realtime 资源已写） |
 
 | [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含吞噬左右吞纳；挂载见角色库 §6） |

@@ -19,7 +19,7 @@
 - **已实现（招募主路径）**：角色候选槽锁定（刷新保留）；观战手动倍速 1×/2×/3×（`RealtimeBattleController.time_scale`）
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
-- **未创建** `resources/traits/`（v1 不含羁绊）
+- **未创建** 主题羁绊资源/发放（规格见 [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)；【As-Is】未实装）
 - 版本控制忽略 `.godot/`、`android/`、本地 `.artifacts/`、编辑器 `*.tscn*.tmp`
 
 可在编辑器中 F5 验证棋盘。文档中的 **To-Be** 若与 As-Is 冲突，以代码与本节为准。
@@ -240,13 +240,13 @@ extends Resource
 - **牌库永久加成**：`DeckEntry.bonus_attack` / `bonus_max_hp`；同步进场上实例的攻击与生命上限
 - **联动技能（Ability）**：`UnitData.ability`（**必填**）+ 可选 `passives`；`AbilityData` 持有 `Array[EffectSpec]`，战斗内由 `CombatEventBus` 驱动
 - **增益（Buff） / 事件选项**：商店与事件的**非战斗永久改写**走 `BuffApplicator` / `EventEffectResolver`（自有 `EffectType`），**不**默认并入 `get_all_effect_specs()`。凡会进入战斗触发的效果必须挂 `EffectSpec`（见 BUFF_SYSTEM）
-- **tags**：供 `allies_with_tag` 等目标选择使用；**v1 不做**「凑 N 个同 tag 触发团队增益」的 Trait 系统
+- **tags**：供 `allies_with_tag` 等目标选择使用（技能筛选）；**主题羁绊**（凑同主题人数）见 [UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)，须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff
 
-**远期 Trait（非 v1）**：若加入 `TraitData` / `TraitSystem`，按 [GAME_VISION.md](./GAME_VISION.md) 约定复用 `EffectSpec`，不在 v1 目录与里程碑中实现。
+**主题羁绊（To-Be）**：单位主/辅主题 + 上场计数成形；【As-Is】未挂字段、未发放。
 
 ### 3.6 UI Layer
 
-- 场景：`scenes/ui/` 下分 ShopPanel、HandPanel、BoardView、PlayerHUD（v1 无羁绊面板）
+- 场景：`scenes/ui/` 下分 ShopPanel、HandPanel、BoardView、PlayerHUD（主题羁绊 HUD 【As-Is】未做）
 - To-Be 弹窗：`DeckReplaceModal`、`BuffAttachModal`（由 `SkillAttachModal` 迁移）
 - UI 只调用 **Service / Facade**（如 `MatchFacade.buy_unit(slot)`），不直接改棋盘数组
 - 单位 tooltip：展示联动技能说明（`EffectSpec` 的 `@export_multiline` 描述或自动生成）

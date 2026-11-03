@@ -20,12 +20,12 @@ description: Use when designing or reviewing builds, ability synergies, position
 
 | 定稿 | 含义 |
 |------|------|
-| v1 **不做**种族/职业羁绊 | 禁止把「凑 N 个同标签」写成规格或实现另一套 Buff |
-| 构筑深度载体 | **单位内建技能 + 槽位站位 + 增益卡**（+ 装备/消耗品若已入规格） |
-| 效果统一管线 | 战斗增益经 `EffectSpec` / `EffectResolver`；触发经 `CombatEventBus` |
-| 流派不对外 | 内部可用「坚韧 / 冲锋」等称呼；不对玩家挂流派标签 |
+| **主题羁绊** | 八主题上场凑人触发团队层；见 `Features/UNIT_THEME_BONDS.md`；**必须**复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff |
+| 构筑深度载体 | **单位内建技能 + 槽位站位 + 增益卡 + 主题羁绊**（+ 装备/消耗品若已入规格） |
+| 效果统一管线 | 战斗增益与主题团队层经 `EffectSpec` / `EffectResolver`；触发经 `CombatEventBus` |
+| 内部流派不对外 | 内部可用「坚韧 / 冲锋」等称呼；八**主题名**可对玩家；勿与内部流派名混用 |
 
-本 skill 里的「羁绊 / 乘数」在本项目中映射为：**技能联动、相邻/前后排站位、增益与装备协同**——不是标签凑数。
+本 skill 里审查乘法时：主题层当作**弱身份开关 / 弱 B**，须与单位技能**分轴**；不要把「凑 N 人」写成与技能同轴再乘。
 
 ## 何时用 / 不用
 
@@ -112,10 +112,11 @@ description: Use when designing or reviewing builds, ability synergies, position
 
 | 错误 | 改正 |
 |------|------|
-| 写成「3 法师羁绊 -20% 魔抗」规格 | 改成具体技能/增益效果；v1 不写标签凑数 |
+| 写成含糊「法师羁绊 -20% 魔抗」却不走统一管线 | 主题成形效果须可表达为 EffectSpec；点数归 balance-designer |
 | 只有 B、没有门槛与破绽 | 补空间/时序/状态门槛 + 至少一类约束 |
 | 数值直接定稿塞进功能文 | 功能归 game-designer；点数归 balance-designer |
 | 用另套脚本实现「团队羁绊 Buff」 | 必须走 EffectSpec / EffectResolver |
+| 主题层与单位技能同轴叠乘 | 主题层做弱身份开关；与听亡/挨打等内建轴分轴 |
 | 无限击杀重置无上限 | 明确每次行动连锁次数顶 |
 
 ## 与其它技能

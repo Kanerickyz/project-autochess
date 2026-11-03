@@ -1,7 +1,7 @@
 # 角色单位
 
 > 功能规格 · 只谈规则与结构，不写具体数值 · 2026-10-16（回合制依次行动版）  
-> 相关文档：[游戏愿景](../GAME_VISION.md) · [玩家](./PLAYER.md) · [Content 角色库](../Content/UNITS_ROSTER.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [Boss](./BOSS.md) · [角色技能](./UNIT_ABILITIES.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
+> 相关文档：[游戏愿景](../GAME_VISION.md) · [玩家](./PLAYER.md) · [Content 角色库](../Content/UNITS_ROSTER.md) · [战斗](./COMBAT.md) · [战斗关卡](./COMBATLEVEL.md) · [Boss](./BOSS.md) · [角色技能](./UNIT_ABILITIES.md) · [主题羁绊](./UNIT_THEME_BONDS.md) · [增益](../BUFF_SYSTEM.md) · [架构](../ARCHITECTURE.md)  
 > **本版不写**：兵种花名册与具体数字（见 Content）；伤害公式系数；每一级加多少。  
 > **【现状】** 属性字段在单位属性脚本（`scripts/data/unit_stats.gd`）；资源在 `resources/units/realtime/`。资源中仍可能残留 `command_cost`（**【To-Be】删除号令费用**，见玩家篇）。**【移动】** 回合内一动：整数 **`steps_per_turn`（一回合能走几格）** + 八向格步 + **落格顿步** + 切比雪夫格距（见战斗关卡 / 战斗）。已移除 `move_speed`。旧动物占位与象棋式走法身份只留在旧网格工具环。
 
@@ -15,7 +15,7 @@
 | 准备 | 从手牌入**角色座位**（见玩家 / 战斗关卡） |
 | 开战 | 自己索敌、八向格步靠近、攻击；玩家不能拖动、不能点技能、不能再出牌 |
 
-第一版不做种族/职业羁绊。
+可招友方挂 **主题**（主必有、辅可选）；上场凑同主题触发团队层，见 [主题羁绊](./UNIT_THEME_BONDS.md)。**【As-Is】** 资源尚未挂主题字段。
 
 ---
 
