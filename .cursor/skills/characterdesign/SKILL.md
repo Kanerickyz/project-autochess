@@ -38,6 +38,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 | --- | --- |
 | **`characterdesign`（本技能）** | 主持全流程：阶段 I 对齐 → 阶段 II 合同 → Content → 实现 |
 | **`design-brainstorm`** | **阶段 I 必用流程**（见下）；不单列时仍须满足其硬约束与返回结构 |
+| **`build-multiplicative-design`** | 阶段 I 谈技能联动 / 站位杠杆 / 增益协同时参照；乘数落技能·站位·增益，不做标签羁绊 |
 | `implement` | 非角色纵切片（系统、UI、战斗管线） |
 | `verify-godot` | 轻量 / 完全跑验证 |
 
