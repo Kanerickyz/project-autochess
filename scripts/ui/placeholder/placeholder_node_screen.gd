@@ -13,9 +13,9 @@ func _ready() -> void:
 	_continue_button.pressed.connect(_on_continue_pressed)
 
 
-func show_placeholder(node_type: MapNodeType.Type) -> void:
+func show_placeholder(node_type: MapNodeType.Type, desc: String = "") -> void:
 	_title.text = MapNodeType.display_name(node_type)
-	_desc.text = "（占位）本节点内容尚未实装，点击继续回到地图。"
+	_desc.text = desc if not desc.is_empty() else "（占位）本节点内容尚未实装，点击继续回到地图。"
 	visible = true
 	_continue_button.grab_focus()
 
