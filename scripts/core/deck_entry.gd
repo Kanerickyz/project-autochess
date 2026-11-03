@@ -12,8 +12,8 @@ var level: int = 1
 var experience: int = 0
 var bonus_attack: int = 0
 var bonus_max_hp: int = 0
-## 装备槽内容：最多 3 件（受行为职业槽上限限制）；跨遭遇保留。
-## 护甲与技能类共槽；合计护甲 = 各件护甲 armor_block 之和（战斗扫读/结算一条）。
+## 装备槽内容：最多 3 件（受 UnitData.equipment_slot_count 限制）；跨遭遇保留。
+## 合计护甲 = 各件当前 armor_block 之和（战斗扫读/结算一条）。
 var equipments: Array[EquipmentData] = []
 ## 各件护甲满额（与 equipments 对齐；战斗耗尽后 refill 用）。
 var equipment_piece_max: Array[int] = []
@@ -67,10 +67,6 @@ func is_fused_enchant() -> bool:
 func get_main_ability() -> AbilityData:
 	if runtime_main_ability != null:
 		return runtime_main_ability
-	var equipped := get_equipment_abilities()
-	if not equipped.is_empty():
-		return equipped[0]
-	## 模板回退：献祭/熔印等仍可读角色关联技能；开战友方空装不靠此触发。
 	if unit != null:
 		return unit.ability
 	return null
@@ -102,11 +98,11 @@ func get_buff_summary() -> String:
 	return ", ".join(names)
 
 
-## 装备槽上限：由行为职业派生（坦克 0／近战 1／刺客 2／远程 3）；无 unit 时默认 1。
+## 装备槽上限：取自 UnitData（0～3）；无 unit 时默认 1。
 func get_equipment_slot_count() -> int:
 	if unit == null:
 		return 1
-	return clampi(unit.get_equipment_slot_count_resolved(), 0, EQUIPMENT_SLOT_HARD_MAX)
+	return clampi(unit.equipment_slot_count, 0, EQUIPMENT_SLOT_HARD_MAX)
 
 
 func get_equipment_occupied() -> int:
@@ -127,19 +123,7 @@ func get_equipment_at(index: int) -> EquipmentData:
 	return equipments[index]
 
 
-## 技能类装备上的 AbilityData 列表（槽序；同 id 两件会各出现一次）。
-func get_equipment_abilities() -> Array[AbilityData]:
-	var out: Array[AbilityData] = []
-	for item in equipments:
-		if item == null or not item.is_ability_kind():
-			continue
-		var ab := item.get_ability()
-		if ab != null:
-			out.append(ab)
-	return out
-
-
-## 合计当前护甲（仅护甲类各件 armor_block 之和）。
+## 合计当前护甲（各件 armor_block 之和）。
 func get_armor_block() -> int:
 	var total := 0
 	for item in equipments:

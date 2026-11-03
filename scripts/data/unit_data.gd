@@ -14,14 +14,6 @@ enum ThemeBond {
 	GUARD = 7,
 }
 
-## 行为职业：管走打与装备格（坦克 0／近战 1／刺客 2／远程 3）。
-enum CombatProfession {
-	MELEE = 0,
-	TANK = 1,
-	RANGED = 2,
-	ASSASSIN = 3,
-}
-
 @export var id: String = ""
 @export var display_name: String = ""
 ## 商店买进构筑库的金币。
@@ -33,16 +25,11 @@ enum CombatProfession {
 @export var kill_gold_reward: int = -1
 ## 主题羁绊主归类（可招友方须非 NONE）。
 @export var theme_bond: ThemeBond = ThemeBond.NONE
-## 行为职业（走打 + 装备格）；见 Features/UNITS.md §7。
-@export var combat_profession: CombatProfession = CombatProfession.MELEE:
-	set(value):
-		combat_profession = value
-		equipment_slot_count = equipment_slots_for_profession(value)
 @export var stats: UnitStats
 @export var team_default: UnitInstance.Team = UnitInstance.Team.PLAYER
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
-## 装备槽上限（0～3）；以行为职业为准，导出字段同步便于旧资源/测例对照。
+## 装备槽上限（0～3）；多数角色默认 1。见 Features/EQUIPMENT.md。
 @export_range(0, 3, 1) var equipment_slot_count: int = 1
 
 
@@ -64,46 +51,6 @@ static func theme_bond_label(bond: ThemeBond) -> String:
 			return "护卫"
 		_:
 			return "未定"
-
-
-static func combat_profession_label(prof: CombatProfession) -> String:
-	match prof:
-		CombatProfession.TANK:
-			return "坦克"
-		CombatProfession.RANGED:
-			return "远程"
-		CombatProfession.ASSASSIN:
-			return "刺客"
-		_:
-			return "近战"
-
-
-static func equipment_slots_for_profession(prof: CombatProfession) -> int:
-	match prof:
-		CombatProfession.TANK:
-			return 0
-		CombatProfession.ASSASSIN:
-			return 2
-		CombatProfession.RANGED:
-			return 3
-		_:
-			return 1
-
-
-func get_equipment_slot_count_resolved() -> int:
-	return equipment_slots_for_profession(combat_profession)
-
-
-func is_tank_profession() -> bool:
-	return combat_profession == CombatProfession.TANK
-
-
-func is_ranged_profession() -> bool:
-	return combat_profession == CombatProfession.RANGED
-
-
-func is_assassin_profession() -> bool:
-	return combat_profession == CombatProfession.ASSASSIN
 
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、对砍例外、足迹策略机。

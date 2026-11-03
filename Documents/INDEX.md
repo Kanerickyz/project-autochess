@@ -1,6 +1,6 @@
 # Project Autochess — 文档索引
 
-> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-11-03
+> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后免费强化 + 招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-11-02
 >
 > 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后免费强化**见 [Features/VICTORY_BOOST.md](./Features/VICTORY_BOOST.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
@@ -36,7 +36,7 @@
 | [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
 | [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备购买入口＋半场换座；本切片不含买人） |
-| [Features/EQUIPMENT.md](./Features/EQUIPMENT.md) | **装备**（护甲+技能类共槽；职业固定格数；详情卸载、队伍暂存） |
+| [Features/EQUIPMENT.md](./Features/EQUIPMENT.md) | **装备**（0～3 槽、满槽拒绝、详情卸载、队伍暂存、合计护甲） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
 | [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |

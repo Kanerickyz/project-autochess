@@ -57,7 +57,6 @@ static func turn_step_budget(unit_or_stats: Variant) -> int:
 
 ## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
 ## Boss 首领走三选一策略机（出手 / 召唤 / 瞬移），不套普通「靠近并出手」。
-## 刺客：已在攻距直接打；否则瞬移到目标附近空格再打。
 ## can_summon / can_boss_teleport 由 sim 注入；空 Callable 时首领跳过对应分支。
 static func decide_turn(
 	unit: RtUnit,
@@ -116,12 +115,6 @@ static func decide_turn(
 	if unit.unit != null and unit.unit.cannot_move:
 		decision.turn_done = true
 		return decision
-	## 刺客：瞬移贴敌（邻格满则扩圈）；失败再走普通八向靠近。
-	if unit.unit != null and unit.unit.is_assassin_profession():
-		var blink := pick_assassin_teleport_cell(unit, unit.target, is_cell_free)
-		if blink != Vector2i(-1, -1):
-			decision.teleport_cell = blink
-			return decision
 	decision.step = pick_step(unit, unit.target, is_cell_free)
 	if decision.step == Vector2i.ZERO:
 		## 被挡或无法靠近：本动结束（不空挥）
@@ -420,33 +413,9 @@ static func grid_reach(reach: float) -> float:
 	return reach
 
 
-## 索敌：非刺客受坦克嘲讽硬锁；刺客无视硬锁并按职业优先序。
-## 无硬锁时：sight_range 内格距最近；没有则全场最近。
-## 平局：先比曼哈顿，再比 instance_id。
+## sight_range 内格距最近敌人；没有则全场最近。
+## 平局：先比曼哈顿（避免同切比雪夫时全体锁左侧先生成单位），再比 instance_id。
 static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
-	var enemies: Array[RtUnit] = []
-	for item in units:
-		var other := item as RtUnit
-		if other == null or other == unit or not other.is_alive():
-			continue
-		if other.get_team() == unit.get_team():
-			continue
-		enemies.append(other)
-	if enemies.is_empty():
-		return null
-	if unit.unit != null and unit.unit.is_assassin_profession():
-		return _acquire_assassin_target(unit, enemies)
-	var tanks: Array[RtUnit] = []
-	for e in enemies:
-		if e.unit != null and e.unit.is_tank_profession():
-			tanks.append(e)
-	## 嘲讽硬锁：场上有敌方坦克时，非刺客只能打坦克（多坦克取最近）。
-	if not tanks.is_empty():
-		return _pick_nearest_target(unit, tanks)
-	return _pick_sight_then_nearest(unit, enemies)
-
-
-static func _pick_sight_then_nearest(unit: RtUnit, enemies: Array[RtUnit]) -> RtUnit:
 	var sight := unit.get_stats().sight_range
 	var best_in_sight: RtUnit = null
 	var best_in_sight_dist := 999999
@@ -456,7 +425,12 @@ static func _pick_sight_then_nearest(unit: RtUnit, enemies: Array[RtUnit]) -> Rt
 	var best_any_dist := 999999
 	var best_any_man := 999999
 	var best_any_id := 0x7fffffff
-	for other in enemies:
+	for item in units:
+		var other := item as RtUnit
+		if other == null or other == unit or not other.is_alive():
+			continue
+		if other.get_team() == unit.get_team():
+			continue
 		var d := unit.cell_distance_to(other)
 		var man := _footprint_manhattan(unit, other, Vector2i.ZERO)
 		var oid := other.get_id()
@@ -473,120 +447,6 @@ static func _pick_sight_then_nearest(unit: RtUnit, enemies: Array[RtUnit]) -> Rt
 			best_in_sight_id = oid
 			best_in_sight = other
 	return best_in_sight if best_in_sight != null else best_any
-
-
-static func _pick_nearest_target(unit: RtUnit, enemies: Array[RtUnit]) -> RtUnit:
-	var best: RtUnit = null
-	var best_d := 999999
-	var best_man := 999999
-	var best_id := 0x7fffffff
-	for other in enemies:
-		var d := unit.cell_distance_to(other)
-		var man := _footprint_manhattan(unit, other, Vector2i.ZERO)
-		var oid := other.get_id()
-		if _is_better_target(d, man, oid, best_d, best_man, best_id):
-			best_d = d
-			best_man = man
-			best_id = oid
-			best = other
-	return best
-
-
-## 刺客优先序：远程 → 刺客 → 近战 → 坦克；同档先当前生命更少，再更近。
-static func _acquire_assassin_target(unit: RtUnit, enemies: Array[RtUnit]) -> RtUnit:
-	var best: RtUnit = null
-	var best_rank := 999
-	var best_hp := 0x7fffffff
-	var best_d := 999999
-	var best_man := 999999
-	var best_id := 0x7fffffff
-	for other in enemies:
-		var rank := _assassin_profession_rank(other)
-		var hp := other.unit.current_hp if other.unit != null else 0x7fffffff
-		var d := unit.cell_distance_to(other)
-		var man := _footprint_manhattan(unit, other, Vector2i.ZERO)
-		var oid := other.get_id()
-		if rank < best_rank:
-			best = other
-			best_rank = rank
-			best_hp = hp
-			best_d = d
-			best_man = man
-			best_id = oid
-			continue
-		if rank > best_rank:
-			continue
-		if hp < best_hp:
-			best = other
-			best_hp = hp
-			best_d = d
-			best_man = man
-			best_id = oid
-			continue
-		if hp > best_hp:
-			continue
-		if _is_better_target(d, man, oid, best_d, best_man, best_id):
-			best = other
-			best_d = d
-			best_man = man
-			best_id = oid
-	return best
-
-
-static func _assassin_profession_rank(other: RtUnit) -> int:
-	if other == null or other.unit == null:
-		return 2
-	match other.unit.get_combat_profession():
-		UnitData.CombatProfession.RANGED:
-			return 0
-		UnitData.CombatProfession.ASSASSIN:
-			return 1
-		UnitData.CombatProfession.TANK:
-			return 3
-		_:
-			return 2
-
-
-## 刺客瞬移落点：从目标邻格起向外扩圈找空格；无空格返回 (-1,-1)。
-static func pick_assassin_teleport_cell(
-	unit: RtUnit,
-	target: RtUnit,
-	is_cell_free: Callable,
-) -> Vector2i:
-	if unit == null or target == null or not is_cell_free.is_valid():
-		return Vector2i(-1, -1)
-	var goal := _nearest_footprint_cell(unit.cell, target)
-	var reach := grid_reach(unit.get_stats().attack_reach)
-	var max_r := 12
-	for radius in range(1, max_r + 1):
-		var best := Vector2i(-1, -1)
-		var best_d_to_goal := 999999
-		var best_man := 999999
-		var found := false
-		for dy in range(-radius, radius + 1):
-			for dx in range(-radius, radius + 1):
-				var cheb := maxi(absi(dx), absi(dy))
-				if cheb != radius:
-					continue
-				var cell := Vector2i(goal.x + dx, goal.y + dy)
-				if cell == unit.cell:
-					continue
-				if not bool(is_cell_free.call(cell)):
-					continue
-				## 优先能进入攻距的落点。
-				var d_goal := RtUnit.chebyshev(cell, goal)
-				if float(d_goal) > reach + REACH_EPSILON and radius == 1:
-					## 邻格仍优先占邻；扩圈时再筛 reach。
-					pass
-				var man := absi(cell.x - goal.x) + absi(cell.y - goal.y)
-				if not found or d_goal < best_d_to_goal or (d_goal == best_d_to_goal and man < best_man):
-					found = true
-					best_d_to_goal = d_goal
-					best_man = man
-					best = cell
-		if found:
-			return best
-	return Vector2i(-1, -1)
 
 
 ## 切比雪夫更近优先；同距再比曼哈顿；再平局取较小 instance_id。

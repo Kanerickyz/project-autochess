@@ -260,7 +260,7 @@ static func _test_combat_temp_armor_depletes_before_equipment() -> bool:
 
 static func _test_multi_equipment_armor_sums() -> bool:
 	var unit_data := UnitData.new()
-	unit_data.combat_profession = UnitData.CombatProfession.ASSASSIN
+	unit_data.equipment_slot_count = 2
 	var entry := DeckEntry.new()
 	entry.unit = unit_data
 	var eq1 := EquipmentData.new()
@@ -347,16 +347,11 @@ static func _test_realtime_lethal_skips_hurt() -> bool:
 		return false
 	if int(counts[CombatEvents.ON_FRIEND_DAMAGE_TAKEN]) != 0:
 		return false
-	## 致死先 staging；OnDeath 在 finalize 后发出。
-	if int(counts[CombatEvents.ON_DEATH]) != 0:
+	if int(counts[CombatEvents.ON_DEATH]) != 1:
 		return false
 	if int(counts[CombatEvents.ON_DEAL_DAMAGE]) != 1:
 		return false
-	var pending := pipeline.take_pending_death_finalizations()
-	if pending.size() != 1:
-		return false
-	pipeline.emit_post_kill_death_events(pending[0])
-	return int(counts[CombatEvents.ON_DEATH]) == 1
+	return true
 
 
 static func _test_nonlethal_still_hurts() -> bool:

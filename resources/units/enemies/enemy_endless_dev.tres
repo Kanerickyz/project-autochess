@@ -24,8 +24,6 @@ deploy_time = 0.7
 [resource]
 script = ExtResource("1_unit")
 id = "enemy_endless_dev"
-combat_profession = 0
-equipment_slot_count = 1
 display_name = "无尽傀儡"
 cost = 0
 tier = 1
