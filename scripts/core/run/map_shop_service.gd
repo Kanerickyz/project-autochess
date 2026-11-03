@@ -117,6 +117,41 @@ func roll_shelf() -> void:
 			_consumable_offers.append(entry.get("res"))
 
 
+## 天内分类商店：直接给定本次货架（不抽合并池）。
+func open_with_offers(consumables: Array, equipment: Array) -> void:
+	_open = true
+	_consumable_offers = consumables.duplicate()
+	_equipment_offers = equipment.duplicate()
+	shop_changed.emit()
+
+
+## 天内商店：买装备进队伍装备暂存（不直接挂人）。暂存满 / 金不足失败不扣金。
+func try_buy_equipment_to_stash(slot_index: int) -> Dictionary:
+	var failed := {"result": BuyResult.FAILED, "reason": "failed"}
+	if not _open or _deck == null or _economy == null:
+		failed["reason"] = "shop_closed"
+		return failed
+	var item := get_equipment_offer(slot_index)
+	if item == null:
+		failed["reason"] = "empty_slot"
+		return failed
+	if _deck.is_equipment_stash_full():
+		failed["reason"] = "stash_full"
+		return failed
+	var cost := maxi(0, item.cost)
+	if not _economy.spend(cost):
+		failed["reason"] = "cant_afford"
+		return failed
+	if not _deck.try_push_equipment_to_stash(item):
+		_economy.grant(cost)
+		failed["reason"] = "stash_full"
+		return failed
+	_equipment_offers[slot_index] = null
+	_deck.deck_changed.emit()
+	shop_changed.emit()
+	return {"result": BuyResult.OK, "reason": ""}
+
+
 ## 兼容旧名：整架重抽。
 func roll_consumables() -> void:
 	roll_shelf()
