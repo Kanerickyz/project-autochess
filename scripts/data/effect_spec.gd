@@ -97,6 +97,8 @@ const TRIGGER_NAMES: PackedStringArray = [
 ## 0 = unlimited. Counts successful enqueues per owner+spec this combat.
 @export_range(0, 99, 1) var max_triggers_per_combat: int = 0
 @export var condition: Condition = Condition.NONE
+## 非空时：目标须挂有该主题（主或辅，见 UnitTheme / UnitData.get_theme_ids）。
+@export var require_theme: StringName = &""
 
 
 func is_trigger_registered() -> bool:

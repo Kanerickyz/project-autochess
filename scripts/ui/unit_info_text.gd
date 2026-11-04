@@ -540,7 +540,10 @@ static func format_effect_spec(
 		spec.trigger == CombatEvents.ON_FRIEND_DAMAGE_TAKEN
 		and spec.condition == EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP
 	):
-		trigger = "友方受伤且该友方未满血时"
+		if UnitTheme.is_valid_id(spec.require_theme):
+			trigger = "%s受伤且未满血时" % UnitTheme.display_name(spec.require_theme)
+		else:
+			trigger = "友方受伤且该友方未满血时"
 	elif (
 		spec.trigger == CombatEvents.ON_KILL
 		and spec.condition == EffectSpec.Condition.KILL_FROM_ATTACK
@@ -577,12 +580,21 @@ static func format_effect_spec(
 
 
 static func _format_target(spec: EffectSpec) -> String:
+	var theme_label := ""
+	if UnitTheme.is_valid_id(spec.require_theme):
+		theme_label = UnitTheme.display_name(spec.require_theme)
 	match spec.target_selector:
 		EffectSpec.TargetSelector.SELF:
 			return "对自身"
 		EffectSpec.TargetSelector.EVENT_TARGET:
+			if not theme_label.is_empty():
+				return "对该%s" % theme_label
 			return "对事件目标"
 		EffectSpec.TargetSelector.RANDOM_ALLY:
+			if not theme_label.is_empty():
+				if spec.exclude_owner:
+					return "对随机其他%s" % theme_label
+				return "对随机%s" % theme_label
 			if spec.exclude_owner:
 				return "对随机其他队友"
 			return "对随机队友"
@@ -603,6 +615,8 @@ static func _format_target(spec: EffectSpec) -> String:
 		EffectSpec.TargetSelector.ALL_SHOP_CHARACTERS:
 			return "对商店角色"
 		EffectSpec.TargetSelector.ALL_ALLIES:
+			if not theme_label.is_empty():
+				return "对全体%s" % theme_label
 			return "对全体队友"
 		EffectSpec.TargetSelector.FIRST_ENEMY:
 			return "对前排敌人"
@@ -627,6 +641,10 @@ static func _format_target(spec: EffectSpec) -> String:
 		EffectSpec.TargetSelector.EVENT_SOURCE:
 			return "对施害者"
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
+			if not theme_label.is_empty():
+				if spec.exclude_owner:
+					return "对周围一格其他%s" % theme_label
+				return "对周围一格%s" % theme_label
 			if spec.exclude_owner:
 				return "对周围一格其他友方"
 			return "对周围一格友方"

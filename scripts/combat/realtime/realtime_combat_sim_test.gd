@@ -122,6 +122,10 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	data.is_boss_leader = bool(overrides.get("is_boss_leader", false))
 	data.footprint_w = int(overrides.get("footprint_w", 1))
 	data.footprint_h = int(overrides.get("footprint_h", 1))
+	if overrides.has("theme_primary"):
+		data.theme_primary = overrides["theme_primary"] as StringName
+	if overrides.has("theme_secondary"):
+		data.theme_secondary = overrides["theme_secondary"] as StringName
 	if overrides.has("summon_unit"):
 		data.summon_unit = overrides["summon_unit"] as UnitData
 	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))

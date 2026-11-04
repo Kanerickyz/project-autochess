@@ -13,9 +13,9 @@ const MOUNT_TABLE := {
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "deal_damage_apply_weak",
 	"goblin": "death_spawn_pack",
-	"spear_goblin": "hurt_heal_self_2",
+	"spear_goblin": "hurt_heal_random_knight_order_1",
 	"skeleton": "death_heal_random_ally_2",
-	"crossbow": "ally_hurt_heal_target_small",
+	"crossbow": "ally_hurt_heal_knight_order_1",
 	"maul": "deal_damage_adj_splash_small",
 	"apothecary": "turn_start_nearby_enemies_apply_poison",
 }
@@ -33,8 +33,8 @@ static func run_all() -> bool:
 	_check("ability_merge_value_multiplier", _test_ability_merge_value_multiplier())
 	_check("enemy_death_self_atk_hp_small", _test_enemy_death_self_atk_hp_small())
 	_check("enemy_death_self_atk_hp_star2_x3", _test_enemy_death_self_atk_hp_star2_x3())
-	_check("enemy_death_random_ally_atk_hp_small", _test_enemy_death_random_ally_atk_hp_small())
-	_check("enemy_death_random_ally_atk_hp_star2_x3", _test_enemy_death_random_ally_atk_hp_star2_x3())
+	_check("enemy_death_random_knight_order_atk_hp", _test_enemy_death_random_knight_order_atk_hp())
+	_check("enemy_death_random_knight_order_atk_hp_star2", _test_enemy_death_random_knight_order_atk_hp_star2())
 	_check("enemy_death_nearby_allies_atk_hp_small", _test_enemy_death_nearby_allies_atk_hp_small())
 	_check("mend_friar_enemy_death_lr_allies", _test_mend_friar_enemy_death_lr_allies())
 	_check("mend_friar_enemy_death_lr_allies_star2", _test_mend_friar_enemy_death_lr_allies_star2())
@@ -74,7 +74,7 @@ static func run_all() -> bool:
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
-	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
+	_check("hurt_heal_random_knight_order", _test_hurt_heal_random_knight_order())
 	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
 	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
 	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
@@ -82,9 +82,10 @@ static func run_all() -> bool:
 	_check("boomling_kill_damage_all_except_self", _test_boomling_kill_damage_all_except_self())
 	_check("boomling_kill_damage_all_star2", _test_boomling_kill_damage_all_star2())
 	_check("mirror_warden_kill_convert", _test_mirror_warden_kill_convert())
-	_check("ally_hurt_heal_target", _test_ally_hurt_heal_target())
-	_check("ally_hurt_heal_target_star2", _test_ally_hurt_heal_target_star2())
+	_check("ally_hurt_heal_knight_order", _test_ally_hurt_heal_knight_order())
+	_check("ally_hurt_heal_knight_order_star2", _test_ally_hurt_heal_knight_order_star2())
 	_check("ally_hurt_heal_skips_when_full", _test_ally_hurt_heal_skips_when_full())
+	_check("ally_hurt_heal_skips_non_knight", _test_ally_hurt_heal_skips_non_knight())
 	_check("deal_damage_extra_2_star2", _test_deal_damage_extra_2_star2())
 	_check("turn_start_strike_weakest_mount", _test_turn_start_strike_weakest_mount())
 	_check("turn_start_strike_weakest_damage", _test_turn_start_strike_weakest_damage())
@@ -100,7 +101,8 @@ static func run_all() -> bool:
 	_check("combat_start_iron_heart", _test_combat_start_iron_heart())
 	_check("combat_start_edge_hex", _test_combat_start_edge_hex())
 	_check("combat_start_shield_boon", _test_combat_start_shield_boon())
-	_check("combat_start_banner_nearby", _test_combat_start_banner_nearby())
+	_check("turn_start_banner_nearby_knight", _test_turn_start_banner_nearby_knight())
+	_check("turn_start_banner_nearby_knight_star2", _test_turn_start_banner_nearby_knight_star2())
 
 	for sim in _created:
 		sim.dispose()
@@ -606,9 +608,10 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 	return true
 
 
-static func _test_enemy_death_random_ally_atk_hp_small() -> bool:
+## 骑弓：敌亡 → 随机骑士团 +1/+1；无主题友方不进池，故必打到骑弓自身。
+static func _test_enemy_death_random_knight_order_atk_hp() -> bool:
 	var data := _load_unit("res://resources/units/realtime/horsebow.tres")
-	if data == null or data.ability == null or data.ability.id != "enemy_death_random_ally_atk_hp_small":
+	if data == null or data.ability == null or data.ability.id != "enemy_death_random_knight_order_atk_hp_1":
 		push_error("horsebow: ability not mounted")
 		return false
 	if data.ability.merge_value_mult != 3:
@@ -617,12 +620,22 @@ static func _test_enemy_death_random_ally_atk_hp_small() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 44)
 	var bow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
-	var ally := sim.add_unit(_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_buff_target", "steps_per_turn": 0}), Vector2(8.5, 24.5))
+	var ally := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			20,
+			{"id": "ally_buff_target", "steps_per_turn": 0},
+		),
+		Vector2(8.5, 24.5),
+	)
 	var enemy := sim.add_unit(
 		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_hb", "steps_per_turn": 0}),
 		Vector2(9.5, 8.5),
 	)
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(2.5, 4.5),
+	)
 	sim.begin_combat()
 	var bow_atk0 := bow.unit.get_effective_attack()
 	var bow_hp0 := bow.unit.get_effective_max_hp()
@@ -632,43 +645,40 @@ static func _test_enemy_death_random_ally_atk_hp_small() -> bool:
 		push_error("horsebow: failed to kill enemy")
 		return false
 	sim._drain_effects()
-	var d_bow_atk := bow.unit.get_effective_attack() - bow_atk0
-	var d_bow_hp := bow.unit.get_effective_max_hp() - bow_hp0
-	var d_ally_atk := ally.unit.get_effective_attack() - ally_atk0
-	var d_ally_hp := ally.unit.get_effective_max_hp() - ally_hp0
-	## 恰好一名友方得到 +1/+1。
-	var buffed_n := 0
-	if d_bow_atk == 1 and d_bow_hp == 1:
-		buffed_n += 1
-	elif d_bow_atk != 0 or d_bow_hp != 0:
-		push_error("horsebow: bow got uneven buff atk=%d hp=%d" % [d_bow_atk, d_bow_hp])
+	if bow.unit.get_effective_attack() != bow_atk0 + 1:
+		push_error("horsebow: self atk expected +1")
 		return false
-	if d_ally_atk == 1 and d_ally_hp == 1:
-		buffed_n += 1
-	elif d_ally_atk != 0 or d_ally_hp != 0:
-		push_error("horsebow: ally got uneven buff atk=%d hp=%d" % [d_ally_atk, d_ally_hp])
+	if bow.unit.get_effective_max_hp() != bow_hp0 + 1:
+		push_error("horsebow: self max_hp expected +1")
 		return false
-	if buffed_n != 1:
-		push_error("horsebow: expected exactly 1 ally buffed, got %d" % buffed_n)
+	if ally.unit.get_effective_attack() != ally_atk0 or ally.unit.get_effective_max_hp() != ally_hp0:
+		push_error("horsebow: non-knight ally must not be buffed")
 		return false
 	return true
 
 
-static func _test_enemy_death_random_ally_atk_hp_star2_x3() -> bool:
+static func _test_enemy_death_random_knight_order_atk_hp_star2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/horsebow.tres")
-	if data == null or data.ability == null or data.ability.id != "enemy_death_random_ally_atk_hp_small":
+	if (
+		data == null
+		or data.ability == null
+		or data.ability.id != "enemy_death_random_knight_order_atk_hp_1"
+	):
 		push_error("horsebow2: ability not mounted")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 45)
-	## 场上仅骑弓：随机友方必为自己；2★ → +3/+3。
+	## 场上仅骑弓：随机骑士团必为自己；2★ → +3/+3。
 	var bow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
 	bow.unit.level = 2
 	var enemy := sim.add_unit(
 		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder_hb2", "steps_per_turn": 0}),
 		Vector2(9.5, 8.5),
 	)
-	sim.add_unit(_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}), Vector2(2.5, 4.5))
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(2.5, 4.5),
+	)
 	sim.begin_combat()
 	var base_atk := bow.unit.get_effective_attack()
 	var base_hp := bow.unit.get_effective_max_hp()
@@ -1993,14 +2003,14 @@ static func _test_death_heal_nearby_ally() -> bool:
 	return true
 
 
-## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=3 → 三合一后 3）。
-static func _test_hurt_heal_self_2() -> bool:
+## 标枪受伤 → 随机存活骑士团恢复 1 生命；仅自己在场时必疗自身。
+static func _test_hurt_heal_random_knight_order() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
-		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "hurt_heal_random_knight_order_1":
+		push_error("hurt_heal_knight: spear_goblin ability not mounted")
 		return false
 	if data.ability.merge_value_mult != 3:
-		push_error("hurt_heal_self_2: merge_value_mult expected 3")
+		push_error("hurt_heal_knight: merge_value_mult expected 3")
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
@@ -2015,17 +2025,17 @@ static func _test_hurt_heal_self_2() -> bool:
 	## 扣 2 后疗回 1 → 净 −1
 	if spear.unit.current_hp != hp_mid - 2 + 1:
 		push_error(
-			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
+			"hurt_heal_knight: hp after hurt+heal=%d, expected %d"
 			% [spear.unit.current_hp, hp_mid - 1]
 		)
 		return false
 	return true
 
 
-## 伤 = 疗：受击疗截断为本击伤害，不能净回血。
+## 伤 = 疗：受击疗截断为本击伤害，不能净回血（仅自己在场时目标即自身）。
 static func _test_hurt_heal_capped_to_hit() -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
+	if data == null or data.ability == null or data.ability.id != "hurt_heal_random_knight_order_1":
 		push_error("hurt_heal_capped: spear_goblin ability not mounted")
 		return false
 	var sim := _new_sim()
@@ -2358,10 +2368,10 @@ static func _wipe_team_and_finish(sim: RealtimeCombatSim, team: UnitInstance.Tea
 	return sim.is_finished()
 
 
-## 弩手：友方受伤 → 疗该友方 1。
-static func _test_ally_hurt_heal_target() -> bool:
+## 弩手：骑士团受伤 → 疗该骑士团 1。
+static func _test_ally_hurt_heal_knight_order() -> bool:
 	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
-	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
+	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_knight_order_1":
 		push_error("ally_hurt_heal: crossbow ability not mounted")
 		return false
 	if data.ability.merge_value_mult != 3:
@@ -2374,11 +2384,22 @@ static func _test_ally_hurt_heal_target() -> bool:
 	if specs[0].condition != EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP:
 		push_error("ally_hurt_heal: must skip when event target is at max hp")
 		return false
+	if specs[0].require_theme != UnitTheme.KNIGHT_ORDER:
+		push_error("ally_hurt_heal: require_theme must be knight_order")
+		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 43)
 	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
 	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			10,
+			{
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"theme_primary": UnitTheme.KNIGHT_ORDER,
+			},
+		),
 		Vector2(9.5, 20.5),
 	)
 	ally.unit.current_hp = 5
@@ -2396,10 +2417,10 @@ static func _test_ally_hurt_heal_target() -> bool:
 	return true
 
 
-## 弩手 2★：友伤疗 3（merge_value_mult=3）。
-static func _test_ally_hurt_heal_target_star2() -> bool:
+## 弩手 2★：骑士团受伤疗 3（merge_value_mult=3）。
+static func _test_ally_hurt_heal_knight_order_star2() -> bool:
 	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
-	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_target_small":
+	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_knight_order_1":
 		push_error("ally_hurt_heal star2: ability mount")
 		return false
 	var sim := _new_sim()
@@ -2407,7 +2428,15 @@ static func _test_ally_hurt_heal_target_star2() -> bool:
 	var xbow := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
 	xbow.unit.level = 2
 	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 20, {"steps_per_turn": 0, "sight_range": 0.0}),
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			20,
+			{
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"theme_primary": UnitTheme.KNIGHT_ORDER,
+			},
+		),
 		Vector2(9.5, 20.5),
 	)
 	ally.unit.current_hp = 12
@@ -2435,7 +2464,15 @@ static func _test_ally_hurt_heal_skips_when_full() -> bool:
 	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(8.5, 22.5))
 	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(10.5, 22.5))
 	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 4, {"steps_per_turn": 0, "sight_range": 0.0}),
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			4,
+			{
+				"steps_per_turn": 0,
+				"sight_range": 0.0,
+				"theme_primary": UnitTheme.KNIGHT_ORDER,
+			},
+		),
 		Vector2(9.5, 20.5),
 	)
 	ally.unit.current_hp = 4
@@ -2447,6 +2484,37 @@ static func _test_ally_hurt_heal_skips_when_full() -> bool:
 		push_error(
 			"ally_hurt_heal_full: ally hp=%d expected 4 after single heal"
 			% ally.unit.current_hp
+		)
+		return false
+	return true
+
+
+## 非骑士团友伤：弩手不疗。
+static func _test_ally_hurt_heal_skips_non_knight() -> bool:
+	var data := _load_unit("res://resources/units/realtime/crossbow.tres")
+	if data == null or data.ability == null or data.ability.id != "ally_hurt_heal_knight_order_1":
+		push_error("ally_hurt_non_knight: ability mount")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 46)
+	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 22.5))
+	var ally := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			10,
+			{"steps_per_turn": 0, "sight_range": 0.0, "theme_primary": UnitTheme.WARRIOR},
+		),
+		Vector2(9.5, 20.5),
+	)
+	ally.unit.current_hp = 5
+	sim.begin_combat()
+	var hp_mid := ally.unit.current_hp
+	sim._pipeline.apply_damage(null, ally, 2)
+	sim._drain_effects()
+	if ally.unit.current_hp != hp_mid - 2:
+		push_error(
+			"ally_hurt_non_knight: hp=%d expected %d (no heal)"
+			% [ally.unit.current_hp, hp_mid - 2]
 		)
 		return false
 	return true
@@ -2927,33 +2995,90 @@ static func _test_combat_start_shield_boon() -> bool:
 	return true
 
 
-static func _test_combat_start_banner_nearby() -> bool:
+## 旗手：自己回合开始 → 周围一格骑士团攻击 +2（不含自身；非骑士团不吃）。
+static func _test_turn_start_banner_nearby_knight() -> bool:
+	return _banner_nearby_knight_atk_expect(1, 2)
+
+
+static func _test_turn_start_banner_nearby_knight_star2() -> bool:
+	return _banner_nearby_knight_atk_expect(2, 6)
+
+
+static func _banner_nearby_knight_atk_expect(star_level: int, expected_atk: int) -> bool:
 	var data := _load_unit("res://resources/units/realtime/banner.tres")
-	if data == null or data.ability == null or data.ability.id != "combat_start_buff_nearby_allies_mid":
+	if data == null or data.ability == null or data.ability.id != "turn_start_nearby_knight_order_atk_2":
 		push_error("banner: ability mount")
 		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("banner: merge_value_mult expected 3")
+		return false
 	var sim := _new_sim()
-	sim.configure(ARENA, 504)
-	sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
-	var nearby := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "near", "attack": 2}),
+	sim.configure(ARENA, 504 + star_level)
+	var banner := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	banner.unit.level = star_level
+	banner.unit.stats.steps_per_turn = 0
+	var nearby_knight := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			10,
+			{
+				"id": "near_knight",
+				"attack": 2,
+				"theme_primary": UnitTheme.KNIGHT_ORDER,
+			},
+		),
 		Vector2(3.5, 6.5),
 	)
-	var far := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"id": "far", "attack": 2}),
+	var nearby_other := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			10,
+			{
+				"id": "near_other",
+				"attack": 2,
+				"theme_primary": UnitTheme.WARRIOR,
+			},
+		),
+		Vector2(2.5, 5.5),
+	)
+	var far_knight := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.PLAYER,
+			10,
+			{
+				"id": "far_knight",
+				"attack": 2,
+				"theme_primary": UnitTheme.KNIGHT_ORDER,
+			},
+		),
 		Vector2(2.5, 8.5),
 	)
-	var near0 := nearby.unit.get_effective_attack()
-	var far0 := far.unit.get_effective_attack()
 	sim.begin_combat()
-	if nearby.unit.get_effective_attack() != near0 + 4:
+	sim._drain_effects(true)
+	## 开战羁绊等加成结算后再取基线，只断言自己回合开始的骑士团加攻。
+	var near0 := nearby_knight.unit.get_effective_attack()
+	var other0 := nearby_other.unit.get_effective_attack()
+	var far0 := far_knight.unit.get_effective_attack()
+	var self0 := banner.unit.get_effective_attack()
+	var payload := CombatEventPayload.new()
+	payload.source = banner.unit
+	payload.target = banner.unit
+	sim.get_event_bus().emit_event(CombatEvents.ON_ROUND_START, payload)
+	sim._drain_effects(true)
+	if nearby_knight.unit.get_effective_attack() != near0 + expected_atk:
 		push_error(
-			"banner: nearby atk %d -> %d expected +4"
-			% [near0, nearby.unit.get_effective_attack()]
+			"banner %d★: nearby knight atk %d -> %d expected +%d"
+			% [star_level, near0, nearby_knight.unit.get_effective_attack(), expected_atk]
 		)
 		return false
-	if far.unit.get_effective_attack() != far0:
-		push_error("banner: far ally buffed unexpectedly")
+	if nearby_other.unit.get_effective_attack() != other0:
+		push_error("banner: non-knight nearby must not be buffed")
+		return false
+	if far_knight.unit.get_effective_attack() != far0:
+		push_error("banner: far knight buffed unexpectedly")
+		return false
+	if banner.unit.get_effective_attack() != self0:
+		push_error("banner: owner must not self-buff")
 		return false
 	return true
 
