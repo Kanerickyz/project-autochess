@@ -1,38 +1,8 @@
 # 远征行囊 / 远征圣物 — 设计共识摘要
 
-> **状态**：头脑风暴已拍板 · **尚未**写正式 Feature 规格 · 2026-11-04  
-> 相关草案花名册：[Content/EXPEDITION_RELICS_ROSTER.md](../Content/EXPEDITION_RELICS_ROSTER.md)  
-> 玩法边界对照：[GAME_VISION](../GAME_VISION.md) · [PLAYER](../Features/PLAYER.md) · [MAP](../Features/MAP.md) · [RECRUIT](../Features/RECRUIT.md)
+> **状态**：已拍板并落盘正式 Feature · 2026-11-04  
+> **正式规格**：[Features/EXPEDITION_RELICS.md](../Features/EXPEDITION_RELICS.md)  
+> **Content 花名册**：[Content/EXPEDITION_RELICS_ROSTER.md](../Content/EXPEDITION_RELICS_ROSTER.md)  
+> 挂钩：[PLAYER](../Features/PLAYER.md) · [MAP](../Features/MAP.md) · [GAME_VISION](../GAME_VISION.md)
 
-## 【用户新共识】已拍板
-
-1. **拥有物**：玩家整局 **6 格**「远征行囊」，存放**全局**「远征圣物」（Run 级被动 / 规则修饰；不挂单个队伍成员）。
-2. **分界**：≠ 单位内建技能、≠ 增益卡、≠ 主题羁绊成形、≠ 招募药水/旗帜、≠ 地图商店消耗品/护甲装备。
-3. **获取**：**仅事件**；形态为 **三选一**。
-4. **出售换金**：**仅招募阶段**可出售行囊中的圣物换金。
-5. **换下（无金）**：
-   - 行囊**已满**时：三选一可选一件，并**当场指定一件旧件换下**；旧件**丢弃、无金**。
-   - 行囊**未满**时：也允许自愿「拿新并换下旧件」。
-6. **禁止**：新件静默覆盖挤掉旧件且不经确认、并冒充「已卖金」。
-7. **战斗**：开战后天纯观战；战斗中**不能**改行囊。
-
-## 【建议】未单独拍板（默认可进规格）
-
-| 项 | 标记 |
-|----|------|
-| 对外名：远征行囊 / 远征圣物 | 【建议】 |
-| 事件三选一可跳过 | 【建议】 |
-| 战斗触发类走 `EffectSpec` / `EffectResolver`，触发经 `CombatEventBus` | 【建议】 |
-| 圣物偏构筑乘数（B）；不与药水抢「点谁改攻血」 | 【建议】 |
-| 本版不写完整事件文案库；只挂钩「事件最小：三选一 + 换下/跳过」 | 【建议】 |
-| 愿景构筑公式与 `PLAYER` 拥有物表日后补行囊一行 | 【建议】 |
-
-## 数值
-
-- 花名册已填 **【数值草案 · 未实测】**（点数 / 硬顶 / 卖圣物退金 / 事件偏抽权重）：见 [Content/EXPEDITION_RELICS_ROSTER.md](../Content/EXPEDITION_RELICS_ROSTER.md)。
-- 未写入 `.tres`；无批跑。
-
-## 下一步（待用户授权）
-
-- 正式 Feature（建议 `Features/EXPEDITION_RELICS.md`）+ `PLAYER` / 事件挂钩句。
-- 数值改点或资源化 / 批跑。
+本文件保留头脑风暴拍板痕迹；实现与验收以 Feature + Content 为准。

@@ -21,7 +21,7 @@
 
 本作是 **关卡制 / 爬塔 PvE**：地图节点上 **商店完整养队**，战斗节点内 **准备站位 → 开战观战**，普通 / 精英胜后 **招募短名单换人** 再回地图；单位靠内建技能自动联动。主流派（坚韧、冲锋）应一眼可认；跨技能涌现是加分，不作主门槛。美术与叙事为中世纪幻想（骑士、佣兵、据点与魔物），剪影可读优先。
 
-**构筑深度** = 单位内建联动 + 槽位站位 + 增益卡 + **主题羁绊**（上场凑同主题触发团队层；见 [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)）。
+**构筑深度** = 单位内建联动 + 槽位站位 + 增益卡 + **主题羁绊**（上场凑同主题触发团队层；见 [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)）+ **远征圣物**（整局行囊全局规则；见 [Features/EXPEDITION_RELICS.md](./Features/EXPEDITION_RELICS.md)）。
 
 ### 胜负规则【设计定稿】
 
@@ -48,8 +48,8 @@
 3. **中世纪幻想主题**【设定定稿】  
    兵种/魔物剪影可读；特效服务技能因果（观战以**当前行动者**串行演出为主，见 [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md)）。表现迁移待实现。
 
-**深度公式**：联动技能 + 槽位站位 + 增益卡 + 主题羁绊。  
-队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)；胜后招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；主题羁绊见 [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)；增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)；实现摘要见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
+**深度公式**：联动技能 + 槽位站位 + 增益卡 + 主题羁绊 + 远征圣物。  
+队伍与准备见 [Features/PLAYER.md](./Features/PLAYER.md)；胜后招募见 [Features/RECRUIT.md](./Features/RECRUIT.md)；主题羁绊见 [Features/UNIT_THEME_BONDS.md](./Features/UNIT_THEME_BONDS.md)；远征行囊见 [Features/EXPEDITION_RELICS.md](./Features/EXPEDITION_RELICS.md)；增益见 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md)；实现摘要见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ---
 
@@ -92,7 +92,7 @@
 
 波末清空战斗临时增益；Run 持久增益随队伍成员保留。
 
-**公式**：联动技能组合 + 槽位站位（承伤/相邻）+ 增益卡 + 主题羁绊。
+**公式**：联动技能组合 + 槽位站位（承伤/相邻）+ 增益卡 + 主题羁绊 + 远征圣物。
 
 ---
 

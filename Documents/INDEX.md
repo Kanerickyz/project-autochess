@@ -14,7 +14,8 @@
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
-| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战、远征行囊指针） |
+| [Features/EXPEDITION_RELICS.md](./Features/EXPEDITION_RELICS.md) | **远征行囊 / 远征圣物**（6 格全局；事件三选一；招募出售） |
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |

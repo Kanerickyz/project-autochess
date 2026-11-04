@@ -1,7 +1,7 @@
 # 远征圣物库（EXPEDITION_RELICS_ROSTER）
 
 > Content · **【草案】非定稿** · 数值：**【数值草案 · 未实测】** · 2026-11-04  
-> 功能共识见 [DesignNotes/EXPEDITION_RELICS_CONSENSUS.md](../DesignNotes/EXPEDITION_RELICS_CONSENSUS.md)（正式 Feature 待授权）。  
+> 功能规格见 [Features/EXPEDITION_RELICS.md](../Features/EXPEDITION_RELICS.md)；共识摘要见 [DesignNotes/EXPEDITION_RELICS_CONSENSUS.md](../DesignNotes/EXPEDITION_RELICS_CONSENSUS.md)。  
 > **本篇写**：圣物内容池——分 Tier、名称、效果与**可读点数**、乘轴、硬顶、出售退金与事件偏抽权重草案。  
 > **本篇不写**：完整 Feature 规则正文；事件文案库；`.tres` 实装（L2）。  
 > 构筑审查：圣物优先作 **B（乘数）**；主题层仅弱放大且**不改主题人数**。
