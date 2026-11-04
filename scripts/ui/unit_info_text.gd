@@ -101,7 +101,8 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
-## 信息卡主题行：「主题：主」或「主题：主 / 辅」；无主题返回空。
+## 主题文案辅助：「主题：主」或「主题：主 / 辅」；无主题返回空。
+## 信息卡扫读改走卡头徽；本函数保留给测试 / 其它文案。
 static func get_theme_line_from_unit_data(data: UnitData) -> String:
 	if data == null:
 		return ""
