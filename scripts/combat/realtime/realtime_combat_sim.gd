@@ -1,6 +1,6 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 回合制自动战纯逻辑模拟：先友后敌行动队列 + 一动靠近并出手 + 落格顿步。
+## 回合制自动战纯逻辑模拟：先友后敌行动队列（友上→下左→右；敌镜像下→上左→右）+ 一动靠近并出手 + 落格顿步。
 ## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
 ## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
 
@@ -48,7 +48,7 @@ var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
-## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
+## 开战锁阵生成序（按 add_unit 先后）；排行动队列时友/敌各自按镜像扫描序重排（§7.1）。
 var _lock_spawn_order: Array[RtUnit] = []
 ## 先友后敌固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
 var _action_queue: Array[RtUnit] = []
@@ -506,7 +506,7 @@ func _seed_action_queue_if_ready() -> void:
 	_actor_turn_active = false
 
 
-## COMBAT §7.1：普通遭遇先友后敌；Boss 遭遇见 BOSS §4.5（友→Boss 交错，小兵队尾）。
+## COMBAT §7.1：普通遭遇先友后敌（友上→下左→右；敌镜像下→上左→右）；Boss 见 BOSS §4.5。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
@@ -520,11 +520,11 @@ func _build_action_queue_from_lock_order() -> void:
 	var board_h := int(_arena_size.y)
 	friends.sort_custom(
 		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h, false)
 	)
 	enemies.sort_custom(
 		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h, true)
 	)
 	_action_queue.clear()
 	var boss: RtUnit = null

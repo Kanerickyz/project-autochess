@@ -52,21 +52,29 @@ static func iter_seats_center_out(rows: int, cols: int) -> Array[int]:
 	return out
 
 
-## 行动队列排序：前排更近中线优先，同行列 x 升序（屏幕左→右）。board_height 为逻辑格网高。
-static func compare_cells_for_action_queue(ca: Vector2i, cb: Vector2i, board_height: int) -> bool:
+## 行动队列格子比较。
+## enemy_mirrored=false（友方）：上→下、左→右（y 升、x 升）。
+## enemy_mirrored=true（敌方镜像）：下→上、左→右（y 降、x 升）。
+## board_height 保留签名兼容。
+static func compare_cells_for_action_queue(
+	ca: Vector2i, cb: Vector2i, _board_height: int = 0, enemy_mirrored: bool = false
+) -> bool:
 	if ca == cb:
 		return false
-	var mid := BoardHalf.midline_row(board_height)
-	var da := absi(ca.y - mid)
-	var db := absi(cb.y - mid)
-	if da != db:
-		return da < db
+	if ca.y != cb.y:
+		if enemy_mirrored:
+			return ca.y > cb.y
+		return ca.y < cb.y
 	if ca.x != cb.x:
 		return ca.x < cb.x
 	return false
 
 
-static func compare_rt_units_for_action_queue(a: RtUnit, b: RtUnit, board_height: int) -> bool:
+static func compare_rt_units_for_action_queue(
+	a: RtUnit, b: RtUnit, board_height: int = 0, enemy_mirrored: bool = false
+) -> bool:
 	if a == null or b == null:
 		return a != null
-	return compare_cells_for_action_queue(a.get_cell(), b.get_cell(), board_height)
+	return compare_cells_for_action_queue(
+		a.get_cell(), b.get_cell(), board_height, enemy_mirrored
+	)
