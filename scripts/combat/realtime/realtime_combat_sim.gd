@@ -1,6 +1,6 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 回合制自动战纯逻辑模拟：先友后敌行动队列（友上→下左→右；敌镜像下→上左→右）+ 一动靠近并出手 + 落格顿步。
+## 回合制自动战纯逻辑模拟：先友后敌行动队列（友先左列列内上→下再右移；敌镜像列内下→上）+ 一动靠近并出手 + 落格顿步。
 ## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
 ## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
 
@@ -506,7 +506,7 @@ func _seed_action_queue_if_ready() -> void:
 	_actor_turn_active = false
 
 
-## COMBAT §7.1：普通遭遇先友后敌（友上→下左→右；敌镜像下→上左→右）；Boss 见 BOSS §4.5。
+## COMBAT §7.1：普通遭遇先友后敌（友列优先上→下；敌镜像列优先下→上）；Boss 见 BOSS §4.5。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
