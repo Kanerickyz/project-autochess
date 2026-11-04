@@ -190,7 +190,7 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	var e2 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e2"}), Vector2(3.5, 3.5))
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	## 先友后敌；同行左→右。
+	## 先友后敌；列优先左→右（同行亦按 x）。
 	var expected: Array[RtUnit] = [f0, f1, e0, e1, e2]
 	if q.size() != expected.size():
 		push_error("queue: size %d expected %d" % [q.size(), expected.size()])
@@ -205,32 +205,40 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	return true
 
 
-## 友方上→下左→右；敌方镜像下→上左→右；与 add_unit 先后无关。
+## 友方先左列、列内上→下再右移；敌方镜像列内下→上；与 add_unit 先后无关。
+## 用例刻意让「行优先」与「列优先」结果不同。
 static func _test_action_queue_spatial_sort() -> bool:
 	var sim := _new_sim()
 	sim.configure(Vector2i(5, 8), 1)
 	var mid := 4
-	## 友后排右、友前排左后 add；敌后排/前排亦乱序 add。
-	var f_back_right := sim.add_unit(
-		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_r"}),
-		Vector2(4.5, float(mid + 3) + 0.5),
+	## 友：右列前排先 add，左列后排后 add → 列优先应为左列后排先于右列前排。
+	var f_right_front := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_right_front"}),
+		Vector2(2.5, float(mid) + 0.5),
 	)
-	var f_front_left := sim.add_unit(
-		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_front_l"}),
-		Vector2(0.5, float(mid) + 0.5),
+	var f_left_back := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_left_back"}),
+		Vector2(0.5, float(mid + 3) + 0.5),
 	)
-	var e_back := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back"}),
-		Vector2(2.5, float(mid - 3) + 0.5),
+	## 敌：右列先 add；左列前/后乱序 → 列优先整列左先，列内镜像下→上（前排先于后排）。
+	var e_right := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_right"}),
+		Vector2(2.5, float(mid - 2) + 0.5),
 	)
-	var e_front := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_front"}),
-		Vector2(1.5, float(mid - 1) + 0.5),
+	var e_left_back := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_back"}),
+		Vector2(0.5, float(mid - 3) + 0.5),
+	)
+	var e_left_front := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_front"}),
+		Vector2(0.5, float(mid - 1) + 0.5),
 	)
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	## 友：上→下 → f_front_left(y4) → f_back_right(y7)；敌镜像下→上 → e_front(y3) → e_back(y1)
-	var expected: Array[RtUnit] = [f_front_left, f_back_right, e_front, e_back]
+	## 友：x0 后排 → x2 前排；敌：x0 前→后，再 x2
+	var expected: Array[RtUnit] = [
+		f_left_back, f_right_front, e_left_front, e_left_back, e_right
+	]
 	if q.size() != expected.size():
 		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
 		return false
