@@ -27,7 +27,12 @@
 | 本版不写完整事件文案库；只挂钩「事件最小：三选一 + 换下/跳过」 | 【建议】 |
 | 愿景构筑公式与 `PLAYER` 拥有物表日后补行囊一行 | 【建议】 |
 
+## 数值
+
+- 花名册已填 **【数值草案 · 未实测】**（点数 / 硬顶 / 卖圣物退金 / 事件偏抽权重）：见 [Content/EXPEDITION_RELICS_ROSTER.md](../Content/EXPEDITION_RELICS_ROSTER.md)。
+- 未写入 `.tres`；无批跑。
+
 ## 下一步（待用户授权）
 
 - 正式 Feature（建议 `Features/EXPEDITION_RELICS.md`）+ `PLAYER` / 事件挂钩句。
-- 花名册定稿与数值（`balance-designer`）。
+- 数值改点或资源化 / 批跑。
