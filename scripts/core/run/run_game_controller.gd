@@ -6,6 +6,7 @@ const DEFAULT_RUN_MAP := preload("res://resources/runs/act1_map.tres")
 const DEFAULT_DECK_CONFIG := preload("res://resources/deck/realtime_starter_deck.tres")
 const DEFAULT_ECONOMY := preload("res://resources/economy/default_economy.tres")
 const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit_config.tres")
+const RELIC_OFFER_SCENE := preload("res://scenes/ui/event/relic_offer_screen.tscn")
 ## 无尽招募品阶软顶：避免进度比卡死，但实际层号可超过。
 const ENDLESS_RECRUIT_SOFT_FLOOR_COUNT := 30
 
@@ -16,19 +17,23 @@ const ENDLESS_RECRUIT_SOFT_FLOOR_COUNT := 30
 @onready var _placeholder_screen: PlaceholderNodeScreen = %PlaceholderNodeScreen
 @onready var _run_end_overlay: RunEndOverlay = %RunEndOverlay
 @onready var _run_stats_overlay: RunStatsOverlay = %RunStatsOverlay
+@onready var _relic_offer_screen: RelicOfferScreen = %RelicOfferScreen
 
 var run_controller: RunController = RunController.new()
 var deck_state: DeckState = DeckState.new()
 var run_economy: RunEconomy = RunEconomy.new()
+var relic_bag: ExpeditionRelicBag = ExpeditionRelicBag.new()
 var recruit_config: RecruitConfig = DEFAULT_RECRUIT_CONFIG
 var map_shop_config: MapShopConfig = MapShopConfig.load_or_default()
 var _battle: RealtimeBattleController
 var _recruit_session: RecruitSession = RecruitSession.new()
 var _map_shop_service: MapShopService = MapShopService.new()
+var _relic_offer_service: ExpeditionRelicOfferService = ExpeditionRelicOfferService.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
 var _enchant_busy: bool = false
 var _map_shop_busy: bool = false
+var _event_relic_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
@@ -42,6 +47,10 @@ func _ready() -> void:
 	_rng.randomize()
 	deck_state.configure(DEFAULT_DECK_CONFIG)
 	run_economy.configure(DEFAULT_ECONOMY)
+	_ensure_relic_offer_screen()
+	var offer_rng := RandomNumberGenerator.new()
+	offer_rng.seed = _rng.randi()
+	_relic_offer_service.configure(null, offer_rng)
 
 	_battle = BATTLE_SCENE.instantiate() as RealtimeBattleController
 	if _battle == null:
@@ -52,6 +61,7 @@ func _ready() -> void:
 		_battle.half_exit_seconds = recruit_config.half_exit_seconds
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
 	_battle.set_run_stat_ledger(_run_stat_ledger)
+	_battle.set_relic_bag(relic_bag)
 	_battle.encounter_completed.connect(_on_encounter_completed)
 	_battle.final_trial_floors_recorded.connect(_on_final_trial_floors_recorded)
 	_battle.recruit_finished.connect(_on_recruit_finished)
@@ -65,10 +75,25 @@ func _ready() -> void:
 
 	_map_screen.node_selected.connect(_on_map_node_selected)
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
+	if _relic_offer_screen != null and not _relic_offer_screen.finished.is_connected(_on_relic_offer_finished):
+		_relic_offer_screen.finished.connect(_on_relic_offer_finished)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
 	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
 
 	await _start_new_run()
+
+
+func _ensure_relic_offer_screen() -> void:
+	if _relic_offer_screen != null:
+		return
+	## 场景未挂节点时运行时补挂，避免旧场景阻断。
+	var ui := get_node_or_null("UI") as CanvasLayer
+	if ui == null:
+		return
+	_relic_offer_screen = RELIC_OFFER_SCENE.instantiate() as RelicOfferScreen
+	_relic_offer_screen.name = "RelicOfferScreen"
+	_relic_offer_screen.unique_name_in_owner = true
+	ui.add_child(_relic_offer_screen)
 
 
 func _is_endless() -> bool:
@@ -82,11 +107,13 @@ func _start_new_run() -> void:
 	_pending_end_snapshot = null
 	deck_state.reset_from_config()
 	run_economy.reset()
+	relic_bag.clear()
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
 	_recruit_session.clear_taken_copies()
 	_battle.reset_final_trial_state()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
+	_battle.set_relic_bag(relic_bag)
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
 		_battle.set_forward_tier_unlock(_is_endless())
@@ -123,6 +150,8 @@ func _show_map() -> void:
 func _hide_encounter_ui() -> void:
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
+	if _relic_offer_screen != null:
+		_relic_offer_screen.hide_offers()
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
@@ -164,6 +193,9 @@ func _on_map_node_selected(node_id: int) -> void:
 		return
 	if node_type == MapNodeType.Type.ENCHANT:
 		await _open_enchant()
+		return
+	if node_type == MapNodeType.Type.EVENT:
+		await _open_event_relic_offer()
 		return
 	## 非战斗节点仍留世界底图，占位 UI 叠在上面。
 	_battle_root.visible = true
@@ -222,7 +254,7 @@ func _open_opening_recruit() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _rng.randi()
-	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
+	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = true
 	## 开局：第 1 层尺 → 仅 T1。
 	_recruit_session.forward_tier_unlock = _is_endless()
@@ -250,7 +282,7 @@ func _on_enchant_finished(_did_fuse: bool) -> void:
 	run_controller.complete_encounter()
 
 
-## 事件 / 商店离开：与战斗胜场同公式（第 n 层 → n+3 金）。
+## 事件 / 商店离开：与战斗胜场同公式（第 n 层 → n+3 金）+ 圣物 bonus_floor_gold。
 func _grant_pending_node_floor_gold() -> int:
 	if run_controller == null or run_economy == null:
 		return 0
@@ -260,10 +292,45 @@ func _grant_pending_node_floor_gold() -> int:
 	var node := run_controller.get_pending_node()
 	if node == null:
 		return 0
-	var amount := run_economy.grant_floor_gold(node.get_floor())
+	var bonus := ExpeditionRelicEffectService.sum_bonus_floor_gold(relic_bag)
+	var amount := run_economy.grant_floor_gold(node.get_floor(), bonus)
 	if amount > 0:
 		_pending_map_hint = "节点完成  +%d 金" % amount
 	return amount
+
+
+## 事件节点：远征圣物三选一（可跳过）；完成后发层金并回地图。
+func _open_event_relic_offer() -> void:
+	if _event_relic_busy:
+		return
+	_event_relic_busy = true
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	_ensure_relic_offer_screen()
+	var node := run_controller.get_pending_node()
+	var floor_i := node.get_floor() if node != null else 1
+	var offer_rng := RandomNumberGenerator.new()
+	offer_rng.seed = _rng.randi()
+	## 每次进事件重读池：balance-designer 资源到位后无需重开进程。
+	_relic_offer_service.configure(ExpeditionRelicOfferService.load_pool_or_stub(), offer_rng)
+	var offers := _relic_offer_service.roll_offers(floor_i, relic_bag, 3)
+	if _relic_offer_screen != null:
+		_relic_offer_screen.show_offers(offers, relic_bag)
+	else:
+		_event_relic_busy = false
+		_grant_pending_node_floor_gold()
+		run_controller.complete_encounter()
+
+
+func _on_relic_offer_finished(_took: bool) -> void:
+	if not _event_relic_busy:
+		return
+	_event_relic_busy = false
+	_grant_pending_node_floor_gold()
+	run_controller.complete_encounter()
 
 
 ## 地图商店：Arena 主路径（上队伍 / 下货架），与招募同屏半场；结束回地图。
@@ -279,7 +346,7 @@ func _open_map_shop() -> void:
 	var shop_rng := RandomNumberGenerator.new()
 	shop_rng.seed = _rng.randi()
 	var config := map_shop_config if map_shop_config != null else MapShopConfig.load_or_default()
-	_map_shop_service.configure(config, run_economy, deck_state, shop_rng)
+	_map_shop_service.configure(config, run_economy, deck_state, shop_rng, relic_bag)
 	_map_shop_service.open_shop()
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_map_shop(_map_shop_service, enter_s)
@@ -305,7 +372,7 @@ func _open_recruit() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _rng.randi()
-	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
+	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = false
 	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(

@@ -123,7 +123,8 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 	for i in consumables.size():
 		var item: MapShopConsumableData = consumables[i] as MapShopConsumableData
 		var cell := cons_cells[i] if i < cons_cells.size() else Vector2i(-1, -1)
-		var cost := item.cost if item != null else 0
+		var raw := item.cost if item != null else 0
+		var cost := _service.get_offer_price(raw) if item != null else 0
 		out.append({
 			"index": i,
 			"kind": &"consumable",
@@ -138,14 +139,15 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 	for i in equipment.size():
 		var item: EquipmentData = equipment[i] as EquipmentData
 		var cell := equip_cells[i] if i < equip_cells.size() else Vector2i(-1, -1)
-		var cost := item.cost if item != null else 0
+		var raw_e := item.cost if item != null else 0
+		var cost_e := _service.get_offer_price(raw_e) if item != null else 0
 		out.append({
 			"index": i,
 			"kind": &"equipment",
 			"item": item,
 			"cell": cell,
-			"cost": cost,
-			"affordable": _service.can_afford(cost) if item != null else false,
+			"cost": cost_e,
+			"affordable": _service.can_afford(cost_e) if item != null else false,
 			"label": item.get_display_name() if item != null else "",
 			"summary": "抵挡 %d" % item.get_armor_block() if item != null else "",
 			"icon": item.get_icon() if item != null else null,

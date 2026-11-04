@@ -93,3 +93,16 @@ func find_index_by_id(relic_id: String) -> int:
 		if r != null and r.id == relic_id:
 			return i
 	return -1
+
+
+## 招募重置用：浅拷贝引用列表（圣物 Resource 共享）。
+func capture_state() -> Array:
+	return _relics.duplicate()
+
+
+func restore_state(saved: Array) -> void:
+	_relics.clear()
+	for item in saved:
+		if item is ExpeditionRelicData:
+			_relics.append(item)
+	bag_changed.emit()

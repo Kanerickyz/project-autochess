@@ -140,6 +140,10 @@ var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
 var _map_shop_service: MapShopService
 var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
+## 远征行囊（Run 注入；战斗只读挂载效果；招募可卖）。
+var _relic_bag: ExpeditionRelicBag
+var _recruit_sell_relic_btn: Button
+var _recruit_relic_panel: VBoxContainer
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
 var _combat_sandbox_mode: bool = false
 ## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
@@ -288,6 +292,14 @@ func _process(delta: float) -> void:
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
 	_run_stat_ledger = ledger
 	_stat_collector.configure(ledger)
+
+
+func set_relic_bag(bag: ExpeditionRelicBag) -> void:
+	_relic_bag = bag
+
+
+func get_relic_bag() -> ExpeditionRelicBag:
+	return _relic_bag
 
 
 func set_combat_sandbox_mode(enabled: bool) -> void:
@@ -1694,6 +1706,26 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, place)
 
+	_attach_relic_combat_abilities()
+
+
+## 开战前把行囊圣物 EffectSpec 挂到友方（与主题羁绊同管线）。
+func _attach_relic_combat_abilities() -> void:
+	if _sim == null or _relic_bag == null or _relic_bag.get_count() <= 0:
+		return
+	var player_units: Array = []
+	for item in _sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or rt.unit == null or not rt.is_player():
+			continue
+		player_units.append(rt.unit)
+	ExpeditionRelicEffectService.attach_combat_abilities(
+		player_units,
+		_relic_bag,
+		_deck_state,
+		int(_board_size.y),
+	)
+
 
 func _set_phase(phase: Phase) -> void:
 	_phase = phase
@@ -2588,6 +2620,17 @@ func _ensure_recruit_hud() -> void:
 	_recruit_finish_btn.pressed.connect(_on_recruit_finish_pressed)
 	row.add_child(_recruit_finish_btn)
 
+	_recruit_sell_relic_btn = Button.new()
+	_recruit_sell_relic_btn.text = "卖圣物"
+	_recruit_sell_relic_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_recruit_sell_relic_btn.pressed.connect(_on_recruit_sell_relic_toggle)
+	row.add_child(_recruit_sell_relic_btn)
+
+	_recruit_relic_panel = VBoxContainer.new()
+	_recruit_relic_panel.visible = false
+	_recruit_relic_panel.add_theme_constant_override("separation", 4)
+	box.add_child(_recruit_relic_panel)
+
 
 ## 准备阶段底栏等效高度：手牌行 + 开战 + DockBox 间距 + panel 上下边距。
 ## 本版已取消准备刷新手牌，不再计入刷新钮高度。
@@ -2639,6 +2682,8 @@ func _show_recruit_hud() -> void:
 
 
 func _hide_recruit_hud() -> void:
+	if _recruit_relic_panel != null:
+		_recruit_relic_panel.visible = false
 	if _recruit_hud != null:
 		_recruit_hud.visible = false
 
@@ -2910,6 +2955,63 @@ func _refresh_recruit_hud() -> void:
 		]
 	if _encounter_label != null:
 		_encounter_label.text = "招募"
+	_refresh_recruit_relic_sell_ui()
+
+
+func _refresh_recruit_relic_sell_ui() -> void:
+	var bag := _relic_bag
+	if _recruit_session != null and _recruit_session.get_relic_bag() != null:
+		bag = _recruit_session.get_relic_bag()
+	var count := bag.get_count() if bag != null else 0
+	if _recruit_sell_relic_btn != null:
+		_recruit_sell_relic_btn.disabled = _recruit_animating or count <= 0
+		_recruit_sell_relic_btn.text = "卖圣物（%d）" % count
+	if _recruit_relic_panel == null:
+		return
+	if not _recruit_relic_panel.visible:
+		return
+	for child in _recruit_relic_panel.get_children():
+		child.queue_free()
+	if bag == null or count <= 0:
+		var empty := Label.new()
+		empty.text = "行囊无圣物可卖"
+		_recruit_relic_panel.add_child(empty)
+		return
+	var title := Label.new()
+	title.text = "点选出售圣物换金（与拖卖队伍成员不同）"
+	_recruit_relic_panel.add_child(title)
+	for i in count:
+		var relic := bag.get_at(i)
+		var btn := Button.new()
+		var name := relic.display_name if relic != null else "？"
+		var gold := relic.resolve_sell_gold() if relic != null else 0
+		btn.text = "出售 %s（+%d 金）" % [name, gold]
+		btn.pressed.connect(_on_recruit_sell_relic_index.bind(i))
+		_recruit_relic_panel.add_child(btn)
+
+
+func _on_recruit_sell_relic_toggle() -> void:
+	if _phase != Phase.RECRUIT or _recruit_animating:
+		return
+	if _recruit_relic_panel == null:
+		return
+	_recruit_relic_panel.visible = not _recruit_relic_panel.visible
+	_refresh_recruit_relic_sell_ui()
+
+
+func _on_recruit_sell_relic_index(bag_index: int) -> void:
+	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
+		return
+	var result := _recruit_session.try_sell_relic(bag_index)
+	if result.get("ok", false):
+		if _recruit_hint != null:
+			var relic: ExpeditionRelicData = result.get("relic") as ExpeditionRelicData
+			var name := relic.display_name if relic != null else "圣物"
+			_recruit_hint.text = "已出售圣物 %s，获得 %d 金" % [name, int(result.get("gold", 0))]
+		_refresh_recruit_hud()
+		return
+	if _recruit_hint != null:
+		_recruit_hint.text = "无法出售圣物（%s）" % String(result.get("reason", "unknown"))
 
 
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
@@ -3668,8 +3770,9 @@ func _on_combat_finished(won: bool) -> void:
 		and not _combat_sandbox_mode
 		and not _final_trial_active
 	):
-		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
-		_floor_gold = _economy.grant_floor_gold(_floor_index)
+		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）+ 圣物加成。
+		var relic_bonus := ExpeditionRelicEffectService.sum_bonus_floor_gold(_relic_bag)
+		_floor_gold = _economy.grant_floor_gold(_floor_index, relic_bonus)
 	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
 	if _final_trial_active:
