@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_credit_vellum"
+display_name = "赊账羊皮"
+description = "事件付费/失金选项：金代价 −3（最低 0）；整局第一次真正减免后碎裂离囊（无退金）。"
+tier = 2
+sell_gold = 4
+effect_id = "relic_credit_vellum"
+event_gold_cost_reduction = 3
+shatter_after_first_real_save = true

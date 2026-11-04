@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_martyr_thorns"
+display_name = "殉道荆冠"
+description = "友方死亡时：对击杀者 2 点伤害；周围一格敌人获反伤层 1（其造成伤害时自身受 1；单敌反伤层软顶 2）；整场死亡触发顶 4。"
+tier = 3
+sell_gold = 6
+effect_id = "relic_martyr_thorns"
+death_damage_to_killer = 2
+nearby_enemy_thorns = 1
+thorns_stack_soft_cap_per_enemy = 2
+cap_death_triggers_per_combat = 4

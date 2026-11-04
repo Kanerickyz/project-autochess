@@ -10,6 +10,7 @@ var _config: MapShopConfig
 var _economy: RunEconomy
 var _deck: DeckState
 var _rng: RandomNumberGenerator
+var _relic_bag: ExpeditionRelicBag
 var _open: bool = false
 var _consumable_offers: Array = []
 var _equipment_offers: Array = []
@@ -20,16 +21,22 @@ func configure(
 	economy: RunEconomy,
 	deck: DeckState,
 	rng: RandomNumberGenerator = null,
+	relic_bag: ExpeditionRelicBag = null,
 ) -> void:
 	_config = config if config != null else MapShopConfig.make_code_defaults()
 	_economy = economy
 	_deck = deck
+	_relic_bag = relic_bag
 	_rng = rng if rng != null else RandomNumberGenerator.new()
 	if rng == null:
 		_rng.randomize()
 	_open = false
 	_consumable_offers.clear()
 	_equipment_offers.clear()
+
+
+func set_relic_bag(bag: ExpeditionRelicBag) -> void:
+	_relic_bag = bag
 
 
 func is_open() -> bool:
@@ -51,9 +58,14 @@ func close_shop() -> void:
 
 
 func get_refresh_cost() -> int:
-	if _config == null:
-		return MapShopConfig.DEFAULT_REFRESH_COST
-	return _config.get_refresh_cost()
+	var base := MapShopConfig.DEFAULT_REFRESH_COST
+	if _config != null:
+		base = _config.get_refresh_cost()
+	return ExpeditionRelicEffectService.resolve_refresh_cost(base, _relic_bag)
+
+
+func get_offer_price(base_cost: int) -> int:
+	return ExpeditionRelicEffectService.resolve_shop_price(base_cost, _relic_bag)
 
 
 func get_gold() -> int:
@@ -146,7 +158,7 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	if entry == null:
 		failed["reason"] = "no_target"
 		return failed
-	var cost := maxi(0, item.cost)
+	var cost := get_offer_price(maxi(0, item.cost))
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
@@ -187,7 +199,7 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	if entry == null:
 		failed["reason"] = "no_target"
 		return failed
-	var cost := maxi(0, item.cost)
+	var cost := get_offer_price(maxi(0, item.cost))
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed

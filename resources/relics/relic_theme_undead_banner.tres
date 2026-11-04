@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_theme_undead_banner"
+display_name = "亡灵成形旗"
+description = "若本场「亡灵」已成形：带亡灵主题的友方开战本场临时攻击与生命上限各 +1。"
+tier = 2
+sell_gold = 4
+effect_id = "relic_theme_undead_banner"
+theme_filter = &"undead"
+theme_combat_start_temp_attack = 1
+theme_combat_start_temp_max_hp = 1
+theme_requires_formed = true

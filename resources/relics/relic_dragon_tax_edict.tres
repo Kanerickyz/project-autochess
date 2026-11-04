@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_dragon_tax_edict"
+display_name = "龙税敕令"
+description = "层结算金额外 +3（本版胜场金=层金，只加一次）；开战全体本场临时生命上限 −2（上限最低仍保留 1）。"
+tier = 3
+sell_gold = 6
+effect_id = "relic_dragon_tax_edict"
+bonus_floor_gold = 3
+combat_start_temp_max_hp = -2
+min_max_hp_after = 1

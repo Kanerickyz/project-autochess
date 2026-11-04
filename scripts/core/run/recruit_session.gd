@@ -15,6 +15,8 @@ const COPIES_PER_CHARACTER := 9
 var config: RecruitConfig
 var deck: DeckState
 var economy: RunEconomy
+## 远征行囊（可选）：招募可卖圣物；卖人可叠 sell_unit_bonus_gold。
+var relic_bag: ExpeditionRelicBag
 var _rng: RandomNumberGenerator
 
 var candidates: Array[UnitData] = []
@@ -36,6 +38,7 @@ var _snapshot_entries: Array[DeckEntry] = []
 var _snapshot_next_entry_id: int = 0
 var _snapshot_candidates: Array[UnitData] = []
 var _snapshot_locked: Array[bool] = []
+var _snapshot_relics: Array = []
 ## 跨场招募保留：上一场结束时仍锁定的候选人（按槽）。
 var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
@@ -51,15 +54,21 @@ func configure(
 	p_deck: DeckState,
 	p_economy: RunEconomy,
 	rng: RandomNumberGenerator = null,
+	p_relic_bag: ExpeditionRelicBag = null,
 ) -> void:
 	config = p_config
 	deck = p_deck
 	economy = p_economy
+	relic_bag = p_relic_bag
 	if rng != null:
 		_rng = rng
 	else:
 		_rng = RandomNumberGenerator.new()
 		_rng.randomize()
+
+
+func set_relic_bag(bag: ExpeditionRelicBag) -> void:
+	relic_bag = bag
 
 
 func begin(
@@ -364,6 +373,8 @@ func try_sell(entry_id: int) -> Dictionary:
 		result["reason"] = "bad_entry"
 		return result
 	var price := DeckUpgradeService.get_sell_price(entry)
+	price += ExpeditionRelicEffectService.sum_sell_unit_bonus_gold(relic_bag)
+	price = maxi(0, price)
 	if not deck.remove_entry(entry_id):
 		result["reason"] = "remove_failed"
 		return result
@@ -373,6 +384,39 @@ func try_sell(entry_id: int) -> Dictionary:
 	result["gold"] = price
 	session_changed.emit()
 	return result
+
+
+## 招募出售行囊圣物换金（与卖人分离）；换下事件路径勿走本方法。
+func try_sell_relic(bag_index: int) -> Dictionary:
+	var result := {
+		"ok": false,
+		"reason": "inactive",
+		"gold": 0,
+		"bag_index": bag_index,
+		"relic": null,
+	}
+	if not is_active or economy == null or relic_bag == null:
+		return result
+	var relic := relic_bag.get_at(bag_index)
+	if relic == null:
+		result["reason"] = "bad_index"
+		return result
+	var price := relic.resolve_sell_gold()
+	var removed := relic_bag.try_remove_at(bag_index)
+	if removed == null:
+		result["reason"] = "remove_failed"
+		return result
+	economy.grant(price)
+	result["ok"] = true
+	result["reason"] = "sold_relic"
+	result["gold"] = price
+	result["relic"] = removed
+	session_changed.emit()
+	return result
+
+
+func get_relic_bag() -> ExpeditionRelicBag:
+	return relic_bag
 
 
 func reset() -> void:
@@ -439,6 +483,7 @@ func _capture_snapshot() -> void:
 	_snapshot_candidates = candidates.duplicate()
 	_snapshot_locked = candidate_locked.duplicate()
 	_snapshot_taken_copies = _taken_copies.duplicate()
+	_snapshot_relics = relic_bag.capture_state() if relic_bag != null else []
 
 
 func _restore_snapshot() -> void:
@@ -456,6 +501,8 @@ func _restore_snapshot() -> void:
 	candidates = _snapshot_candidates.duplicate()
 	candidate_locked = _snapshot_locked.duplicate()
 	_taken_copies = _snapshot_taken_copies.duplicate()
+	if relic_bag != null:
+		relic_bag.restore_state(_snapshot_relics)
 	_ensure_lock_slots()
 
 

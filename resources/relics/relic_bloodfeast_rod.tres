@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_bloodfeast_rod"
+display_name = "血宴权杖"
+description = "友方击杀时，对另一名随机敌人造成 2 点额外伤害；每友方每回合至多 1 次；整场总次数顶 6。"
+tier = 3
+sell_gold = 6
+effect_id = "relic_bloodfeast_rod"
+kill_cleave_damage = 2
+cap_per_ally_per_round = 1
+cap_per_combat = 6

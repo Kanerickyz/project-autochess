@@ -62,8 +62,10 @@ func grant_kill_gold(_unit_data: UnitData) -> void:
 
 ## 层结算金：第 n 层胜利发 n+3 金（原 n+1，再多给 2）。
 ## floor_index：地图层号（1=第1层）；若传入 0-based 下标 0，按第 1 层发 4 金。
-func grant_floor_gold(floor_index: int) -> int:
-	var amount := resolve_floor_gold_amount(floor_index)
+## bonus_from_relics：远征圣物 bonus_floor_gold 叠加（可负，发金下限 0）。
+func grant_floor_gold(floor_index: int, bonus_from_relics: int = 0) -> int:
+	var amount := resolve_floor_gold_amount(floor_index) + bonus_from_relics
+	amount = maxi(0, amount)
 	grant(amount)
 	return amount
 

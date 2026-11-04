@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_theme_warrior_crest"
+display_name = "战士徽记"
+description = "开战时，带「战士」主题的友方本场临时攻击 +1。"
+tier = 1
+sell_gold = 2
+effect_id = "relic_theme_warrior_crest"
+theme_filter = &"warrior"
+theme_combat_start_temp_attack = 1

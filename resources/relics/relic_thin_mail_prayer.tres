@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_thin_mail_prayer"
+display_name = "薄甲祷文"
+description = "开战全体友方本场临时生命上限 +1。"
+tier = 1
+sell_gold = 2
+effect_id = "relic_thin_mail_prayer"
+combat_start_temp_max_hp = 1

@@ -14,7 +14,8 @@
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
-| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战、远征行囊指针） |
+| [Features/EXPEDITION_RELICS.md](./Features/EXPEDITION_RELICS.md) | **远征行囊 / 远征圣物**（6 格全局；事件三选一；招募出售） |
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
@@ -24,6 +25,8 @@
 | [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写） |
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含回血三条；挂载见角色库 §6） |
+| [Content/EXPEDITION_RELICS_ROSTER.md](./Content/EXPEDITION_RELICS_ROSTER.md) | **远征圣物库**（草案 · Tier 1–3；正式 Feature 待授权） |
+| [DesignNotes/EXPEDITION_RELICS_CONSENSUS.md](./DesignNotes/EXPEDITION_RELICS_CONSENSUS.md) | **远征行囊共识摘要**（已拍板 · 未写 Feature） |
 | [Features/MAIN_MENU.md](./Features/MAIN_MENU.md) | **主菜单**（局外 Hub；动态营地远景视差 + 指针跟手） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
