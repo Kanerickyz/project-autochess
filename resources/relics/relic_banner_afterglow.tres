@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_banner_afterglow"
+display_name = "旗缘余晖"
+description = "若本场至少一主题已成形，开战全体本场临时生命上限 +1（不改主题人数）。"
+tier = 2
+sell_gold = 4
+effect_id = "relic_banner_afterglow"
+requires_any_theme_formed = true
+combat_start_temp_max_hp = 1

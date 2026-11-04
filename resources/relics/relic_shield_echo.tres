@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_shield_echo"
+display_name = "盾回残响"
+description = "友方受伤且未阵亡时，对攻击者 1 点反伤；每友方每回合最多 1 次。"
+tier = 1
+sell_gold = 2
+effect_id = "relic_shield_echo"
+reflect_damage = 1
+cap_per_ally_per_round = 1

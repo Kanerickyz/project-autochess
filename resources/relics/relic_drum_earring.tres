@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_drum_earring"
+display_name = "鼓点耳饰"
+description = "友方受伤触发类技能结算后，该单位本场临时攻再 +1；每单位每回合因此最多再得 2 点。"
+tier = 1
+sell_gold = 2
+effect_id = "relic_drum_earring"
+bonus_temp_attack_after_hurt_ability = 1
+cap_per_unit_per_round = 2

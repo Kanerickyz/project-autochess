@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ExpeditionRelicData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/expedition_relic_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "relic_hedge_of_pikes"
+display_name = "夹道刺篱"
+description = "开战座位正交相邻的两名友方，对邻格敌人伤害 +2（只认开战落点）。"
+tier = 3
+sell_gold = 6
+effect_id = "relic_hedge_of_pikes"
+ortho_pair_adjacent_enemy_damage_bonus = 2
