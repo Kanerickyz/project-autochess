@@ -206,6 +206,7 @@ resources/ui/paper_unit_art.tres  # 兵种 id → 贴图键
 | `crossbow` | 宽檐铁盔 + 横持重弩 | crossbow 弩手 |
 | `horsebow` | 骑小马 + 拉短弓 | horsebow 骑弓 |
 | `rider` | 骑白马 + 平端长枪小旗 | rider 狼骑兵 |
+| `templar` | 骑棕甲马 + 斜举骑枪 + 蓝十字白盾披风 | templar 圣殿骑士 |
 | `hunter` | 宽檐皮帽 + 狼皮斗篷 + 双匕 | hunter 猎手 |
 | `maul` | 光头大胡子 + 扛方头巨锤 | maul 巨锤 |
 | `valkyrie` | 翼盔金辫 + 甩链枷 + 圆盾 | valkyrie 链枷 |

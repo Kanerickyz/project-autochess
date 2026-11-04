@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_crossbow_blue.png" id="b_crossbow"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_horsebow_blue.png" id="b_horsebow"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rider_blue.png" id="b_rider"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_templar_blue.png" id="b_templar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_hunter_blue.png" id="b_hunter"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_maul_blue.png" id="b_maul"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_valkyrie_blue.png" id="b_valkyrie"]
@@ -48,6 +49,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_crossbow_red.png" id="r_crossbow"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_horsebow_red.png" id="r_horsebow"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_rider_red.png" id="r_rider"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_templar_red.png" id="r_templar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_hunter_red.png" id="r_hunter"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_maul_red.png" id="r_maul"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_valkyrie_red.png" id="r_valkyrie"]
@@ -162,6 +164,7 @@ archetype_by_unit_id = {
 "ram": &"ram",
 "relic_aegis": &"relic_aegis",
 "rider": &"rider",
+"templar": &"templar",
 "rune_plate": &"rune_plate",
 "shield_boon": &"shield_boon",
 "shinobi": &"shinobi",
@@ -226,6 +229,7 @@ player_textures = {
 &"ram": ExtResource("b_ram"),
 &"relic_aegis": ExtResource("b_relic_aegis"),
 &"rider": ExtResource("b_rider"),
+&"templar": ExtResource("b_templar"),
 &"rune_plate": ExtResource("b_rune_plate"),
 &"shield": ExtResource("b_shield"),
 &"shield_boon": ExtResource("b_shield_boon"),
@@ -286,6 +290,7 @@ enemy_textures = {
 &"ram": ExtResource("r_ram"),
 &"relic_aegis": ExtResource("r_relic_aegis"),
 &"rider": ExtResource("r_rider"),
+&"templar": ExtResource("r_templar"),
 &"rune_plate": ExtResource("r_rune_plate"),
 &"shield": ExtResource("r_shield"),
 &"shield_boon": ExtResource("r_shield_boon"),
