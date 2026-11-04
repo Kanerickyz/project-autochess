@@ -34,6 +34,14 @@ enum Tier { T1 = 1, T2 = 2, T3 = 3 }
 @export var temp_attack_per_bench_unit: int = 0
 @export var min_max_hp_after: int = 1
 
+@export_group("Theme filter (bond)")
+## 非空时：开战临时攻/血只打到主或辅含该主题的友方（不改主题计数）。
+@export var theme_filter: StringName = &""
+@export var theme_combat_start_temp_attack: int = 0
+@export var theme_combat_start_temp_max_hp: int = 0
+## true：仅当该主题本场已成形时才发放 theme_* 加成。
+@export var theme_requires_formed: bool = false
+
 @export_group("Combat triggers")
 @export var bonus_temp_attack_after_hurt_ability: int = 0
 @export var cap_per_unit_per_round: int = 0
