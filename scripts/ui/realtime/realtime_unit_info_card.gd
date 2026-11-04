@@ -89,7 +89,7 @@ var _portrait: TextureRect
 var _name_label: Label
 var _theme_row: HBoxContainer
 var _theme_icon: ThemeBadgeIcon
-var _theme_names_label: Label
+var _theme_names_label: RichTextLabel
 var _side_label: Label
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
@@ -159,10 +159,17 @@ func _init() -> void:
 	_theme_icon = ThemeBadgeIcon.new()
 	_theme_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_theme_row.add_child(_theme_icon)
-	_theme_names_label = Label.new()
-	_theme_names_label.add_theme_font_size_override("font_size", 12)
-	_theme_names_label.add_theme_color_override("font_color", INK_SOFT)
+	_theme_names_label = RichTextLabel.new()
+	_theme_names_label.bbcode_enabled = true
+	_theme_names_label.fit_content = true
+	_theme_names_label.scroll_active = false
+	_theme_names_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_theme_names_label.custom_minimum_size = Vector2(0.0, 16.0)
+	_theme_names_label.add_theme_font_size_override("normal_font_size", 12)
+	_theme_names_label.add_theme_color_override("default_color", INK_SOFT)
 	_theme_names_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_theme_names_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_theme_names_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_theme_row.add_child(_theme_names_label)
 
 	_side_label = Label.new()
@@ -174,8 +181,10 @@ func _init() -> void:
 	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	titles.add_child(badges)
 	_attack_badge = _make_badge(RealtimeArenaView.STAT_ATTACK_TEX)
+	_attack_badge.value_color = RealtimeArenaView.STAT_ATTACK_VALUE
 	badges.add_child(_attack_badge)
 	_hp_badge = _make_badge(RealtimeArenaView.STAT_HP_TEX)
+	_hp_badge.value_color = RealtimeArenaView.STAT_HP_VALUE
 	badges.add_child(_hp_badge)
 	_armor_badge = _make_badge(UiStatIcons.armor_texture())
 	_armor_badge.visible = false
@@ -428,6 +437,8 @@ func _apply_content(info: Dictionary) -> void:
 	if not is_item:
 		_attack_badge.value = int(info.get("attack", 0))
 		_hp_badge.value = int(info.get("hp", 0))
+		_attack_badge.value_color = RealtimeArenaView.STAT_ATTACK_VALUE
+		_hp_badge.value_color = RealtimeArenaView.STAT_HP_VALUE
 		_attack_badge.queue_redraw()
 		_hp_badge.queue_redraw()
 	var armor := int(info.get("armor", 0))
@@ -459,7 +470,7 @@ func _hide_theme_header() -> void:
 	if _theme_icon != null:
 		_theme_icon.set_themes(&"", &"")
 	if _theme_names_label != null:
-		_theme_names_label.text = ""
+		_theme_names_label.clear()
 
 
 func _apply_theme_header(info: Dictionary) -> void:
@@ -471,11 +482,19 @@ func _apply_theme_header(info: Dictionary) -> void:
 	if not UnitTheme.is_valid_id(secondary) or secondary == primary:
 		secondary = &""
 	_theme_icon.set_themes(primary, secondary)
-	var names := UnitTheme.display_name(primary)
-	if secondary != &"":
-		names = "%s / %s" % [names, UnitTheme.display_name(secondary)]
-	_theme_names_label.text = names
+	_theme_names_label.clear()
+	_theme_names_label.append_text(_format_theme_names_bbcode(primary, secondary))
 	_theme_row.visible = true
+
+
+## 卡头主题中文名跟 ThemeBondBadgeDraw 色表；主/辅各色。
+func _format_theme_names_bbcode(primary: StringName, secondary: StringName) -> String:
+	var primary_hex := ThemeBondBadgeDraw.color_for(primary).to_html(false)
+	var out := "[color=#%s]%s[/color]" % [primary_hex, UnitTheme.display_name(primary)]
+	if secondary != &"" and UnitTheme.is_valid_id(secondary):
+		var secondary_hex := ThemeBondBadgeDraw.color_for(secondary).to_html(false)
+		out += " / [color=#%s]%s[/color]" % [secondary_hex, UnitTheme.display_name(secondary)]
+	return out
 
 
 func _compute_position(
@@ -658,7 +677,7 @@ func _kill_reel_tween() -> void:
 	position = _rest_position + _follow_offset
 
 
-## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标。
+## 去掉「【技能】」等标签前缀；攻/血占位换成脚下同款图标；仅图标后数字染攻红/血绿。
 ## is_item：商店物品详情，空文案不套「无技能」单位兜底。
 func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 	if raw.is_empty() or raw == "无技能":
@@ -672,6 +691,13 @@ func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 	var plain := "\n".join(lines)
 	plain = UnitInfoText.bold_skill_trigger_bbcode(plain)
 	var escaped := UnitInfoText.escape_richtext_literal_brackets(plain)
+	## 占位仍在时包数字色，再换图标，避免 [color] 被字面量转义。
+	escaped = _colorize_digits_after_stat_icon(
+		escaped, UnitInfoText.STAT_ICON_ATK, RealtimeArenaView.STAT_ATTACK_VALUE
+	)
+	escaped = _colorize_digits_after_stat_icon(
+		escaped, UnitInfoText.STAT_ICON_HP, RealtimeArenaView.STAT_HP_VALUE
+	)
 	var icon_h := 16.0
 	var atk_tex: Texture2D = RealtimeArenaView.STAT_ATTACK_TEX
 	var hp_tex: Texture2D = RealtimeArenaView.STAT_HP_TEX
@@ -695,6 +721,35 @@ func _format_skills_bbcode(raw: String, is_item: bool = false) -> String:
 	else:
 		escaped = escaped.replace(UnitInfoText.STAT_ICON_GOLD, "金")
 	return escaped
+
+
+## 仅对图标占位后紧跟的数字包 [color]；汉字与整段技能不上色。
+func _colorize_digits_after_stat_icon(text: String, icon_token: String, color: Color) -> String:
+	if text.is_empty() or icon_token.is_empty():
+		return text
+	var hex := color.to_html(false)
+	var out := ""
+	var search_from := 0
+	while true:
+		var idx := text.find(icon_token, search_from)
+		if idx < 0:
+			out += text.substr(search_from)
+			break
+		out += text.substr(search_from, idx - search_from)
+		out += icon_token
+		var after := idx + icon_token.length()
+		var digit_end := after
+		while digit_end < text.length():
+			var ch := text[digit_end]
+			if ch < "0" or ch > "9":
+				break
+			digit_end += 1
+		if digit_end > after:
+			out += "[color=#%s]%s[/color]" % [hex, text.substr(after, digit_end - after)]
+			search_from = digit_end
+		else:
+			search_from = after
+	return out
 
 
 func _make_badge(texture: Texture2D) -> StatBadge:

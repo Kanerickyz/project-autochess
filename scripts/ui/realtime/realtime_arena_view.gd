@@ -104,6 +104,9 @@ const GOLD_COIN_SLIDE_TILE_MIN := 0.18
 const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
+## 攻/血数字语义色（COMBAT_FEEDBACK §7.2.0）：仅染数字；信息卡与脚下共用。
+const STAT_ATTACK_VALUE := Color(0.78, 0.18, 0.16, 1.0)
+const STAT_HP_VALUE := Color(0.16, 0.55, 0.28, 1.0)
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
 const STAT_BADGE_HEIGHT_MUL := 0.42
 const STAT_BADGE_MIN_HEIGHT := 11.0
@@ -4458,10 +4461,10 @@ func _draw_stat_badges(
 	var slot := 0
 	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 	slot += 1
-	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
+	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha, STAT_ATTACK_VALUE)
 	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 	slot += 1
-	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
+	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha, STAT_HP_VALUE)
 	if show_armor:
 		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
