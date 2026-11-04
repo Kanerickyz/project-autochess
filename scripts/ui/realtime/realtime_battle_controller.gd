@@ -142,6 +142,7 @@ var _map_shop_service: MapShopService
 var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
 ## 远征行囊（Run 注入；战斗只读挂载效果；招募可卖）。
 var _relic_bag: ExpeditionRelicBag
+var _relic_hooks: ExpeditionRelicCombatHooks = ExpeditionRelicCombatHooks.new()
 var _recruit_sell_relic_btn: Button
 var _recruit_relic_panel: VBoxContainer
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
@@ -1711,20 +1712,39 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 
 ## 开战前把行囊圣物 EffectSpec 挂到友方（与主题羁绊同管线）。
 func _attach_relic_combat_abilities() -> void:
+	if _relic_hooks != null:
+		_relic_hooks.unbind()
 	if _sim == null or _relic_bag == null or _relic_bag.get_count() <= 0:
 		return
 	var player_units: Array = []
+	var all_units: Array = []
 	for item in _sim.get_units():
 		var rt := item as RtUnit
-		if rt == null or rt.unit == null or not rt.is_player():
+		if rt == null or rt.unit == null:
 			continue
-		player_units.append(rt.unit)
+		all_units.append(rt.unit)
+		if rt.is_player():
+			player_units.append(rt.unit)
 	ExpeditionRelicEffectService.attach_combat_abilities(
 		player_units,
 		_relic_bag,
 		_deck_state,
 		int(_board_size.y),
 	)
+	if _relic_hooks != null and _bus != null:
+		_relic_hooks.bind(
+			_bus,
+			_relic_bag,
+			all_units,
+			last_seed,
+			Callable(self, "_deal_relic_hook_damage"),
+		)
+
+
+func _deal_relic_hook_damage(source: UnitInstance, target: UnitInstance, amount: int) -> void:
+	if _sim == null:
+		return
+	_sim.apply_relic_hook_damage(source, target, amount)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -1942,6 +1962,8 @@ func _teardown_sim() -> void:
 	_lock_phase_active = false
 	if _timestop_queue != null:
 		_timestop_queue.clear()
+	if _relic_hooks != null:
+		_relic_hooks.unbind()
 	if _sim != null:
 		_sim.dispose()
 		_sim = null

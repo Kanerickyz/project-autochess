@@ -7,6 +7,9 @@ static func run() -> bool:
 	ok = _check("bag_capacity", _test_bag()) and ok
 	ok = _check("offer_dedupe", _test_offer_dedupe()) and ok
 	ok = _check("economy_aggregate", _test_economy()) and ok
+	ok = _check("event_gold_loss_shatter", _test_event_gold_loss()) and ok
+	ok = _check("attach_combat_triggers", _test_attach_combat()) and ok
+	ok = _check("combat_hooks_drum_cap", _test_hooks_drum()) and ok
 	return ok
 
 
@@ -99,3 +102,101 @@ static func _test_economy() -> bool:
 	var got := econ.grant_floor_gold(1, 2)
 	## 第1层基础 4 + bonus 2
 	return got == 6 and econ.gold == 6
+
+
+static func _test_event_gold_loss() -> bool:
+	var bag := ExpeditionRelicBag.new()
+	var vellum := ExpeditionRelicData.new()
+	vellum.id = "relic_credit_vellum"
+	vellum.display_name = "赊账羊皮"
+	vellum.event_gold_cost_reduction = 3
+	vellum.shatter_after_first_real_save = true
+	bag.try_take(vellum)
+	var resolved := ExpeditionRelicEffectService.apply_event_gold_loss(bag, 5)
+	if int(resolved.get("loss", -1)) != 2:
+		return false
+	var shattered: ExpeditionRelicData = resolved.get("shattered") as ExpeditionRelicData
+	if shattered == null or shattered.id != "relic_credit_vellum":
+		return false
+	if bag.get_count() != 0:
+		return false
+	## 无羊皮时原样扣。
+	var plain := ExpeditionRelicEffectService.apply_event_gold_loss(null, 4)
+	return int(plain.get("loss", -1)) == 4 and plain.get("shattered") == null
+
+
+static func _test_attach_combat() -> bool:
+	var bag := ExpeditionRelicBag.new()
+	var thin := load("res://resources/relics/relic_thin_mail_prayer.tres") as ExpeditionRelicData
+	var horn := load("res://resources/relics/relic_hunt_horn_shard.tres") as ExpeditionRelicData
+	var martyr := load("res://resources/relics/relic_martyr_thorns.tres") as ExpeditionRelicData
+	var hedge := load("res://resources/relics/relic_hedge_of_pikes.tres") as ExpeditionRelicData
+	if thin == null or horn == null or martyr == null or hedge == null:
+		return false
+	bag.try_take(thin)
+	bag.try_take(horn)
+	bag.try_take(martyr)
+	bag.try_take(hedge)
+	var unit := UnitInstance.new()
+	unit.team = UnitInstance.Team.PLAYER
+	unit.grid_pos = Vector2i(2, 6)
+	unit.current_hp = 10
+	var stats := UnitStats.new()
+	stats.max_hp = 10
+	stats.attack = 2
+	unit.stats = stats
+	var ally := UnitInstance.new()
+	ally.team = UnitInstance.Team.PLAYER
+	ally.grid_pos = Vector2i(3, 6)
+	ally.current_hp = 10
+	ally.stats = stats.duplicate()
+	ExpeditionRelicEffectService.attach_combat_abilities([unit, ally], bag, null, 8)
+	var ids: Array[String] = []
+	for ab in unit.attached_abilities:
+		if ab != null:
+			ids.append(String(ab.id))
+	var joined := " ".join(ids)
+	if not joined.contains("expedition_relic_relic_thin_mail_prayer"):
+		return false
+	if not joined.contains("expedition_relic_relic_hunt_horn_shard"):
+		return false
+	if not joined.contains("expedition_relic_relic_martyr_thorns"):
+		return false
+	## 正交邻友 → 刺篱挂载。
+	if not joined.contains("expedition_relic_relic_hedge_of_pikes"):
+		return false
+	return true
+
+
+static func _test_hooks_drum() -> bool:
+	var bag := ExpeditionRelicBag.new()
+	var drum := load("res://resources/relics/relic_drum_earring.tres") as ExpeditionRelicData
+	if drum == null:
+		return false
+	bag.try_take(drum)
+	var owner := UnitInstance.new()
+	owner.team = UnitInstance.Team.PLAYER
+	owner.current_hp = 8
+	var stats := UnitStats.new()
+	stats.max_hp = 10
+	stats.attack = 1
+	owner.stats = stats
+	owner.stat_modifiers = StatModifierStack.new()
+	var hooks := ExpeditionRelicCombatHooks.new()
+	var bus := CombatEventBus.new()
+	hooks.bind(bus, bag, [owner], 1)
+	## 伪造受伤技能结算（非圣物挂载）。
+	var spec := EffectSpec.new()
+	spec.trigger = CombatEvents.ON_DAMAGE_TAKEN
+	spec.target_selector = EffectSpec.TargetSelector.SELF
+	var payload := CombatEventPayload.new()
+	payload.effect_owner = owner
+	payload.effect_spec = spec
+	payload.effect_action = EffectAction.new()
+	bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
+	bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
+	bus.emit_event(CombatEvents.ON_EFFECT_RESOLVED, payload)
+	var atk_bonus := owner.stat_modifiers.get_flat_bonus(&"attack")
+	hooks.unbind()
+	## cap_per_unit_per_round = 2
+	return atk_bonus == 2

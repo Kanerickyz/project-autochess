@@ -63,6 +63,8 @@ enum Condition {
 	OWNER_COMPLETED_ORTHOGONAL_CHARGE,
 	## 事件目标与持有者正交相邻（曼哈顿=1；不含斜邻）。
 	EVENT_TARGET_ORTHOGONAL_ADJACENT,
+	## 持有者当前生命 ≤ 其有效生命上限的一半（苦修血印等）。
+	OWNER_AT_OR_BELOW_HALF_HP,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).

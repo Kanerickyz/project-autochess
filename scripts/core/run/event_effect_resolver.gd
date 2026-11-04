@@ -7,6 +7,7 @@ static func apply_choice(
 	run_economy: RunEconomy,
 	buff_pool: Array[BuffCardData],
 	rng: RandomNumberGenerator,
+	relic_bag: ExpeditionRelicBag = null,
 ) -> String:
 	if choice == null:
 		return "无事发生"
@@ -15,8 +16,16 @@ static func apply_choice(
 			run_economy.grant(maxi(0, choice.value))
 			return "获得 %d 金币" % choice.value
 		EventChoice.EffectType.LOSE_GOLD:
-			var amount := mini(run_economy.gold, maxi(0, choice.value))
+			var requested := mini(run_economy.gold, maxi(0, choice.value))
+			var resolved := ExpeditionRelicEffectService.apply_event_gold_loss(
+				relic_bag, requested
+			)
+			var amount: int = int(resolved.get("loss", requested))
+			amount = mini(run_economy.gold, maxi(0, amount))
 			run_economy.spend(amount)
+			var shattered: ExpeditionRelicData = resolved.get("shattered") as ExpeditionRelicData
+			if shattered != null:
+				return "失去 %d 金币（%s 碎裂）" % [amount, shattered.display_name]
 			return "失去 %d 金币" % amount
 		EventChoice.EffectType.HEAL_ALL_UNITS:
 			return "恢复了队伍生命（下一场战斗生效）"
