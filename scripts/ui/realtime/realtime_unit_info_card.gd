@@ -60,8 +60,36 @@ class StatBadge:
 		draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, value_color)
 
 
+## 卡头主题徽：主实心 + 辅空心，与纸片同形同色。
+class ThemeBadgeIcon:
+	extends Control
+	var primary: StringName = &""
+	var secondary: StringName = &""
+
+	func set_themes(primary_id: StringName, secondary_id: StringName = &"") -> void:
+		primary = primary_id
+		secondary = secondary_id
+		var has_sec := (
+			UnitTheme.is_valid_id(secondary)
+			and secondary != primary
+			and UnitTheme.is_valid_id(primary)
+		)
+		custom_minimum_size = Vector2(36.0 if has_sec else 20.0, 18.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		if not UnitTheme.is_valid_id(primary):
+			return
+		var r := size.y * 0.42
+		var anchor := Vector2(r + 1.0, size.y * 0.5)
+		ThemeBondBadgeDraw.draw_pair(self, anchor, primary, secondary, r, 1.0)
+
+
 var _portrait: TextureRect
 var _name_label: Label
+var _theme_row: HBoxContainer
+var _theme_icon: ThemeBadgeIcon
+var _theme_names_label: Label
 var _side_label: Label
 var _attack_badge: StatBadge
 var _hp_badge: StatBadge
@@ -122,6 +150,20 @@ func _init() -> void:
 	_name_label.add_theme_font_size_override("font_size", 18)
 	_name_label.add_theme_color_override("font_color", INK)
 	titles.add_child(_name_label)
+
+	_theme_row = HBoxContainer.new()
+	_theme_row.add_theme_constant_override("separation", 6)
+	_theme_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_theme_row.visible = false
+	titles.add_child(_theme_row)
+	_theme_icon = ThemeBadgeIcon.new()
+	_theme_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_theme_row.add_child(_theme_icon)
+	_theme_names_label = Label.new()
+	_theme_names_label.add_theme_font_size_override("font_size", 12)
+	_theme_names_label.add_theme_color_override("font_color", INK_SOFT)
+	_theme_names_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_theme_row.add_child(_theme_names_label)
 
 	_side_label = Label.new()
 	_side_label.add_theme_font_size_override("font_size", 12)
@@ -345,6 +387,7 @@ func _apply_content(info: Dictionary) -> void:
 	_portrait.visible = not is_attachment and _portrait.texture != null
 	_name_label.text = String(info.get("name", "未知"))
 	if is_attachment:
+		_hide_theme_header()
 		var kind_label := String(info.get("attachment_kind_label", "附属"))
 		_side_label.text = kind_label
 		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT)
@@ -364,11 +407,17 @@ func _apply_content(info: Dictionary) -> void:
 		_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), false))
 		return
 	if is_item:
+		_hide_theme_header()
 		var kind := String(info.get("kind_label", "物品"))
 		var cost := int(info.get("cost", 0))
 		_side_label.text = "%s · %d金" % [kind, cost] if cost > 0 else kind
 		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT)
 	else:
+		## 友方卡头挂主题徽+中文名；敌方本版不计主题，不显示。
+		if is_player:
+			_apply_theme_header(info)
+		else:
+			_hide_theme_header()
 		var tier := int(info.get("tier", 0))
 		var side := "我方" if is_player else "敌方"
 		_side_label.text = "%s · T%d" % [side, tier] if tier > 0 else side
@@ -402,6 +451,31 @@ func _apply_content(info: Dictionary) -> void:
 		_gold_badge.queue_redraw()
 	_skills_label.clear()
 	_skills_label.append_text(_format_skills_bbcode(String(info.get("skills", "")), is_item))
+
+
+func _hide_theme_header() -> void:
+	if _theme_row != null:
+		_theme_row.visible = false
+	if _theme_icon != null:
+		_theme_icon.set_themes(&"", &"")
+	if _theme_names_label != null:
+		_theme_names_label.text = ""
+
+
+func _apply_theme_header(info: Dictionary) -> void:
+	var primary: StringName = info.get("theme_primary", &"") as StringName
+	if not UnitTheme.is_valid_id(primary):
+		_hide_theme_header()
+		return
+	var secondary: StringName = info.get("theme_secondary", &"") as StringName
+	if not UnitTheme.is_valid_id(secondary) or secondary == primary:
+		secondary = &""
+	_theme_icon.set_themes(primary, secondary)
+	var names := UnitTheme.display_name(primary)
+	if secondary != &"":
+		names = "%s / %s" % [names, UnitTheme.display_name(secondary)]
+	_theme_names_label.text = names
+	_theme_row.visible = true
 
 
 func _compute_position(

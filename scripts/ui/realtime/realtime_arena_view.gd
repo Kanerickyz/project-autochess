@@ -2238,7 +2238,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	if key.is_empty():
 		key = "entry:%d" % entry.entry_id
 	var unit_cost := entry.unit.cost if entry.unit != null else 0
-	return {
+	var info := {
 		"inspect_key": key,
 		"center": center,
 		"name": entry.get_display_name(),
@@ -2254,6 +2254,8 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
+	_put_theme_fields(info, entry.unit if entry != null else null)
+	return info
 
 
 func _info_from_unit_data(
@@ -2286,6 +2288,7 @@ func _info_from_unit_data(
 		"recruit_cost": maxi(0, data.cost),
 		"recruit_cost_affordable": true,
 	}
+	_put_theme_fields(info, data)
 	if recruit_cost >= 0:
 		info["recruit_cost"] = recruit_cost
 		info["recruit_cost_affordable"] = recruit_cost_affordable
@@ -2295,7 +2298,7 @@ func _info_from_unit_data(
 func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
 	var unit_id := unit.unit_data.id if unit.unit_data != null else ""
 	var unit_cost := unit.unit_data.cost if unit.unit_data != null else 0
-	return {
+	var info := {
 		"inspect_key": "inst:%d" % unit.get_instance_id(),
 		"center": center,
 		"name": UnitInfoText.get_display_name(unit),
@@ -2310,6 +2313,19 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
+	## 敌方本版不计主题：卡头也不挂徽。
+	if is_player:
+		_put_theme_fields(info, unit.unit_data if unit != null else null)
+	return info
+
+
+func _put_theme_fields(info: Dictionary, data: UnitData) -> void:
+	if data == null:
+		return
+	if UnitTheme.is_valid_id(data.theme_primary):
+		info["theme_primary"] = data.theme_primary
+	if UnitTheme.is_valid_id(data.theme_secondary) and data.theme_secondary != data.theme_primary:
+		info["theme_secondary"] = data.theme_secondary
 
 
 ## 招募半场道具：与地图商店同用 RealtimeUnitInfoCard（is_item）。
@@ -3604,13 +3620,15 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
 		)
+		var body_center := tile_to_local(center_tile) + off
+		_draw_theme_bond_badges(body_center, entry.unit, px, alpha)
 		var atk := 0
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+			body_center, atk, hp, alpha, px, entry.get_armor_block()
 		)
 	if _merge_active:
 		_draw_merge_fx(px, off)
@@ -3669,6 +3687,8 @@ func _draw_catalog_units(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, label, px, true, Vector2.ZERO,
 			true, unit_id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit_id, cell.x + cell.y * 8),
 		)
+		var body_center := tile_to_local(center_tile)
+		_draw_theme_bond_badges(body_center, unit, px, 0.95)
 		var atk := 0
 		var hp := 0
 		var armor := 0
@@ -3680,7 +3700,7 @@ func _draw_catalog_units(px: float) -> void:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
 			atk = (stats.attack if stats != null else 0) * preview_mult
 			hp = (stats.max_hp if stats != null else 0) * preview_mult
-		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px, armor)
+		_draw_stat_badges(body_center, atk, hp, 0.95, px, armor)
 
 
 func _draw_merge_fx(px: float, off: Vector2) -> void:
@@ -3780,13 +3800,15 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
 			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
 		)
+		var body_center := tile_to_local(center_tile) + off
+		_draw_theme_bond_badges(body_center, unit, px, alpha)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
 		## 攻/血缩进单格；价签第二行（见 _draw_stat_badges）。
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
+			body_center, atk, hp, alpha, px, 0, cost, affordable
 		)
 		if locked:
 			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
@@ -3956,13 +3978,15 @@ func _draw_prepare_slots(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
+		var body_center := tile_to_local(center_tile) + off
+		_draw_theme_bond_badges(body_center, entry.unit, px, alpha)
 		var atk := 0
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+			body_center, atk, hp, alpha, px, entry.get_armor_block()
 		)
 
 
@@ -4028,6 +4052,7 @@ func _draw_bench_row(px: float) -> void:
 			1.0,
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
+		_draw_theme_bond_badges(center, entry.unit, px, alpha)
 		var atk := DeckUpgradeService.get_display_attack(entry)
 		var hp := DeckUpgradeService.get_display_max_hp(entry)
 		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
@@ -4097,6 +4122,9 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
+		## 仅友方挂主题徽；开战压暗缩小，养队扫读优先。
+		if rt.is_player() and rt.unit != null:
+			_draw_theme_bond_badges(center, rt.unit.unit_data, px, alpha, started)
 		_draw_stat_badges(
 			center,
 			rt.get_effective_attack(),
@@ -4385,6 +4413,26 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 
 
 ## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
+## 友方纸片肩侧主题徽：主大实心、辅小空心；开战压暗缩小。敌方不挂。
+func _draw_theme_bond_badges(
+	center: Vector2,
+	data: UnitData,
+	px: float,
+	alpha: float = 1.0,
+	combat_dim: bool = false,
+) -> void:
+	if data == null or not UnitTheme.is_valid_id(data.theme_primary):
+		return
+	var r := px * 0.11
+	var a := alpha
+	if combat_dim:
+		r *= 0.65
+		a *= 0.45
+	## 右肩/头侧，避开脚下攻血标。
+	var anchor := center + Vector2(px * 0.30, -px * 0.36)
+	ThemeBondBadgeDraw.draw_pair(self, anchor, data.theme_primary, data.theme_secondary, r, a)
+
+
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
