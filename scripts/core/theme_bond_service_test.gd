@@ -154,10 +154,21 @@ static func _test_unit_theme_helpers() -> bool:
 	if line != "主题：亡灵 / 秘术":
 		push_error("ThemeBondServiceTest helpers: theme line='%s'" % line)
 		return false
+	## 技能正文不再含「主题：」行（卡头徽承接）；get_theme_line 仍可供文案/测试。
+	var skills := UnitInfoText.get_skills_block_from_unit_data(data)
+	if skills.contains("主题："):
+		push_error("ThemeBondServiceTest helpers: skills should omit theme line, got '%s'" % skills)
+		return false
 	if not UnitTheme.is_valid_id(UnitTheme.BAND):
 		push_error("ThemeBondServiceTest helpers: BAND should be valid")
 		return false
 	if UnitTheme.display_name(UnitTheme.KNIGHT_ORDER) != "骑士团":
 		push_error("ThemeBondServiceTest helpers: knight_order display")
+		return false
+	if ThemeBondBadgeDraw.color_for(UnitTheme.GUARD).a <= 0.0:
+		push_error("ThemeBondServiceTest helpers: badge color missing for guard")
+		return false
+	if ThemeBondBadgeDraw.shape_for(UnitTheme.WARRIOR) != ThemeBondBadgeDraw.Shape.TRIANGLE:
+		push_error("ThemeBondServiceTest helpers: warrior shape expected triangle")
 		return false
 	return true
