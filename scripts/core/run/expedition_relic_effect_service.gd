@@ -109,13 +109,44 @@ static func _attach_combat_start_for_relic(
 			bench_bonus = mini(bench_bonus, relic.relic_attack_bonus_cap)
 		all_atk += bench_bonus
 
-	if all_atk != 0 or all_hp != 0:
-		var specs: Array[EffectSpec] = []
-		if all_atk != 0:
-			specs.append(_mod_stat_spec(CombatEvents.ON_COMBAT_START, EffectSpec.TargetSelector.ALL_ALLIES, &"attack", all_atk))
-		if all_hp != 0:
-			specs.append(_mod_stat_spec(CombatEvents.ON_COMBAT_START, EffectSpec.TargetSelector.ALL_ALLIES, &"max_hp", all_hp))
-		_attach_ability_to_carrier(player_units, "%s_start_all" % relic.id, relic.display_name, specs)
+	if all_atk != 0:
+		_attach_ability_to_carrier(
+			player_units,
+			"%s_start_atk" % relic.id,
+			relic.display_name,
+			[_mod_stat_spec(CombatEvents.ON_COMBAT_START, EffectSpec.TargetSelector.ALL_ALLIES, &"attack", all_atk)],
+		)
+	## 负生命上限：按单位 clamp，保证不低于 min_max_hp_after（默认 1）。
+	if all_hp > 0:
+		_attach_ability_to_carrier(
+			player_units,
+			"%s_start_hp" % relic.id,
+			relic.display_name,
+			[_mod_stat_spec(CombatEvents.ON_COMBAT_START, EffectSpec.TargetSelector.ALL_ALLIES, &"max_hp", all_hp)],
+		)
+	elif all_hp < 0:
+		var floor_hp := maxi(1, relic.min_max_hp_after)
+		for item_hp in player_units:
+			var u_hp := item_hp as UnitInstance
+			if u_hp == null or not u_hp.is_alive():
+				continue
+			var cur_max := u_hp.get_effective_max_hp()
+			var target_max := maxi(floor_hp, cur_max + all_hp)
+			var delta := target_max - cur_max
+			if delta == 0:
+				continue
+			var hp_spec := _mod_stat_spec(
+				CombatEvents.ON_COMBAT_START,
+				EffectSpec.TargetSelector.SELF,
+				&"max_hp",
+				delta,
+			)
+			_attach_ability_to_unit(
+				u_hp,
+				"%s_start_hp_%d" % [relic.id, u_hp.instance_id],
+				relic.display_name,
+				[hp_spec],
+			)
 
 	## 前两排开战攻。
 	if relic.front_two_rows_temp_attack != 0 and not front_ys.is_empty():
@@ -138,7 +169,7 @@ static func _attach_combat_start_for_relic(
 				[front_spec],
 			)
 
-	## 夹道刺篱：开战正交相邻友方对邻敌伤害加成 —— 本切片用开战临时攻近似占位（完整邻敌伤另案）。
+	## 夹道刺篱：开战正交相邻友方，对正交邻敌造成伤害时追加点伤。
 	if relic.ortho_pair_adjacent_enemy_damage_bonus != 0:
 		for item in player_units:
 			var unit2 := item as UnitInstance
@@ -146,17 +177,19 @@ static func _attach_combat_start_for_relic(
 				continue
 			if not _has_ortho_ally_neighbor(unit2, player_units):
 				continue
-			var ortho_spec := _mod_stat_spec(
-				CombatEvents.ON_COMBAT_START,
-				EffectSpec.TargetSelector.SELF,
-				&"attack",
-				relic.ortho_pair_adjacent_enemy_damage_bonus,
-			)
+			var ortho_hit := EffectSpec.new()
+			ortho_hit.trigger = CombatEvents.ON_DEAL_DAMAGE
+			ortho_hit.target_selector = EffectSpec.TargetSelector.EVENT_TARGET
+			ortho_hit.condition = EffectSpec.Condition.EVENT_TARGET_ORTHOGONAL_ADJACENT
+			var odmg := EffectAction.new()
+			odmg.action_type = EffectAction.Type.DEAL_DAMAGE
+			odmg.value = relic.ortho_pair_adjacent_enemy_damage_bonus
+			ortho_hit.actions = [odmg]
 			_attach_ability_to_unit(
 				unit2,
 				"%s_ortho_%d" % [relic.id, unit2.instance_id],
 				relic.display_name,
-				[ortho_spec],
+				[ortho_hit],
 			)
 
 	## 主题筛选：给带某主题（主/辅）的友方开战临时攻/血；可选要求该主题已成形。
@@ -165,8 +198,9 @@ static func _attach_combat_start_for_relic(
 
 static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionRelicData) -> void:
 	var specs: Array[EffectSpec] = []
+	## 鼓点 / 邻旗 / 铁扉 → ExpeditionRelicCombatHooks（非纯 EffectSpec）。
 
-	## 猎号：友方击杀 → 随机另一友方临时攻（cap_per_combat）。
+	## 猎号：友方击杀 → 随机另一友方临时攻。
 	if relic.kill_spread_temp_attack != 0:
 		var kill_spread := _mod_stat_spec(
 			CombatEvents.ON_FRIEND_KILL,
@@ -179,9 +213,8 @@ static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionReli
 			kill_spread.max_triggers_per_combat = relic.cap_per_combat
 		specs.append(kill_spread)
 
-	## 葬铃：友方死亡 → 对载体附近友方加攻（近似「死者周围」；精确半径见缺口）。
+	## 葬铃：死者 OnDeath → 周围友方加攻。
 	if relic.death_nearby_temp_attack != 0:
-		## 改挂到每名友方 OnDeath → NEARBY_ALLIES，更贴近「死者周围」。
 		for item in player_units:
 			var u := item as UnitInstance
 			if u == null:
@@ -200,7 +233,7 @@ static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionReli
 				[death_near],
 			)
 
-	## 绝阵：友方死亡 → 全体临时攻；整场触发顶。
+	## 绝阵：友方死亡 → 全体临时攻。
 	if relic.death_team_temp_attack != 0:
 		var death_team := _mod_stat_spec(
 			CombatEvents.ON_FRIEND_DEATH,
@@ -212,72 +245,46 @@ static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionReli
 			death_team.max_triggers_per_combat = relic.cap_triggers_per_combat
 		specs.append(death_team)
 
-	## 血宴：击杀溅射 —— 挂到每名友方 OnKill → RANDOM_ENEMY 伤害。
-	if relic.kill_cleave_damage != 0:
-		for item2 in player_units:
-			var killer := item2 as UnitInstance
-			if killer == null:
-				continue
-			var cleave := EffectSpec.new()
-			cleave.trigger = CombatEvents.ON_KILL
-			cleave.target_selector = EffectSpec.TargetSelector.RANDOM_ENEMY
-			cleave.max_triggers_per_combat = (
-				relic.cap_per_combat if relic.cap_per_combat > 0 else 0
-			)
-			var dmg := EffectAction.new()
-			dmg.action_type = EffectAction.Type.DEAL_DAMAGE
-			dmg.value = relic.kill_cleave_damage
-			cleave.actions = [dmg]
-			_attach_ability_to_unit(
-				killer,
-				"%s_cleave_%d" % [relic.id, killer.instance_id],
-				relic.display_name,
-				[cleave],
-			)
+	## 血宴 / 盾回 → ExpeditionRelicCombatHooks（每友方每回合顶需运行时计数）。
 
-	## 盾回：受伤未死反伤攻击者（cap 用整场近似；每回合顶见缺口）。
-	if relic.reflect_damage != 0:
-		for item3 in player_units:
-			var tank := item3 as UnitInstance
-			if tank == null:
-				continue
-			var reflect := EffectSpec.new()
-			reflect.trigger = CombatEvents.ON_DAMAGE_TAKEN
-			reflect.target_selector = EffectSpec.TargetSelector.EVENT_SOURCE
-			var rdmg := EffectAction.new()
-			rdmg.action_type = EffectAction.Type.DEAL_DAMAGE
-			rdmg.value = relic.reflect_damage
-			reflect.actions = [rdmg]
-			_attach_ability_to_unit(
-				tank,
-				"%s_reflect_%d" % [relic.id, tank.instance_id],
-				relic.display_name,
-				[reflect],
-			)
-
-	## 殉道：死亡打击杀者。
-	if relic.death_damage_to_killer != 0:
+	## 殉道：死亡 → 打杀者 + 附近敌反伤层。
+	if relic.death_damage_to_killer != 0 or relic.nearby_enemy_thorns != 0:
 		for item4 in player_units:
 			var martyr := item4 as UnitInstance
 			if martyr == null:
 				continue
-			var death_hit := EffectSpec.new()
-			death_hit.trigger = CombatEvents.ON_DEATH
-			death_hit.target_selector = EffectSpec.TargetSelector.EVENT_SOURCE
-			if relic.cap_death_triggers_per_combat > 0:
-				death_hit.max_triggers_per_combat = relic.cap_death_triggers_per_combat
-			var kdmg := EffectAction.new()
-			kdmg.action_type = EffectAction.Type.DEAL_DAMAGE
-			kdmg.value = relic.death_damage_to_killer
-			death_hit.actions = [kdmg]
+			var martyr_specs: Array[EffectSpec] = []
+			if relic.death_damage_to_killer != 0:
+				var death_hit := EffectSpec.new()
+				death_hit.trigger = CombatEvents.ON_DEATH
+				death_hit.target_selector = EffectSpec.TargetSelector.EVENT_SOURCE
+				if relic.cap_death_triggers_per_combat > 0:
+					death_hit.max_triggers_per_combat = relic.cap_death_triggers_per_combat
+				var kdmg := EffectAction.new()
+				kdmg.action_type = EffectAction.Type.DEAL_DAMAGE
+				kdmg.value = relic.death_damage_to_killer
+				death_hit.actions = [kdmg]
+				martyr_specs.append(death_hit)
+			if relic.nearby_enemy_thorns != 0:
+				var thorns := EffectSpec.new()
+				thorns.trigger = CombatEvents.ON_DEATH
+				thorns.target_selector = EffectSpec.TargetSelector.NEARBY_ENEMIES
+				if relic.cap_death_triggers_per_combat > 0:
+					thorns.max_triggers_per_combat = relic.cap_death_triggers_per_combat
+				var t_act := EffectAction.new()
+				t_act.action_type = EffectAction.Type.APPLY_COMBAT_STATUS
+				t_act.stat_name = CombatStatusStack.ID_THORNS
+				t_act.value = relic.nearby_enemy_thorns
+				thorns.actions = [t_act]
+				martyr_specs.append(thorns)
 			_attach_ability_to_unit(
 				martyr,
 				"%s_martyr_%d" % [relic.id, martyr.instance_id],
 				relic.display_name,
-				[death_hit],
+				martyr_specs,
 			)
 
-	## 苦修：半血加攻 —— As-Is 无半血 Condition；用 OnDamageTaken SELF + 攻击占位，精确阈值见缺口。
+	## 苦修：受伤后若已半血 → 临时攻（每单位每场一次）。
 	if relic.half_hp_temp_attack != 0:
 		for item5 in player_units:
 			var ascetic := item5 as UnitInstance
@@ -289,6 +296,7 @@ static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionReli
 				&"attack",
 				relic.half_hp_temp_attack,
 			)
+			half.condition = EffectSpec.Condition.OWNER_AT_OR_BELOW_HALF_HP
 			half.max_triggers_per_combat = 1
 			_attach_ability_to_unit(
 				ascetic,
@@ -299,6 +307,27 @@ static func _attach_trigger_for_relic(player_units: Array, relic: ExpeditionReli
 
 	if not specs.is_empty():
 		_attach_ability_to_carrier(player_units, "%s_triggers" % relic.id, relic.display_name, specs)
+
+
+## 事件失金减免（赊账羊皮）；返回实际扣金与是否碎裂圣物。
+static func apply_event_gold_loss(
+	bag: ExpeditionRelicBag,
+	requested_loss: int,
+) -> Dictionary:
+	var loss := maxi(0, requested_loss)
+	var shattered: ExpeditionRelicData = null
+	if bag == null or loss <= 0:
+		return {"loss": loss, "shattered": shattered}
+	for i in bag.get_count():
+		var relic := bag.get_at(i)
+		if relic == null or relic.event_gold_cost_reduction <= 0:
+			continue
+		var reduced := maxi(0, loss - relic.event_gold_cost_reduction)
+		if reduced < loss and relic.shatter_after_first_real_save:
+			shattered = bag.try_remove_at(i)
+		loss = reduced
+		break
+	return {"loss": loss, "shattered": shattered}
 
 
 static func _attach_theme_filtered_start(

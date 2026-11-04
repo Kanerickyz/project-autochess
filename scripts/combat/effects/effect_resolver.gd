@@ -683,6 +683,13 @@ func _spec_condition_met(
 			return _units_orthogonally_adjacent(
 				owner, payload.target if payload != null else null
 			)
+		EffectSpec.Condition.OWNER_AT_OR_BELOW_HALF_HP:
+			if owner == null or not owner.is_alive():
+				return false
+			var max_hp := owner.get_effective_max_hp()
+			if max_hp <= 0:
+				return false
+			return owner.current_hp * 2 <= max_hp
 		_:
 			return true
 

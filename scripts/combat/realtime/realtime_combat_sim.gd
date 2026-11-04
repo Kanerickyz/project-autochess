@@ -238,6 +238,16 @@ func find_unit(unit: UnitInstance) -> RtUnit:
 	return _find_rt_for_unit(unit)
 
 
+## 远征圣物钩子追加点伤：走直扣管线（护甲外、可致死、可发事件）。
+func apply_relic_hook_damage(source: UnitInstance, target: UnitInstance, amount: int) -> void:
+	if _pipeline == null or target == null or amount <= 0:
+		return
+	var rt := _find_rt_for_unit(target)
+	if rt == null or not rt.is_alive():
+		return
+	_pipeline.apply_direct_hp_loss(source, rt, amount)
+
+
 func find_unit_by_deck_entry(entry_id: int) -> RtUnit:
 	for rt in _units:
 		if rt.is_player() and rt.unit.deck_entry_id == entry_id and rt.is_alive():
