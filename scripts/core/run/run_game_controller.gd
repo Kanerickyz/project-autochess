@@ -224,6 +224,7 @@ func _open_opening_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = true
+	_recruit_session.omit_character_candidates = false
 	## 开局：第 1 层尺 → 仅 T1。
 	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
@@ -307,13 +308,21 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng)
 	_recruit_session.require_nonempty_roster = false
+	_recruit_session.omit_character_candidates = false
 	_recruit_session.forward_tier_unlock = _is_endless()
+	## 主题定向抽池用同一套层号/进度（begin 前先写入）。
+	_recruit_session.progress_ratio = _recruit_progress_ratio()
+	_recruit_session.map_floor = _recruit_map_floor()
+	_recruit_session.map_floor_count = _recruit_map_floor_count()
+	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
+	## 胜后：主题定向拿 1 人 → 整理招募（无角色候选人行）。
+	await _battle.enter_theme_directed_recruit(_recruit_session, enter_s)
+	_recruit_session.omit_character_candidates = true
 	_recruit_session.begin(
 		_recruit_progress_ratio(),
 		_recruit_map_floor(),
 		_recruit_map_floor_count(),
 	)
-	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
 
