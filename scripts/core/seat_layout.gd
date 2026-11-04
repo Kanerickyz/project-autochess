@@ -52,21 +52,21 @@ static func iter_seats_center_out(rows: int, cols: int) -> Array[int]:
 	return out
 
 
-## 行动队列格子比较。
-## enemy_mirrored=false（友方）：上→下、左→右（y 升、x 升）。
-## enemy_mirrored=true（敌方镜像）：下→上、左→右（y 降、x 升）。
+## 行动队列格子比较（COMBAT §7.1 列优先）。
+## enemy_mirrored=false（友方）：先左列，列内上→下，再右移（x 升、同列 y 升）。
+## enemy_mirrored=true（敌方镜像）：先左列，列内下→上，再右移（x 升、同列 y 降）。
 ## board_height 保留签名兼容。
 static func compare_cells_for_action_queue(
 	ca: Vector2i, cb: Vector2i, _board_height: int = 0, enemy_mirrored: bool = false
 ) -> bool:
 	if ca == cb:
 		return false
+	if ca.x != cb.x:
+		return ca.x < cb.x
 	if ca.y != cb.y:
 		if enemy_mirrored:
 			return ca.y > cb.y
 		return ca.y < cb.y
-	if ca.x != cb.x:
-		return ca.x < cb.x
 	return false
 
 
