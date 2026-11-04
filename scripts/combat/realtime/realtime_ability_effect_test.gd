@@ -103,6 +103,11 @@ static func run_all() -> bool:
 	_check("combat_start_shield_boon", _test_combat_start_shield_boon())
 	_check("turn_start_banner_nearby_knight", _test_turn_start_banner_nearby_knight())
 	_check("turn_start_banner_nearby_knight_star2", _test_turn_start_banner_nearby_knight_star2())
+	_check("templar_mount_and_ability", _test_templar_mount_and_ability())
+	_check("templar_charge_dist3_knockback", _test_templar_charge_dist3_knockback())
+	_check("templar_charge_dist2_no_bonus", _test_templar_charge_dist2_no_bonus())
+	_check("templar_diagonal_no_knockback", _test_templar_diagonal_no_knockback())
+	_check("templar_star2_charge_damage_plus6", _test_templar_star2_charge_damage_plus6())
 
 	for sim in _created:
 		sim.dispose()
@@ -2528,7 +2533,8 @@ static func _test_turn_start_strike_weakest_mount() -> bool:
 	if data.ability.id != "turn_start_strike_weakest":
 		push_error("shinobi: wrong ability id %s" % data.ability.id)
 		return false
-	if data.tier != 2 or data.stats.max_hp != 4 or data.stats.attack != 4:
+	## 身体数值以 resources/units/realtime/shinobi.tres 为准（平衡改血后同步断言）。
+	if data.tier != 2 or data.stats.max_hp != 10 or data.stats.attack != 4:
 		push_error("shinobi: body stats mismatch")
 		return false
 	return true
@@ -3079,6 +3085,229 @@ static func _banner_nearby_knight_atk_expect(star_level: int, expected_atk: int)
 		return false
 	if banner.unit.get_effective_attack() != self0:
 		push_error("banner: owner must not self-buff")
+		return false
+	return true
+
+
+static func _test_templar_mount_and_ability() -> bool:
+	var data := _load_unit("res://resources/units/realtime/templar.tres")
+	if data == null or data.ability == null or data.ability.id != "templar_charge_knockback":
+		push_error("templar: ability templar_charge_knockback not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("templar: merge_value_mult expected 3")
+		return false
+	if data.stats == null or not data.stats.cardinal_move_only:
+		push_error("templar: cardinal_move_only expected true")
+		return false
+	if data.stats.attack != 5 or data.stats.max_hp != 10 or data.stats.steps_per_turn != 2:
+		push_error("templar: body stats mismatch")
+		return false
+	if data.theme_primary != &"knight_order":
+		push_error("templar: theme_primary expected knight_order")
+		return false
+	var enemy := _load_unit("res://resources/units/enemies/enemy_templar.tres")
+	if enemy == null or enemy.id != "enemy_templar" or enemy.ability == null:
+		push_error("templar: enemy_templar missing or ability null")
+		return false
+	if enemy.ability.id != "templar_charge_knockback":
+		push_error("templar: enemy ability id mismatch")
+		return false
+	return true
+
+
+## 距 3 正交冲锋：贴脸并击退 1 格，额外 +2 技能伤。
+static func _test_templar_charge_dist3_knockback() -> bool:
+	var data := _load_unit("res://resources/units/realtime/templar.tres")
+	if data == null or data.ability == null:
+		push_error("templar dist3: missing unit")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 99)
+	var templar := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100, {
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+			"attack_reach": 0.0,
+		}),
+		Vector2(9.5, 17.5),
+	)
+	templar.unit.stats.attack_windup = 0.0
+	templar.unit.stats.attack_interval = 8.0
+	var atk := templar.unit.get_effective_attack()
+	var hp_before := foe.unit.current_hp
+	var foe_start := foe.cell
+	var hit := false
+	var guard := 0
+	while guard < 800:
+		sim.advance_fixed_step()
+		guard += 1
+		if foe.unit.current_hp < hp_before:
+			hit = true
+			break
+	if not hit:
+		push_error("templar dist3: no hit after %d steps" % guard)
+		return false
+	var dealt := hp_before - foe.unit.current_hp
+	var expected := atk + 2
+	if dealt != expected:
+		push_error("templar dist3: dealt %d expected attack+2=%d" % [dealt, expected])
+		return false
+	if not templar.unit.completed_orthogonal_charge:
+		push_error("templar dist3: expected completed_orthogonal_charge")
+		return false
+	## 击退沿远离圣殿骑士方向 1 格（同列向上）。
+	var expected_cell := foe_start + Vector2i(0, -1)
+	if foe.cell != expected_cell:
+		push_error(
+			"templar dist3: knockback cell %s expected %s (start %s)"
+			% [foe.cell, expected_cell, foe_start]
+		)
+		return false
+	return true
+
+
+## 距 2 贴脸：走不满 2 格冲锋 → 无击退、无冲锋伤。
+static func _test_templar_charge_dist2_no_bonus() -> bool:
+	var data := _load_unit("res://resources/units/realtime/templar.tres")
+	if data == null or data.ability == null:
+		push_error("templar dist2: missing unit")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 99)
+	var templar := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100, {
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+			"attack_reach": 0.0,
+		}),
+		Vector2(9.5, 18.5),
+	)
+	templar.unit.stats.attack_windup = 0.0
+	templar.unit.stats.attack_interval = 8.0
+	var atk := templar.unit.get_effective_attack()
+	var hp_before := foe.unit.current_hp
+	var foe_start := foe.cell
+	var hit := false
+	var guard := 0
+	while guard < 800:
+		sim.advance_fixed_step()
+		guard += 1
+		if foe.unit.current_hp < hp_before:
+			hit = true
+			break
+	if not hit:
+		push_error("templar dist2: no hit")
+		return false
+	var dealt := hp_before - foe.unit.current_hp
+	if dealt != atk:
+		push_error("templar dist2: dealt %d expected attack only %d" % [dealt, atk])
+		return false
+	if templar.unit.completed_orthogonal_charge:
+		push_error("templar dist2: charge should not complete")
+		return false
+	if foe.cell != foe_start:
+		push_error("templar dist2: unexpected knockback to %s" % foe.cell)
+		return false
+	return true
+
+
+## 斜邻：即使冲锋标记成立也不击退、不加冲锋伤。
+static func _test_templar_diagonal_no_knockback() -> bool:
+	var data := _load_unit("res://resources/units/realtime/templar.tres")
+	if data == null or data.ability == null:
+		push_error("templar diag: missing unit")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 99)
+	var templar := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100, {
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+			"attack_reach": 0.0,
+		}),
+		Vector2(10.5, 19.5),
+	)
+	templar.unit.stats.steps_per_turn = 0
+	## 前摇给测例时间在出手前写入冲锋完成标记（一动开始会清零）。
+	templar.unit.stats.attack_windup = 0.25
+	templar.unit.stats.attack_interval = 8.0
+	templar.unit.stats.attack_reach = 0.8
+	var atk := templar.unit.get_effective_attack()
+	var hp_before := foe.unit.current_hp
+	var foe_start := foe.cell
+	var armed := false
+	var hit := false
+	var guard := 0
+	while guard < 800:
+		sim.advance_fixed_step()
+		guard += 1
+		if not armed and sim.get_current_actor() == templar:
+			templar.unit.completed_orthogonal_charge = true
+			armed = true
+		if foe.unit.current_hp < hp_before:
+			hit = true
+			break
+	if not armed:
+		push_error("templar diag: never armed charge flag")
+		return false
+	if not hit:
+		push_error("templar diag: no hit")
+		return false
+	var dealt := hp_before - foe.unit.current_hp
+	if dealt != atk:
+		push_error("templar diag: dealt %d expected attack only %d (no charge bonus)" % [dealt, atk])
+		return false
+	if foe.cell != foe_start:
+		push_error("templar diag: unexpected knockback to %s" % foe.cell)
+		return false
+	return true
+
+
+## 2★ merge_value_mult=3：冲锋伤 +6。
+static func _test_templar_star2_charge_damage_plus6() -> bool:
+	var data := _load_unit("res://resources/units/realtime/templar.tres")
+	if data == null or data.ability == null:
+		push_error("templar 2★: missing unit")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 99)
+	var templar := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 200, {
+			"steps_per_turn": 0,
+			"sight_range": 0.0,
+			"attack_reach": 0.0,
+		}),
+		Vector2(9.5, 17.5),
+	)
+	templar.unit.level = 2
+	templar.unit.stats.attack_windup = 0.0
+	templar.unit.stats.attack_interval = 8.0
+	var atk := templar.unit.get_effective_attack()
+	var extra := 2 * UnitInstance.ability_value_multiplier_for(data.ability, 2)
+	if extra != 6:
+		push_error("templar 2★: extra scale expected 6, got %d" % extra)
+		return false
+	var hp_before := foe.unit.current_hp
+	var hit := false
+	var guard := 0
+	while guard < 800:
+		sim.advance_fixed_step()
+		guard += 1
+		if foe.unit.current_hp < hp_before:
+			hit = true
+			break
+	if not hit:
+		push_error("templar 2★: no hit")
+		return false
+	var dealt := hp_before - foe.unit.current_hp
+	var expected := atk + extra
+	if dealt != expected:
+		push_error("templar 2★: dealt %d expected %d (atk+6)" % [dealt, expected])
 		return false
 	return true
 

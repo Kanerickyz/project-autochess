@@ -608,6 +608,8 @@ func _begin_next_actor_turn() -> void:
 			_actor_turn_active = true
 			_actor_has_attacked = false
 			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate)
+			if candidate.unit != null:
+				candidate.unit.reset_turn_charge_state()
 			## 首领召唤冷却按「自己的行动次数」递减。
 			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
 				candidate.boss_summon_cooldown_left -= 1
@@ -641,6 +643,7 @@ func _end_current_actor_turn() -> void:
 		and ending.unit.banked_turn_refresh_bonus_pending
 	):
 		ending.unit.banked_turn_refresh_bonus_pending = false
+		ending.unit.reset_turn_charge_state()
 		_actor_has_attacked = false
 		_actor_steps_left = RtUnitBrain.turn_step_budget(ending)
 		if ending.state == RtUnit.State.ATTACKING:
@@ -722,8 +725,11 @@ func _advance_current_actor() -> void:
 	if decision.step != Vector2i.ZERO and _actor_steps_left > 0 and not rt.is_boss_leader():
 		var dest: Vector2i = rt.cell + decision.step
 		if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
+			var step_dir: Vector2i = decision.step
 			_move_unit_to_cell(rt, dest)
 			_actor_steps_left -= 1
+			if rt.unit != null:
+				rt.unit.note_orthogonal_charge_step(step_dir)
 			return
 
 	if decision.turn_done:

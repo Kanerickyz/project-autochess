@@ -549,6 +549,13 @@ static func format_effect_spec(
 		and spec.condition == EffectSpec.Condition.KILL_FROM_ATTACK
 	):
 		trigger = "攻击击杀时"
+	elif (
+		spec.trigger == CombatEvents.ON_DEAL_DAMAGE
+		and spec.condition == EffectSpec.Condition.OWNER_COMPLETED_ORTHOGONAL_CHARGE
+	):
+		trigger = "冲锋后普攻时"
+	elif spec.condition == EffectSpec.Condition.EVENT_TARGET_ORTHOGONAL_ADJACENT:
+		trigger = "%s（正交邻格）" % trigger
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
 	var has_spawn_or_split := false
@@ -793,6 +800,9 @@ static func format_action(
 			]
 		EffectAction.Type.GRANT_COMBAT_ARMOR:
 			return "获得本场临时护甲 +%d" % scaled_value
+		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
+			## 击退格数不吃升星倍率。
+			return "击退 %d 格" % maxi(1, action.value)
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if scaled_value <= 0:
 				return "驱散 %s" % CombatStatusStack.get_display_name(action.stat_name)
@@ -845,6 +855,7 @@ static func _trigger_prefixes_for_bold() -> PackedStringArray:
 		out.append(t)
 	var extra: PackedStringArray = [
 		"攻击击杀时",
+		"冲锋后普攻时",
 		"友方角色死亡时",
 		"友方随从被召唤时",
 		"友方受伤且该友方未满血时",

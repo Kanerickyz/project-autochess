@@ -57,6 +57,7 @@
 | `turn_start_nearby_knight_order_atk_2` | 以身作则 | 回合 · 偶尔多次 | 否* | **自己回合开始**时，**周围一格其他骑士团**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`；不含自身） | **中庸～偏强** | 旗手 | *效果惠骑士团；`OnRoundStart` + `NEARBY_ALLIES` + `require_theme=knight_order` + `exclude_owner` |
 | `combat_start_buff_nearby_allies_mid` | 以身作则（旧·开战） | 开场 · 一场一次 | 否* | 开战时，**周围一格**友方本场临时攻击 **+4**（三合一后 **+12**；`merge_value_mult=3`） | **中庸～偏强** | （未挂载） | 资源保留；旗手已改回合骑士团版 |
 | `enemy_death_self_atk_hp_small` | 踏血扬鞭 | 出手侧 · 偶尔多次 | **是**（敌方阵亡） | 敌方死亡时，自己本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **中庸～偏强** | 狼骑兵 | 收割·叠层；`OnEnemyDeath` |
+| `templar_charge_knockback` | 圣殿冲锋 | 出手 · 偶尔多次 | 否 | **本动同轴连续冲满 2 格**后，对**正交邻格**普攻造成伤害时：额外 **+2** 技能伤（三合一后 **+6**；`merge_value_mult=3`）并将目标沿远离自己方向**击退 1 格**（击退格数不升星；击杀/斜邻/未冲锋/Boss 足迹/身后堵死则对应效果不生效） | **中庸～偏强** | 圣殿骑士 | 冲锋·控场；`OnDealDamage` + `OWNER_COMPLETED_ORTHOGONAL_CHARGE`；`KNOCKBACK_AWAY_FROM_OWNER` |
 | `combat_start_self_max_hp_mid` | 铁心蓄势 | 开场 · 一场一次 | 否 | 开战时，自身本场临时**中幅**提高生命上限（**+12**；三合一后 **+36**；`merge_value_mult=3`） | **中庸** | 铁心 | 生命·开场 |
 | `hurt_gain_max_hp` | 浴血凝脉 | 挨打 · 高频 | 否 | 自己受伤时，**恢复 4** 生命（三合一后 **8**；`merge_value_mult=2`；不改生命上限；受击疗≤本次伤；本场技能受疗预算 100） | **中庸** | （遗留挂载如熊） | 生命·成长 |
 | `combat_start_permanent_self_atk_hp_1` | 禅心固本 | 收场 · 一场一次 | 否 | **战斗结束时**，若**自身仍存活**，**永久**对自身 **+1 攻击、+1 生命上限**（三合一后各 **+6**；全局升星 ×6；写入 `DeckEntry` 加成）。开战不触发；阵亡则本场不加 | **中庸** | 血僧 | 生命·终场 |

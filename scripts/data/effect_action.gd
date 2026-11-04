@@ -38,6 +38,8 @@ enum Type {
 	CONVERT_KILL_TARGET_TO_ALLY,
 	## 本场临时护甲（可叠加；MAP_SHOP §5.1 受伤结算；不占用装备槽、不回写 DeckEntry）。
 	GRANT_COMBAT_ARMOR,
+	## 沿「持有者→目标」正交方向击退 value 格（默认 1）；不吃 merge 拉长；须正交邻格存活、非 Boss 足迹、落点可入。
+	KNOCKBACK_AWAY_FROM_OWNER,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }

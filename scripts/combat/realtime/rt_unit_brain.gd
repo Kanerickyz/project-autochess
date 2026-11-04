@@ -12,6 +12,13 @@ const TIME_EPSILON := 0.000001
 const BOSS_LOW_HP_RATIO := 0.4
 
 
+## 正交四向（平局稳定次序）
+const DIR4: Array[Vector2i] = [
+	Vector2i(1, 0),
+	Vector2i(-1, 0),
+	Vector2i(0, 1),
+	Vector2i(0, -1),
+]
 ## 八方向：先正四向再对角（平局稳定次序）
 const DIR8: Array[Vector2i] = [
 	Vector2i(1, 0),
@@ -23,6 +30,8 @@ const DIR8: Array[Vector2i] = [
 	Vector2i(-1, 1),
 	Vector2i(-1, -1),
 ]
+## 冲锋完成所需同轴连续迈格数
+const ORTHOGONAL_CHARGE_STEPS := 2
 
 
 class Decision:
@@ -97,7 +106,14 @@ static func decide_turn(
 	var stats := unit.get_stats()
 	var dist := float(unit.cell_distance_to(unit.target))
 	var reach := grid_reach(stats.attack_reach)
-	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
+	## 冲锋未完成且本动仍可同轴冲满 2 格接近：即使已入攻距也继续迈步，落稳后再判攻。
+	var continue_charge := _should_continue_orthogonal_charge(
+		unit, unit.target, is_cell_free, steps_left
+	)
+	if (
+		not continue_charge
+		and (unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON)
+	):
 		if unit.state != RtUnit.State.ATTACKING:
 			unit.state = RtUnit.State.ATTACKING
 			unit.attack_timer = maxf(0.0, stats.attack_windup)
@@ -471,6 +487,7 @@ static func _is_better_target(
 
 ## 八向贪心：优先减小切比雪夫；同距再减曼哈顿；目标格被占则改道或返回 ZERO（短等）。
 ## 目标若为足迹单位，以「当前格 → 目标足迹最近格」为靠近目标（勿只认锚点）。
+## cardinal_move_only 时仅 DIR4。
 static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> Vector2i:
 	if unit == null or target == null:
 		return Vector2i.ZERO
@@ -482,7 +499,11 @@ static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> V
 	var best_d := cur_d
 	var best_man := cur_man
 	var found := false
-	for dir in DIR8:
+	var dirs: Array[Vector2i] = DIR8
+	var stats := unit.get_stats()
+	if stats != null and stats.cardinal_move_only:
+		dirs = DIR4
+	for dir in dirs:
 		var nxt: Vector2i = cur + dir
 		if not bool(is_cell_free.call(nxt)):
 			continue
@@ -502,6 +523,66 @@ static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> V
 	if best_d == cur_d and best_man >= cur_man:
 		return Vector2i.ZERO
 	return best_dir
+
+
+## 圣殿冲锋：cardinal + 步数预算内仍可同轴连续迈满冲锋格数接近目标时，抑制中途出手。
+static func _should_continue_orthogonal_charge(
+	unit: RtUnit,
+	target: RtUnit,
+	is_cell_free: Callable,
+	steps_left: int,
+) -> bool:
+	if unit == null or target == null or unit.unit == null or steps_left <= 0:
+		return false
+	var stats := unit.get_stats()
+	if stats == null or not stats.cardinal_move_only:
+		return false
+	if unit.unit.completed_orthogonal_charge:
+		return false
+	var need := ORTHOGONAL_CHARGE_STEPS - unit.unit.charge_steps_taken
+	if need <= 0 or steps_left < need:
+		return false
+	return _can_axis_approach_steps(
+		unit, target, is_cell_free, need, unit.unit.charge_axis
+	)
+
+
+## 能否沿同一正交轴连续迈 need 格且每步严格接近目标足迹；locked_axis=ZERO 时任选起始轴向。
+static func _can_axis_approach_steps(
+	unit: RtUnit,
+	target: RtUnit,
+	is_cell_free: Callable,
+	need: int,
+	locked_axis: Vector2i,
+) -> bool:
+	if need <= 0:
+		return true
+	var cur := unit.cell
+	var axis := locked_axis
+	for _i in need:
+		var goal := _nearest_footprint_cell(cur, target)
+		var cur_man := absi(cur.x - goal.x) + absi(cur.y - goal.y)
+		var picked := Vector2i.ZERO
+		for dir in DIR4:
+			if axis != Vector2i.ZERO and dir != axis:
+				continue
+			var nxt: Vector2i = cur + dir
+			if not bool(is_cell_free.call(nxt)):
+				continue
+			var nxt_goal := _nearest_footprint_cell(nxt, target)
+			var nxt_man := absi(nxt.x - nxt_goal.x) + absi(nxt.y - nxt_goal.y)
+			if nxt_man >= cur_man:
+				continue
+			picked = dir
+			break
+		if picked == Vector2i.ZERO:
+			return false
+		if axis == Vector2i.ZERO:
+			axis = picked
+		elif picked != axis:
+			return false
+		cur = cur + picked
+	return true
 
 
 static func _nearest_footprint_cell(from: Vector2i, target: RtUnit) -> Vector2i:

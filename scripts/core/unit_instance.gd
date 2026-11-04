@@ -38,8 +38,39 @@ var main_ability_override: AbilityData = null
 var armor_block: int = 0
 ## 本场技能授予的临时护甲（可叠加；遭遇结束随实例销毁；不回写队伍装备）。
 var combat_temp_armor: int = 0
+## 本动正交冲锋：当前连续迈步轴向（ZERO=尚未迈步）；转弯或斜步清零累加。
+var charge_axis: Vector2i = Vector2i.ZERO
+## 本动沿 charge_axis 已连续成功迈入的格数。
+var charge_steps_taken: int = 0
+## 本动是否已完成同轴连续 ≥2 格冲锋（一经置位本动内保持，供普攻技能判定）。
+var completed_orthogonal_charge: bool = false
 ## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
 var _deck_entry_ref: WeakRef = null
+
+
+## 一动开始时清零冲锋进度（completed 一并清掉）。
+func reset_turn_charge_state() -> void:
+	charge_axis = Vector2i.ZERO
+	charge_steps_taken = 0
+	completed_orthogonal_charge = false
+
+
+## 本动成功迈入一格后更新冲锋标记；仅正交同轴连续累加，达 2 格置 completed。
+func note_orthogonal_charge_step(dir: Vector2i) -> void:
+	if dir == Vector2i.ZERO:
+		return
+	## 斜步打断累加（completed 若已成立则保留到本动结束）。
+	if absi(dir.x) + absi(dir.y) != 1:
+		charge_axis = Vector2i.ZERO
+		charge_steps_taken = 0
+		return
+	if charge_axis != dir:
+		charge_axis = dir
+		charge_steps_taken = 1
+	else:
+		charge_steps_taken += 1
+	if charge_steps_taken >= 2:
+		completed_orthogonal_charge = true
 
 
 func is_boss_leader() -> bool:

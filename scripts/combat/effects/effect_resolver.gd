@@ -140,6 +140,8 @@ static func _can_enqueue_action_on_target(
 	match action.action_type:
 		EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
 			return target.is_alive()
+		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
+			return target.is_alive()
 		_:
 			return true
 
@@ -672,8 +674,25 @@ func _spec_condition_met(
 			return payload != null and payload.from_attack
 		EffectSpec.Condition.OWNER_HAS_BANKED_TURN_REFRESH_CHARGE:
 			return owner != null and owner.banked_turn_refresh_charges > 0
+		EffectSpec.Condition.OWNER_COMPLETED_ORTHOGONAL_CHARGE:
+			if owner == null or not owner.completed_orthogonal_charge:
+				return false
+			## 圣殿冲锋：冲锋成功后的本动普攻仅对正交邻格生效。
+			return _units_orthogonally_adjacent(owner, payload.target if payload != null else null)
+		EffectSpec.Condition.EVENT_TARGET_ORTHOGONAL_ADJACENT:
+			return _units_orthogonally_adjacent(
+				owner, payload.target if payload != null else null
+			)
 		_:
 			return true
+
+
+static func _units_orthogonally_adjacent(a: UnitInstance, b: UnitInstance) -> bool:
+	if a == null or b == null:
+		return false
+	var ac := a.grid_pos
+	var bc := b.grid_pos
+	return absi(ac.x - bc.x) + absi(ac.y - bc.y) == 1
 
 
 static func _unit_below_max_hp(unit: UnitInstance) -> bool:
@@ -1036,6 +1055,8 @@ func _execute_action(
 				]
 			)
 			executed = true
+		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
+			executed = _knockback_away_from_owner(owner, target, action)
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if target == null:
 				return false
@@ -1395,6 +1416,46 @@ func _execute_fuse_explode_batch(
 		% [owner.id, explode_round, radius, damage, hit_count]
 	)
 	return executed
+
+
+## 沿持有者→目标正交方向击退；格数用 action.value 原值（不吃 merge）。Boss 足迹/斜邻/堵死失败。
+func _knockback_away_from_owner(
+	owner: UnitInstance,
+	target: UnitInstance,
+	action: EffectAction,
+) -> bool:
+	if owner == null or target == null or action == null:
+		return false
+	if not target.is_alive() or target.is_boss_leader():
+		return false
+	if target.get_footprint_size() != Vector2i(1, 1):
+		return false
+	var owner_cell := _grid.find_cell_of(owner)
+	var target_cell := _grid.find_cell_of(target)
+	if owner_cell == Vector2i(-1, -1) or target_cell == Vector2i(-1, -1):
+		return false
+	var delta := target_cell - owner_cell
+	if absi(delta.x) + absi(delta.y) != 1:
+		return false
+	var dir := delta
+	## 升星不拉长击退格数：固定基础 value。
+	var steps := maxi(1, action.value)
+	var cur := target_cell
+	var moved := false
+	for _i in steps:
+		var nxt: Vector2i = cur + dir
+		if not _grid.can_place_at(nxt):
+			break
+		if not _grid.move_unit_for(target, nxt):
+			break
+		cur = nxt
+		moved = true
+	if moved:
+		print(
+			"[Effect] %s knockback %s -> %s (%d cells)"
+			% [owner.id, target.id, str(cur), absi(cur.x - target_cell.x) + absi(cur.y - target_cell.y)]
+		)
+	return moved
 
 
 func _pick_teleport_cell_adjacent_to_target(

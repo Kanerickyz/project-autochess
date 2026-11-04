@@ -59,6 +59,10 @@ enum Condition {
 	KILL_FROM_ATTACK,
 	## 持有者 banked_turn_refresh_charges > 0。
 	OWNER_HAS_BANKED_TURN_REFRESH_CHARGE,
+	## 持有者本动已完成同轴正交冲锋（≥2 格连续迈步）。
+	OWNER_COMPLETED_ORTHOGONAL_CHARGE,
+	## 事件目标与持有者正交相邻（曼哈顿=1；不含斜邻）。
+	EVENT_TARGET_ORTHOGONAL_ADJACENT,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
