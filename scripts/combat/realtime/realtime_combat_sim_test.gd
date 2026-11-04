@@ -190,6 +190,7 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	var e2 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e2"}), Vector2(3.5, 3.5))
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
+	## 先友后敌；同行左→右。
 	var expected: Array[RtUnit] = [f0, f1, e0, e1, e2]
 	if q.size() != expected.size():
 		push_error("queue: size %d expected %d" % [q.size(), expected.size()])
@@ -204,12 +205,12 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	return true
 
 
-## 子序按落点格前→后、左→右，与 add_unit 先后无关。
+## 友方上→下左→右；敌方镜像下→上左→右；与 add_unit 先后无关。
 static func _test_action_queue_spatial_sort() -> bool:
 	var sim := _new_sim()
 	sim.configure(Vector2i(5, 8), 1)
 	var mid := 4
-	## 后排右先 add、前排左后 add；队列仍应前排左友方优先。
+	## 友后排右、友前排左后 add；敌后排/前排亦乱序 add。
 	var f_back_right := sim.add_unit(
 		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_r"}),
 		Vector2(4.5, float(mid + 3) + 0.5),
@@ -228,6 +229,7 @@ static func _test_action_queue_spatial_sort() -> bool:
 	)
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
+	## 友：上→下 → f_front_left(y4) → f_back_right(y7)；敌镜像下→上 → e_front(y3) → e_back(y1)
 	var expected: Array[RtUnit] = [f_front_left, f_back_right, e_front, e_back]
 	if q.size() != expected.size():
 		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
@@ -281,7 +283,7 @@ static func _test_actors_act_sequentially() -> bool:
 	if a.cell.y >= 26:
 		push_error("seq: ally did not step (cell=%s)" % a.cell)
 		return false
-	## 友方一动结束后应轮到敌方（一动结束当拍 current 可能已清空，看变更信号）
+	## 友方一动结束后应轮到敌方
 	guard = 0
 	while not actors_seen.has("foe") and guard < 200:
 		sim.advance_fixed_step()
