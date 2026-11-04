@@ -295,7 +295,7 @@ func _resolve_targets(
 			if payload.target != null:
 				result.append(payload.target)
 		EffectSpec.TargetSelector.RANDOM_ALLY:
-			var picked := _pick_random_ally(owner, spec.exclude_owner)
+			var picked := _pick_random_ally(owner, spec.exclude_owner, spec.require_theme)
 			if picked != null:
 				result.append(picked)
 		EffectSpec.TargetSelector.ALL_UNITS:
@@ -352,7 +352,9 @@ func _resolve_targets(
 			if payload.source != null and payload.source.is_alive():
 				result.append(payload.source)
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
-			result.append_array(_pick_nearby_allies(owner, spec.exclude_owner))
+			result.append_array(
+				_pick_nearby_allies(owner, spec.exclude_owner, spec.require_theme)
+			)
 		EffectSpec.TargetSelector.NEARBY_ENEMIES:
 			result.append_array(_pick_nearby_enemies(owner))
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
@@ -373,7 +375,27 @@ func _resolve_targets(
 			var any_unit := _pick_random_any_unit(owner, spec.exclude_owner)
 			if any_unit != null:
 				result.append(any_unit)
-	return result
+	return _filter_targets_by_theme(result, spec.require_theme)
+
+
+static func _unit_has_theme(unit: UnitInstance, theme_id: StringName) -> bool:
+	if unit == null or unit.unit_data == null:
+		return false
+	if not UnitTheme.is_valid_id(theme_id):
+		return true
+	return theme_id in unit.unit_data.get_theme_ids()
+
+
+func _filter_targets_by_theme(
+	units: Array[UnitInstance], theme_id: StringName
+) -> Array[UnitInstance]:
+	if not UnitTheme.is_valid_id(theme_id):
+		return units
+	var filtered: Array[UnitInstance] = []
+	for unit in units:
+		if _unit_has_theme(unit, theme_id):
+			filtered.append(unit)
+	return filtered
 
 
 
@@ -399,12 +421,16 @@ func _spec_uses_cell_targets(spec: EffectSpec) -> bool:
 	)
 
 
-func _pick_random_ally(owner: UnitInstance, exclude_owner: bool) -> UnitInstance:
+func _pick_random_ally(
+	owner: UnitInstance, exclude_owner: bool, require_theme: StringName = &""
+) -> UnitInstance:
 	if owner == null:
 		return null
 	var candidates: Array[UnitInstance] = []
 	for unit in _grid.get_units_by_team(owner.team, true):
 		if exclude_owner and unit.instance_id == owner.instance_id:
+			continue
+		if not _unit_has_theme(unit, require_theme):
 			continue
 		candidates.append(unit)
 	if candidates.is_empty():
@@ -734,7 +760,9 @@ func _pick_nearby_enemies(owner: UnitInstance) -> Array[UnitInstance]:
 
 
 ## 持有者附近友方（切比雪夫 ≤ EffectSpec.NEARBY_ALLY_RADIUS；现为周围一格）。
-func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[UnitInstance]:
+func _pick_nearby_allies(
+	owner: UnitInstance, exclude_owner: bool, require_theme: StringName = &""
+) -> Array[UnitInstance]:
 	var result: Array[UnitInstance] = []
 	if owner == null or _grid == null:
 		return result
@@ -746,6 +774,8 @@ func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[Unit
 		if unit == null or not unit.is_alive():
 			continue
 		if exclude_owner and unit.instance_id == owner.instance_id:
+			continue
+		if not _unit_has_theme(unit, require_theme):
 			continue
 		var cell := unit.grid_pos
 		var unit_cell := _grid.find_cell_of(unit)
