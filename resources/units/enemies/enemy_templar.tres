@@ -34,3 +34,4 @@ stats = SubResource("UnitStats_enemy_templar")
 team_default = 1
 ability = ExtResource("3_ability")
 theme_primary = &"knight_order"
+icon = ExtResource("4_icon")
