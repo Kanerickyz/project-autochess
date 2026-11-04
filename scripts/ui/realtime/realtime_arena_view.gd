@@ -42,11 +42,6 @@ signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
 signal bench_empty_pressed(slot_index: int)
-## 主题定向：短按主题 / 长按展开三人。
-signal theme_directed_theme_pressed(theme_index: int)
-signal theme_directed_theme_long_pressed(theme_index: int)
-## 主题定向：短按领取 / 长按信息由 inspect 路径。
-signal theme_directed_unit_pressed(unit_index: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -181,17 +176,6 @@ var ally_half_slide_y: float = 0.0
 var bench_slide_y: float = 0.0
 ## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 主题定向：上半场队伍、下半场主题纸片或三人候选。
-var theme_directed_active: bool = false
-## themes | units
-var theme_directed_step: StringName = &"themes"
-var theme_directed_themes: Array = []
-var theme_directed_units: Array = []
-var theme_directed_selected_theme: int = -1
-var theme_directed_selected_unit: int = -1
-## 0→1：主题卡收束；单位错峰显形（由扩展 Tween）。
-var theme_directed_theme_shrink: float = 0.0
-var theme_directed_unit_reveal: float = 0.0
 ## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
@@ -282,9 +266,6 @@ var _prepare_team_press_id: int = -1
 ## 备战格按下（可与准备/招募拖共用 drag id）。
 var _bench_press_id: int = -1
 var _bench_empty_press: int = -1
-var _theme_directed_theme_press: int = -1
-var _theme_directed_unit_press: int = -1
-var _theme_directed_long_fired: bool = false
 var _motion := RealtimeUnitMotion.new()
 var _frame_shake := Vector2.ZERO
 var _info_card := RealtimeUnitInfoCard.new()
@@ -349,20 +330,7 @@ func _process(delta: float) -> void:
 		_motion.speed_scale = presentation_time_scale
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
-		## 主题定向主题步：长按展开三人，不弹信息卡。
-		if (
-			theme_directed_active
-			and theme_directed_step == &"themes"
-			and _theme_directed_theme_press >= 0
-			and not _theme_directed_long_fired
-		):
-			_theme_directed_long_fired = true
-			var theme_i := _theme_directed_theme_press
-			_cancel_press()
-			_theme_directed_theme_press = -1
-			theme_directed_theme_long_pressed.emit(theme_i)
-		else:
-			_show_info_card(_press_info)
+		_show_info_card(_press_info)
 	if _combat_skill_info_pin <= 0 and _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
 		if not _press_active:
 			_hide_all_info_cards()
@@ -965,9 +933,6 @@ func _gui_input(event: InputEvent) -> void:
 	if map_shop_active:
 		_gui_input_map_shop(event)
 		return
-	if theme_directed_active:
-		_gui_input_theme_directed(event)
-		return
 	if recruit_active:
 		_gui_input_recruit(event)
 		return
@@ -1205,90 +1170,6 @@ func _gui_input_recruit(event: InputEvent) -> void:
 		_recruit_team_press_id = -1
 		_recruit_empty_seat_press = -1
 		_bench_press_id = -1
-
-
-func _gui_input_theme_directed(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		_track_press_motion(motion.position)
-		if (
-			(_theme_directed_theme_press >= 0 or _theme_directed_unit_press >= 0)
-			and not _info_shown
-			and motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX
-		):
-			## 主题定向不拖拽；超 slop 取消长按/点选。
-			_theme_directed_theme_press = -1
-			_theme_directed_unit_press = -1
-			_cancel_press()
-		accept_event()
-		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index != MOUSE_BUTTON_LEFT:
-			return
-		var cell := tile_to_cell(local_to_tile(mb.position))
-		if mb.pressed:
-			_theme_directed_long_fired = false
-			if theme_directed_step == &"themes":
-				var ti := _find_theme_directed_theme_at(cell)
-				if ti >= 0:
-					_theme_directed_theme_press = ti
-					_theme_directed_unit_press = -1
-					_begin_press(mb.position, {}, Callable())
-					accept_event()
-					return
-			else:
-				var ui := _find_theme_directed_unit_at(cell)
-				if ui >= 0:
-					_theme_directed_unit_press = ui
-					_theme_directed_theme_press = -1
-					_begin_press(mb.position, inspect_at(mb.position), Callable())
-					accept_event()
-					return
-			return
-		if _info_shown:
-			_theme_directed_theme_press = -1
-			_theme_directed_unit_press = -1
-			_end_press()
-			accept_event()
-			return
-		if _end_press():
-			accept_event()
-		if _theme_directed_long_fired:
-			_theme_directed_long_fired = false
-			_theme_directed_theme_press = -1
-			_theme_directed_unit_press = -1
-			accept_event()
-			return
-		if _theme_directed_theme_press >= 0:
-			var pressed_t := _theme_directed_theme_press
-			_theme_directed_theme_press = -1
-			theme_directed_theme_pressed.emit(pressed_t)
-			accept_event()
-		elif _theme_directed_unit_press >= 0:
-			var pressed_u := _theme_directed_unit_press
-			_theme_directed_unit_press = -1
-			theme_directed_unit_pressed.emit(pressed_u)
-			accept_event()
-
-
-func _find_theme_directed_theme_at(cell: Vector2i) -> int:
-	for info in theme_directed_themes:
-		if not (info is Dictionary):
-			continue
-		if (info as Dictionary).get("cell", NO_CELL) == cell:
-			return int((info as Dictionary).get("index", -1))
-	return -1
-
-
-func _find_theme_directed_unit_at(cell: Vector2i) -> int:
-	for info in theme_directed_units:
-		if not (info is Dictionary):
-			continue
-		if (info as Dictionary).get("cell", NO_CELL) == cell:
-			return int((info as Dictionary).get("index", -1))
-	return -1
 
 
 func _gui_input_map_shop(event: InputEvent) -> void:
@@ -2246,27 +2127,6 @@ func _collect_inspectables() -> Array[Dictionary]:
 				unit, tile_to_local(tile), "catalog:%d" % i, catalog_preview_level
 			))
 		return out
-	if theme_directed_active:
-		if recruit_team_slots != null:
-			for i in recruit_team_slots.cells.size():
-				var td_entry := recruit_team_slots.get_entry(i)
-				if td_entry != null:
-					var td_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-					out.append(_info_from_entry(td_entry, tile_to_local(td_tile) + enemy_off))
-		if theme_directed_step == &"units":
-			for uinfo in theme_directed_units:
-				if not (uinfo is Dictionary):
-					continue
-				var u: UnitData = (uinfo as Dictionary).get("unit") as UnitData
-				var ucell: Vector2i = (uinfo as Dictionary).get("cell", NO_CELL)
-				if u == null or ucell == NO_CELL:
-					continue
-				var utile := Vector2(ucell) + Vector2(0.5, 0.5)
-				var ui := int((uinfo as Dictionary).get("index", -1))
-				out.append(
-					_info_from_unit_data(u, tile_to_local(utile) + ally_off, "td_unit:%d" % ui, 1)
-				)
-		return out
 	if recruit_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
@@ -3215,29 +3075,11 @@ func clear_map_shop_mode() -> void:
 	queue_redraw()
 
 
-func clear_theme_directed_mode() -> void:
-	_cancel_press()
-	theme_directed_active = false
-	theme_directed_step = &"themes"
-	theme_directed_themes.clear()
-	theme_directed_units.clear()
-	theme_directed_selected_theme = -1
-	theme_directed_selected_unit = -1
-	theme_directed_theme_shrink = 0.0
-	theme_directed_unit_reveal = 0.0
-	_theme_directed_theme_press = -1
-	_theme_directed_unit_press = -1
-	_theme_directed_long_fired = false
-	if not recruit_active and not map_shop_active:
-		recruit_team_slots = null
-	queue_redraw()
-
-
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
 	## 地图商店复用 recruit_team_slots 画上半场；清招募时勿误清商店。
-	if not map_shop_active and not theme_directed_active:
+	if not map_shop_active:
 		recruit_team_slots = null
 	recruit_candidates.clear()
 	recruit_items.clear()
@@ -3391,14 +3233,6 @@ func _draw() -> void:
 			_draw_map_shop_offer_drop_hint(px, mid)
 		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_team_seat_hint(px)
-	elif theme_directed_active:
-		_draw_theme_directed_zone_labels(px, mid, enemy_off, ally_off)
-		_draw_recruit_team(px, enemy_off)
-		_draw_bench_row(px)
-		if theme_directed_step == &"themes":
-			_draw_theme_directed_themes(px, ally_off)
-		else:
-			_draw_theme_directed_units(px, ally_off)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_recruit_team(px, enemy_off)
@@ -3535,9 +3369,7 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-	## 胜后整理（无角色候选人）与开局/常规招募区分文案。
-	var bot_label := "整理 · 道具" if recruit_candidates.is_empty() else "招募商店"
-	draw_string(font, bot_pos, bot_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -3923,119 +3755,6 @@ func _draw_merge_fx(px: float, off: Vector2) -> void:
 			font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
 			Color(1.0, 0.92, 0.35, _merge_label_alpha)
 		)
-
-
-func _draw_theme_directed_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
-	var font := ThemeDB.fallback_font
-	if font == null:
-		return
-	var font_size := clampi(int(px * 0.28), 10, 16)
-	var top := tile_to_local(Vector2(0.5, 0.35)) + enemy_off
-	draw_string(
-		font, top, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-		Color(0.95, 0.92, 0.82, 0.75)
-	)
-	var bot_label := "主题二选一" if theme_directed_step == &"themes" else "主题三人 · 免费"
-	var bot := tile_to_local(Vector2(0.5, float(mid) + 0.35)) + ally_off
-	draw_string(
-		font, bot, bot_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-		Color(0.95, 0.92, 0.82, 0.75)
-	)
-
-
-func _draw_theme_directed_themes(px: float, off: Vector2) -> void:
-	var shrink := clampf(theme_directed_theme_shrink, 0.0, 1.0)
-	var alpha := lerpf(0.95, 0.0, shrink)
-	if alpha <= 0.02:
-		return
-	var font := ThemeDB.fallback_font
-	var font_size := clampi(int(px * 0.32), 11, 18)
-	for info in theme_directed_themes:
-		if not (info is Dictionary):
-			continue
-		var cell: Vector2i = (info as Dictionary).get("cell", NO_CELL)
-		if cell == NO_CELL:
-			continue
-		var theme_id: StringName = (info as Dictionary).get("theme_id", &"") as StringName
-		var selected := bool((info as Dictionary).get("selected", false))
-		var label := String((info as Dictionary).get("label", UnitTheme.display_name(theme_id)))
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
-		var body_center := tile_to_local(center_tile) + off
-		## 收束：向选中卡靠拢并淡出。
-		if shrink > 0.001 and theme_directed_selected_theme >= 0:
-			var sel_cell := NO_CELL
-			for other in theme_directed_themes:
-				if not (other is Dictionary):
-					continue
-				if int((other as Dictionary).get("index", -1)) == theme_directed_selected_theme:
-					sel_cell = (other as Dictionary).get("cell", NO_CELL)
-					break
-			if sel_cell != NO_CELL:
-				var sel_center := tile_to_local(Vector2(sel_cell) + Vector2(0.5, 0.5)) + off
-				body_center = body_center.lerp(sel_center, shrink)
-		var paper_a := alpha * (1.15 if selected else 1.0)
-		var tint := ThemeBondBadgeDraw.color_for(theme_id)
-		tint = tint.lightened(0.35)
-		tint.a = paper_a * 0.55
-		var half := Vector2(px * 0.42, px * 0.55)
-		draw_rect(Rect2(body_center - half, half * 2.0), tint, true)
-		var border := Color(1.0, 0.92, 0.45, paper_a) if selected else Color(0.15, 0.12, 0.1, paper_a * 0.8)
-		draw_rect(Rect2(body_center - half, half * 2.0), border, false, 2.0 if selected else 1.0)
-		ThemeBondBadgeDraw.draw_badge(
-			self, body_center + Vector2(0.0, -px * 0.12), theme_id, px * 0.28, paper_a, true
-		)
-		if font != null and not label.is_empty():
-			var text_pos := body_center + Vector2(-px * 0.4, px * 0.32)
-			draw_string(
-				font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, int(px * 0.8), font_size,
-				Color(0.98, 0.96, 0.9, paper_a)
-			)
-
-
-func _draw_theme_directed_units(px: float, off: Vector2) -> void:
-	var reveal := clampf(theme_directed_unit_reveal, 0.0, 1.0)
-	for info in theme_directed_units:
-		if not (info is Dictionary):
-			continue
-		var cell: Vector2i = (info as Dictionary).get("cell", NO_CELL)
-		if cell == NO_CELL:
-			continue
-		var unit: UnitData = (info as Dictionary).get("unit") as UnitData
-		if unit == null:
-			continue
-		var index := int((info as Dictionary).get("index", -1))
-		var selected := bool((info as Dictionary).get("selected", false)) or index == theme_directed_selected_unit
-		var stagger := float((info as Dictionary).get("stagger", 0.0))
-		## 错峰：按 stagger 延迟进入 reveal（与 ThemeDirectedBattleExtension 时长对齐）。
-		const EXPAND_SEC := 0.35
-		var local_t := clampf((reveal * (EXPAND_SEC + stagger * 2.0 + 0.16) - stagger) / EXPAND_SEC, 0.0, 1.0)
-		if local_t <= 0.02:
-			continue
-		var alpha := lerpf(0.0, 0.95, local_t)
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
-		## 自略下方滑入。
-		var slide := Vector2(0.0, (1.0 - local_t) * px * 0.55)
-		var stats := unit.stats
-		var radius := stats.body_radius if stats != null else 0.7
-		var vwx := stats.get_visual_half_width() if stats != null else 0.0
-		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off + slide,
-			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
-		)
-		var body_center := tile_to_local(center_tile) + off + slide
-		_draw_theme_bond_badges(body_center, unit, px, alpha)
-		var atk := stats.attack if stats != null else 0
-		var hp := stats.max_hp if stats != null else 0
-		_draw_stat_badges(body_center, atk, hp, alpha, px, 0, 0, true)
-		if selected:
-			var half := Vector2(px * 0.48, px * 0.62)
-			draw_rect(
-				Rect2(body_center - half, half * 2.0),
-				Color(1.0, 0.92, 0.35, alpha * 0.85),
-				false,
-				2.0,
-			)
 
 
 func _draw_recruit_candidates(px: float, off: Vector2) -> void:

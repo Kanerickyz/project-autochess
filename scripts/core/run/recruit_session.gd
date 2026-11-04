@@ -30,8 +30,6 @@ var map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT
 var forward_tier_unlock: bool = false
 ## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
-## 胜后整理招募：true 时 begin 不抽角色候选人；刷新角色无效。
-var omit_character_candidates: bool = false
 
 var _snapshot_gold: int = 0
 var _snapshot_entries: Array[DeckEntry] = []
@@ -79,10 +77,7 @@ func begin(
 	if require_nonempty_roster:
 		clear_persisted_locks()
 	candidates.clear()
-	if omit_character_candidates:
-		_clear_candidate_slots()
-	else:
-		_roll_candidates()
+	_roll_candidates()
 	_capture_snapshot()
 	is_active = true
 	session_changed.emit()
@@ -212,8 +207,6 @@ func can_afford_recruit(candidate_index: int) -> bool:
 
 func can_refresh() -> bool:
 	if not is_active or economy == null:
-		return false
-	if omit_character_candidates:
 		return false
 	return economy.can_afford(get_refresh_cost())
 
@@ -353,92 +346,12 @@ func try_move_to_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 func try_refresh() -> bool:
 	if not can_refresh():
 		return false
-	## 胜后整理：无角色行，刷新角色无效（不扣金）。
-	if omit_character_candidates:
-		return false
 	var cost := get_refresh_cost()
 	if not economy.spend(cost):
 		return false
 	_roll_unlocked_candidates()
 	session_changed.emit()
 	return true
-
-
-## 八主题池抽 2 张不重复主题 id（主题定向立绘二选一）。
-func roll_theme_pair() -> Array[StringName]:
-	var pool: Array[StringName] = []
-	for theme_id in UnitTheme.ALL_IDS:
-		pool.append(theme_id)
-	var result: Array[StringName] = []
-	if pool.is_empty():
-		return result
-	_ensure_rng()
-	## Fisher–Yates 洗牌后取前 2。
-	for i in range(pool.size() - 1, 0, -1):
-		var j := _rng.randi_range(0, i)
-		var tmp := pool[i]
-		pool[i] = pool[j]
-		pool[j] = tmp
-	result.append(pool[0])
-	if pool.size() >= 2:
-		result.append(pool[1])
-	return result
-
-
-## 按主主题抽最多 3 名候选人；品阶/份数与常规候选人同一套过滤。
-func roll_units_for_theme(theme_id: StringName) -> Array[UnitData]:
-	var result: Array[UnitData] = []
-	if not UnitTheme.is_valid_id(theme_id):
-		return result
-	_ensure_rng()
-	var preferred := get_preferred_tier()
-	var local_shelf: Dictionary = {}
-	var want := get_candidate_slot_count()
-	for _i in want:
-		var unit := _pick_one_for_theme(theme_id, preferred, local_shelf)
-		if unit == null:
-			break
-		result.append(unit)
-		if not unit.id.is_empty():
-			local_shelf[unit.id] = int(local_shelf.get(unit.id, 0)) + 1
-	return result
-
-
-## 主题定向免费入队：不扣金；入队/份数/三合一与点买相同；满员失败。
-func claim_unit_free(unit: UnitData) -> Dictionary:
-	var result := {
-		"ok": false,
-		"reason": "inactive",
-		"entry": null,
-		"replaced": false,
-		"seat_index": -1,
-	}
-	if deck == null or economy == null:
-		return result
-	if unit == null:
-		result["reason"] = "no_candidate"
-		return result
-	## 主题定向不占货架槽；仅用本局已拿走份数判断。
-	if not unit.id.is_empty() and get_copies_remaining(unit.id) <= 0:
-		result["reason"] = "no_copies"
-		return result
-
-	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
-	if is_roster_full() and not merge_overflow:
-		result["reason"] = "roster_full"
-		return result
-
-	var entry := deck.add_entry(unit, 0, -1, false)
-	if entry == null:
-		result["reason"] = "add_failed"
-		return result
-	_note_copy_taken(unit)
-	result["ok"] = true
-	result["reason"] = "merged" if merge_overflow else "added"
-	result["entry"] = entry
-	result["seat_index"] = entry.seat_index
-	session_changed.emit()
-	return result
 
 
 ## 出售上区队伍成员：正常退金并腾位；变动计入快照，可 reset。
@@ -546,12 +459,6 @@ func _restore_snapshot() -> void:
 	_ensure_lock_slots()
 
 
-func _clear_candidate_slots() -> void:
-	## 整理招募：无角色候选人行（空数组，非三格 null）。
-	candidates.clear()
-	candidate_locked.clear()
-
-
 func _roll_candidates() -> void:
 	var count := get_candidate_slot_count()
 	candidates.clear()
@@ -567,53 +474,6 @@ func _roll_candidates() -> void:
 			continue
 		candidates[i] = _pick_one(preferred)
 		candidate_locked[i] = false
-
-
-func _ensure_rng() -> void:
-	if _rng != null:
-		return
-	_rng = RandomNumberGenerator.new()
-	_rng.randomize()
-
-
-## 主题池：主主题匹配 + 品阶/份数；local_shelf 计入本轮已抽占用。
-func _pick_one_for_theme(
-	theme_id: StringName,
-	preferred_tier: int,
-	local_shelf: Dictionary,
-) -> UnitData:
-	var pool := _player_pool()
-	if pool.is_empty():
-		return null
-	var min_tier := get_min_tier()
-	var unlocked: Array[UnitData] = []
-	var tier_matched: Array[UnitData] = []
-	for unit in pool:
-		if unit == null:
-			continue
-		if unit.theme_primary != theme_id:
-			continue
-		if unit.tier < min_tier or unit.tier > preferred_tier:
-			continue
-		tier_matched.append(unit)
-		var remaining := _copies_remaining_for_theme_roll(unit, local_shelf)
-		if remaining > 0:
-			unlocked.append(unit)
-	if not unlocked.is_empty():
-		return unlocked[_rng.randi_range(0, unlocked.size() - 1)]
-	if not tier_matched.is_empty():
-		return null
-	## 主题匹配但品阶全卡死：不强行越档（与常规 _pick_one 的 fallback 不同，避免破主题定向）。
-	return null
-
-
-func _copies_remaining_for_theme_roll(unit: UnitData, local_shelf: Dictionary) -> int:
-	if unit == null:
-		return 0
-	if unit.id.is_empty():
-		return COPIES_PER_CHARACTER
-	var local := int(local_shelf.get(unit.id, 0))
-	return COPIES_PER_CHARACTER - _copies_taken(unit.id) - _copies_on_shelf(unit.id) - local
 
 
 ## 离开招募时写入跨场锁定；下一场 begin 时套回锁定槽。

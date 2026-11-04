@@ -15,7 +15,7 @@ signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, THEME_DIRECTED, RECRUIT, ENCHANT, MAP_SHOP }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -134,8 +134,6 @@ var _pending_merge_fx: Array = []
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _recruit_shop_config: RecruitShopConfig = null
 var _recruit_pending_item_slot: int = -1
-var _theme_directed_ui: ThemeDirectedBattleExtension = ThemeDirectedBattleExtension.new()
-var _theme_directed_awaiting: bool = false
 var _enchant_session: EnchantSession = EnchantSession.new()
 var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
 var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
@@ -251,11 +249,6 @@ func _ready() -> void:
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
-	_theme_directed_ui.setup(self)
-	_theme_directed_ui.finished.connect(_on_theme_directed_finished)
-	_arena.theme_directed_theme_pressed.connect(_on_theme_directed_theme_pressed)
-	_arena.theme_directed_theme_long_pressed.connect(_on_theme_directed_theme_long_pressed)
-	_arena.theme_directed_unit_pressed.connect(_on_theme_directed_unit_pressed)
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -1314,78 +1307,6 @@ func play_half_field_exit_animation(duration: float = -1.0) -> void:
 		_arena.queue_redraw()
 
 
-## 胜后主题定向（整理招募前）：两主题 → 长按三人免费拿 1；开局招募勿调用。
-## 完成后发出内部完成；调用方再 enter_recruit(omit=true)。
-func enter_theme_directed_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void:
-	if session == null:
-		push_error("RealtimeBattleController.enter_theme_directed_recruit: session is null")
-		return
-	_recruit_session = session
-	_theme_directed_awaiting = true
-	_preserve_half_slide_for_recruit = false
-	var seconds := recruit_enter_seconds if enter_seconds < 0.0 else enter_seconds
-	if session.config != null and enter_seconds < 0.0:
-		seconds = session.config.panel_enter_seconds
-	_set_phase(Phase.THEME_DIRECTED)
-	_hide_combat_chrome_for_recruit()
-	## 主题定向用扩展 HUD，不显示常规招募底栏。
-	_hide_recruit_hud()
-	await get_tree().process_frame
-	if _arena != null:
-		var travel := _half_slide_travel()
-		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
-		if not already_out:
-			_arena.set_half_slide_offscreen(travel)
-	_theme_directed_ui.begin(session)
-	sync_theme_directed_team_slots()
-	if _arena != null:
-		_arena.queue_redraw()
-	await _play_half_field_enter_animation(seconds)
-	_recruit_animating = false
-	## 等主题定向完成（领取或跳过拿人）。
-	while _theme_directed_awaiting and is_inside_tree():
-		await get_tree().process_frame
-	_theme_directed_ui.end()
-	if _arena != null:
-		_arena.clear_theme_directed_mode()
-
-
-func sync_theme_directed_team_slots() -> void:
-	if _arena == null:
-		return
-	_rebuild_recruit_team_slots()
-	_arena.recruit_team_slots = _recruit_team_slots
-	_arena.prepare_slots = null
-	_arena.enemy_slots = null
-	_arena.enemy_previews = []
-	_arena.sim = null
-	_arena.placement_active = false
-	_sync_arena_bench()
-	_arena.queue_redraw()
-
-
-func _on_theme_directed_theme_pressed(theme_index: int) -> void:
-	if _phase != Phase.THEME_DIRECTED or _theme_directed_ui == null:
-		return
-	_theme_directed_ui.on_theme_pressed(theme_index)
-
-
-func _on_theme_directed_theme_long_pressed(theme_index: int) -> void:
-	if _phase != Phase.THEME_DIRECTED or _theme_directed_ui == null:
-		return
-	await _theme_directed_ui.on_theme_long_pressed(theme_index)
-
-
-func _on_theme_directed_unit_pressed(unit_index: int) -> void:
-	if _phase != Phase.THEME_DIRECTED or _theme_directed_ui == null:
-		return
-	_theme_directed_ui.on_unit_pressed(unit_index)
-
-
-func _on_theme_directed_finished() -> void:
-	_theme_directed_awaiting = false
-
-
 ## 胜后进入招募：同屏半场滑入队伍（上）与候选人（下）；规则走 RecruitSession。
 ## headless：enter_seconds≤0 时瞬间到位，不 await 长动画。
 func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void:
@@ -1649,9 +1570,6 @@ func _on_map_shop_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 func exit_recruit() -> void:
-	_theme_directed_awaiting = false
-	if _theme_directed_ui != null:
-		_theme_directed_ui.end()
 	_close_recruit_shop()
 	_unbind_recruit_session()
 	_recruit_session = null
@@ -1661,12 +1579,11 @@ func exit_recruit() -> void:
 	_recruit_animating = false
 	_recruit_team_slots.clear()
 	if _arena != null:
-		_arena.clear_theme_directed_mode()
 		_arena.clear_recruit_mode()
 		_arena.reset_half_slide()
 	_hide_recruit_hud()
 	_restore_combat_chrome_after_recruit()
-	if _phase == Phase.RECRUIT or _phase == Phase.THEME_DIRECTED:
+	if _phase == Phase.RECRUIT:
 		_set_phase(Phase.IDLE)
 
 
@@ -2965,22 +2882,16 @@ func _refresh_recruit_hud() -> void:
 		_recruit_seat.text = "入座 %d/%d 备战 %d/%d" % [
 			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
-	if _recruit_title != null:
-		_recruit_title.text = "整理招募" if _recruit_session.omit_character_candidates else "招募"
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
 		elif _recruit_session.require_nonempty_roster and roster_n < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
-		elif _recruit_session.omit_character_candidates:
-			_recruit_hint.text = "整理队伍与备战；可出售/买道具；本场无角色候选人"
 		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
 			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
-		## 胜后整理：无角色行，隐藏刷新。
-		_recruit_refresh_btn.visible = not _recruit_session.omit_character_candidates
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
 	if _recruit_skip_btn != null:
@@ -2992,13 +2903,13 @@ func _refresh_recruit_hud() -> void:
 	if _gold_label != null:
 		_gold_label.text = UiStatIcons.format_gold_label(gold)
 	if _phase_label != null:
-		_phase_label.text = "整理招募" if _recruit_session.omit_character_candidates else "招募"
+		_phase_label.text = "招募"
 	if _pop_label != null:
 		_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
 			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
 	if _encounter_label != null:
-		_encounter_label.text = "整理招募" if _recruit_session.omit_character_candidates else "招募"
+		_encounter_label.text = "招募"
 
 
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
@@ -4097,8 +4008,6 @@ func _refresh_hud() -> void:
 			_phase_label.text = _combat_phase_status_text()
 		Phase.RESULT:
 			_phase_label.text = "胜利" if _won else "失败"
-		Phase.THEME_DIRECTED:
-			_phase_label.text = "主题定向"
 		Phase.RECRUIT:
 			_phase_label.text = "招募"
 		Phase.ENCHANT:
