@@ -14,6 +14,7 @@ static func run_all() -> bool:
 	ok = _check("actors_act_sequentially", _test_actors_act_sequentially()) and ok
 	ok = _check("melee_approach_hit_once_per_turn", _test_melee_approach_hit_once_per_turn()) and ok
 	ok = _check("eight_dir_diagonal_step", _test_eight_dir_diagonal_step()) and ok
+	ok = _check("cardinal_move_only_no_diagonal", _test_cardinal_move_only_no_diagonal()) and ok
 	ok = _check("no_attack_until_cell_settled", _test_no_attack_until_cell_settled()) and ok
 	ok = _check("occupancy_blocks_or_detours", _test_occupancy_blocks_or_detours()) and ok
 	ok = _check("chebyshev_attack_reach", _test_chebyshev_attack_reach()) and ok
@@ -95,6 +96,7 @@ const _STAT_OVERRIDE_KEYS := [
 	"max_hp", "attack", "steps_per_turn", "attack_interval",
 	"attack_windup", "attack_reach", "sight_range", "body_radius", "mass",
 	"projectile_speed", "splash_radius", "deploy_time", "attack_range",
+	"cardinal_move_only",
 ]
 
 
@@ -361,6 +363,36 @@ static func _test_eight_dir_diagonal_step() -> bool:
 		return false
 	if mover.is_stepping():
 		push_error("eight_dir: expected settled after one cell step")
+		return false
+	return true
+
+
+## cardinal_move_only：对角目标时第一步须正交，禁止斜步。
+static func _test_cardinal_move_only_no_diagonal() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 12)
+	var mover := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"steps_per_turn": 30,
+			"attack_reach": 1.0,
+			"attack_windup": 5.0,
+			"sight_range": 30.0,
+			"cardinal_move_only": true,
+		}),
+		Vector2(5.5, 25.5),
+	)
+	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(8.5, 22.5))
+	var start := mover.cell
+	_run_until(sim, RtUnit.CELL_STEP_SECONDS + RealtimeCombatSim.FIXED_DT)
+	var delta: Vector2i = mover.cell - start
+	if absi(delta.x) + absi(delta.y) != 1:
+		push_error(
+			"cardinal_only: expected one orthogonal step, got delta=%s cell=%s"
+			% [delta, mover.cell]
+		)
+		return false
+	if mover.is_stepping():
+		push_error("cardinal_only: expected settled after one cell step")
 		return false
 	return true
 
