@@ -110,6 +110,8 @@ func _ensure_shop_or_event_panel() -> void:
 	_shop_or_event_panel.name = "ShopOrEventChoicePanel"
 	_shop_or_event_panel.choice_made.connect(_on_shop_or_event_chosen)
 	ui.add_child(_shop_or_event_panel)
+	## CanvasLayer 子 Control 须铺满视口，否则居中相对 0 尺寸父级会飞出可视区。
+	_shop_or_event_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _is_endless() -> bool:
