@@ -159,3 +159,12 @@ Git: Documents/**/*.md  → 短指针（Doc ID + Notion URL）
 ## 回滚
 
 还原 git 中指针与 harness；Notion 库保留，需人工决定是否归档。
+
+## Runtime IDs（实施后）
+
+| Key | Value |
+|-----|-------|
+| HUB_URL | https://app.notion.com/p/40ff89936db681b5880cec3af0087789 |
+| HUB_PAGE_ID | 40ff8993-6db6-81b5-880c-ec3af0087789 |
+| DB_URL | https://app.notion.com/p/9293e582b53d437dbe88b28d21251a5f |
+| DATA_SOURCE_ID | collection://49890a10-9fb5-4516-b48f-440f7bd41075 |

@@ -1,9 +1,9 @@
 # Project Autochess：项目级工作规则
 
 ## 开始工作
-- 用中文沟通；先读 [Documents/INDEX.md](Documents/INDEX.md)、相关设计文档和目标模块；检查 `git status`，保留用户修改。
-- 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md) 与 `Documents/Features/`（角色技能见 [Features/UNIT_ABILITIES.md](Documents/Features/UNIT_ABILITIES.md)；玩家拥有物见 [Features/PLAYER.md](Documents/Features/PLAYER.md)）；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。商店细则以愿景、架构摘要与实现为准（已删除旧 `SHOP_SYSTEM.md`）；文档 To-Be 为**队伍**养成，As-Is 仍可能是牌库/手牌。
-- 胜负与主循环以 [Documents/GAME_VISION.md](Documents/GAME_VISION.md) 定稿为准（文档定稿 ≠ 代码已对齐时须对照实现）。写文档时遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。技能规则见 [Documents/Features/UNIT_ABILITIES.md](Documents/Features/UNIT_ABILITIES.md)，技能内容池见 [Documents/Content/UNIT_ABILITIES_ROSTER.md](Documents/Content/UNIT_ABILITIES_ROSTER.md)。
+- 用中文沟通；检查 `git status`，保留用户修改。设计规格先查 Notion「Autochess — 设计文档」库（**Hub**：https://app.notion.com/p/40ff89936db681b5880cec3af0087789 · **数据库**：https://app.notion.com/p/9293e582b53d437dbe88b28d21251a5f）；本地入口 [Documents/INDEX.md](Documents/INDEX.md) 与 [Documents/NOTION_DOC_MAP.md](Documents/NOTION_DOC_MAP.md)。用 **Doc ID** 或 Notion search 检索正文；本地 `Documents/` **仅指针**，与 Notion 冲突时**以 Notion 为准**。
+- 设计意图以 Notion 库为准（示例 Doc ID：`game-vision`、`buff-system`、`feature-unit-abilities`、`feature-player`）；**实现与数值**以 git 代码、场景与 `resources/` 下 `.tres` 为准。发现冲突要说明，不把建议写成已完成。商店细则以愿景、架构摘要与实现为准（已删除旧 `SHOP_SYSTEM.md`）；文档 To-Be 为**队伍**养成，As-Is 仍可能是牌库/手牌。
+- 胜负与主循环以 Notion Doc ID `game-vision`（指针 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)）定稿为准（规格定稿 ≠ 代码已对齐时须对照实现）。写规格在 **Notion 页**完成，并遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。技能规则见 Doc ID `feature-unit-abilities`；技能内容池见 `content-unit-abilities-roster`。
 - Godot 4.6、GDScript，默认入口 `scenes/main/main_menu.tscn`。
 - Cloud Agent 环境应提供 PATH 上的 `godot`（4.6）；可用 `GODOT_BIN` 覆盖。Headless 验证：`godot --headless --path . --script res://scripts/**/*_test_runner.gd`。GUI 验收用桌面 DISPLAY（常见为 `:1`）；无声卡时引擎会回退 dummy 音频驱动，属预期。
 - 用户当前请求优先于项目默认规则；只解决当前范围，不顺带重写游戏系统。
