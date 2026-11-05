@@ -15,6 +15,7 @@ func _run() -> void:
 	if not StripTest.run():
 		_failures += 1
 	await _test_battle_hud_wiring()
+	await _test_detail_popup_lifecycle()
 	if _failures == 0:
 		print("ExpeditionRelicBadgeStripTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -64,3 +65,46 @@ func _test_battle_hud_wiring() -> void:
 		_expect(strip.get_parent() == player_row, "battle: strip in PlayerInfoRow")
 	battle.queue_free()
 	await process_frame
+
+
+func _root_has_relic_detail_popup() -> bool:
+	for child in root.get_children():
+		if child != null and String(child.name) == "RelicDetailPopup":
+			return true
+	return false
+
+
+func _test_detail_popup_lifecycle() -> void:
+	var battle := (load(BATTLE_SCENE) as PackedScene).instantiate() as RealtimeBattleController
+	root.add_child(battle)
+	await process_frame
+	var strip := battle.get_relic_badge_strip()
+	_expect(strip != null, "detail: strip present")
+	if strip == null:
+		battle.queue_free()
+		await process_frame
+		return
+	var relic := ExpeditionRelicData.new()
+	relic.id = "relic_detail_test"
+	relic.display_name = "鼓点耳环"
+	relic.description = "邻格鼓点加成摘要"
+	relic.tier = 2
+	relic.sell_gold = 4
+	strip.show_relic_detail(relic)
+	await process_frame
+	_expect(strip.has_detail_popup(), "detail: popup created after show")
+	_expect(not strip.get_detail_title_text().is_empty(), "detail: title non-empty")
+	_expect(strip.get_detail_title_text() == "鼓点耳环", "detail: title matches display_name")
+	_expect(not strip.get_detail_body_text().is_empty(), "detail: body non-empty")
+	_expect(_root_has_relic_detail_popup(), "detail: RelicDetailPopup on root while open")
+	battle.set_world_backdrop_mode(true)
+	await process_frame
+	_expect(not strip.has_detail_popup(), "detail: hide_detail via world backdrop")
+	_expect(not _root_has_relic_detail_popup(), "detail: root cleared after backdrop")
+	## 再开一次，验证 battle 释放后 root 无残留。
+	strip.show_relic_detail(relic)
+	await process_frame
+	_expect(_root_has_relic_detail_popup(), "detail: popup reopened")
+	battle.queue_free()
+	await process_frame
+	_expect(not _root_has_relic_detail_popup(), "detail: root clear after battle queue_free")

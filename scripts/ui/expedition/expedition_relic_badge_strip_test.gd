@@ -56,8 +56,7 @@ static func _test_strip_empty_and_fill() -> bool:
 		return false
 	if not bag.try_add(_make_relic("b", "铁扉插销", 2)):
 		return false
-	## bag_changed 应已刷新；仍显式 refresh 一次防脱节。
-	strip.refresh()
+	## 仅依赖 bag_changed → refresh，不手动 refresh。
 	if strip.get_occupied_count() != 2:
 		return false
 	if strip.get_badge(0) == null or not strip.get_badge(0).is_occupied():
@@ -71,7 +70,6 @@ static func _test_strip_empty_and_fill() -> bool:
 	for i in 4:
 		if not bag.try_add(_make_relic("f%d" % i, "满%d" % i, 3)):
 			return false
-	strip.refresh()
 	if not bag.is_full():
 		return false
 	if strip.get_occupied_count() != 6:
@@ -81,7 +79,6 @@ static func _test_strip_empty_and_fill() -> bool:
 			return false
 	if bag.try_add(_make_relic("overflow", "溢出", 1)):
 		return false
-	strip.refresh()
 	if strip.get_occupied_count() != 6:
 		return false
 	strip.free()

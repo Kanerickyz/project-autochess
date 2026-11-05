@@ -384,6 +384,9 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 			Control.MOUSE_FILTER_IGNORE if enabled else Control.MOUSE_FILTER_STOP
 		)
 	if enabled:
+		## 圣物详情挂在 root；罩层时关掉，避免地图上残留 Popup。
+		if _relic_badge_strip != null:
+			_relic_badge_strip.hide_detail()
 		_teardown_sim()
 		if _arena != null:
 			_arena.clear_fx()
@@ -4177,13 +4180,14 @@ func _combat_phase_status_text() -> String:
 func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
+	## 仅 bag 引用变化时同步；占用刷新依赖 bag_changed。
+	if _relic_badge_strip != null and _relic_badge_strip.get_bag() != _relic_bag:
+		_sync_relic_badge_strip()
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
-		_sync_relic_badge_strip()
 		return
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
-		_sync_relic_badge_strip()
 		return
 	if _final_trial_active:
 		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
@@ -4205,8 +4209,6 @@ func _refresh_hud() -> void:
 		var gold_row := _gold_label.get_parent() as Control
 		if gold_row != null:
 			UiStatIcons.ensure_gold_icon(gold_row)
-	if _relic_badge_strip != null and _relic_badge_strip.get_bag() != _relic_bag:
-		_sync_relic_badge_strip()
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()

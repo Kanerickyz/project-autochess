@@ -83,6 +83,33 @@ func show_relic_detail(relic: ExpeditionRelicData) -> void:
 	_detail_popup.popup_centered(Vector2i(280, 160))
 
 
+## 关闭详情浮层；可被地图罩层 / 外部调用，避免 root 残留 Popup。
+func hide_detail() -> void:
+	if _detail_popup != null and is_instance_valid(_detail_popup):
+		_detail_popup.hide()
+		_detail_popup.queue_free()
+	_detail_popup = null
+	_detail_title = null
+	_detail_body = null
+	_detail_meta = null
+
+
+func has_detail_popup() -> bool:
+	return _detail_popup != null and is_instance_valid(_detail_popup)
+
+
+func get_detail_title_text() -> String:
+	if _detail_title == null or not is_instance_valid(_detail_title):
+		return ""
+	return _detail_title.text
+
+
+func get_detail_body_text() -> String:
+	if _detail_body == null or not is_instance_valid(_detail_body):
+		return ""
+	return _detail_body.text
+
+
 func _ensure_badges() -> void:
 	if _badges.size() == SLOT_COUNT:
 		return
@@ -147,6 +174,4 @@ func _on_badge_pressed(slot_index: int, relic: ExpeditionRelicData) -> void:
 func _exit_tree() -> void:
 	if _bag != null and _bag.bag_changed.is_connected(_on_bag_changed):
 		_bag.bag_changed.disconnect(_on_bag_changed)
-	if _detail_popup != null and is_instance_valid(_detail_popup):
-		_detail_popup.queue_free()
-		_detail_popup = null
+	hide_detail()
