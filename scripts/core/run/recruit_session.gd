@@ -11,6 +11,9 @@ signal session_finished(kept_changes: bool)
 const CANDIDATE_COUNT := 3
 ## 每个可招募角色在本局卡池中的份数。拿光后不再抽到。
 const COPIES_PER_CHARACTER := 9
+## 主题盘展示数；重 roll 费用（Features/RECRUIT）。
+const THEME_OFFER_COUNT := 3
+const THEME_REROLL_COST := 2
 
 var config: RecruitConfig
 var deck: DeckState
@@ -24,14 +27,20 @@ var candidates: Array[UnitData] = []
 var candidate_locked: Array[bool] = []
 var is_active: bool = false
 var progress_ratio: float = 0.0
-## 地图层号（1-based）；>0 时品阶解锁走 TierUnlock（T2 自第 4 层；T3 自倒数 6 层）。
-var map_floor: int = 0
-## 本幕普通层数；与 map_floor 一起算倒数 6 层档。
+## 远征层号：开局招 = 0；战后招 = 刚胜利层；≥0 时品阶走 TierUnlock（-1=进度三段回退）。
+var map_floor: int = -1
+## 本幕战斗层数（不含 Boss）；与 map_floor 一起算倒数 6 层档。
 var map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT
 ## 无尽：品阶随 F 单向放开，不用「倒数层」假设。
 var forward_tier_unlock: bool = false
-## 开局招募：完成须队伍 ≥1，且禁用跳过；胜后招募保持 false。
+## 开局招募：完成须 ≥1 已入座，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
+## 主路径：进入短名单前须主题三选一；测试可关。
+var theme_commitment_required: bool = false
+## 本阶段已承诺主题；未承诺时候选人为空。
+var committed_theme: StringName = &""
+## 当前主题盘三选一。
+var theme_offers: Array[StringName] = []
 
 var _snapshot_gold: int = 0
 var _snapshot_entries: Array[DeckEntry] = []
@@ -39,6 +48,8 @@ var _snapshot_next_entry_id: int = 0
 var _snapshot_candidates: Array[UnitData] = []
 var _snapshot_locked: Array[bool] = []
 var _snapshot_relics: Array = []
+var _snapshot_committed_theme: StringName = &""
+var _snapshot_theme_offers: Array[StringName] = []
 ## 跨场招募保留：上一场结束时仍锁定的候选人（按槽）。
 var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
@@ -73,20 +84,27 @@ func set_relic_bag(bag: ExpeditionRelicBag) -> void:
 
 func begin(
 	p_progress_ratio: float = 0.0,
-	p_map_floor: int = 0,
+	p_map_floor: int = -1,
 	p_map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT,
 ) -> void:
 	if deck == null or economy == null:
 		push_error("RecruitSession.begin: deck/economy missing")
 		return
 	progress_ratio = clampf(p_progress_ratio, 0.0, 1.0)
-	map_floor = maxi(0, p_map_floor)
+	## -1：未传层号，走 progress_ratio 回退；≥0 含开局第 0 层。
+	map_floor = p_map_floor
 	map_floor_count = maxi(1, p_map_floor_count)
+	committed_theme = &""
+	theme_offers.clear()
 	## 开局招募不继承上一场锁定。
 	if require_nonempty_roster:
 		clear_persisted_locks()
 	candidates.clear()
-	_roll_candidates()
+	candidate_locked.clear()
+	if theme_commitment_required:
+		_roll_theme_offers()
+	else:
+		_roll_candidates()
 	_capture_snapshot()
 	is_active = true
 	session_changed.emit()
@@ -188,8 +206,8 @@ func is_roster_full() -> bool:
 
 
 func get_preferred_tier() -> int:
-	## 主路径：按地图层解锁（T2 自第 4 层；T3 自倒数 6 层）。无层号时回退旧进度三段。
-	if map_floor > 0:
+	## 主路径：按远征层解锁（含第 0 层→T1；T2 自第 4 层；T3 自倒数 6 层）。无层号时回退旧进度三段。
+	if map_floor >= 0:
 		return TierUnlock.get_max_unlocked_tier(map_floor, map_floor_count, forward_tier_unlock)
 	if progress_ratio < 1.0 / 3.0:
 		return 1
@@ -199,12 +217,64 @@ func get_preferred_tier() -> int:
 
 
 func get_min_tier() -> int:
-	if map_floor > 0:
+	if map_floor >= 0:
 		return TierUnlock.get_min_unlocked_tier(map_floor, map_floor_count, forward_tier_unlock)
 	## 进度三段回退：后段踢出 T1，与倒数档一致。
 	if progress_ratio >= 2.0 / 3.0:
 		return 2
 	return 1
+
+
+func has_committed_theme() -> bool:
+	if not theme_commitment_required:
+		return true
+	return UnitTheme.is_valid_id(committed_theme)
+
+
+func get_theme_offers() -> Array[StringName]:
+	return theme_offers.duplicate()
+
+
+func get_theme_reroll_cost() -> int:
+	return THEME_REROLL_COST
+
+
+func can_reroll_themes() -> bool:
+	if not is_active or not theme_commitment_required or economy == null:
+		return false
+	return economy.can_afford(THEME_REROLL_COST)
+
+
+## 选定主题盘一项 → 锁池并抽短名单。已承诺时可再选（主题盘重 roll 后再选）。
+func commit_theme(theme_id: StringName) -> bool:
+	if not is_active or not theme_commitment_required:
+		return false
+	if not UnitTheme.is_valid_id(theme_id):
+		return false
+	if theme_id not in theme_offers:
+		return false
+	committed_theme = theme_id
+	## 换主题后锁定槽作废（锁池变了）。
+	clear_persisted_locks()
+	for i in candidate_locked.size():
+		candidate_locked[i] = false
+	_roll_candidates()
+	session_changed.emit()
+	return true
+
+
+## 花 2 金重 roll 主题盘；须再选一；已进队保留。
+func try_reroll_themes() -> bool:
+	if not can_reroll_themes():
+		return false
+	if not economy.spend(THEME_REROLL_COST):
+		return false
+	committed_theme = &""
+	candidates.clear()
+	candidate_locked.clear()
+	_roll_theme_offers()
+	session_changed.emit()
+	return true
 
 
 func can_afford_recruit(candidate_index: int) -> bool:
@@ -216,6 +286,8 @@ func can_afford_recruit(candidate_index: int) -> bool:
 
 func can_refresh() -> bool:
 	if not is_active or economy == null:
+		return false
+	if theme_commitment_required and not has_committed_theme():
 		return false
 	return economy.can_afford(get_refresh_cost())
 
@@ -429,8 +501,11 @@ func reset() -> void:
 func can_finish() -> bool:
 	if not is_active:
 		return false
+	if theme_commitment_required and not has_committed_theme():
+		return false
 	if require_nonempty_roster:
-		return deck != null and deck.size() >= 1
+		## 开局：须至少 1 名已入座（备战不算）。
+		return deck != null and deck.get_seated_count() >= 1
 	return true
 
 
@@ -484,6 +559,8 @@ func _capture_snapshot() -> void:
 	_snapshot_locked = candidate_locked.duplicate()
 	_snapshot_taken_copies = _taken_copies.duplicate()
 	_snapshot_relics = relic_bag.capture_state() if relic_bag != null else []
+	_snapshot_committed_theme = committed_theme
+	_snapshot_theme_offers = theme_offers.duplicate()
 
 
 func _restore_snapshot() -> void:
@@ -503,7 +580,23 @@ func _restore_snapshot() -> void:
 	_taken_copies = _snapshot_taken_copies.duplicate()
 	if relic_bag != null:
 		relic_bag.restore_state(_snapshot_relics)
+	committed_theme = _snapshot_committed_theme
+	theme_offers = _snapshot_theme_offers.duplicate()
 	_ensure_lock_slots()
+
+
+func _roll_theme_offers() -> void:
+	theme_offers.clear()
+	var pool: Array[StringName] = UnitTheme.ALL_IDS.duplicate()
+	## 打乱后取前 3。
+	for i in range(pool.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var tmp: StringName = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	var take := mini(THEME_OFFER_COUNT, pool.size())
+	for i in take:
+		theme_offers.append(pool[i])
 
 
 func _roll_candidates() -> void:
@@ -513,6 +606,8 @@ func _roll_candidates() -> void:
 	for _i in count:
 		candidates.append(null)
 		candidate_locked.append(false)
+	if theme_commitment_required and not has_committed_theme():
+		return
 	## 先放回跨场锁定，再抽空槽，避免锁定份数与新抽份数加起来超过库存。
 	_apply_persisted_locks()
 	var preferred := get_preferred_tier()
@@ -664,10 +759,20 @@ func _player_pool() -> Array[UnitData]:
 	if config != null:
 		raw = config.get_unit_pool()
 	var result: Array[UnitData] = []
+	var theme_filter := theme_commitment_required and UnitTheme.is_valid_id(committed_theme)
 	for unit in raw:
 		if unit == null:
 			continue
 		if unit.team_default != UnitInstance.Team.PLAYER:
 			continue
+		if theme_filter and not _unit_matches_theme(unit, committed_theme):
+			continue
 		result.append(unit)
 	return result
+
+
+## 主或辅任一匹配所选主题即可入池。
+func _unit_matches_theme(unit: UnitData, theme_id: StringName) -> bool:
+	if unit == null or not UnitTheme.is_valid_id(theme_id):
+		return false
+	return theme_id in unit.get_theme_ids()

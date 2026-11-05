@@ -37,6 +37,9 @@ var _event_relic_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
+## 主模式线性：战后店|事二选一尚未完成（完成后进主题招募，再 complete）。
+var _linear_post_battle_pending: bool = false
+var _shop_or_event_panel: ShopOrEventChoicePanel
 var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
 var _pending_end_victory: bool = false
 var _pending_end_snapshot: RunStatsSnapshot
@@ -48,6 +51,7 @@ func _ready() -> void:
 	deck_state.configure(DEFAULT_DECK_CONFIG)
 	run_economy.configure(DEFAULT_ECONOMY)
 	_ensure_relic_offer_screen()
+	_ensure_shop_or_event_panel()
 	var offer_rng := RandomNumberGenerator.new()
 	offer_rng.seed = _rng.randi()
 	_relic_offer_service.configure(null, offer_rng)
@@ -96,8 +100,24 @@ func _ensure_relic_offer_screen() -> void:
 	ui.add_child(_relic_offer_screen)
 
 
+func _ensure_shop_or_event_panel() -> void:
+	if _shop_or_event_panel != null and is_instance_valid(_shop_or_event_panel):
+		return
+	var ui := get_node_or_null("UI") as CanvasLayer
+	if ui == null:
+		return
+	_shop_or_event_panel = ShopOrEventChoicePanel.new()
+	_shop_or_event_panel.name = "ShopOrEventChoicePanel"
+	_shop_or_event_panel.choice_made.connect(_on_shop_or_event_chosen)
+	ui.add_child(_shop_or_event_panel)
+
+
 func _is_endless() -> bool:
 	return run_controller != null and run_controller.is_endless()
+
+
+func _is_linear_main() -> bool:
+	return run_controller != null and run_controller.is_linear_main()
 
 
 func _start_new_run() -> void:
@@ -105,6 +125,7 @@ func _start_new_run() -> void:
 	deck_state.set_run_stat_ledger(_run_stat_ledger)
 	_pending_end_victory = false
 	_pending_end_snapshot = null
+	_linear_post_battle_pending = false
 	deck_state.reset_from_config()
 	run_economy.reset()
 	relic_bag.clear()
@@ -123,16 +144,16 @@ func _start_new_run() -> void:
 			_battle.set_spawn_budget_config(null)
 	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
+	## 主模式线性：全程旁路地图选路。
 	_suppress_map_show = true
 	_opening_recruit_pending = true
 	run_controller.start_run()
 	run_controller.run_state.mark_run_started()
-	## 见地图之前先开局招募；完成且队伍 ≥1 后由 _on_recruit_finished → _show_map。
 	await _open_opening_recruit()
 
 
 func _show_map() -> void:
-	if _suppress_map_show:
+	if _suppress_map_show or _is_linear_main():
 		return
 	_hide_encounter_ui()
 	## 地图与关卡共用竞技场背景：战斗层保留在下方作世界底图，地图半透明罩上。
@@ -152,6 +173,8 @@ func _hide_encounter_ui() -> void:
 	_placeholder_screen.hide_placeholder()
 	if _relic_offer_screen != null:
 		_relic_offer_screen.hide_offers()
+	if _shop_or_event_panel != null:
+		_shop_or_event_panel.hide_choice()
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
 			and run_controller.phase != RunController.RunPhase.RUN_DEFEAT:
 		_run_end_overlay.hide_overlay()
@@ -187,11 +210,16 @@ func _on_map_node_selected(node_id: int) -> void:
 			int(node_type),
 		)
 		return
+	## 主模式线性层表无商店/事件/附魔节点；无尽地图店仍走此路径。
 	if node_type == MapNodeType.Type.SHOP:
 		run_controller.register_shop_visit()
 		await _open_map_shop()
 		return
 	if node_type == MapNodeType.Type.ENCHANT:
+		## 主循环不接入附魔；误进则直接完成。
+		if _is_linear_main():
+			run_controller.complete_encounter()
+			return
 		await _open_enchant()
 		return
 	if node_type == MapNodeType.Type.EVENT:
@@ -202,6 +230,16 @@ func _on_map_node_selected(node_id: int) -> void:
 	if _battle != null:
 		_battle.set_world_backdrop_mode(true)
 	_placeholder_screen.show_placeholder(node_type)
+
+
+func _enter_next_linear_combat() -> void:
+	if not _is_linear_main():
+		return
+	var next_node := LinearRunProgress.find_next_combat_node(run_controller.get_map_state())
+	if next_node == null:
+		push_warning("RunGameController: no next linear combat node")
+		return
+	_on_map_node_selected(next_node.get_id())
 
 
 func _on_placeholder_continue() -> void:
@@ -231,6 +269,21 @@ func _on_encounter_completed(won: bool) -> void:
 		run_economy.grant(encounter.bonus_gold)
 
 	var node_type := run_controller.get_pending_node_type()
+	## Boss 胜：直接通关，不进店/事/招。
+	if node_type == MapNodeType.Type.BOSS:
+		_battle_root.visible = false
+		if _battle != null:
+			_battle.exit_recruit()
+		run_controller.complete_encounter()
+		return
+
+	## 主模式线性：普通/精英胜 → 店|事二选一 → 主题招募 → 下一层。
+	if _is_linear_main():
+		_linear_post_battle_pending = true
+		await _open_shop_or_event_choice()
+		return
+
+	## 无尽：胜后直接主题招募（无店|事二选一）。
 	if not _recruit_session.should_offer_recruit(node_type, true):
 		_battle_root.visible = false
 		if _battle != null:
@@ -241,7 +294,30 @@ func _on_encounter_completed(won: bool) -> void:
 	await _open_recruit()
 
 
-## 开局招募：与胜后同一套 Arena enter_recruit；进度 0；须队伍 ≥1 才能完成。
+func _open_shop_or_event_choice() -> void:
+	_ensure_shop_or_event_panel()
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	if _shop_or_event_panel != null:
+		_shop_or_event_panel.show_choice()
+	else:
+		## 无面板时默认进商店。
+		await _open_map_shop_for_linear_choice()
+
+
+func _on_shop_or_event_chosen(choice: StringName) -> void:
+	if not _linear_post_battle_pending:
+		return
+	if choice == ShopOrEventChoicePanel.CHOICE_EVENT:
+		await _open_event_relic_offer_for_linear_choice()
+	else:
+		await _open_map_shop_for_linear_choice()
+
+
+## 开局招募：与胜后同一套 Arena enter_recruit；进度第 0 层；须 ≥1 已入座才能完成。
 func _open_opening_recruit() -> void:
 	if _recruit_busy:
 		return
@@ -256,9 +332,10 @@ func _open_opening_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = true
-	## 开局：第 1 层尺 → 仅 T1。
+	_recruit_session.theme_commitment_required = not _is_endless()
 	_recruit_session.forward_tier_unlock = _is_endless()
-	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
+	## 开局：第 0 层尺 → 仅 T1。
+	_recruit_session.begin(0.0, 0, _recruit_map_floor_count())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
 
@@ -325,10 +402,36 @@ func _open_event_relic_offer() -> void:
 		run_controller.complete_encounter()
 
 
+## 线性战后「事件」支：不发节点层金（战斗已发）、不 complete，结束后进招募。
+func _open_event_relic_offer_for_linear_choice() -> void:
+	if _event_relic_busy:
+		return
+	_event_relic_busy = true
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	_ensure_relic_offer_screen()
+	var floor_i := _recruit_map_floor()
+	var offer_rng := RandomNumberGenerator.new()
+	offer_rng.seed = _rng.randi()
+	_relic_offer_service.configure(ExpeditionRelicOfferService.load_pool_or_stub(), offer_rng)
+	var offers := _relic_offer_service.roll_offers(floor_i, relic_bag, 3)
+	if _relic_offer_screen != null:
+		_relic_offer_screen.show_offers(offers, relic_bag)
+	else:
+		_event_relic_busy = false
+		await _open_recruit()
+
+
 func _on_relic_offer_finished(_took: bool) -> void:
 	if not _event_relic_busy:
 		return
 	_event_relic_busy = false
+	if _linear_post_battle_pending:
+		await _open_recruit()
+		return
 	_grant_pending_node_floor_gold()
 	run_controller.complete_encounter()
 
@@ -352,10 +455,18 @@ func _open_map_shop() -> void:
 	await _battle.enter_map_shop(_map_shop_service, enter_s)
 
 
+func _open_map_shop_for_linear_choice() -> void:
+	run_controller.register_shop_visit()
+	await _open_map_shop()
+
+
 func _on_map_shop_finished() -> void:
-	_grant_pending_node_floor_gold()
 	_map_shop_service.close_shop()
 	_map_shop_busy = false
+	if _linear_post_battle_pending:
+		await _open_recruit()
+		return
+	_grant_pending_node_floor_gold()
 	run_controller.complete_encounter()
 
 
@@ -374,6 +485,7 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = false
+	_recruit_session.theme_commitment_required = not _is_endless()
 	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(
 		_recruit_progress_ratio(),
@@ -393,7 +505,7 @@ func _recruit_progress_ratio() -> float:
 ## 胜后招募品阶：用本场遭遇地图层（T2 自第 4 层；T3 自倒数 6 层 / 无尽单向）。
 func _recruit_map_floor() -> int:
 	if _battle != null:
-		return maxi(1, _battle.get_floor_index())
+		return maxi(0, _battle.get_floor_index())
 	return 1
 
 
@@ -402,8 +514,8 @@ func _recruit_map_floor_count() -> int:
 	if _is_endless():
 		var current_f := _recruit_map_floor()
 		return maxi(ENDLESS_RECRUIT_SOFT_FLOOR_COUNT, current_f)
-	if run_controller != null and run_controller.map_config != null:
-		return maxi(1, run_controller.map_config.floor_count)
+	if run_controller != null:
+		return run_controller.get_recruit_floor_count()
 	if _battle != null:
 		return maxi(1, _battle.get_map_floor_count())
 	return TierUnlock.DEFAULT_FLOOR_COUNT
@@ -413,8 +525,22 @@ func _on_recruit_finished(_kept: bool) -> void:
 	_recruit_busy = false
 	if _opening_recruit_pending:
 		_opening_recruit_pending = false
+		## 开局招完：主模式直接进第 1 层；无尽仍进地图。
+		if _is_linear_main():
+			_suppress_map_show = true
+			_enter_next_linear_combat()
+			return
 		_suppress_map_show = false
 		_show_map()
+		return
+	## 线性战后招：离开后再层号 +1（complete）并进下一层。
+	if _linear_post_battle_pending and _is_linear_main():
+		_linear_post_battle_pending = false
+		_battle_root.visible = false
+		run_controller.complete_encounter()
+		if run_controller.phase == RunController.RunPhase.RUN_COMPLETE:
+			return
+		_enter_next_linear_combat()
 		return
 	_battle_root.visible = false
 	run_controller.complete_encounter()
@@ -423,6 +549,9 @@ func _on_recruit_finished(_kept: bool) -> void:
 func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 	match new_phase:
 		RunController.RunPhase.MAP:
+			if _is_linear_main():
+				## 线性主模式不展示尖塔选路。
+				return
 			_show_map()
 		RunController.RunPhase.RUN_COMPLETE:
 			_battle_root.visible = false
@@ -438,6 +567,8 @@ func _on_run_phase_changed(new_phase: RunController.RunPhase) -> void:
 
 
 func _on_map_updated() -> void:
+	if _is_linear_main():
+		return
 	if run_controller.phase == RunController.RunPhase.MAP and not _suppress_map_show:
 		_map_screen.refresh_map(run_controller)
 
