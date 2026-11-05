@@ -173,6 +173,7 @@ var _boss_final_trial_offer: bool = false
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _pop_label: Label = %PopLabel
 @onready var _timer_label: Label = %TimerLabel
+@onready var _relic_badge_strip: ExpeditionRelicBadgeStrip = %RelicBadgeStrip
 @onready var _arena: RealtimeArenaView = %ArenaView
 @onready var _hand_row: HBoxContainer = %HandRow
 @onready var _start_button: Button = %StartButton
@@ -264,6 +265,7 @@ func _ready() -> void:
 		_start_button.visible = false
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = false
+	_sync_relic_badge_strip()
 	_refresh_hud()
 
 
@@ -299,10 +301,21 @@ func set_run_stat_ledger(ledger: RunStatLedger) -> void:
 
 func set_relic_bag(bag: ExpeditionRelicBag) -> void:
 	_relic_bag = bag
+	_sync_relic_badge_strip()
 
 
 func get_relic_bag() -> ExpeditionRelicBag:
 	return _relic_bag
+
+
+func get_relic_badge_strip() -> ExpeditionRelicBadgeStrip:
+	return _relic_badge_strip
+
+
+func _sync_relic_badge_strip() -> void:
+	if _relic_badge_strip == null:
+		return
+	_relic_badge_strip.configure(_relic_bag)
 
 
 func set_combat_sandbox_mode(enabled: bool) -> void:
@@ -2082,7 +2095,7 @@ func _ensure_prepare_action_row() -> void:
 	else:
 		add_child(_prepare_action_row)
 		_start_button.reparent(_prepare_action_row)
-	_start_button.custom_minimum_size = Vector2(0, 40)
+	_start_button.custom_minimum_size = Vector2(0, 46)
 	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_start_button.size_flags_stretch_ratio = _PREPARE_START_STRETCH
 
@@ -2094,7 +2107,7 @@ func _ensure_layout_clipboard_buttons() -> void:
 		_copy_layout_button = Button.new()
 		_copy_layout_button.name = "CopyLayoutButton"
 		_copy_layout_button.unique_name_in_owner = true
-		_copy_layout_button.custom_minimum_size = Vector2(0, 40)
+		_copy_layout_button.custom_minimum_size = Vector2(0, 46)
 		_copy_layout_button.text = "复制布局"
 		_copy_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_copy_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
@@ -2109,7 +2122,7 @@ func _ensure_layout_clipboard_buttons() -> void:
 		_paste_layout_button = Button.new()
 		_paste_layout_button.name = "PasteLayoutButton"
 		_paste_layout_button.unique_name_in_owner = true
-		_paste_layout_button.custom_minimum_size = Vector2(0, 40)
+		_paste_layout_button.custom_minimum_size = Vector2(0, 46)
 		_paste_layout_button.text = "粘贴布局"
 		_paste_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_paste_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
@@ -4166,23 +4179,34 @@ func _refresh_hud() -> void:
 		return
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
+		_sync_relic_badge_strip()
 		return
 	if _phase == Phase.MAP_SHOP:
 		_refresh_map_shop_hud()
+		_sync_relic_badge_strip()
 		return
 	if _final_trial_active:
 		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
 		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
 		_encounter_label.text = "最终试炼 · 第 %d 层（%d/%d）" % [layer, stat, stat]
-	elif _encounter != null:
-		var encounter_name := _encounter.display_name
-		if _floor_index > 0:
-			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+	elif _floor_index > 0:
+		## 顶栏以层号为主；遭遇短名作次要后缀。
+		var encounter_name := _encounter.display_name if _encounter != null else ""
+		if encounter_name.is_empty():
+			_encounter_label.text = "第 %d 层" % _floor_index
 		else:
-			_encounter_label.text = encounter_name
+			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+	elif _encounter != null:
+		_encounter_label.text = _encounter.display_name
 	else:
 		_encounter_label.text = "实时战斗"
-	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
+	if _gold_label != null:
+		_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
+		var gold_row := _gold_label.get_parent() as Control
+		if gold_row != null:
+			UiStatIcons.ensure_gold_icon(gold_row)
+	if _relic_badge_strip != null and _relic_badge_strip.get_bag() != _relic_bag:
+		_sync_relic_badge_strip()
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()

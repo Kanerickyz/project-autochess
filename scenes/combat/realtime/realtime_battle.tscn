@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/realtime/realtime_battle_controller.gd" id="1_ctrl"]
 [ext_resource type="Script" path="res://scripts/ui/realtime/realtime_arena_view.gd" id="2_arena"]
+[ext_resource type="PackedScene" path="res://scenes/ui/expedition/expedition_relic_badge_strip.tscn" id="3_relic_strip"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
 bg_color = Color(0.1, 0.13, 0.16, 0.95)
@@ -53,7 +54,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
 
 [node name="HudRows" type="VBoxContainer" parent="Layout/Hud"]
 layout_mode = 2
-theme_override_constants/separation = 0
+theme_override_constants/separation = 2
 
 [node name="TopRow" type="HBoxContainer" parent="Layout/Hud/HudRows"]
 layout_mode = 2
@@ -62,16 +63,26 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 14
-text = "遭遇战"
+theme_override_font_sizes/font_size = 15
+text = "第 1 层"
 clip_text = true
 
-[node name="GoldLabel" type="Label" parent="Layout/Hud/HudRows/TopRow"]
+[node name="PlayerInfoRow" type="HBoxContainer" parent="Layout/Hud/HudRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GoldLabel" type="Label" parent="Layout/Hud/HudRows/PlayerInfoRow"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.86, 0.35, 1)
 theme_override_font_sizes/font_size = 14
 text = "金币 0"
+
+[node name="RelicBadgeStrip" parent="Layout/Hud/HudRows/PlayerInfoRow" instance=ExtResource("3_relic_strip")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="BottomRow" type="HBoxContainer" parent="Layout/Hud/HudRows"]
 layout_mode = 2
@@ -127,7 +138,7 @@ visible = false
 
 [node name="StartButton" type="Button" parent="Layout/Dock/DockBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "开始战斗"
 
