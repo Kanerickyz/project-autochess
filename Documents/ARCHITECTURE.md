@@ -88,29 +88,31 @@ flowchart TB
 
 ### 3.1 Run / Match 状态机
 
-**宏观 Run**（`RunController`）：`MAP → ENCOUNTER → MAP` … → `RUN_COMPLETE` / `RUN_DEFEAT`。
+**宏观 Run（To-Be）**：线性远征层 `开局招募 →（PREPARE → COMBAT → RESOLVE → 商店|事件 → 主题招募）×N → Boss` → `RUN_COMPLETE` / `RUN_DEFEAT`。见 [GAME_VISION](./GAME_VISION.md) / [GAME_LOOP](./Features/GAME_LOOP.md)。
 
-**微观 Match**（`MatchStateMachine`）：单次遭遇内 `SHOP | PREPARE → COMBAT → RESOLVE`；`current_encounter: EncounterData` 替代线性 `LevelData.waves`。
+**宏观 Run（As-Is）**：`RunController` 仍可能为 `MAP → ENCOUNTER → MAP` 选路。
 
-胜负与主循环对齐 [GAME_VISION.md](./GAME_VISION.md)【设计定稿】：清波制（敌全灭胜 / 己全灭败）。**To-Be**：准备抽选手牌 → 入角色座位（可刷新；受上场人数上限约束）→ 开战纯观战；无人口、无号令。**As-Is**：实时主路径仍为无准备、战中号令出牌。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) 与 [Features/PLAYER.md](./Features/PLAYER.md)。
+**微观 Match**（`MatchStateMachine`）：单次遭遇内 `PREPARE → COMBAT → RESOLVE`；`current_encounter: EncounterData`。
+
+胜负对齐愿景清波制。**To-Be**：准备入座 → 开战纯观战；战后店|事二选一 → 主题承诺招募。**As-Is**：可能仍无准备、战中号令出牌、地图选路。生命周期见 [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) 与 [Features/PLAYER.md](./Features/PLAYER.md)。
 
 ```mermaid
 flowchart TD
-    Map[MAP] -->|战斗节点| Prep[PREPARE] --> Combat[COMBAT] --> Resolve[RESOLVE] --> Map
-    Map -->|商店节点| Shop[SHOP] --> Map
-    Resolve -->|Run模式失败| RunDefeat[RUN_DEFEAT]
-    Map -->|Boss胜利| RunComplete[RUN_COMPLETE]
+    OpenRecruit[开局主题招募] --> Prep[PREPARE] --> Combat[COMBAT] --> Resolve[RESOLVE]
+    Resolve -->|普通或精英胜| Choice{商店或事件}
+    Choice --> Recruit[主题招募] --> Prep
+    Resolve -->|Boss胜| RunComplete[RUN_COMPLETE]
+    Resolve -->|失败| RunDefeat[RUN_DEFEAT]
 ```
 
 | 模块 | 路径 | 职责 |
 |------|------|------|
-| `RunMapConfig` | `scripts/data/run_map_config.gd` | Act 地图模板、遭遇池、事件池 |
-| `MapGenerator` | `scripts/core/run/map_generator.gd` |  procedural 地图 + 节点类型 |
-| `RunController` | `scripts/core/run/run_controller.gd` | Run 生命周期、选路 |
-| `RunGameController` | `scripts/core/run/run_game_controller.gd` | 场景编排：地图 UI ↔ `RealtimeBattleController`（战斗节点）/ 占位界面（其他节点）；持有本局 `DeckState`、`RunEconomy`。`BoardController` 的 run 模式为遗留、无调用方 |
-| `EncounterData` | `scripts/data/encounter_data.gd` | 单节点战斗：`WaveData` + 棋盘覆盖 |
+| `RunMapConfig` / `MapGenerator` / `MapState` | `scripts/data/run_map_config.gd` 等 | **As-Is** 尖塔地图生成与选路；To-Be 主模式改为远征层表后可旁路或拆除 |
+| `RunController` | `scripts/core/run/run_controller.gd` | Run 生命周期（As-Is 含选路） |
+| `RunGameController` | `scripts/core/run/run_game_controller.gd` | 场景编排：地图 UI ↔ 战斗 / 占位；持有本局经济与队伍 |
+| `EncounterData` | `scripts/data/encounter_data.gd` | 单场战斗：`WaveData` + 棋盘覆盖 |
 
-**旧网格工具环**（`main.tscn` + `BoardController`）：本地商店/部署烟测；Run 主路径见地图 + 实时战斗。
+**旧网格工具环**（`main.tscn` + `BoardController`）：本地商店/部署烟测；Run 主路径见 `run_game.tscn` + 实时战斗。
 
 PvE 波次循环（对齐 [GAME_VISION.md](./GAME_VISION.md) 六步，线性模式）：
 
