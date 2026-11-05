@@ -20,7 +20,7 @@ description: Use when designing or reviewing builds, ability synergies, position
 
 | 定稿 | 含义 |
 |------|------|
-| **主题羁绊** | 八主题上场凑人触发团队层；见 `Features/UNIT_THEME_BONDS.md`；**必须**复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff |
+| **主题羁绊** | 八主题上场凑人触发团队层；见 Notion Doc ID `feature-unit-theme-bonds`（指针 `Documents/Features/UNIT_THEME_BONDS.md`）；**必须**复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff |
 | 构筑深度载体 | **单位内建技能 + 槽位站位 + 增益卡 + 主题羁绊**（+ 装备/消耗品若已入规格） |
 | 效果统一管线 | 战斗增益与主题团队层经 `EffectSpec` / `EffectResolver`；触发经 `CombatEventBus` |
 | 内部流派不对外 | 内部可用「坚韧 / 冲锋」等称呼；八**主题名**可对玩家；勿与内部流派名混用 |
@@ -54,7 +54,7 @@ description: Use when designing or reviewing builds, ability synergies, position
 1. 标明 **A（基础输出/触发）** 与 **B（乘数）** 各是什么组件  
 2. 门槛属于空间 / 时序 / 状态哪一类（可组合）  
 3. 对手或环境如何打断（脆弱点、资源独占、反差弱点至少一类）  
-4. 玩家在观战里能否看出「联动兑现了」（对照 `COMBAT_FEEDBACK`）
+4. 玩家在观战里能否看出「联动兑现了」（对照 Notion Doc ID `feature-combat-feedback`，指针 `Documents/Features/COMBAT_FEEDBACK.md`）
 
 ### `balance-designer`（数值）
 
