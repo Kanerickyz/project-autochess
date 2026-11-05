@@ -18,6 +18,8 @@ runners=(
   "res://scripts/combat/realtime/realtime_combat_sim_test_runner.gd"
   "res://scripts/combat/realtime/realtime_ability_effect_test_runner.gd"
   "res://scripts/ui/realtime/realtime_battle_flow_test_runner.gd"
+  "res://scripts/ui/expedition/expedition_relic_badge_strip_test_runner.gd"
+  "res://scripts/core/run/expedition_relic_bag_test_runner.gd"
   "res://scripts/ui/realtime/recruit_arena_transition_test_runner.gd"
   "res://scripts/ui/realtime/opening_recruit_flow_test_runner.gd"
   "res://scripts/ui/realtime/prepare_slot_board_test_runner.gd"
