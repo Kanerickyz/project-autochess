@@ -10,7 +10,7 @@
 - **提出需求时先问验收方式**（见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「验收方式」）：**轻量** = `bash tools/run_light_verify.sh` 加载通过即可，效果由用户验；**完全** = 现行 runner + 按 L 级 QA/GUI。未指定先问再做。
 
 ## 游戏约束
-- 关卡制 / 爬塔 PvE 自走棋：商店完整养成**队伍**、**准备站位入角色座位**（席位内全体上场；座位默认 **4×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**（不能改阵）；普通/精英胜后**招募**短名单再回地图（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌；席位上限可在商店提高。新增 PVP 或单位微操走位需明确设计需求。
+- 关卡制 / 爬塔 PvE 自走棋：**无地图选路**；线性远征层；**主题承诺招募**养成**队伍**、**准备站位入角色座位**（席位内全体上场；座位默认 **4×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**；普通/精英胜后 **商店或事件二选一** 再主题招募（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌。新增 PVP 或单位微操走位需明确设计需求。
 - **主题羁绊**（护卫 / 骑士团 / 战士 / 工匠 / 亡灵 / 军乐队 / 秘术 / 佣兵）为本版设定，见 [Features/UNIT_THEME_BONDS.md](Documents/Features/UNIT_THEME_BONDS.md)。流派玩法轴仍来自单位内建技能、增益卡与站位。战斗内同主题团队增益须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
