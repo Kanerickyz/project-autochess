@@ -310,10 +310,10 @@ git push -u origin cursor/notion-design-docs-hub-1f33
 
 | Key | Value |
 |-----|-------|
-| HUB_URL | _(fill after Task 1)_ |
-| HUB_PAGE_ID | _(fill after Task 1)_ |
-| DB_URL | _(fill after Task 1)_ |
-| DATA_SOURCE_ID | _(fill after Task 1)_ |
+| HUB_URL | https://app.notion.com/p/40ff89936db681b5880cec3af0087789 |
+| HUB_PAGE_ID | 40ff8993-6db6-81b5-880c-ec3af0087789 |
+| DB_URL | https://app.notion.com/p/9293e582b53d437dbe88b28d21251a5f |
+| DATA_SOURCE_ID | collection://49890a10-9fb5-4516-b48f-440f7bd41075 |
 
 ---
 
