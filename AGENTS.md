@@ -11,7 +11,7 @@
 
 ## 游戏约束
 - 关卡制 / 爬塔 PvE 自走棋：**无地图选路**；线性远征层；**主题承诺招募**养成**队伍**、**准备站位入角色座位**（席位内全体上场；座位默认 **4×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**；普通/精英胜后 **商店或事件二选一** 再主题招募（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌。新增 PVP 或单位微操走位需明确设计需求。
-- **主题羁绊**（护卫 / 骑士团 / 战士 / 工匠 / 亡灵 / 军乐队 / 秘术 / 佣兵）为本版设定，见 [Features/UNIT_THEME_BONDS.md](Documents/Features/UNIT_THEME_BONDS.md)。流派玩法轴仍来自单位内建技能、增益卡与站位。战斗内同主题团队增益须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
+- **主题羁绊**（护卫 / 骑士团 / 战士 / 工匠 / 亡灵 / 军乐队 / 秘术 / 佣兵）为本版设定，见 Notion Doc ID `feature-unit-theme-bonds`（指针 [Documents/Features/UNIT_THEME_BONDS.md](Documents/Features/UNIT_THEME_BONDS.md)）。流派玩法轴仍来自单位内建技能、增益卡与站位。战斗内同主题团队增益须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 战场 To-Be 为 **5×8** 逻辑格网（竖屏、我下敌上）+ 双方 **4×5** 角色座位（铺满半场）；准备入座用座位吸附；开战后为**回合制自动战**：敌我**混排**固定行动队列、每回合同序依次行动；每一动尽量「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**，可越半场）。单动演出可压短，观战可加速。不用六边形；不做钉座对撞主路径；不做出手条/速度条主交付。主路径时钟 As-Is 已在 `scripts/combat/realtime/` 落地为行动队列（非全员并行）。旧网格工具环（`main.tscn`）仍用 `BoardGrid`，勿当新主路径交付标准。
@@ -29,7 +29,7 @@
 - 主代理负责需求、任务拆分、共享文件、集成和交付；小型串行修改由主代理完成。跨模块切片按 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md) 派专职角色；设计已定要落地用 `implement` skill，完整纵切片用 `vertical-slice` skill。
 - Cursor 角色在 `.cursor/agents/*.md`，用 Task 委派。Customize 里看不见就不算已加载；改为手读对应 `.md` 再传合同。不能声称文件已自动加载。
 - 每个纵切片自带目标等级 L0–L5。同时最多三个子代理。未触达的职业不强制到场。`project.godot`、共享场景与枚举由主代理统一修改。
-- **新建或修改角色**（名/id、攻血、主技能、入池）：用 `.cursor/skills/characterdesign/`；**阶段 I** 先按 `design-brainstorm` 与用户对齐并派只读 `game-designer`（必要时 `balance-designer`），**用户确认后** **阶段 II** 再更新 [CHARACTER_DESIGN.md](Documents/Content/CHARACTER_DESIGN.md) / 花名册与 `resources/units/`；终稿前 icon 默认 `res://assets/sprites/placeholders/character_dev.png`。
+- **新建或修改角色**（名/id、攻血、主技能、入池）：用 `.cursor/skills/characterdesign/`；**阶段 I** 先按 `design-brainstorm` 与用户对齐并派只读 `game-designer`（必要时 `balance-designer`），**用户确认后** **阶段 II** 再更新 Notion Doc ID `content-character-design` / 花名册（指针 [Documents/Content/CHARACTER_DESIGN.md](Documents/Content/CHARACTER_DESIGN.md)）与 `resources/units/`；终稿前 icon 默认 `res://assets/sprites/placeholders/character_dev.png`。
 - **完全验收**下：集成后 QA 按目标等级给出结论，reviewer 只读审查；阻断退回实现。L5 只修缺陷。验证用 `verify-godot`，画面用 `gui-acceptance`。**轻量验收**不派 QA/GUI，加载烟测即可。
 - 切片等级不取代文档里的 M1–M3 / Run 里程碑；里程碑描述已实现范围，L0–L5 描述当前切片质量；验收方式见 DEVELOPMENT_WORKFLOW。
 

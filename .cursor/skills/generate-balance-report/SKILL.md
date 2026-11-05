@@ -72,7 +72,7 @@ test -f "docs/balancereport/runs/${RUN_ID}/summary.json"
 
 可选烟测（改 sim 代码后）：`bash tools/run_sim_balance_verify.sh`（1 局，快）。
 
-Sim 策略见 `Documents/Features/SIM_BALANCE_AI.md`。Bandit **仅评估**：checkpoint 冻结，100 局内不更新表；与 `default` 报告分 `ai_profile_id` 存档。
+Sim 策略见 Notion Doc ID `feature-sim-balance-ai`（指针 `Documents/Features/SIM_BALANCE_AI.md`）。Bandit **仅评估**：checkpoint 冻结，100 局内不更新表；与 `default` 报告分 `ai_profile_id` 存档。
 
 ### 路径 B — 交给 CI（本地无 Godot 或用户指定 Actions）
 
@@ -149,5 +149,5 @@ curl -sf "https://kanerickyz.github.io/project-autochess/balancereport/summary.j
 ## 相关文档
 
 - `docs/balancereport/README.md` — Schema 1.0、目录约定
-- `Documents/WEB_DEPLOY.md` — Pages 并发、`workflow_run` 说明
+- Notion Doc ID `ops-web-deploy`（指针 `Documents/WEB_DEPLOY.md`）— Pages 并发、`workflow_run` 说明
 - `tools/sim_balance/README.md` — 本地批跑与归档

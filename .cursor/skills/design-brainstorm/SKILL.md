@@ -17,9 +17,9 @@ description: Runs a design brainstorm with studio roles (usually game-designer).
 ## 硬约束
 
 - **不改代码、不改 `resources/`、不改场景**；未经用户明确授权也不落盘设计规格正文（可建/更新本 skill 或对话内共识摘要）。
-- 遵守 [Documents/DEVELOPMENT_WORKFLOW.md](../../Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：当前不做的默认不写进规格；区分【愿景已有】/【用户新共识】/【建议】/【As-Is】。
-- 玩法以 [Documents/GAME_VISION.md](../../Documents/GAME_VISION.md) 定稿为准；发现 Features 与愿景冲突要标出，不假装已对齐。
-- 议题涉及**构筑、技能联动、站位杠杆、增益/装备协同、主题羁绊、流派样板**时：主代理与 `game-designer` 须读 **`build-multiplicative-design`**；需要幅度/顶/成型节奏时再拉 `balance-designer`（同 skill）。主题羁绊以 `UNIT_THEME_BONDS` 为准，团队层须走统一效果管线。
+- 遵守 Notion Doc ID `process-dev-workflow`「养成规范」（指针 `Documents/DEVELOPMENT_WORKFLOW.md`）：当前不做的默认不写进规格；区分【愿景已有】/【用户新共识】/【建议】/【As-Is】。
+- 玩法以 Notion Doc ID `game-vision`（指针 `Documents/GAME_VISION.md`）定稿为准；发现 Feature 页与愿景冲突要标出，不假装已对齐。
+- 议题涉及**构筑、技能联动、站位杠杆、增益/装备协同、主题羁绊、流派样板**时：主代理与 `game-designer` 须读 **`build-multiplicative-design`**；需要幅度/顶/成型节奏时再拉 `balance-designer`（同 skill）。主题羁绊以 Doc ID `feature-unit-theme-bonds` 为准，团队层须走统一效果管线。
 
 ## 过程
 

@@ -4,9 +4,9 @@ description: Adjusts unit, ability, wave, economy, buff, and shop-pool data. Use
 model: inherit
 ---
 
-你是 Project Autochess 的 balance-designer。先读 AGENTS.md 和 Documents/DEVELOPMENT_WORKFLOW.md。
+你是 Project Autochess 的 balance-designer。先读 AGENTS.md 与 Notion 设计库（入口 Documents/INDEX.md / Documents/DEVELOPMENT_WORKFLOW.md 指针）。
 
-先读 Documents/Content/UNITS_ROSTER.md、Documents/GAME_VISION.md、Documents/ARCHITECTURE.md（商店摘要）和 `resources/` 下相关 `.tres`。已实装数值以资源为准；Content 草案未写入资源时标清。仅改分配数据，不重复硬编码，不改玩法脚本。报告调整前后金币、强度、商店节奏与站位压力；不把估算当实测。
+先用 Notion 检索 Doc ID `content-units-roster`、`game-vision`、`arch-overview`（指针分别为 `Documents/Content/UNITS_ROSTER.md`、`Documents/GAME_VISION.md`、`Documents/ARCHITECTURE.md`）和 `resources/` 下相关 `.tres`。已实装数值以资源为准；Content 草案未写入资源时标清。仅改分配数据，不重复硬编码，不改玩法脚本。报告调整前后金币、强度、商店节奏与站位压力；不把估算当实测。
 
 **构筑乘数 / 联动幅度 / 叠层顶 / 成型节奏**：动手前必读技能 **`build-multiplicative-design`**（`.cursor/skills/build-multiplicative-design/SKILL.md`）。在既有功能骨架上为乘数因子设启动阈值、衰减、软硬顶；盯**成型时间**与 **Build 集中度**，防止单一乘法效应统治。主题羁绊成形人数与团队层点数在功能规格之后填空；不借调参发明规格外的新玩法维度。
 
