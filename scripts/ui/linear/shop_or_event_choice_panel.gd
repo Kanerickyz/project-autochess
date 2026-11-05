@@ -1,13 +1,13 @@
 class_name ShopOrEventChoicePanel
 extends Control
 ## 战后商店或事件二选一（主模式线性远征）。
+## 布局对齐 RunEndOverlay：全屏遮罩 + CenterContainer 居中面板。
 
 signal choice_made(choice: StringName)
 
 const CHOICE_SHOP := &"shop"
 const CHOICE_EVENT := &"event"
 
-var _panel: PanelContainer
 var _shop_btn: Button
 var _event_btn: Button
 
@@ -15,33 +15,46 @@ var _event_btn: Button
 func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_apply_full_rect()
 	_build_ui()
+
+
+func _apply_full_rect() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
 
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
+	dim.name = "Dim"
 	dim.color = Color(0.02, 0.04, 0.06, 0.72)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
-	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.custom_minimum_size = Vector2(420, 220)
-	_panel.offset_left = -210
-	_panel.offset_top = -110
-	_panel.offset_right = 210
-	_panel.offset_bottom = 110
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	center.grow_vertical = Control.GROW_DIRECTION_BOTH
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.name = "Panel"
+	panel.custom_minimum_size = Vector2(420, 220)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.10, 0.14, 0.12, 0.96)
 	style.set_content_margin_all(16.0)
-	_panel.add_theme_stylebox_override("panel", style)
-	add_child(_panel)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
-	_panel.add_child(box)
+	panel.add_child(box)
 
 	var title := Label.new()
 	title.text = "战后选择"
@@ -74,7 +87,9 @@ func _build_ui() -> void:
 
 
 func show_choice() -> void:
+	_apply_full_rect()
 	visible = true
+	move_to_front()
 	if _shop_btn != null:
 		_shop_btn.grab_focus()
 

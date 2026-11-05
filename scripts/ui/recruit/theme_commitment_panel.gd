@@ -1,6 +1,7 @@
 class_name ThemeCommitmentPanel
 extends Control
 ## 招募主题三选一 + 重 roll（2 金）。未选主题前挡住短名单。
+## 布局对齐 RunEndOverlay：全屏遮罩 + CenterContainer 居中面板。
 
 signal theme_committed(theme_id: StringName)
 signal theme_reroll_pressed
@@ -15,29 +16,42 @@ var _reroll_btn: Button
 func _ready() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_apply_full_rect()
 	_build_ui()
+
+
+func _apply_full_rect() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
 
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
+	dim.name = "Dim"
 	dim.color = Color(0.02, 0.04, 0.06, 0.78)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	center.grow_vertical = Control.GROW_DIRECTION_BOTH
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.name = "Panel"
 	panel.custom_minimum_size = Vector2(460, 280)
-	panel.offset_left = -230
-	panel.offset_top = -140
-	panel.offset_right = 230
-	panel.offset_bottom = 140
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.10, 0.14, 0.12, 0.96)
 	style.set_content_margin_all(16.0)
 	panel.add_theme_stylebox_override("panel", style)
-	add_child(panel)
+	center.add_child(panel)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
@@ -61,6 +75,7 @@ func _build_ui() -> void:
 
 	_reroll_btn = Button.new()
 	_reroll_btn.text = "重 roll 主题（2 金）"
+	_reroll_btn.custom_minimum_size = Vector2(0, 40)
 	_reroll_btn.pressed.connect(_on_reroll)
 	box.add_child(_reroll_btn)
 
@@ -71,8 +86,10 @@ func bind_session(session: RecruitSession) -> void:
 
 
 func show_for_session(session: RecruitSession) -> void:
+	_apply_full_rect()
 	bind_session(session)
 	visible = true
+	move_to_front()
 
 
 func hide_panel() -> void:

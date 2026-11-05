@@ -3318,8 +3318,9 @@ func _ensure_theme_commitment_panel() -> void:
 	_theme_commitment_panel.theme_committed.connect(_on_theme_committed)
 	_theme_commitment_panel.theme_reroll_pressed.connect(_on_theme_panel_reroll)
 	add_child(_theme_commitment_panel)
-	## 盖在战斗 HUD 之上。
-	_theme_commitment_panel.z_index = 40
+	## 盖在 Layout / Dock / ResultOverlay 之上（与结算遮罩同级全屏）。
+	_theme_commitment_panel.z_index = 50
+	_theme_commitment_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _maybe_show_theme_commitment() -> void:
