@@ -123,11 +123,13 @@ var _recruit_hint: Label
 var _recruit_gold: Label
 var _recruit_seat: Label
 var _recruit_refresh_btn: Button
+var _recruit_theme_reroll_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
+var _theme_commitment_panel: ThemeCommitmentPanel
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -1356,6 +1358,7 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	_recruit_animating = false
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
+	_maybe_show_theme_commitment()
 
 
 ## 地图附魔节点：上附魔台、下队伍；规则走 EnchantSession。
@@ -1583,6 +1586,7 @@ func _on_map_shop_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 func exit_recruit() -> void:
+	_hide_theme_commitment()
 	_close_recruit_shop()
 	_unbind_recruit_session()
 	_recruit_session = null
@@ -2631,6 +2635,11 @@ func _ensure_recruit_hud() -> void:
 	_recruit_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_recruit_refresh_btn.pressed.connect(_on_recruit_refresh_pressed)
 	row.add_child(_recruit_refresh_btn)
+	_recruit_theme_reroll_btn = Button.new()
+	_recruit_theme_reroll_btn.text = "主题重 roll"
+	_recruit_theme_reroll_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_recruit_theme_reroll_btn.pressed.connect(_on_recruit_theme_reroll_pressed)
+	row.add_child(_recruit_theme_reroll_btn)
 	_recruit_skip_btn = Button.new()
 	_recruit_skip_btn.text = "跳过"
 	_recruit_skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2936,7 +2945,6 @@ func _refresh_recruit_hud() -> void:
 		return
 	var gold := _recruit_session.economy.gold if _recruit_session.economy != null else 0
 	var deck := _recruit_session.deck
-	var roster_n := deck.size() if deck != null else 0
 	var seated_n := deck.get_seated_count() if deck != null else 0
 	var bench_n := deck.get_bench_count() if deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
@@ -2952,15 +2960,38 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
-		elif _recruit_session.require_nonempty_roster and roster_n < 1:
-			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
+		elif (
+			_recruit_session.theme_commitment_required
+			and not _recruit_session.has_committed_theme()
+		):
+			_recruit_hint.text = "请先选择本阶段主题"
+		elif _recruit_session.require_nonempty_roster and seated_n < 1:
+			_recruit_hint.text = "开局招募：至少 1 名已入座后才能继续"
 		elif _recruit_session.needs_replace():
 			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
 			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
-		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
+		_recruit_refresh_btn.disabled = (
+			_recruit_animating
+			or not _recruit_session.has_committed_theme()
+			or not _recruit_session.can_refresh()
+		)
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
+	if _recruit_theme_reroll_btn != null:
+		var theme_on := _recruit_session.theme_commitment_required
+		_recruit_theme_reroll_btn.visible = theme_on
+		_recruit_theme_reroll_btn.disabled = (
+			_recruit_animating or not theme_on or not _recruit_session.can_reroll_themes()
+		)
+		_recruit_theme_reroll_btn.text = "主题重 roll（%d 金）" % _recruit_session.get_theme_reroll_cost()
+		if theme_on and UnitTheme.is_valid_id(_recruit_session.committed_theme):
+			if _recruit_title != null:
+				_recruit_title.text = "招募 · %s" % UnitTheme.display_name(
+					_recruit_session.committed_theme
+				)
+		elif _recruit_title != null:
+			_recruit_title.text = "招募"
 	if _recruit_skip_btn != null:
 		## 开局隐藏跳过；胜后显示。
 		_recruit_skip_btn.visible = not _recruit_session.require_nonempty_roster
@@ -3277,6 +3308,58 @@ func _try_show_party_bark_after_recruit() -> void:
 	if _phase != Phase.RECRUIT or _arena == null:
 		return
 	_arena.show_party_bark(bark.speaker_unit_id, bark.line)
+
+
+func _ensure_theme_commitment_panel() -> void:
+	if _theme_commitment_panel != null and is_instance_valid(_theme_commitment_panel):
+		return
+	_theme_commitment_panel = ThemeCommitmentPanel.new()
+	_theme_commitment_panel.name = "ThemeCommitmentPanel"
+	_theme_commitment_panel.theme_committed.connect(_on_theme_committed)
+	_theme_commitment_panel.theme_reroll_pressed.connect(_on_theme_panel_reroll)
+	add_child(_theme_commitment_panel)
+	## 盖在战斗 HUD 之上。
+	_theme_commitment_panel.z_index = 40
+
+
+func _maybe_show_theme_commitment() -> void:
+	if _recruit_session == null:
+		return
+	if not _recruit_session.theme_commitment_required:
+		return
+	if _recruit_session.has_committed_theme():
+		return
+	_ensure_theme_commitment_panel()
+	_theme_commitment_panel.show_for_session(_recruit_session)
+
+
+func _hide_theme_commitment() -> void:
+	if _theme_commitment_panel != null and is_instance_valid(_theme_commitment_panel):
+		_theme_commitment_panel.hide_panel()
+
+
+func _on_theme_committed(_theme_id: StringName) -> void:
+	_sync_recruit_arena()
+	_refresh_recruit_hud()
+
+
+func _on_theme_panel_reroll() -> void:
+	_refresh_recruit_hud()
+
+
+func _on_recruit_theme_reroll_pressed() -> void:
+	if _recruit_animating or _recruit_session == null:
+		return
+	if not _recruit_session.theme_commitment_required:
+		return
+	if not _recruit_session.try_reroll_themes():
+		if _recruit_hint != null:
+			_recruit_hint.text = "金币不足，无法重 roll 主题"
+		_refresh_recruit_hud()
+		return
+	_sync_recruit_arena()
+	_refresh_recruit_hud()
+	_maybe_show_theme_commitment()
 
 
 func _on_recruit_refresh_pressed() -> void:
