@@ -120,6 +120,10 @@ var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
+## DockBox 内固定高度滚动宿主：招募/商店/附魔/圣物 HUD 挂此节点，禁止撑高底栏。
+var _phase_dock_host: ScrollContainer
+## 半场阶段锁定的 Dock 高度（优先快照准备态实测值；禁止按内容上抬）。
+var _dock_phase_lock_h: float = 0.0
 var _recruit_title: Label
 var _recruit_hint: Label
 var _recruit_gold: Label
@@ -541,6 +545,12 @@ func get_board_size() -> Vector2i:
 
 func get_dock() -> Control:
 	return _dock
+
+
+## 半场阶段底栏宿主：固定高度 ScrollContainer，阶段 HUD 挂这里以免撑高 Dock。
+func get_phase_dock_host() -> ScrollContainer:
+	_ensure_phase_dock_host()
+	return _phase_dock_host
 
 
 func flash_hint(text: String) -> void:
@@ -1392,6 +1402,7 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		seconds = session.config.panel_enter_seconds
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
+	_hide_other_phase_dock_huds(&"recruit")
 	_show_recruit_hud()
 	## 等一帧让 Dock 最小高度生效，Arena 与准备同尺后再算 slide / 画单位。
 	await get_tree().process_frame
@@ -1538,6 +1549,7 @@ func enter_stage_choice(title: String, choices: Array, enter_seconds: float = 0.
 	_set_phase(Phase.STAGE_CHOICE)
 	set_world_backdrop_mode(false)
 	_hide_combat_chrome_for_recruit()
+	_hide_other_phase_dock_huds(&"relic")
 	_rebuild_recruit_team_slots()
 	if _arena != null:
 		_arena.clear_recruit_mode()
@@ -2701,12 +2713,10 @@ func _ensure_recruit_hud() -> void:
 	_recruit_hud.visible = false
 	_recruit_hud.mouse_filter = Control.MOUSE_FILTER_STOP
 	_recruit_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	## 放进 Dock：招募时保持底栏占位，Arena 格像素与准备/战斗一致。
-	var dock_box: Node = null
-	if _dock != null:
-		dock_box = _dock.get_node_or_null("DockBox")
-	if dock_box != null:
-		dock_box.add_child(_recruit_hud)
+	## 放进固定高度 PhaseDockHost：招募内容可滚动，Dock/Arena 比例不变。
+	_ensure_phase_dock_host()
+	if _phase_dock_host != null:
+		_phase_dock_host.add_child(_recruit_hud)
 	else:
 		_recruit_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 		_recruit_hud.offset_top = -132.0
@@ -2738,6 +2748,9 @@ func _ensure_recruit_hud() -> void:
 	_recruit_hint = Label.new()
 	_recruit_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_recruit_hint.text = "将上半场候选人拖到下半场队伍"
+	_recruit_hint.clip_text = true
+	_recruit_hint.custom_minimum_size = Vector2(0, 20)
+	_recruit_hint.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	box.add_child(_recruit_hint)
 
 	var row := HBoxContainer.new()
@@ -2770,20 +2783,28 @@ func _ensure_recruit_hud() -> void:
 	_recruit_sell_relic_btn.pressed.connect(_on_recruit_sell_relic_toggle)
 	row.add_child(_recruit_sell_relic_btn)
 
+	var relic_scroll := ScrollContainer.new()
+	relic_scroll.name = "RecruitRelicScroll"
+	relic_scroll.visible = false
+	relic_scroll.custom_minimum_size = Vector2(0, 72)
+	relic_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	relic_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(relic_scroll)
 	_recruit_relic_panel = VBoxContainer.new()
-	_recruit_relic_panel.visible = false
+	_recruit_relic_panel.name = "RecruitRelicPanel"
+	_recruit_relic_panel.visible = true
 	_recruit_relic_panel.add_theme_constant_override("separation", 4)
-	box.add_child(_recruit_relic_panel)
+	_recruit_relic_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	relic_scroll.add_child(_recruit_relic_panel)
 
 
-## 准备阶段底栏等效高度：手牌行 + 开战 + DockBox 间距 + panel 上下边距。
-## 本版已取消准备刷新手牌，不再计入刷新钮高度。
-## 开局招募时开战钮尚未显示，不能用当前 _dock.size（会偏矮 → Arena 变高）。
+## 准备 / 招募 / 商店 / 附魔 / StageChoice 共用的固定 Dock 高度。
+## 禁止按 `_dock.size.y` 上抬（否则每进一次半场阶段会越锁越高）。
 func _prepare_equivalent_dock_height() -> float:
 	var hand_h := 88.0
 	if _hand_row != null:
 		hand_h = maxf(_hand_row.custom_minimum_size.y, hand_h)
-	var start_h := 40.0
+	var start_h := 46.0
 	if _start_button != null:
 		start_h = maxf(_start_button.custom_minimum_size.y, start_h)
 	var sep := 6.0
@@ -2791,14 +2812,98 @@ func _prepare_equivalent_dock_height() -> float:
 	return margin_tb + hand_h + sep + start_h
 
 
+func _dock_panel_margin_tb() -> float:
+	return 14.0
+
+
+func _ensure_phase_dock_host() -> void:
+	if _phase_dock_host != null and is_instance_valid(_phase_dock_host):
+		return
+	if _dock == null:
+		return
+	var dock_box := _dock.get_node_or_null("DockBox") as Node
+	if dock_box == null:
+		return
+	var existing := dock_box.get_node_or_null("PhaseDockHost") as ScrollContainer
+	if existing != null:
+		_phase_dock_host = existing
+		return
+	_phase_dock_host = ScrollContainer.new()
+	_phase_dock_host.name = "PhaseDockHost"
+	_phase_dock_host.visible = false
+	_phase_dock_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_phase_dock_host.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_phase_dock_host.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_phase_dock_host.clip_contents = true
+	dock_box.add_child(_phase_dock_host)
+
+
+func _resolve_dock_phase_lock_height() -> float:
+	var formula := _prepare_equivalent_dock_height()
+	## 准备 chrome 仍可见且已完成布局时快照实测高度；未布局完则回退公式，禁止吃到偏小值。
+	if (
+		_dock != null
+		and _hand_row != null
+		and _hand_row.visible
+		and _dock.size.y >= formula - 1.0
+	):
+		return _dock.size.y
+	return formula
+
+
+func _lock_dock_phase_height() -> void:
+	if _dock == null:
+		return
+	_ensure_phase_dock_host()
+	## 整局只锁定一次：避免反复快照或内容撑开造成棘轮上抬。
+	if _dock_phase_lock_h <= 1.0:
+		_dock_phase_lock_h = _resolve_dock_phase_lock_height()
+	var h := _dock_phase_lock_h
+	var content_h := maxf(64.0, h - _dock_panel_margin_tb())
+	_dock.visible = true
+	_dock.clip_contents = true
+	## 固定高度：与准备底栏同尺；ScrollContainer 上报的最小高度不随 HUD 内容增长。
+	_dock.custom_minimum_size.y = h
+	if _phase_dock_host != null:
+		_phase_dock_host.custom_minimum_size.y = content_h
+		_phase_dock_host.visible = true
+
+
+func _unlock_dock_phase_height() -> void:
+	if _dock == null:
+		return
+	_dock.clip_contents = false
+	_dock.custom_minimum_size.y = 0.0
+	if _phase_dock_host != null and is_instance_valid(_phase_dock_host):
+		_phase_dock_host.visible = false
+		_phase_dock_host.custom_minimum_size.y = 0.0
+
+
+## 半场阶段互斥：只留当前 HUD，避免 PhaseDockHost 叠多层内容。
+func _hide_other_phase_dock_huds(except: StringName = &"") -> void:
+	if except != &"recruit":
+		_hide_recruit_hud()
+	if except != &"map_shop" and _map_shop_ui != null:
+		_map_shop_ui.hide_hud()
+	if except != &"enchant" and _enchant_ui != null:
+		_enchant_ui.hide_hud()
+	## RelicStageChoice HUD 挂在 PhaseDockHost，名称固定。
+	if except != &"relic":
+		var host := _phase_dock_host
+		if host == null and _dock != null:
+			var dock_box := _dock.get_node_or_null("DockBox") as Node
+			if dock_box != null:
+				host = dock_box.get_node_or_null("PhaseDockHost") as ScrollContainer
+		if host != null:
+			var relic_hud := host.get_node_or_null("RelicStageHud") as CanvasItem
+			if relic_hud != null:
+				relic_hud.visible = false
+
+
 func _hide_combat_chrome_for_recruit() -> void:
-	## 只藏手牌/开战/刷新；Dock 锁到准备等效高度，避免开局/胜后招募 Arena 变高变宽。
-	if _dock != null:
-		_dock.visible = true
-		var keep_h := _prepare_equivalent_dock_height()
-		if _dock.size.y > keep_h:
-			keep_h = _dock.size.y
-		_dock.custom_minimum_size.y = keep_h
+	## 先在准备 chrome 可见时解析锁定高度，再藏手牌/开战，最后打开 PhaseDockHost。
+	if _dock_phase_lock_h <= 1.0:
+		_dock_phase_lock_h = _resolve_dock_phase_lock_height()
 	if _hand_row != null:
 		_hand_row.visible = false
 	if _prepare_action_row != null:
@@ -2807,29 +2912,46 @@ func _hide_combat_chrome_for_recruit() -> void:
 		_start_button.visible = false
 	if _refresh_button != null:
 		_refresh_button.visible = false
+	if _tape_row != null:
+		_tape_row.visible = false
 	if _result_overlay != null:
 		_result_overlay.visible = false
+	_lock_dock_phase_height()
 
 
 func _restore_combat_chrome_after_recruit() -> void:
-	if _dock != null:
-		_dock.visible = true
-		_dock.custom_minimum_size.y = 0.0
+	_unlock_dock_phase_height()
+	_hide_other_phase_dock_huds(&"")
 	if _hand_row != null:
 		_hand_row.visible = true
 
 
 func _show_recruit_hud() -> void:
 	_ensure_recruit_hud()
+	_hide_other_phase_dock_huds(&"recruit")
 	if _recruit_hud != null:
 		_recruit_hud.visible = true
 
 
 func _hide_recruit_hud() -> void:
-	if _recruit_relic_panel != null:
-		_recruit_relic_panel.visible = false
+	_set_recruit_relic_panel_open(false)
 	if _recruit_hud != null:
 		_recruit_hud.visible = false
+
+
+func _recruit_relic_scroll() -> ScrollContainer:
+	if _recruit_hud == null:
+		return null
+	return _recruit_hud.find_child("RecruitRelicScroll", true, false) as ScrollContainer
+
+
+func _set_recruit_relic_panel_open(open: bool) -> void:
+	var scroll := _recruit_relic_scroll()
+	if scroll != null:
+		scroll.visible = open
+	if _recruit_relic_panel != null and not open:
+		for child in _recruit_relic_panel.get_children():
+			child.queue_free()
 
 
 func _bind_recruit_session() -> void:
@@ -3150,9 +3272,8 @@ func _refresh_recruit_relic_sell_ui() -> void:
 	if _recruit_sell_relic_btn != null:
 		_recruit_sell_relic_btn.disabled = _recruit_animating or count <= 0
 		_recruit_sell_relic_btn.text = "卖圣物（%d）" % count
-	if _recruit_relic_panel == null:
-		return
-	if not _recruit_relic_panel.visible:
+	var scroll := _recruit_relic_scroll()
+	if _recruit_relic_panel == null or scroll == null or not scroll.visible:
 		return
 	for child in _recruit_relic_panel.get_children():
 		child.queue_free()
@@ -3177,9 +3298,10 @@ func _refresh_recruit_relic_sell_ui() -> void:
 func _on_recruit_sell_relic_toggle() -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating:
 		return
-	if _recruit_relic_panel == null:
+	var scroll := _recruit_relic_scroll()
+	if scroll == null:
 		return
-	_recruit_relic_panel.visible = not _recruit_relic_panel.visible
+	_set_recruit_relic_panel_open(not scroll.visible)
 	_refresh_recruit_relic_sell_ui()
 
 

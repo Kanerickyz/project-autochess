@@ -43,6 +43,8 @@ func is_expanded_team() -> bool:
 
 func show_hud() -> void:
 	_ensure_hud()
+	if _battle != null:
+		_battle._hide_other_phase_dock_huds(&"enchant")
 	_hud.visible = true
 	_refresh()
 
@@ -162,7 +164,14 @@ func _ensure_hud() -> void:
 	_hud = VBoxContainer.new()
 	_hud.name = "EnchantHud"
 	_hud.visible = false
-	dock.add_child(_hud)
+	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var host: Node = null
+	if _battle != null:
+		host = _battle.get_phase_dock_host()
+	if host != null:
+		host.add_child(_hud)
+	else:
+		dock.add_child(_hud)
 	_stats_label = Label.new()
 	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

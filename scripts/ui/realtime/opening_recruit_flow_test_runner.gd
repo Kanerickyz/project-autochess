@@ -21,6 +21,7 @@ func _run() -> void:
 	_test_empty_starter_deck_and_session_gate()
 	await _test_opening_enter_recruit_ui()
 	await _test_arena_height_prepare_vs_recruit()
+	await _test_dock_height_stable_across_reenter()
 	if _failures == 0:
 		print("OpeningRecruitFlowTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -259,6 +260,68 @@ func _test_arena_height_prepare_vs_recruit() -> void:
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(dock != null and dock.visible, "dock visible in post-win-style recruit")
 	_expect(absf(arena.size.y - prepare_h) <= 2.0, "arena height matches prepare")
+	var host := dock.find_child("PhaseDockHost", true, false) as ScrollContainer
+	_expect(host != null and host.visible, "PhaseDockHost visible in recruit")
+	_expect(host.custom_minimum_size.y > 60.0, "PhaseDockHost has fixed content height")
+
+	battle.queue_free()
+	await process_frame
+
+
+func _test_dock_height_stable_across_reenter() -> void:
+	## 多次进出招募：Dock 最小高度不得棘轮上抬。
+	var deck := DeckState.new()
+	deck.configure(_make_empty_deck_config())
+	deck.add_entry(load(KNIGHT) as UnitData)
+	deck.add_entry(load(ARCHER) as UnitData)
+
+	var economy := RunEconomy.new()
+	economy.configure(load(ECONOMY_PATH) as EconomyConfig)
+	economy.reset()
+	economy.grant(40)
+
+	var battle := (load(BATTLE_SCENE) as PackedScene).instantiate() as RealtimeBattleController
+	battle.rng_seed = 91
+	battle.half_exit_seconds = 0.0
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
+	await process_frame
+	battle.setup(deck, economy, load(LEVEL_PATH) as LevelData)
+	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
+	await process_frame
+
+	var dock := battle.get_node_or_null("Layout/Dock") as Control
+	_expect(dock != null, "dock exists for reenter test")
+	var locked_heights: Array[float] = []
+	for i in 3:
+		var session := RecruitSession.new()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 100 + i
+		session.configure(load(RECRUIT_PATH) as RecruitConfig, deck, economy, rng)
+		session.require_nonempty_roster = false
+		session.begin(0.2)
+		await battle.enter_recruit(session, 0.0)
+		await process_frame
+		await process_frame
+		locked_heights.append(dock.custom_minimum_size.y)
+		## 打开卖圣物列表也不应抬高 Dock min。
+		if battle.has_method("_on_recruit_sell_relic_toggle"):
+			battle._on_recruit_sell_relic_toggle()
+			await process_frame
+			locked_heights.append(dock.custom_minimum_size.y)
+		battle._on_recruit_finish_pressed()
+		await process_frame
+
+	_expect(locked_heights.size() >= 3, "collected locked heights")
+	if not locked_heights.is_empty():
+		var first := locked_heights[0]
+		_expect(first >= 140.0, "first lock >= prepare-equivalent")
+		var max_h := first
+		var min_h := first
+		for h in locked_heights:
+			max_h = maxf(max_h, h)
+			min_h = minf(min_h, h)
+		_expect(absf(max_h - min_h) <= 1.0, "dock min height stable across reenter (no ratchet)")
 
 	battle.queue_free()
 	await process_frame

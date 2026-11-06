@@ -48,6 +48,8 @@ func is_animating() -> bool:
 
 func show_hud() -> void:
 	_ensure_hud()
+	if _battle != null:
+		_battle._hide_other_phase_dock_huds(&"map_shop")
 	_hud.visible = true
 	_refresh()
 
@@ -186,7 +188,15 @@ func _ensure_hud() -> void:
 	_hud = VBoxContainer.new()
 	_hud.name = "MapShopHud"
 	_hud.visible = false
-	dock.add_child(_hud)
+	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	## 与招募/圣物 HUD 同挂 PhaseDockHost（固定高度滚动），避免撑高 Dock。
+	var host: Node = null
+	if _battle != null:
+		host = _battle.get_phase_dock_host()
+	if host != null:
+		host.add_child(_hud)
+	else:
+		dock.add_child(_hud)
 	_stats_label = Label.new()
 	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud.add_child(_stats_label)
