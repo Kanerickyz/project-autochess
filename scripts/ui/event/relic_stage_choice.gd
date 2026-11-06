@@ -96,20 +96,29 @@ func _ensure_hud() -> void:
 	var dock := _battle.get_dock()
 	if dock == null:
 		return
-	var dock_box := dock.get_node_or_null("DockBox") as Control
+	var host: Node = _battle.get_phase_dock_host()
 	_hud = VBoxContainer.new()
 	_hud.name = "RelicStageHud"
 	_hud.add_theme_constant_override("separation", 6)
-	if dock_box != null:
-		dock_box.add_child(_hud)
+	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if host != null:
+		host.add_child(_hud)
 	else:
 		dock.add_child(_hud)
 	_hint = Label.new()
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.clip_text = true
 	_hud.add_child(_hint)
+	var bag_scroll := ScrollContainer.new()
+	bag_scroll.name = "RelicBagScroll"
+	bag_scroll.custom_minimum_size = Vector2(0, 56)
+	bag_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_hud.add_child(bag_scroll)
 	_bag_box = VBoxContainer.new()
 	_bag_box.add_theme_constant_override("separation", 4)
-	_hud.add_child(_bag_box)
+	_bag_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bag_scroll.add_child(_bag_box)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	_hud.add_child(row)
