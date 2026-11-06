@@ -34,6 +34,7 @@ static func run_all() -> bool:
 	passed = _test_theme_commitment_filters_pool() and passed
 	passed = _test_theme_reroll_costs_two_gold() and passed
 	passed = _test_opening_floor_zero_tiers() and passed
+	passed = _test_opening_skips_theme_uses_full_t1_pool() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -1406,5 +1407,59 @@ static func _test_opening_floor_zero_tiers() -> bool:
 		return false
 	if session.can_finish():
 		push_error("RecruitSessionTest: opening finish needs seated, not bench-only")
+		return false
+	return true
+
+
+static func _test_opening_skips_theme_uses_full_t1_pool() -> bool:
+	## 开局：不要求主题承诺；候选人立刻从全 T1 池抽出（可跨羁绊）。
+	var deck := _make_deck([])
+	var economy := _make_economy(6)
+	var session := RecruitSession.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	session.configure(_make_config(), deck, economy, rng)
+	session.require_nonempty_roster = true
+	session.theme_commitment_required = false
+	session.begin(0.0, 0, 14)
+	if session.get_theme_offers().size() != 0:
+		push_error("RecruitSessionTest: opening without theme must not roll theme offers")
+		return false
+	if session.theme_commitment_required:
+		push_error("RecruitSessionTest: opening theme_commitment_required must stay false")
+		return false
+	var cands := session.get_candidates()
+	if cands.size() != RecruitSession.CANDIDATE_COUNT:
+		push_error("RecruitSessionTest: opening should roll 3 candidates without theme")
+		return false
+	var themes_seen: Dictionary = {}
+	for unit in cands:
+		if unit == null:
+			push_error("RecruitSessionTest: opening candidate slot empty without theme gate")
+			return false
+		if unit.tier != 1:
+			push_error(
+				"RecruitSessionTest: opening floor0 candidate must be T1, got %s tier=%d"
+				% [unit.id, unit.tier]
+			)
+			return false
+		for tid in unit.get_theme_ids():
+			themes_seen[tid] = true
+	## 多次重抽：全池应能见到不同主题（非单一羁绊过滤）。
+	for _i in 40:
+		session.try_refresh()
+		for unit in session.get_candidates():
+			if unit == null:
+				continue
+			if unit.tier != 1:
+				push_error("RecruitSessionTest: refresh opening pool must stay T1")
+				return false
+			for tid in unit.get_theme_ids():
+				themes_seen[tid] = true
+	if themes_seen.size() < 2:
+		push_error(
+			"RecruitSessionTest: opening full T1 pool should span multiple themes, got %s"
+			% str(themes_seen.keys())
+		)
 		return false
 	return true
