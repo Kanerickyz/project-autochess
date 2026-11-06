@@ -7,7 +7,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 
 主代理当制作人：**先和用户对齐设计 → 再文档 → 再资源**。默认 **轻量验收**（`verify-godot` → `bash tools/run_light_verify.sh`）。
 
-权威 checklist：[Documents/Content/CHARACTER_DESIGN.md](../../Documents/Content/CHARACTER_DESIGN.md)。
+权威 checklist：Notion Doc ID `content-character-design`（指针 `Documents/Content/CHARACTER_DESIGN.md`）。
 
 ## 两阶段总览（顺序不可颠倒）
 
@@ -48,10 +48,10 @@ description: End-to-end workflow for creating or revising playable units—desig
 
 ### 1. 主代理必做
 
-1. **读锚点**（摘要后写入「设计对齐纪要」）：
-   - [GAME_VISION.md](../../Documents/GAME_VISION.md)
-   - [Features/UNITS.md](../../Documents/Features/UNITS.md)、[Features/UNIT_ABILITIES.md](../../Documents/Features/UNIT_ABILITIES.md)
-   - [UNITS_ROSTER.md](../../Documents/Content/UNITS_ROSTER.md)、[UNIT_ABILITIES_ROSTER.md](../../Documents/Content/UNIT_ABILITIES_ROSTER.md)
+1. **读锚点**（Notion 检索 Doc ID，摘要后写入「设计对齐纪要」）：
+   - `game-vision`（指针 `Documents/GAME_VISION.md`）
+   - `feature-units`、`feature-unit-abilities`（指针 `Documents/Features/UNITS.md`、`Documents/Features/UNIT_ABILITIES.md`）
+   - `content-units-roster`、`content-unit-abilities-roster`（指针 `Documents/Content/UNITS_ROSTER.md`、`Documents/Content/UNIT_ABILITIES_ROSTER.md`）
 2. **按 `design-brainstorm` 执行**（主代理主持；可合并为一轮对话，但不得省略其步骤）：
    - 玩家语言重述体验（商店 / 招募 / 准备 / 观战里这名角色干什么）
    - 标【愿景已有】/【用户新共识】/【建议】/【As-Is】
@@ -64,7 +64,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 | **`balance-designer`** | 涉及攻血 / 品阶 / 花费 / 技能幅度 | 只读 | 对标同档角色、预算与升星尺度建议（标【建议】） |
 | **`ui-designer`** | 卡面文案 / 技能说明长度 / 可读性 | 只读 | 描述句与图标占位是否够用 |
 
-阶段 I **禁止**：改 `Documents/Content/*` 花名册正文、改 `resources/`、改场景与脚本；未经用户授权也不写完整规格章节进仓库（对话内「对齐纪要」可以）。
+阶段 I **禁止**：改 Notion Content 花名册正文（或本地指针文件正文）、改 `resources/`、改场景与脚本；未经用户授权也不写完整规格章节进 Notion/仓库（对话内「对齐纪要」可以）。
 
 ### 2. 阶段 I 收束物：设计对齐纪要
 
@@ -117,17 +117,17 @@ description: End-to-end workflow for creating or revising playable units—desig
 
 - `UnitData.icon` → `res://assets/sprites/placeholders/character_dev.png`
 - **透明底**：占位 PNG 须带 **alpha**；源图白底在入库前抠成透明（仅保留角色与纸边描边，勿留矩形白底）。棋盘 / 卡面经 `paper_unit_art.tres` 映射时也用同一张图，白底会直接露馅。
-- `portrait_head` / `portrait_body` 可留空；终稿按 [PAPER_CUTOUT_ART_BRIEF.md](../../Documents/Content/PAPER_CUTOUT_ART_BRIEF.md)
+- `portrait_head` / `portrait_body` 可留空；终稿按 Notion Doc ID `content-paper-cutout-art-brief`（指针 `Documents/Content/PAPER_CUTOUT_ART_BRIEF.md`）
 
 ### 过程（顺序固定）
 
 #### 1. 更新文档（未授权不得跳过）
 
-按 [CHARACTER_DESIGN.md](../../Documents/Content/CHARACTER_DESIGN.md) §3：
+按 Notion Doc ID `content-character-design` §3（指针 `Documents/Content/CHARACTER_DESIGN.md`）：
 
-1. `UNITS_ROSTER`（+ 必要时 `UNIT_ABILITIES_ROSTER`）
-2. `Content/INDEX.md`（+ 大改时 `Documents/INDEX.md`）
-3. 终稿贴图计划时改 `PAPER_CUTOUT_ART_BRIEF` §11
+1. Notion `content-units-roster`（+ 必要时 `content-unit-abilities-roster`）
+2. `content-index`（+ 大改时 `docs-index`）
+3. 终稿贴图计划时改 `content-paper-cutout-art-brief` §11
 
 #### 2. 实现
 
@@ -140,7 +140,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 | 终稿精灵 / 导入 | `technical-artist` |
 | 落地前核对 1:1 挂载与合同（可选） | `game-designer` 只读 |
 
-**写入白名单（典型）**：`resources/units/**`、`resources/abilities/**`、池子与关卡 `.tres`、对应 `Documents/Content/*`、玩家可见时 bump `project.godot` 版本。
+**写入白名单（典型）**：`resources/units/**`、`resources/abilities/**`、池子与关卡 `.tres`、对应 Notion Content 页（Doc ID `content-*`）与指针 Summary、玩家可见时 bump `project.godot` 版本。
 
 **禁止**：另写主题/增益专用 Buff（须走统一效果管线）；主路径读 `command_cost`；合同外入池；漏挂主主题。
 

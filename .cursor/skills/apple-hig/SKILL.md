@@ -21,7 +21,7 @@ description: Use when ui-designer (or menu/HUD/interaction motion work) needs Ap
 | Design principles | https://developer.apple.com/design/human-interface-guidelines/design-principles |
 | Feedback | https://developer.apple.com/design/human-interface-guidelines/feedback |
 
-本项目玩法与观战定稿仍以 `Documents/GAME_VISION.md`、`Documents/Features/COMBAT_FEEDBACK.md`、`Documents/Features/MAIN_MENU.md` 为准；**冲突时项目文档优先**，本 skill 只补交互质量与可读性。
+本项目玩法与观战定稿仍以 Notion Doc ID `game-vision`、`feature-combat-feedback`、`feature-main-menu` 为准（指针分别为 `Documents/GAME_VISION.md`、`Documents/Features/COMBAT_FEEDBACK.md`、`Documents/Features/MAIN_MENU.md`）；**冲突时 Notion 规格优先**，本 skill 只补交互质量与可读性。
 
 ---
 

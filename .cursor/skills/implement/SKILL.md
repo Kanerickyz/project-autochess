@@ -5,7 +5,7 @@ description: Implements an already-agreed design in code, resources, or editor p
 
 # implement
 
-主代理当制作人与集成人。设计已定 → 按范围拉实现角色落地；细则只维护在 Documents/DEVELOPMENT_WORKFLOW.md，不要把长表复制进本技能。
+主代理当制作人与集成人。设计已定 → 按范围拉实现角色落地；细则只维护在 Notion Doc ID `process-dev-workflow`（指针 `Documents/DEVELOPMENT_WORKFLOW.md`），不要把长表复制进本技能。
 
 与其它技能分工：
 
@@ -19,7 +19,7 @@ description: Implements an already-agreed design in code, resources, or editor p
 ## 何时用
 
 - 用户说「按设计稿 / Features / 上文共识实现」
-- 规格已落盘（`Documents/Features/`、`Documents/Content/`、愿景相关节）或对话里已拍板且范围清楚
+- 规格已在 Notion（Feature / Content Doc ID 或 `game-vision` 相关节）或对话里已拍板且范围清楚
 - 改动落在脚本、场景、`.tres`、或策划用编辑器插件（如 `addons/unit_catalog_editor/`、`addons/wave_spawn_editor/`）
 
 ## 何时不用 / 先改道
@@ -30,10 +30,10 @@ description: Implements an already-agreed design in code, resources, or editor p
 
 ## 开工前门禁
 
-1. **验收方式**：用户未指定则先问（轻量 | 完全），写入合同。见 DEVELOPMENT_WORKFLOW「验收方式」。
+1. **验收方式**：用户未指定则先问（轻量 | 完全），写入合同。见 Notion Doc ID `process-dev-workflow`「验收方式」。
 2. **锚定设计输入**（主代理整理后传给子代理，勿假设子代理见过上文）：
    - 对话中的【用户新共识】/ 已拍板条目
-   - 对应 `Documents/Features/*.md`、`Documents/Content/*`、`GAME_VISION` 相关节
+   - 对应 Notion Feature / Content Doc ID 与 `game-vision` 相关节（指针见 `Documents/NOTION_DOC_MAP.md`）
    - As-Is 与 To-Be 差异（文档定稿 ≠ 代码已对齐）
 3. **范围一句话**：玩家可观察变化 + 允许写入的模块；当前不做的不实现、不扩写规格。
 4. 目标等级：用户指定则写入；未指定时轻量默认按「实现完成 + 加载烟测」交付，不自称 L3+；完全模式再定 L2–L5。
@@ -74,7 +74,7 @@ description: Implements an already-agreed design in code, resources, or editor p
 
 ## 硬约束
 
-- 玩法以 GAME_VISION 为准；战斗增益与主题团队层走 `EffectSpec` / `EffectResolver`；战斗触发走 `CombatEventBus`；主题羁绊见 `UNIT_THEME_BONDS`。
+- 玩法以 Notion Doc ID `game-vision` 为准；战斗增益与主题团队层走 `EffectSpec` / `EffectResolver`；战斗触发走 `CombatEventBus`；主题羁绊见 Doc ID `feature-unit-theme-bonds`。
 - 数值优先改 `resources/` 下 `.tres`；改共享 Resource 前判断 `duplicate()`。
 - 编辑器插件改动须保持 Dock 可用，不破坏现有 `.tres` 读写约定。
 - 不提交 `.godot/`、`.artifacts/`、日志与缓存；保留 `.uid` 与导入侧车。
