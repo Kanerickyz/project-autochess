@@ -1980,29 +1980,17 @@ func bump_combat_skill_info_visibility(extra_seconds: float) -> void:
 		_auto_info_until_clock = until
 
 
-## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
-## skills_override 非空时只展示本条触发（RichText / BBCode）。
+## 兼容旧调用：战斗技能触发不再自动弹介绍卡（长按检视仍走 show_unit_info）。
 func show_skill_trigger_info(
-	unit: UnitInstance,
-	is_player: bool,
-	attack: int,
-	hp: int,
-	tile_pos: Vector2,
-	skills_override: String = "",
-	attachments: Array = [],
+	_unit: UnitInstance,
+	_is_player: bool,
+	_attack: int,
+	_hp: int,
+	_tile_pos: Vector2,
+	_skills_override: String = "",
+	_attachments: Array = [],
 ) -> void:
-	if unit == null:
-		return
-	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
-	var center := tile_to_local(tile_pos) + off
-	var info := _info_from_instance(unit, is_player, attack, hp, center)
-	info["attachments"] = attachments
-	if not skills_override.is_empty():
-		info["skills"] = skills_override
-	_show_combat_broadcast_info_card(info)
-	play_combat_skill_info_reel_intro()
-	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
-	bump_combat_skill_info_visibility(life)
+	return
 
 
 ## 展示步 ①：整张**战斗技能介绍卡**（主卡）。

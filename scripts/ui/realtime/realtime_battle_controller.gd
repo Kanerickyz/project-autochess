@@ -648,23 +648,6 @@ func _finish_combo_reset_after_skill_tail_if_needed() -> void:
 	_reset_combo_display()
 
 
-func _combat_skill_info_presentation_seconds() -> float:
-	var scale := maxf(0.25, time_scale)
-	return (
-		RealtimeTimestopQueue.CARD_PAUSE_SECONDS
-		+ RealtimeTimestopQueue.RESULT_PAUSE_SECONDS
-		+ RealtimeUnitInfoCard.POP_IN_SEC
-		+ 0.35
-	) / scale
-
-
-func _arm_combat_skill_info_visibility() -> void:
-	if _arena == null:
-		return
-	_arena.pin_combat_skill_info()
-	_arena.bump_combat_skill_info_visibility(_combat_skill_info_presentation_seconds())
-
-
 func _release_combat_skill_info_visibility() -> void:
 	if _arena == null:
 		return
@@ -3933,14 +3916,13 @@ func _start_next_skill_card() -> void:
 	if batch == null:
 		_sim.release_presentation()
 		return
-	_timestop_queue.begin_card(batch.owner, batch.spec, time_scale)
 	_register_combo_for_skill_intro(batch.owner)
 	_presentation_block_elapsed = 0.0
-	_arm_combat_skill_info_visibility()
-	_show_skill_trigger_info_for_owner(batch.owner, batch.spec)
+	## 战斗内不再弹出单位/技能介绍卡；直接结算并进入结果拍（飘字/短提示）。
+	_resolve_skill_card_safe()
 
 
-## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
+## 结算待播批次：写真值并进入结果拍（已取消介绍卡拍）。
 func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	## 先进入 RESULT，保证即便 resolve 中途 SCRIPT ERROR，时停也不会粘在 AWAITING_RESOLVE。
@@ -3954,11 +3936,6 @@ func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(payload, time_scale)
-	if _arena != null:
-		var scale := maxf(0.25, time_scale)
-		_arena.bump_combat_skill_info_visibility(
-			RealtimeTimestopQueue.RESULT_PAUSE_SECONDS / scale + 0.15
-		)
 	if payload != null:
 		_present_effect_result(payload, true)
 
@@ -4038,14 +4015,11 @@ func _drain_pending_effects_silent() -> void:
 		guard += 1
 
 
-## 锁阵等：介绍卡 + 结果数字（已结算）。
+## 锁阵等：结果数字/短提示（已结算；不再弹介绍卡）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
 	_register_combo_for_skill_intro(owner)
-	_arm_combat_skill_info_visibility()
-	_show_skill_trigger_info_card(payload)
 	_present_effect_result(payload, with_callout)
-	_release_combat_skill_info_visibility()
 
 
 ## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
@@ -4106,35 +4080,6 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 	if owner != null:
 		return Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
 	return Vector2(_board_size) * 0.5
-
-
-func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
-	if payload == null:
-		return
-	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
-	_show_skill_trigger_info_for_owner(owner, payload.effect_spec)
-
-
-func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: EffectSpec = null) -> void:
-	if _arena == null or owner == null:
-		return
-	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
-	var atk := owner.get_effective_attack() if owner.has_method("get_effective_attack") else 0
-	var hp := owner.current_hp
-	if _sim != null:
-		var rt := _sim.find_unit(owner)
-		if rt != null:
-			atk = rt.get_effective_attack()
-			hp = rt.get_current_hp()
-			tile = rt.position
-	var skills := ""
-	var attachments: Array = []
-	if trigger_spec != null:
-		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
-		attachments = UnitInfoText.attachments_for_effect_spec(owner, trigger_spec, true)
-	_arena.show_skill_trigger_info(
-		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, attachments
-	)
 
 
 func _on_combat_finished(won: bool) -> void:
