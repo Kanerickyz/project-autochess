@@ -15,7 +15,7 @@
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 战场 To-Be 为 **5×4** 逻辑格网（竖屏、我下敌上）+ 双方 **2×5** 角色座位（铺满半场）；准备入座用座位吸附；开战后为**回合制自动战**：敌我**混排**固定行动队列、每回合同序依次行动；每一动尽量「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**，可越半场）。单动演出可压短，观战可加速。不用六边形；不做钉座对撞主路径；不做出手条/速度条主交付。主路径时钟 As-Is 已在 `scripts/combat/realtime/` 落地为行动队列（非全员并行）。旧网格工具环（`main.tscn`）仍用 `BoardGrid`，勿当新主路径交付标准。
-- **UI 壳 To-Be（大巴扎式平铺）**：竖屏带状壳；**友方半场跨阶段常驻底部**（招募/商店/附魔不得把队伍挪到上半场或 slide 出屏）；阶段货架/候选人占上半场；**玩家纯 UI 选择题**（店|事 / 主题三选一 / 圣物三选一）优先画成上半场 `StageChoice` 卡片，避免全屏选择题窗（Run 结算除外）。Widget 契约与 Theme 规则见 Notion Doc ID `feature-ui-shell`（指针 [Documents/Features/UI_SHELL.md](Documents/Features/UI_SHELL.md)）与技能 `.cursor/skills/ui-shell/`；触控/动效另遵 `.cursor/skills/apple-hig/`。
+- **UI 壳 To-Be（大巴扎式平铺）**：竖屏带状壳；**友方半场跨阶段常驻底部**（招募/商店/附魔/StageChoice 不得把队伍挪到上半场或 slide 出屏）；阶段货架/候选人/选项卡占上半场；**玩家纯 UI 选择题**（店|事 / 主题三选一 / 圣物三选一）优先画成上半场 `StageChoice` 卡片，避免全屏选择题窗（Run 结算除外）。**检视统一**：单位与**圣物**（行囊徽章长按、StageChoice 圣物卡）共用 Arena `RealtimeUnitInfoCard` + `ExpeditionRelicInfo`，禁止独立圣物 Popup。Widget 契约与 Theme 规则见 Notion Doc ID `feature-ui-shell`（指针 [Documents/Features/UI_SHELL.md](Documents/Features/UI_SHELL.md)）与技能 `.cursor/skills/ui-shell/`；触控/动效另遵 `.cursor/skills/apple-hig/`（含长按检视 §3.6）。
 - 数值优先改 `resources/` 下的 `.tres`（单位、技能、波次、经济、增益、牌库、商店池），避免新增重复硬编码。
 - 主题是中世纪幻想 2D（设定定稿；单位命名/美术可能仍为旧动物占位）；表现与逻辑分离，战斗结果不依赖帧率。
 
