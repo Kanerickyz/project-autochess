@@ -1786,6 +1786,19 @@ func show_deck_entry_info(entry: DeckEntry, local_anchor: Vector2) -> bool:
 	return true
 
 
+## 右上角圣物徽章等：与 StageChoice / 单位同一套 RealtimeUnitInfoCard。
+func show_relic_info(
+	relic: ExpeditionRelicData,
+	local_anchor: Vector2,
+	inspect_key: String = "",
+) -> bool:
+	var info := ExpeditionRelicInfo.info_dict(relic, local_anchor, inspect_key)
+	if info.is_empty():
+		return false
+	_show_info_card(info)
+	return true
+
+
 func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return

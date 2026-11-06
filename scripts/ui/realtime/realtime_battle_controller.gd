@@ -332,7 +332,28 @@ func get_relic_badge_strip() -> ExpeditionRelicBadgeStrip:
 func _sync_relic_badge_strip() -> void:
 	if _relic_badge_strip == null:
 		return
+	if not _relic_badge_strip.badge_long_press.is_connected(_on_relic_badge_long_press):
+		_relic_badge_strip.badge_long_press.connect(_on_relic_badge_long_press)
+	if not _relic_badge_strip.badge_long_press_ended.is_connected(_on_relic_badge_long_press_ended):
+		_relic_badge_strip.badge_long_press_ended.connect(_on_relic_badge_long_press_ended)
 	_relic_badge_strip.configure(_relic_bag)
+
+
+func _on_relic_badge_long_press(slot_index: int, relic: ExpeditionRelicData) -> void:
+	if _arena == null or relic == null:
+		return
+	var anchor := Vector2(_arena.size.x * 0.72, _arena.size.y * 0.18)
+	if _relic_badge_strip != null:
+		var badge := _relic_badge_strip.get_badge(slot_index)
+		if badge != null and is_instance_valid(badge):
+			var global_center := badge.get_global_rect().get_center()
+			anchor = _arena.get_global_transform_with_canvas().affine_inverse() * global_center
+	_arena.show_relic_info(relic, anchor, "relic_badge:%d" % slot_index)
+
+
+func _on_relic_badge_long_press_ended(_slot_index: int, _relic: ExpeditionRelicData) -> void:
+	if _arena != null:
+		_arena.hide_unit_info()
 
 
 func set_combat_sandbox_mode(enabled: bool) -> void:
@@ -401,9 +422,11 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 			Control.MOUSE_FILTER_IGNORE if enabled else Control.MOUSE_FILTER_STOP
 		)
 	if enabled:
-		## 圣物详情挂在 root；罩层时关掉，避免地图上残留 Popup。
+		## 圣物详情改走 Arena 信息卡；罩层时一并收起。
 		if _relic_badge_strip != null:
 			_relic_badge_strip.hide_detail()
+		if _arena != null:
+			_arena.hide_unit_info()
 		_teardown_sim()
 		if _arena != null:
 			_arena.clear_fx()

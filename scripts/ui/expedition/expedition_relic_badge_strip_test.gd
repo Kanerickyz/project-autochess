@@ -8,6 +8,7 @@ static func run() -> bool:
 	ok = _check("strip_empty_and_fill", _test_strip_empty_and_fill()) and ok
 	ok = _check("badge_glyph", _test_badge_glyph()) and ok
 	ok = _check("bag_changed_refresh", _test_bag_changed_refresh()) and ok
+	ok = _check("unified_detail_api", _test_unified_detail_api()) and ok
 	return ok
 
 
@@ -112,6 +113,23 @@ static func _test_bag_changed_refresh() -> bool:
 		return false
 	bag.try_remove_at(0)
 	if strip.get_occupied_count() != 0:
+		return false
+	strip.free()
+	return true
+
+
+static func _test_unified_detail_api() -> bool:
+	var strip := ExpeditionRelicBadgeStrip.new()
+	var relic := _make_relic("d", "铁扉插销", 2)
+	strip.show_relic_detail(relic)
+	if not strip.has_detail_popup():
+		return false
+	if strip.get_detail_title_text() != "铁扉插销":
+		return false
+	if not strip.get_detail_body_text().contains("测试效果：铁扉插销"):
+		return false
+	strip.hide_detail()
+	if strip.has_detail_popup():
 		return false
 	strip.free()
 	return true
