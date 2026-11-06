@@ -33,6 +33,7 @@
 | 战斗观战反馈 | [打开](https://app.notion.com/40ff89936db68190915ad30f76c7989f) | [`Features/COMBAT_FEEDBACK.md`](./Features/COMBAT_FEEDBACK.md) |
 | 战斗状态（Combat Status） | [打开](https://app.notion.com/40ff89936db6813887c5e1afd3648e3e) | [`Features/COMBAT_STATUS.md`](./Features/COMBAT_STATUS.md) |
 | 战斗关卡 | [打开](https://app.notion.com/40ff89936db681d8b822c921a4511016) | [`Features/COMBATLEVEL.md`](./Features/COMBATLEVEL.md) |
+| 战斗壳与 UI Kit | [打开](https://app.notion.com/p/410f89936db6814f8baaf72c05f280c3) | [`Features/UI_SHELL.md`](./Features/UI_SHELL.md) |
 | 附魔（熔炉） | [打开](https://app.notion.com/40ff89936db68176bf39fa43c4d4506e) | [`Features/ENCHANT.md`](./Features/ENCHANT.md) |
 | 无尽模式 | [打开](https://app.notion.com/40ff89936db681e3b5a3d9cf870920a2) | [`Features/ENDLESS.md`](./Features/ENDLESS.md) |
 | 队伍强度抽阵 | [打开](https://app.notion.com/40ff89936db68186977ed05cf72cb3a2) | [`Features/ENEMY_SPAWN_BUDGET.md`](./Features/ENEMY_SPAWN_BUDGET.md) |

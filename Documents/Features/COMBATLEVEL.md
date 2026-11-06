@@ -8,6 +8,6 @@
 | Notion | https://app.notion.com/40ff89936db681d8b822c921a4511016 |
 | Kind | `Feature` |
 
-一句话：功能规格 · 战场空间、半场区域、角色座位与投放规则 · 2026-10-16
+一句话：功能规格 · 战场 5×4、每侧座位 2×5、半场与投放规则 · 2026-11-06
 
 Hub：https://app.notion.com/p/40ff89936db681b5880cec3af0087789
