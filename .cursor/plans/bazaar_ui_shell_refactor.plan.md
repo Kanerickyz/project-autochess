@@ -1,6 +1,7 @@
 # 大巴扎式 UI 壳与棋盘平铺重构方案
 
-> 状态：**已拍板 2026-11-06**（5×4+2×5；完全验收；先文档/harness，再 subagent 实现）  
+> 状态：**已实现并验收（L3 + GUI 证据）2026-11-06** · 分支 `feat/bazaar-ui-shell-5x4` · v6.0.24  
+> 注：场景节点仍可继续拆成 StageChrome/HeroPanel 命名；行为契约（半场常驻、2+2、UiKit）已落地。  
 > 参考：用户提供的大巴扎手机竖屏布局图  
 > 主路径：`scenes/combat/realtime/realtime_battle.tscn` + `RealtimeBattleController` / `RealtimeArenaView`
 

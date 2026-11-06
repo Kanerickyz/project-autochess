@@ -1,6 +1,6 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://eb63993f13935f4c"]
 
-[ext_resource type="FontVariation" path="res://resources/ui/ui_font.tres" id="1_tisg2"]
+[ext_resource type="FontVariation" uid="uid://90ddf96238901c67" path="res://resources/ui/ui_font.tres" id="1_tisg2"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m0goo"]
 content_margin_left = 12.0
