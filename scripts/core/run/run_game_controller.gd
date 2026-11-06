@@ -40,6 +40,7 @@ var _suppress_map_show: bool = false
 ## 主模式线性：战后店|事二选一尚未完成（完成后进主题招募，再 complete）。
 var _linear_post_battle_pending: bool = false
 var _shop_or_event_panel: ShopOrEventChoicePanel
+var _relic_stage_choice: RelicStageChoice
 var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
 var _pending_end_victory: bool = false
 var _pending_end_snapshot: RunStatsSnapshot
@@ -51,7 +52,6 @@ func _ready() -> void:
 	deck_state.configure(DEFAULT_DECK_CONFIG)
 	run_economy.configure(DEFAULT_ECONOMY)
 	_ensure_relic_offer_screen()
-	_ensure_shop_or_event_panel()
 	var offer_rng := RandomNumberGenerator.new()
 	offer_rng.seed = _rng.randi()
 	_relic_offer_service.configure(null, offer_rng)
@@ -61,6 +61,8 @@ func _ready() -> void:
 		push_error("RunGameController: battle scene is not RealtimeBattleController")
 		return
 	_battle_root.add_child(_battle)
+	_ensure_shop_or_event_panel()
+	_ensure_relic_stage_choice()
 	if recruit_config != null:
 		_battle.half_exit_seconds = recruit_config.half_exit_seconds
 		_battle.recruit_enter_seconds = recruit_config.panel_enter_seconds
@@ -101,17 +103,19 @@ func _ensure_relic_offer_screen() -> void:
 
 
 func _ensure_shop_or_event_panel() -> void:
-	if _shop_or_event_panel != null and is_instance_valid(_shop_or_event_panel):
-		return
-	var ui := get_node_or_null("UI") as CanvasLayer
-	if ui == null:
+	if _shop_or_event_panel != null:
+		_shop_or_event_panel.bind_battle(_battle)
 		return
 	_shop_or_event_panel = ShopOrEventChoicePanel.new()
-	_shop_or_event_panel.name = "ShopOrEventChoicePanel"
 	_shop_or_event_panel.choice_made.connect(_on_shop_or_event_chosen)
-	ui.add_child(_shop_or_event_panel)
-	## CanvasLayer 子 Control 须铺满视口，否则居中相对 0 尺寸父级会飞出可视区。
-	_shop_or_event_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_shop_or_event_panel.bind_battle(_battle)
+
+
+func _ensure_relic_stage_choice() -> void:
+	if _relic_stage_choice == null:
+		_relic_stage_choice = RelicStageChoice.new()
+		_relic_stage_choice.finished.connect(_on_relic_offer_finished)
+	_relic_stage_choice.bind_battle(_battle)
 
 
 func _is_endless() -> bool:
@@ -175,6 +179,8 @@ func _hide_encounter_ui() -> void:
 	_placeholder_screen.hide_placeholder()
 	if _relic_offer_screen != null:
 		_relic_offer_screen.hide_offers()
+	if _relic_stage_choice != null:
+		_relic_stage_choice.hide_offers()
 	if _shop_or_event_panel != null:
 		_shop_or_event_panel.hide_choice()
 	if run_controller.phase != RunController.RunPhase.RUN_COMPLETE \
@@ -297,12 +303,12 @@ func _on_encounter_completed(won: bool) -> void:
 
 
 func _open_shop_or_event_choice() -> void:
-	_ensure_shop_or_event_panel()
 	_battle_root.visible = true
 	if _battle != null:
-		_battle.set_world_backdrop_mode(true)
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
+	_ensure_shop_or_event_panel()
 	if _shop_or_event_panel != null:
 		_shop_or_event_panel.show_choice()
 	else:
@@ -385,10 +391,10 @@ func _open_event_relic_offer() -> void:
 	_event_relic_busy = true
 	_battle_root.visible = true
 	if _battle != null:
-		_battle.set_world_backdrop_mode(true)
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
-	_ensure_relic_offer_screen()
+	_ensure_relic_stage_choice()
 	var node := run_controller.get_pending_node()
 	var floor_i := node.get_floor() if node != null else 1
 	var offer_rng := RandomNumberGenerator.new()
@@ -396,8 +402,8 @@ func _open_event_relic_offer() -> void:
 	## 每次进事件重读池：balance-designer 资源到位后无需重开进程。
 	_relic_offer_service.configure(ExpeditionRelicOfferService.load_pool_or_stub(), offer_rng)
 	var offers := _relic_offer_service.roll_offers(floor_i, relic_bag, 3)
-	if _relic_offer_screen != null:
-		_relic_offer_screen.show_offers(offers, relic_bag)
+	if _relic_stage_choice != null:
+		_relic_stage_choice.show_offers(offers, relic_bag)
 	else:
 		_event_relic_busy = false
 		_grant_pending_node_floor_gold()
@@ -411,17 +417,17 @@ func _open_event_relic_offer_for_linear_choice() -> void:
 	_event_relic_busy = true
 	_battle_root.visible = true
 	if _battle != null:
-		_battle.set_world_backdrop_mode(true)
+		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
-	_ensure_relic_offer_screen()
+	_ensure_relic_stage_choice()
 	var floor_i := _recruit_map_floor()
 	var offer_rng := RandomNumberGenerator.new()
 	offer_rng.seed = _rng.randi()
 	_relic_offer_service.configure(ExpeditionRelicOfferService.load_pool_or_stub(), offer_rng)
 	var offers := _relic_offer_service.roll_offers(floor_i, relic_bag, 3)
-	if _relic_offer_screen != null:
-		_relic_offer_screen.show_offers(offers, relic_bag)
+	if _relic_stage_choice != null:
+		_relic_stage_choice.show_offers(offers, relic_bag)
 	else:
 		_event_relic_busy = false
 		await _open_recruit()

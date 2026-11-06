@@ -202,7 +202,7 @@
 
 ### 里程碑 E — 收束一致性
 
-1. `ShopOrEventChoicePanel`、事件、设置等改用 Popup/Modal 契约。  
+1. `ShopOrEventChoicePanel` / 主题 / 圣物等玩家选择题改走 Arena 上半场 `StageChoice` 卡片（非全屏窗）；设置等非对局选择仍可用 Popup/Modal。  
 2. 清理各处内联 `StyleBoxFlat.new()` 重复。  
 3. GUI 验收对照参考图：四行、底阵常驻、主 CTA、信息平铺。  
 4. bump `application/config/version`（玩家可见）。
