@@ -2247,72 +2247,35 @@ func _on_paste_layout_pressed() -> void:
 func _ensure_paste_layout_dialog() -> void:
 	if _paste_dialog != null and is_instance_valid(_paste_dialog):
 		return
-	## 全屏遮罩 + 居中小面板；按钮用与 Dock 相同的普通 Button（高 36/40）。
-	var overlay := ColorRect.new()
-	overlay.name = "PasteLayoutDialog"
-	overlay.color = Color(0, 0, 0, 0.55)
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.visible = false
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(300, 280)
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.16, 0.13, 0.11, 0.97)
-	panel_style.border_width_top = 2
-	panel_style.border_width_bottom = 2
-	panel_style.border_width_left = 2
-	panel_style.border_width_right = 2
-	panel_style.border_color = Color(0.42, 0.33, 0.22, 1)
-	panel_style.set_content_margin_all(10.0)
-	panel.add_theme_stylebox_override("panel", panel_style)
-	## 竖屏：约屏宽 86%、屏高 42%，避免再占满屏。
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	center.add_child(panel)
-	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 8)
-	panel.add_child(body)
-	var title := Label.new()
-	title.text = "粘贴布局"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18)
-	body.add_child(title)
-	var tip := Label.new()
-	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.text = "把阵容/布局文本贴到下方，再点「应用」。"
-	tip.add_theme_font_size_override("font_size", 13)
-	body.add_child(tip)
+	## 沙盒粘贴布局：走 GamePopup + ContentSlot（Theme/KitPopupPanel），勿私建 StyleBox。
+	var popup := UiKit.instantiate_popup()
+	popup.name = "PasteLayoutDialog"
+	popup.dismiss_on_dim = true
+	popup.configure(
+		"粘贴布局",
+		"把阵容/布局文本贴到下方，再点「应用」。",
+		"应用",
+		"取消",
+	)
 	## TextEdit 自带纵向滚动；占满中间区域，底部按钮始终可见。
 	_paste_edit = TextEdit.new()
+	_paste_edit.name = "PasteEdit"
 	_paste_edit.placeholder_text = "PAC_BATTLE v1 …"
 	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_paste_edit.scroll_fit_content_height = false
 	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_paste_edit.custom_minimum_size = Vector2(260, 100)
-	body.add_child(_paste_edit)
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 8)
-	btn_row.size_flags_vertical = Control.SIZE_SHRINK_END
-	body.add_child(btn_row)
-	_paste_cancel_button = Button.new()
-	_paste_cancel_button.name = "PasteCancelButton"
-	_paste_cancel_button.text = "取消"
-	_paste_cancel_button.custom_minimum_size = Vector2(0, 40)
-	_paste_cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_paste_cancel_button.pressed.connect(_hide_paste_layout_dialog)
-	btn_row.add_child(_paste_cancel_button)
-	_paste_apply_button = Button.new()
-	_paste_apply_button.name = "PasteApplyButton"
-	_paste_apply_button.text = "应用"
-	_paste_apply_button.custom_minimum_size = Vector2(0, 40)
-	_paste_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_paste_apply_button.pressed.connect(_on_paste_dialog_confirmed)
-	btn_row.add_child(_paste_apply_button)
-	_paste_dialog = overlay
+	popup.set_custom_content(_paste_edit)
+	_paste_cancel_button = popup.get_secondary_button()
+	_paste_apply_button = popup.get_primary_button()
+	if _paste_cancel_button != null:
+		_paste_cancel_button.name = "PasteCancelButton"
+	if _paste_apply_button != null:
+		_paste_apply_button.name = "PasteApplyButton"
+	popup.secondary_pressed.connect(_hide_paste_layout_dialog)
+	popup.primary_pressed.connect(_on_paste_dialog_confirmed)
+	_paste_dialog = popup
 	add_child(_paste_dialog)
 	## 按视口收紧面板，保证按钮始终在屏内。
 	_paste_dialog.resized.connect(_fit_paste_layout_panel)
@@ -2322,15 +2285,15 @@ func _ensure_paste_layout_dialog() -> void:
 func _fit_paste_layout_panel() -> void:
 	if _paste_dialog == null or not is_instance_valid(_paste_dialog):
 		return
-	var center := _paste_dialog.get_child(0) as CenterContainer
-	if center == null or center.get_child_count() < 1:
-		return
-	var panel := center.get_child(0) as Control
+	var panel: Control = null
+	if _paste_dialog is GamePopup:
+		panel = (_paste_dialog as GamePopup).get_panel()
 	if panel == null:
 		return
 	var vp := get_viewport_rect().size
 	if vp.x < 8.0 or vp.y < 8.0:
 		return
+	## 竖屏：约屏宽 86%、屏高 42%，避免再占满屏。
 	var w := clampf(vp.x * 0.86, 260.0, 420.0)
 	var h := clampf(vp.y * 0.42, 240.0, 360.0)
 	panel.custom_minimum_size = Vector2(w, h)
@@ -2342,14 +2305,19 @@ func _show_paste_layout_dialog(prefill: String) -> void:
 	if _paste_edit != null:
 		_paste_edit.text = prefill
 		_paste_edit.select_all()
-	_paste_dialog.visible = true
-	_paste_dialog.move_to_front()
+	if _paste_dialog is GamePopup:
+		(_paste_dialog as GamePopup).open()
+	elif _paste_dialog != null:
+		_paste_dialog.visible = true
+		_paste_dialog.move_to_front()
 	## 下一帧再抢焦点，避免被 Dock 按钮吃掉。
 	call_deferred("_focus_paste_edit")
 
 
 func _hide_paste_layout_dialog() -> void:
-	if _paste_dialog != null and is_instance_valid(_paste_dialog):
+	if _paste_dialog is GamePopup:
+		(_paste_dialog as GamePopup).close(false)
+	elif _paste_dialog != null and is_instance_valid(_paste_dialog):
 		_paste_dialog.visible = false
 
 
@@ -2610,15 +2578,12 @@ func _build_enemy_spawns_from_override(rows: Array) -> Array:
 func _ensure_recruit_hud() -> void:
 	if _recruit_hud != null and is_instance_valid(_recruit_hud):
 		return
-	_recruit_hud = PanelContainer.new()
+	## Dock 内嵌招募条：用 DockPanel 变体，勿私建 StyleBoxFlat。
+	_recruit_hud = UiKit.make_dock_panel()
 	_recruit_hud.name = "RecruitHud"
 	_recruit_hud.visible = false
 	_recruit_hud.mouse_filter = Control.MOUSE_FILTER_STOP
 	_recruit_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.10, 0.14, 0.12, 0.92)
-	style.set_content_margin_all(8.0)
-	_recruit_hud.add_theme_stylebox_override("panel", style)
 	## 放进 Dock：招募时保持底栏占位，Arena 格像素与准备/战斗一致。
 	var dock_box: Node = null
 	if _dock != null:
@@ -2705,7 +2670,7 @@ func _prepare_equivalent_dock_height() -> float:
 	if _start_button != null:
 		start_h = maxf(_start_button.custom_minimum_size.y, start_h)
 	var sep := 6.0
-	var margin_tb := 14.0 ## StyleBoxFlat_dock content_margin top 6 + bottom 8
+	var margin_tb := 14.0 ## DockPanel Theme content_margin top+bottom
 	return margin_tb + hand_h + sep + start_h
 
 
