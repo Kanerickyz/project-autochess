@@ -1,6 +1,6 @@
 # Notion 设计文档映射（Autochess — 设计文档）
 
-共 **42** 条。数据源：`49890a10-9fb5-4516-b48f-440f7bd41075`
+共 **43** 条。数据源：`49890a10-9fb5-4516-b48f-440f7bd41075`
 
 | Doc ID | Notion URL | Repo Path |
 |--------|------------|-----------|
@@ -20,6 +20,7 @@
 | `feature-combat-feedback` | https://app.notion.com/40ff89936db68190915ad30f76c7989f | `Documents/Features/COMBAT_FEEDBACK.md` |
 | `feature-combat-status` | https://app.notion.com/40ff89936db6813887c5e1afd3648e3e | `Documents/Features/COMBAT_STATUS.md` |
 | `feature-combatlevel` | https://app.notion.com/40ff89936db681d8b822c921a4511016 | `Documents/Features/COMBATLEVEL.md` |
+| `feature-ui-shell` | https://app.notion.com/p/410f89936db6814f8baaf72c05f280c3 | `Documents/Features/UI_SHELL.md` |
 | `feature-enchant` | https://app.notion.com/40ff89936db68176bf39fa43c4d4506e | `Documents/Features/ENCHANT.md` |
 | `feature-endless` | https://app.notion.com/40ff89936db681e3b5a3d9cf870920a2 | `Documents/Features/ENDLESS.md` |
 | `feature-enemy-spawn-budget` | https://app.notion.com/40ff89936db68186977ed05cf72cb3a2 | `Documents/Features/ENEMY_SPAWN_BUDGET.md` |

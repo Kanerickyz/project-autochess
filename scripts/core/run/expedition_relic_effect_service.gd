@@ -65,7 +65,7 @@ static func attach_combat_abilities(
 	player_units: Array,
 	bag: ExpeditionRelicBag,
 	deck_state: DeckState = null,
-	board_height: int = 8,
+	board_height: int = 4,
 ) -> void:
 	_strip_previous_attachments(player_units)
 	if bag == null or bag.get_count() <= 0:

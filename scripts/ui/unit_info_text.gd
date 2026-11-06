@@ -400,7 +400,7 @@ static func format_trigger_spec_line(
 		for passive in unit.unit_data.passives:
 			if passive != null:
 				candidates.append(passive)
-		for attached in unit.unit_data.attached_abilities:
+		for attached in unit.attached_abilities:
 			if attached != null:
 				candidates.append(attached)
 	for ability in candidates:

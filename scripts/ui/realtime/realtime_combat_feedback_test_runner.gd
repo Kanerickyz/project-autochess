@@ -149,7 +149,7 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(String(status_pops[0]["text"]).find("虚弱") >= 0, "mapper: weak label")
 
 	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(5, 8)
+	arena.board_size = Vector2i(5, 4)
 	arena.size = Vector2(393, 700)
 	root.add_child(arena)
 	arena.spawn_gold_coin_burst(Vector2(2.5, 10.5), 2)
@@ -266,30 +266,55 @@ func _test_rider_enemy_death_feedback() -> void:
 		return
 
 	_expect(battle.try_start_combat(), "rider: start combat")
+	## 5×4 贴身交战极快：开战当帧冻钟，避免 await 一帧后已清场。
+	battle.time_scale = 0.0
 	await process_frame
 	var arena := battle.get_arena()
 	var sim := battle.get_sim()
+	_expect(sim != null and not sim.is_finished(), "rider: combat still open after freeze")
+	if sim == null or sim.is_finished():
+		battle.queue_free()
+		await process_frame
+		return
 	arena.clear_fx()
 	battle._timestop_queue.clear()
 	if sim.get_effect_resolver() != null:
 		sim.get_effect_resolver().clear_pending()
 	sim.release_presentation()
+	sim.defer_effect_resolve = true
+	## 5×4 敌方更少：先塞一只木桩，避免击杀唯一敌人直接终局吞掉反馈。
+	sim.add_unit(
+		RealtimeCombatSimTest.make_dummy(
+			UnitInstance.Team.ENEMY,
+			100000,
+			{"steps_per_turn": 0, "sight_range": 0.0, "id": "feedback_stake"},
+		),
+		Vector2(0.5, 0.5),
+	)
 	var before := arena.get_feedback_count()
 	var enemy_rt: RtUnit = null
+	var enemy_count := 0
 	for item in sim.get_units():
 		var rt := item as RtUnit
-		if rt != null and not rt.is_player() and rt.is_alive():
+		if rt == null or rt.is_player() or not rt.is_alive():
+			continue
+		enemy_count += 1
+		if enemy_rt == null and (rt.unit == null or rt.unit.id != "feedback_stake"):
 			enemy_rt = rt
-			break
-	_expect(enemy_rt != null, "rider: have enemy to kill")
+	_expect(enemy_rt != null and enemy_count >= 2, "rider: have enemy to kill")
 	if enemy_rt != null:
 		## defer 时停：入队后须播完介绍/结果拍才有 ON_EFFECT_RESOLVED 反馈。
 		sim._pipeline.apply_damage(null, enemy_rt, 999)
 	battle.time_scale = 8.0
+	## 敌亡入队跨至少一帧；勿在 pending 仍 false 时跳过等待。
 	var guard := 0
-	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
+	while guard < 180:
 		await process_frame
 		guard += 1
+		if arena.get_feedback_count() > before:
+			break
+		if guard > 2 and not battle.is_timestop_blocking() and not sim.has_pending_effects():
+			break
 	_expect(arena.get_feedback_count() > before, "rider: enemy-death effect yields feedback")
 	var has_stat := false
 	for fb in arena.get_feedback_entries():
@@ -541,12 +566,20 @@ func _test_tape_next_unsticks_ally_death_spawn_lifecycle() -> void:
 	await process_frame
 	_expect(_seat_first_hand(battle), "lifecycle: seat")
 	_expect(battle.try_start_combat(), "lifecycle: start")
+	battle.time_scale = 0.0
+	await process_frame
 	var sim := battle.get_sim()
+	_expect(sim != null and not sim.is_finished(), "lifecycle: combat still open after freeze")
+	if sim == null or sim.is_finished():
+		battle.queue_free()
+		await process_frame
+		return
 	battle._timestop_queue.clear()
 	var resolver := sim.get_effect_resolver()
 	if resolver != null:
 		resolver.clear_pending()
 	sim.release_presentation()
+	sim.defer_effect_resolve = true
 
 	var soul_data := load("res://resources/units/realtime/soulcaller.tres") as UnitData
 	_expect(soul_data != null and soul_data.ability != null, "lifecycle: soulcaller data")
@@ -554,24 +587,31 @@ func _test_tape_next_unsticks_ally_death_spawn_lifecycle() -> void:
 		battle.queue_free()
 		await process_frame
 		return
-	var caller := UnitInstance.from_unit_data(soul_data, Vector2i(2, 6), UnitInstance.Team.PLAYER)
-	sim.add_unit(caller, Vector2(2.5, 6.5))
+	## 落在 5×4 我半场空位，避免夹在旧 5×8 行上被 clamp 叠格。
+	var caller := UnitInstance.from_unit_data(soul_data, Vector2i(0, 3), UnitInstance.Team.PLAYER)
+	sim.add_unit(caller, Vector2(0.5, 3.5))
 	var fodder := UnitInstance.from_unit_data(
 		load("res://resources/units/realtime/knight.tres") as UnitData,
-		Vector2i(1, 6),
+		Vector2i(4, 3),
 		UnitInstance.Team.PLAYER,
 	)
-	var fodder_rt := sim.add_unit(fodder, Vector2(1.5, 6.5))
+	var fodder_rt := sim.add_unit(fodder, Vector2(4.5, 3.5))
 	_expect(fodder_rt != null, "lifecycle: fodder on field")
 
 	## 击杀友方角色 → OnFriendDeath 入队义士应召（defer 不立刻结算）。
 	sim._pipeline.apply_damage(null, fodder_rt, 999)
+	## defer 下致死先入 pending deaths；空队列时 flush 才会发 OnFriendDeath。
+	sim.flush_idle_death_presentations()
+	var wait_q := 0
+	while not (sim.has_pending_effects() or battle.is_timestop_blocking()) and wait_q < 30:
+		await process_frame
+		wait_q += 1
 	_expect(sim.has_pending_effects() or battle.is_timestop_blocking(), "lifecycle: death queued or presenting")
 
 	## 等到介绍卡，再人工粘住 AWAITING（复现 card_done 中断）。
 	battle.time_scale = 8.0
 	var wait_card := 0
-	while not battle.is_timestop_blocking() and wait_card < 30:
+	while not battle.is_timestop_blocking() and wait_card < 90:
 		await process_frame
 		wait_card += 1
 	if battle.is_timestop_blocking():
