@@ -31,8 +31,20 @@ func show_choice() -> void:
 		_active = false
 		return
 	var cards: Array = [
-		{"id": CHOICE_SHOP, "label": "商店", "summary": "消耗品 / 装备"},
-		{"id": CHOICE_EVENT, "label": "事件", "summary": "远征圣物等"},
+		{
+			"id": CHOICE_SHOP,
+			"label": "商店",
+			"summary": "消耗品 / 装备",
+			"detail": "进入地图商店：上半场货架购买消耗品与装备，下半场队伍常驻可换座。离开后进入主题招募。",
+			"kind_label": "去向",
+		},
+		{
+			"id": CHOICE_EVENT,
+			"label": "事件",
+			"summary": "远征圣物等",
+			"detail": "进入远征圣物三选一：点选上半场圣物卡片，长按可看完整效果；可跳过或换下旧件。结束后进入主题招募。",
+			"kind_label": "去向",
+		},
 	]
 	_battle.enter_stage_choice("战后选择", cards, 0.0)
 

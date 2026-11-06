@@ -32,6 +32,14 @@ static func run_all() -> bool:
 		StageChoiceBoard.find_index_at(laid, Vector2i(anchor.x, 2), Vector2i(5, 4)) < 0,
 		"ignore ally-half clicks",
 	) and ok
+	ok = _expect(
+		StageChoiceBoard.truncate_preview("远征圣物效果说明很长很长", 8) == "远征圣物效果说…",
+		"truncate preview",
+	) and ok
+	ok = _expect(
+		StageChoiceBoard.truncate_preview("短文") == "短文",
+		"truncate keeps short",
+	) and ok
 	return ok
 
 
