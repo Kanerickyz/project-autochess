@@ -137,7 +137,7 @@ const DRAG_SOURCE_ALPHA := 0.32
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
 
-var board_size: Vector2i = Vector2i(5, 8)
+var board_size: Vector2i = Vector2i(5, 4)
 ## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
 const REFERENCE_BOARD_WIDTH := 9.0
 const REFERENCE_BOARD_HEIGHT := 16.0
@@ -193,7 +193,7 @@ var catalog_active: bool = false
 var catalog_plain_backdrop: bool = false
 ## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
 var catalog_visual_scale_override: float = -1.0
-## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
@@ -3165,7 +3165,7 @@ func clear_catalog_mode() -> void:
 	catalog_plain_backdrop = false
 	catalog_preview_level = 1
 	catalog_units.clear()
-	board_size = Vector2i(5, 8)
+	board_size = Vector2i(5, 4)
 	queue_redraw()
 
 

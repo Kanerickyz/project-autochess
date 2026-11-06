@@ -209,8 +209,8 @@ static func _test_action_queue_player_then_enemy() -> bool:
 ## 用例刻意让「行优先」与「列优先」结果不同。
 static func _test_action_queue_spatial_sort() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 1)
-	var mid := 4
+	sim.configure(Vector2i(5, 4), 1)
+	var mid := 2
 	## 友：右列前排先 add，左列后排后 add → 列优先应为左列后排先于右列前排。
 	var f_right_front := sim.add_unit(
 		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_right_front"}),
@@ -218,7 +218,7 @@ static func _test_action_queue_spatial_sort() -> bool:
 	)
 	var f_left_back := sim.add_unit(
 		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_left_back"}),
-		Vector2(0.5, float(mid + 3) + 0.5),
+		Vector2(0.5, float(mid + 1) + 0.5),
 	)
 	## 敌：右列先 add；左列前/后乱序 → 列优先整列左先，列内镜像下→上（前排先于后排）。
 	var e_right := sim.add_unit(
@@ -227,7 +227,7 @@ static func _test_action_queue_spatial_sort() -> bool:
 	)
 	var e_left_back := sim.add_unit(
 		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_back"}),
-		Vector2(0.5, float(mid - 3) + 0.5),
+		Vector2(0.5, float(mid - 2) + 0.5),
 	)
 	var e_left_front := sim.add_unit(
 		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_front"}),
@@ -1552,7 +1552,8 @@ static func _test_boss_queue_after_each_ally() -> bool:
 ## 首领召唤的枯骨代理须朝远离出生点的方向推进（不能卡死不动）。
 static func _test_boss_summon_minions_advance() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 61)
+	## 需要足够纵深让召唤物远离出生点；用沙盘而非正式 5×4。
+	sim.configure(ARENA, 61)
 	var boss_data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
 	if boss_data == null or boss_data.summon_unit == null:
 		push_error("summon_advance: giant_knight missing summon_unit")
@@ -1733,17 +1734,17 @@ static func _test_ranged_attack_reach_clamped_to_2() -> bool:
 	return true
 
 
-## 首领 2×2 足迹在 9 宽场上应水平居中（足迹中心贴近 board_cx=4）。
+## 首领 2×2 足迹在正式 5×4 场上应水平居中（足迹中心贴近 board_cx=2.5）。
 static func _test_boss_footprint_horiz_centered() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 62)
-	## 敌方前排居中座约 (4,5)
+	sim.configure(Vector2i(5, 4), 62)
+	## 敌方半场居中偏好
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
 			"steps_per_turn": 0, "attack_reach": 1.0,
 		}),
-		Vector2(4.5, 5.5),
+		Vector2(2.5, 0.5),
 	)
 	if boss == null:
 		push_error("footprint_center: boss null")
@@ -1756,7 +1757,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 	for c in cells:
 		sx += c.x
 	var fp_cx := float(sx) / float(cells.size())
-	var board_cx := 4.0
+	var board_cx := 2.5
 	if absf(fp_cx - board_cx) > 0.51:
 		push_error("footprint_center: fp_cx=%s not near board center" % fp_cx)
 		return false
@@ -1766,7 +1767,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 ## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
 static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 11)
+	sim.configure(ARENA, 11)
 	var p_right := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 0, "attack_reach": 1.0, "sight_range": 99.0,
@@ -1801,7 +1802,7 @@ static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 ## 左右两路对位时，右路不应被索敌平局拖去左半场。
 static func _test_flanks_do_not_collapse_left() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 13)
+	sim.configure(ARENA, 13)
 	var p_left := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
@@ -1854,13 +1855,13 @@ static func _test_boss_visual_centers_in_footprint() -> bool:
 		push_error("visual_center: static mid=%s want (4,5)" % mid)
 		return false
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 8), 62)
+	sim.configure(Vector2i(5, 4), 62)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
 			"steps_per_turn": 0, "attack_reach": 1.0,
 		}),
-		Vector2(4.5, 5.5),
+		Vector2(2.5, 0.5),
 	)
 	if boss == null:
 		push_error("visual_center: boss null")

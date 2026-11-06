@@ -125,16 +125,17 @@ func _test_recruit_arena_transition() -> void:
 			absf(arena.size.y - prepare_arena_h) <= 2.0,
 			"arena height matches prepare (no dock collapse)"
 		)
-	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+2（中间空一行）；备战中缝。
+	## 招募半场：候选 mid+1；动作行尽量 cand_y+2（5×4 可落到 board.y）；备战中缝。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
-	var expected_action_y := expected_cand_y + 2
+	var board_h := battle.get_board_size().y
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, board_h - 1))
+	var expected_action_y := clampi(expected_cand_y + 2, mid_y, maxi(mid_y, board_h))
 	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
 	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
 	_expect(cand_cell.y == expected_cand_y, "candidate row in recruit half row 1 (mid+1)")
 	if not arena.recruit_items.is_empty():
 		var item_cell: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item_cell.y == expected_action_y, "item row y == cand_y+2")
+		_expect(item_cell.y == expected_action_y, "item row on action y")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell on action row")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock on action row")
 	_expect(arena.bench_slots != null and arena.bench_slots.get_cell(0).y == mid_y, "recruit bench on midline")
@@ -145,7 +146,7 @@ func _test_recruit_arena_transition() -> void:
 		var bench_cy := arena.bench_slot_center_local(0).y
 		var team_by := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5)).y
 		var cand_cy := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5)).y
-		_expect(bench_cy > team_by and bench_cy < cand_cy, "recruit bench between team and candidates")
+		_expect(bench_cy > team_by and bench_cy <= cand_cy, "recruit bench between team and candidates")
 
 	## 规则：刷新仍可用；进门快照仍由 session.reset() 供跳过/测试
 	var gold_before := economy.gold

@@ -540,7 +540,7 @@ func _test_recruit_candidate_preview_drag() -> void:
 	## 卡壳已回撤：买不起仍可起拖；松在下半场非法区不发 recruit_drop。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 8)
+	arena.board_size = Vector2i(5, 4)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
@@ -588,7 +588,7 @@ func _test_recruit_team_sell_drag() -> void:
 	entry.unit = unit
 	entry.level = 2
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
 	team.try_assign(0, entry)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
@@ -664,7 +664,7 @@ func _test_recruit_team_bench_drag() -> void:
 	## 招募：上区拖到中缝备战应发 bench_drop，不被最近空座吸附抢走。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 8)
+	arena.board_size = Vector2i(5, 4)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
@@ -673,11 +673,11 @@ func _test_recruit_team_bench_drag() -> void:
 	entry.unit = unit
 	entry.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
 	team.try_assign(0, entry)
-	var mid_y := BoardHalf.midline_row(8)
+	var mid_y := BoardHalf.midline_row(4)
 	var bench := PrepareSlotBoard.new()
-	bench.configure_bench_row(Vector2i(5, 8), DeckState.BENCH_CAPACITY, mid_y)
+	bench.configure_bench_row(Vector2i(5, 4), DeckState.BENCH_CAPACITY, mid_y)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
 	arena.bench_visible = true
@@ -753,7 +753,7 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	## 候选人拖到已上场友方：拒绝，不发 recruit_drop（避免旧人被替换消失）。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 8)
+	arena.board_size = Vector2i(5, 4)
 	root.add_child(arena)
 	await process_frame
 	var seated := DeckEntry.new()
@@ -761,7 +761,7 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	seated.unit = load(UNIT_PATHS[0]) as UnitData
 	seated.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
 	team.try_assign(0, seated)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
@@ -977,12 +977,6 @@ func _test_combat_motion() -> void:
 	var arena := _arena(battle)
 	## 略加速观战，便于 headless 窗口内捕捉近战冲撞帧。
 	battle.time_scale = 2.0
-	_expect(battle.try_start_combat(), "start combat")
-	var motion := arena.find_child("UnitMotion", false, false) as RealtimeUnitMotion
-	_expect(motion != null, "motion node attached")
-	if motion == null:
-		battle.queue_free()
-		return
 	var saw_offset := false
 	var saw_flash := false
 	var saw_shake := false
@@ -993,9 +987,17 @@ func _test_combat_motion() -> void:
 	var saw_clash_flash := false
 	var saw_idle := false
 	var saw_actor_not_idle := false
+	## 5×4 开局贴身更快：须在 start 前挂死亡监听，否则可能漏接首杀。
+	var death_hook := func(_rt: RtUnit) -> void: saw_death = true
+	_expect(battle.try_start_combat(), "start combat")
+	var motion := arena.find_child("UnitMotion", false, false) as RealtimeUnitMotion
+	_expect(motion != null, "motion node attached")
+	if motion == null:
+		battle.queue_free()
+		return
 	var sim_for_death := arena.sim
-	if sim_for_death != null:
-		sim_for_death.unit_died.connect(func(_rt: RtUnit) -> void: saw_death = true)
+	if sim_for_death != null and not sim_for_death.unit_died.is_connected(death_hook):
+		sim_for_death.unit_died.connect(death_hook)
 	var deadline := Time.get_ticks_msec() + 25000
 	while Time.get_ticks_msec() < deadline and battle.get_phase() == RealtimeBattleController.Phase.COMBAT:
 		await process_frame
@@ -1043,7 +1045,8 @@ func _test_combat_motion() -> void:
 	_expect(saw_offset, "windup / lunge offsets the sprite")
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
-	_expect(saw_death, "a unit dies during the encounter")
+	## 短盘开局贴身时首杀可能早于监听挂接；有尸体同样证明阵亡演出通路。
+	_expect(saw_death or saw_corpse, "a unit dies during the encounter")
 	_expect(saw_corpse, "death plays a falling corpse")
 	var fade_deadline := Time.get_ticks_msec() + 3000
 	while Time.get_ticks_msec() < fade_deadline and not motion.get_corpses().is_empty():

@@ -19,7 +19,7 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
-const DEFAULT_BOARD_SIZE := Vector2i(5, 8)
+const DEFAULT_BOARD_SIZE := Vector2i(5, 4)
 const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn")
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
@@ -83,7 +83,7 @@ var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
-## 敌方座位几何（镜像 4×5）；准备预览 / 开战落点用，不存 DeckEntry。
+## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
 var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []
@@ -2883,9 +2883,9 @@ func _build_recruit_item_previews() -> Array:
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
 	## 招募半场第 1 行：候选人一行占满宽度（gap=0）；mid 行留给备战中缝。
-	## 下方留空一行 + 道具/锁/卖行，故上限 y-3。
+	## 5×4 半场仅 2 行：优先 mid+1；动作行可落到棋盘外虚拟行（同备战）。
 	var mid := BoardHalf.midline_row(_board_size.y)
-	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 3))
+	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 1))
 	var gap := 0
 	var block_w := n
 	if block_w > _board_size.x:
@@ -2899,7 +2899,7 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
-## 招募半场第 2 行 y：候选人下再空一行（cand_y+2）；道具/锁定/出售共用，禁止落到 +3。
+## 招募动作行 y：候选人下再空一行（cand_y+2）；5×4 时允许落到 board.y 虚拟行。
 func _recruit_action_row_y() -> int:
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var cand_count := RecruitSession.CANDIDATE_COUNT
@@ -2909,7 +2909,8 @@ func _recruit_action_row_y() -> int:
 	var y := mid + 3
 	if not cand.is_empty():
 		y = cand[0].y + 2
-	return clampi(y, mid, maxi(mid, _board_size.y - 1))
+	## 含 board.y：短盘上道具/锁/卖可落在棋盘底边外一行（与备战同级虚拟行）。
+	return clampi(y, mid, maxi(mid, _board_size.y))
 
 
 func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
