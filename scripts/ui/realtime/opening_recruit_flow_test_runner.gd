@@ -106,16 +106,16 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	## 招募半场：候选 mid+1；动作行尽量 cand_y+2（5×4 可落到 board.y 虚拟行）；备战中缝。
+	## 阶段货架占上半场：候选 mid-2；动作行 cand+1（仍 < mid）；AllyBoard 在下半场；备战在棋盘外。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var board_h := battle.get_board_size().y
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, board_h - 1))
-	var expected_action_y := clampi(expected_cand_y + 2, mid_y, maxi(mid_y, board_h))
+	var expected_cand_y := clampi(mid_y - 2, 0, maxi(0, mid_y - 1))
+	var expected_action_y := clampi(expected_cand_y + 1, 0, maxi(0, mid_y - 1))
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
 	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 3 slots")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
-		_expect(cell.y == expected_cand_y, "candidate y == recruit half row 1 (mid+1)")
+		_expect(cell.y == expected_cand_y, "candidate y in enemy half (stage shelf)")
+		_expect(cell.y < mid_y, "candidates above mid")
 		## 一行五格：x 互不重叠（5 宽棋盘 gap=0 → x=0..4）。
 		var xs: Dictionary = {}
 		var same_y := true
@@ -132,6 +132,7 @@ func _test_opening_enter_recruit_ui() -> void:
 		var item0: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
 		_expect(item0.y == expected_action_y, "item row on action y")
 		_expect(item0.y > expected_cand_y, "action row below candidates")
+		_expect(item0.y < mid_y, "action row still in enemy half")
 		for info in arena.recruit_items:
 			var ic: Vector2i = info.get("cell", Vector2i(-1, -1))
 			_expect(ic.y == expected_action_y, "all items share action row")
@@ -147,7 +148,7 @@ func _test_opening_enter_recruit_ui() -> void:
 		if offer0.get("item") != null and offer_cell.x >= 0:
 			var offer_center := (
 				arena.tile_to_local(Vector2(offer_cell) + Vector2(0.5, 0.5))
-				+ Vector2(0.0, arena.ally_half_slide_y)
+				+ Vector2(0.0, arena.enemy_half_slide_y)
 			)
 			var offer_info := arena.inspect_at(offer_center)
 			_expect(
@@ -157,7 +158,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	if arena.recruit_lock_cell.x >= 0:
 		var lock_center := (
 			arena.tile_to_local(Vector2(arena.recruit_lock_cell) + Vector2(0.5, 0.5))
-			+ Vector2(0.0, arena.ally_half_slide_y)
+			+ Vector2(0.0, arena.enemy_half_slide_y)
 		)
 		var lock_info := arena.inspect_at(lock_center)
 		_expect(
@@ -169,7 +170,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	if arena.recruit_sell_cell.x >= 0:
 		var sell_center := (
 			arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
-			+ Vector2(0.0, arena.ally_half_slide_y)
+			+ Vector2(0.0, arena.enemy_half_slide_y)
 		)
 		var sell_info := arena.inspect_at(sell_center)
 		_expect(
@@ -179,35 +180,30 @@ func _test_opening_enter_recruit_ui() -> void:
 			"recruit sell inspectable",
 		)
 
-	## 上半场队伍块：敌半场区域；行序与我半场一致（前排在上）。
+	## 下半场 AllyBoard：友方半场几何；前排在上。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
 	var team_max_y := -1
 	if arena.recruit_team_slots != null and arena.recruit_team_slots.slot_count >= 1:
 		var team_front := arena.recruit_team_slots.get_cell(0)
 		var team_back := arena.recruit_team_slots.get_cell(5)
 		var mid := BoardHalf.midline_row(battle.get_board_size().y)
-		_expect(team_front.y < mid, "team block on enemy half")
+		_expect(team_front.y >= mid, "team block on ally half")
 		_expect(team_front.y < team_back.y, "recruit front row above back (ally row order)")
+		_expect(not arena.recruit_team_slots.is_enemy_side, "recruit team uses ally geometry")
 		for si in arena.recruit_team_slots.slot_count:
 			team_max_y = maxi(team_max_y, arena.recruit_team_slots.get_cell(si).y)
 
-	## 招募备战：逻辑 y = midline，中心介于队伍区与候选区之间。
+	## 招募备战：AllyBoard 下沿（棋盘外虚拟行）。
 	_expect(arena.bench_visible and arena.bench_slots != null, "recruit bench visible")
 	if arena.bench_slots != null and arena.bench_slots.slot_count > 0:
-		_expect(arena.bench_slots.get_cell(0).y == mid_y, "recruit bench cells on midline")
+		var board_h := battle.get_board_size().y
+		_expect(arena.bench_slots.get_cell(0).y == board_h, "recruit bench cells below board")
 		var bench_center := arena.bench_slot_center_local(0)
 		var hit_i := arena.find_bench_slot_at_local(bench_center)
 		_expect(hit_i == 0, "recruit bench hit-test maps center to slot 0")
-		if team_max_y >= 0 and not arena.recruit_candidates.is_empty():
+		if team_max_y >= 0:
 			var team_bottom := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5))
-			var cand_center := arena.tile_to_local(
-				Vector2(arena.recruit_candidates[0].get("cell", Vector2i.ZERO)) + Vector2(0.5, 0.5)
-			)
-			## 5×4：中缝备战仍低于上区队伍、不高于候选行。
-			_expect(
-				bench_center.y > team_bottom.y and bench_center.y <= cand_center.y,
-				"recruit bench center y between team and candidates"
-			)
+			_expect(bench_center.y > team_bottom.y, "recruit bench below ally team")
 
 	var finished: Array = []
 	battle.recruit_finished.connect(func(kept: bool) -> void: finished.append(kept))

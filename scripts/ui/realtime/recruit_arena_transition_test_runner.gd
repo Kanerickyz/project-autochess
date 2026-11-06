@@ -91,9 +91,9 @@ func _test_recruit_arena_transition() -> void:
 	battle.continue_after_result()
 	_expect(completed == [true], "encounter_completed(true)")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.IDLE, "IDLE after continue")
-	## half_exit=0 胜场：半场应已置于屏外，供招募滑入衔接
+	## half_exit=0 胜场：仅敌/阶段半场置于屏外；AllyBoard 常驻不滑出。
 	_expect(absf(arena.enemy_half_slide_y) > 1.0, "enemy half parked offscreen after win continue")
-	_expect(absf(arena.ally_half_slide_y) > 1.0, "ally half parked offscreen after win continue")
+	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "ally half stays onscreen after win continue")
 
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
@@ -107,9 +107,10 @@ func _test_recruit_arena_transition() -> void:
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
 	_expect(arena.recruit_active, "arena recruit_active")
 	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "enemy half slid in to 0")
-	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "ally half slid in to 0")
+	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "ally half remains at 0")
 	_expect(arena.recruit_team_slots != null, "team slots set")
-	_expect(arena.recruit_team_slots.occupied_count() == deck.size(), "team units on upper half")
+	_expect(arena.recruit_team_slots.occupied_count() == deck.size(), "team units on ally half")
+	_expect(not arena.recruit_team_slots.is_enemy_side, "recruit team uses ally geometry")
 	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "3 candidate cells")
 	var alive_cands := 0
 	for info in arena.recruit_candidates:
@@ -125,28 +126,31 @@ func _test_recruit_arena_transition() -> void:
 			absf(arena.size.y - prepare_arena_h) <= 2.0,
 			"arena height matches prepare (no dock collapse)"
 		)
-	## 招募半场：候选 mid+1；动作行尽量 cand_y+2（5×4 可落到 board.y）；备战中缝。
+	## 货架上半场：候选 mid-2；动作行 cand+1；队伍 mid 以下；备战棋盘外。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
 	var board_h := battle.get_board_size().y
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, board_h - 1))
-	var expected_action_y := clampi(expected_cand_y + 2, mid_y, maxi(mid_y, board_h))
+	var expected_cand_y := clampi(mid_y - 2, 0, maxi(0, mid_y - 1))
+	var expected_action_y := clampi(expected_cand_y + 1, 0, maxi(0, mid_y - 1))
 	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
 	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
-	_expect(cand_cell.y == expected_cand_y, "candidate row in recruit half row 1 (mid+1)")
+	_expect(cand_cell.y == expected_cand_y, "candidate row in enemy half")
+	_expect(cand_cell.y < mid_y, "candidates above mid")
 	if not arena.recruit_items.is_empty():
 		var item_cell: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
 		_expect(item_cell.y == expected_action_y, "item row on action y")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell on action row")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock on action row")
-	_expect(arena.bench_slots != null and arena.bench_slots.get_cell(0).y == mid_y, "recruit bench on midline")
-	if arena.bench_slots != null and arena.recruit_team_slots != null and not arena.recruit_candidates.is_empty():
+	_expect(arena.bench_slots != null and arena.bench_slots.get_cell(0).y == board_h, "recruit bench below board")
+	if arena.recruit_team_slots != null:
+		var team_front := arena.recruit_team_slots.get_cell(0)
+		_expect(team_front.y >= mid_y, "team on ally half below mid")
 		var team_max_y := -1
 		for si in arena.recruit_team_slots.slot_count:
 			team_max_y = maxi(team_max_y, arena.recruit_team_slots.get_cell(si).y)
-		var bench_cy := arena.bench_slot_center_local(0).y
-		var team_by := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5)).y
-		var cand_cy := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5)).y
-		_expect(bench_cy > team_by and bench_cy <= cand_cy, "recruit bench between team and candidates")
+		if arena.bench_slots != null and team_max_y >= 0:
+			var bench_cy := arena.bench_slot_center_local(0).y
+			var team_by := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5)).y
+			_expect(bench_cy > team_by, "recruit bench below ally team")
 
 	## 规则：刷新仍可用；进门快照仍由 session.reset() 供跳过/测试
 	var gold_before := economy.gold

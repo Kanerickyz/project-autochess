@@ -1,6 +1,7 @@
 class_name EnchantBattleExtension
 extends RefCounted
 ## 附魔阶段：Arena 拖拽 + 底栏（重置 / 随机 / 融合 / 跳过 / 继续）。
+## 壳契约：熔炉在上半场（敌区）；队伍在下半场 AllyBoard（configure_grid enemy_side=false）常驻。
 
 
 var _battle: RealtimeBattleController
@@ -138,6 +139,7 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 		if config != null:
 			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
+	## 下半场 AllyBoard：与准备/招募同一友方座位几何（勿改 enemy_side=true）。
 	slots.configure_grid(seat_rows, seat_cols, board_size, false, false)
 	for entry in deck.get_entries():
 		if entry == null or _entry_on_forge(entry.entry_id):

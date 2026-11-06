@@ -537,7 +537,7 @@ func _test_recruit_input() -> void:
 
 
 func _test_recruit_candidate_preview_drag() -> void:
-	## 卡壳已回撤：买不起仍可起拖；松在下半场非法区不发 recruit_drop。
+	## 卡壳已回撤：买不起仍可起拖；松在上半场非法区不发 recruit_drop。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
 	arena.board_size = Vector2i(5, 4)
@@ -545,7 +545,7 @@ func _test_recruit_candidate_preview_drag() -> void:
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
 	var mid := BoardHalf.midline_row(arena.board_size.y)
-	var cell := Vector2i(2, mid + 1)
+	var cell := Vector2i(2, clampi(mid - 2, 0, maxi(0, mid - 1)))
 	arena.recruit_active = true
 	arena.recruit_candidates = [{
 		"index": 0, "unit": unit, "cell": cell, "cost": 9, "affordable": false,
@@ -568,7 +568,7 @@ func _test_recruit_candidate_preview_drag() -> void:
 	arena._gui_input(leave)
 	_expect(arena.recruit_selected_candidate == 0, "drag continues after leaving source cell")
 
-	## 松在下半场非法区：不发 recruit_drop。
+	## 松在上半场非法区：不发 recruit_drop。
 	_press(arena, outside, false)
 	_expect(drops.is_empty(), "invalid half drop does not emit recruit_drop")
 	_expect(arena.recruit_selected_candidate == 0 or arena.recruit_selected_candidate == -1, "release ends active drag path")
@@ -580,6 +580,7 @@ func _test_recruit_candidate_preview_drag() -> void:
 func _test_recruit_team_sell_drag() -> void:
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 4)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
@@ -588,15 +589,18 @@ func _test_recruit_team_sell_drag() -> void:
 	entry.unit = unit
 	entry.level = 2
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), false)
 	team.try_assign(0, entry)
+	var mid_y := BoardHalf.midline_row(4)
+	var sell_cell := Vector2i(4, clampi(mid_y - 1, 0, maxi(0, mid_y - 1)))
+	var cand_cell := Vector2i(1, clampi(mid_y - 2, 0, maxi(0, mid_y - 1)))
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
-	arena.recruit_sell_cell = Vector2i(4, 12)
+	arena.recruit_sell_cell = sell_cell
 	arena.recruit_candidates = [{
 		"index": 0,
 		"unit": load(UNIT_PATHS[2]) as UnitData,
-		"cell": Vector2i(1, 11),
+		"cell": cand_cell,
 		"cost": 3,
 		"affordable": true,
 	}]
@@ -620,8 +624,8 @@ func _test_recruit_team_sell_drag() -> void:
 
 	_press(arena, team_center, true)
 	var move := InputEventMouseMotion.new()
-	move.position = team_center + Vector2(0, 40)
-	move.relative = Vector2(0, 40)
+	move.position = team_center + Vector2(0, -40)
+	move.relative = Vector2(0, -40)
 	arena._gui_input(move)
 	_hover_to(arena, sell_center)
 	_press(arena, sell_center, false)
@@ -630,7 +634,7 @@ func _test_recruit_team_sell_drag() -> void:
 
 	## 候选人拖到出售槽不成交招入
 	sold.clear()
-	var cand_center := arena.tile_to_local(Vector2(1, 11) + Vector2(0.5, 0.5))
+	var cand_center := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5))
 	_press(arena, cand_center, true)
 	var move2 := InputEventMouseMotion.new()
 	move2.position = cand_center + Vector2(40, 0)
@@ -640,7 +644,7 @@ func _test_recruit_team_sell_drag() -> void:
 	_press(arena, sell_center, false)
 	_expect(drops.is_empty(), "candidate drop on sell slot does not recruit")
 
-	## 上区拖到另一座位：换座信号（不出售）
+	## 下半场拖到另一座位：换座信号（不出售）
 	seat_drops.clear()
 	sold.clear()
 	var empty_seat := 1
@@ -661,7 +665,7 @@ func _test_recruit_team_sell_drag() -> void:
 
 
 func _test_recruit_team_bench_drag() -> void:
-	## 招募：上区拖到中缝备战应发 bench_drop，不被最近空座吸附抢走。
+	## 招募：下半场拖到棋盘外备战应发 bench_drop，不被最近空座吸附抢走。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
 	arena.board_size = Vector2i(5, 4)
@@ -673,18 +677,18 @@ func _test_recruit_team_bench_drag() -> void:
 	entry.unit = unit
 	entry.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), false)
 	team.try_assign(0, entry)
 	var mid_y := BoardHalf.midline_row(4)
 	var bench := PrepareSlotBoard.new()
-	bench.configure_bench_row(Vector2i(5, 4), DeckState.BENCH_CAPACITY, mid_y)
+	bench.configure_bench_row(Vector2i(5, 4), DeckState.BENCH_CAPACITY, -1)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
 	arena.bench_visible = true
 	arena.bench_interactive = true
 	arena.bench_slots = bench
-	arena.recruit_sell_cell = Vector2i(4, mid_y + 2)
-	arena.recruit_lock_cell = Vector2i(0, mid_y + 2)
+	arena.recruit_sell_cell = Vector2i(4, clampi(mid_y - 1, 0, maxi(0, mid_y - 1)))
+	arena.recruit_lock_cell = Vector2i(0, clampi(mid_y - 1, 0, maxi(0, mid_y - 1)))
 	var bench_drops: Array[int] = []
 	var seat_drops: Array = []
 	arena.recruit_team_bench_drop.connect(
@@ -711,14 +715,16 @@ func _test_recruit_team_bench_drag() -> void:
 func _test_recruit_lock_drag() -> void:
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
+	arena.board_size = Vector2i(5, 4)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
-	var cand_cell := Vector2i(2, 11)
-	var lock_cell := Vector2i(0, 12)
+	var mid_y := BoardHalf.midline_row(4)
+	var cand_cell := Vector2i(2, clampi(mid_y - 2, 0, maxi(0, mid_y - 1)))
+	var lock_cell := Vector2i(0, clampi(mid_y - 1, 0, maxi(0, mid_y - 1)))
 	arena.recruit_active = true
 	arena.recruit_lock_cell = lock_cell
-	arena.recruit_sell_cell = Vector2i(8, 12)
+	arena.recruit_sell_cell = Vector2i(4, clampi(mid_y - 1, 0, maxi(0, mid_y - 1)))
 	arena.recruit_candidates = [{
 		"index": 0,
 		"unit": unit,
@@ -761,14 +767,16 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	seated.unit = load(UNIT_PATHS[0]) as UnitData
 	seated.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 4), false)
 	team.try_assign(0, seated)
+	var mid_y := BoardHalf.midline_row(4)
+	var cand_cell := Vector2i(1, clampi(mid_y - 2, 0, maxi(0, mid_y - 1)))
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
 	arena.recruit_candidates = [{
 		"index": 0,
 		"unit": load(UNIT_PATHS[2]) as UnitData,
-		"cell": Vector2i(1, 11),
+		"cell": cand_cell,
 		"cost": 3,
 		"affordable": true,
 	}]
@@ -776,12 +784,12 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	var rejected: Array = []
 	arena.recruit_drop.connect(func(i: int, r: int, s: int) -> void: drops.append([i, r, s]))
 	arena.recruit_drop_rejected.connect(func(reason: StringName) -> void: rejected.append(reason))
-	var cand_center := arena.tile_to_local(Vector2(1, 11) + Vector2(0.5, 0.5))
+	var cand_center := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5))
 	var occupied_center := arena.tile_to_local(Vector2(team.get_cell(0)) + Vector2(0.5, 0.5))
 	_press(arena, cand_center, true)
 	var move := InputEventMouseMotion.new()
-	move.position = cand_center + Vector2(0, -40)
-	move.relative = Vector2(0, -40)
+	move.position = cand_center + Vector2(0, 40)
+	move.relative = Vector2(0, 40)
 	arena._gui_input(move)
 	_hover_to(arena, occupied_center)
 	_press(arena, occupied_center, false)

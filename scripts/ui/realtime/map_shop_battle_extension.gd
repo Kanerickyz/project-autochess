@@ -1,6 +1,6 @@
 class_name MapShopBattleExtension
 extends RefCounted
-## 地图商店：Arena 上队伍 / 下货架 + 底栏（刷新消耗品 / 离开）。
+## 地图商店：Arena 上半场货架 / 下半场 AllyBoard 常驻 + 底栏（刷新消耗品 / 离开）。
 
 
 var _battle: RealtimeBattleController
@@ -92,8 +92,8 @@ func _rebuild_team_slots(deck: DeckState, board_size: Vector2i) -> void:
 		if config != null:
 			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
-	## 与招募一致：上半场敌区几何、行序与我半场前排同向。
-	_team_slots.configure_grid(seat_rows, seat_cols, board_size, true, true)
+	## AllyBoard 常驻下半场：与准备同一友方座位几何。
+	_team_slots.configure_grid(seat_rows, seat_cols, board_size, false)
 	if deck == null:
 		return
 	for entry in deck.get_entries():
@@ -118,8 +118,9 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 		return out
 	var consumables := _service.get_consumable_offers()
 	var equipment := _service.get_equipment_offers()
-	var cons_cells := _build_shelf_row_cells(consumables.size(), board_size, 1)
-	var equip_cells := _build_shelf_row_cells(equipment.size(), board_size, 3)
+	## 货架占上半场：消耗品顶行、装备近中线一行。
+	var cons_cells := _build_shelf_row_cells(consumables.size(), board_size, 0)
+	var equip_cells := _build_shelf_row_cells(equipment.size(), board_size, 1)
 	for i in consumables.size():
 		var item: MapShopConsumableData = consumables[i] as MapShopConsumableData
 		var cell := cons_cells[i] if i < cons_cells.size() else Vector2i(-1, -1)
@@ -155,13 +156,14 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 	return out
 
 
-func _build_shelf_row_cells(count: int, board_size: Vector2i, row_offset: int) -> Array[Vector2i]:
+func _build_shelf_row_cells(count: int, board_size: Vector2i, row_from_top: int) -> Array[Vector2i]:
 	var n := maxi(0, count)
 	var cells: Array[Vector2i] = []
 	if n <= 0:
 		return cells
 	var mid := BoardHalf.midline_row(board_size.y)
-	var y := clampi(mid + row_offset, mid, maxi(mid, board_size.y - 1))
+	## 货架只落在上半场（敌区 y < mid）。
+	var y := clampi(row_from_top, 0, maxi(0, mid - 1))
 	var gap := 1
 	var block_w := n + (n - 1) * gap
 	if block_w > board_size.x:
@@ -191,7 +193,7 @@ func _ensure_hud() -> void:
 	_hint_label = Label.new()
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.text = "拖下半场货架到上半场角色购买；拖队伍换座"
+	_hint_label.text = "拖上半场货架到下半场角色购买；拖队伍换座"
 	_hud.add_child(_hint_label)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
