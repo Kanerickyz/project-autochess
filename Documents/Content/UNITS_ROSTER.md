@@ -8,6 +8,6 @@
 | Notion | https://app.notion.com/40ff89936db681fa9b8ee467cd7d741a |
 | Kind | `Content` |
 
-一句话：Content · 2026-10-15
+一句话：友方角色库——五十人主题归属、数值草案与主技能 1:1 挂载。
 
 Hub：https://app.notion.com/p/40ff89936db681b5880cec3af0087789
