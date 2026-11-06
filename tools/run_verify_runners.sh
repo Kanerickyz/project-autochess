@@ -25,6 +25,7 @@ runners=(
   "res://scripts/ui/realtime/prepare_slot_board_test_runner.gd"
   "res://scripts/ui/kit/ui_kit_test_runner.gd"
   "res://scripts/ui/realtime/stage_choice_board_test_runner.gd"
+  "res://scripts/ui/realtime/stage_choice_input_test_runner.gd"
   "res://scripts/ui/map_shop/map_shop_screen_smoke_test_runner.gd"
   "res://scripts/ui/realtime/realtime_combat_feedback_test_runner.gd"
   "res://scripts/ui/realtime/combat_combo_tracker_test_runner.gd"

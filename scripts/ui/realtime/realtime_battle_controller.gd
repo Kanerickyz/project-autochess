@@ -3196,6 +3196,10 @@ func _on_recruit_drop_rejected(reason: StringName) -> void:
 
 
 func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
+	## StageChoice（店|事/圣物）下半场仍可换座。
+	if _phase == Phase.STAGE_CHOICE:
+		_try_stage_choice_seat_swap(entry_id, target_seat)
+		return
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
 	if _is_bench_entry(entry_id):
@@ -3214,6 +3218,18 @@ func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
 		return
 	if _recruit_hint != null:
 		_recruit_hint.text = "无法换座"
+
+
+func _try_stage_choice_seat_swap(entry_id: int, target_seat: int) -> void:
+	if _deck_state == null:
+		return
+	if not _deck_state.swap_seats(entry_id, target_seat):
+		return
+	_rebuild_recruit_team_slots()
+	if _arena != null:
+		_arena.recruit_team_slots = _recruit_team_slots
+		_arena.queue_redraw()
+	_refresh_hud()
 
 
 ## 招募：拖下半场已入座成员松手落在备战格 → 入备战。
@@ -3437,10 +3453,13 @@ func _sync_recruit_theme_cards() -> void:
 		return
 	var raw: Array = []
 	for theme_id in _recruit_session.get_theme_offers():
+		var theme_name := UnitTheme.display_name(theme_id)
 		raw.append({
 			"id": theme_id,
-			"label": UnitTheme.display_name(theme_id),
-			"summary": "主/辅匹配该主题",
+			"label": theme_name,
+			"summary": "主/辅匹配",
+			"detail": "主题「%s」：本阶段招募候选人须主或辅主题匹配。选定后开放短名单；可用金币重 roll 主题。" % theme_name,
+			"kind_label": "主题",
 		})
 	_arena.stage_choice_title = "选择主题"
 	_arena.stage_choice_cards = StageChoiceBoard.layout_choices(raw, _board_size, 0)
