@@ -36,6 +36,9 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_blue.png" id="b_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_blue.png" id="b_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armorer_blue.png" id="b_armorer"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_echo_blue.png" id="b_armor_echo"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_mender_blue.png" id="b_armor_mender"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_inspector_blue.png" id="b_armor_inspector"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_blue.png" id="b_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_blue.png" id="b_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_shield_red.png" id="r_shield"]
@@ -73,6 +76,9 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_mend_friar_red.png" id="r_mend_friar"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_apothecary_red.png" id="r_apothecary"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armorer_red.png" id="r_armorer"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_echo_red.png" id="r_armor_echo"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_mender_red.png" id="r_armor_mender"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_armor_inspector_red.png" id="r_armor_inspector"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_arcane_red.png" id="r_arcane"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_fused_enchant_red.png" id="r_fused_enchant"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_berserker_blue.png" id="b_berserker"]
@@ -120,6 +126,9 @@ script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "aftershock": &"aftershock",
 "apothecary": &"apothecary",
+"armor_echo": &"armor_echo",
+"armor_inspector": &"armor_inspector",
+"armor_mender": &"armor_mender",
 "armorer": &"armorer",
 "arcane": &"arcane",
 "archer": &"archer",
@@ -188,6 +197,9 @@ default_archetype = &"spear"
 player_textures = {
 &"aftershock": ExtResource("b_aftershock"),
 &"apothecary": ExtResource("b_apothecary"),
+&"armor_echo": ExtResource("b_armor_echo"),
+&"armor_inspector": ExtResource("b_armor_inspector"),
+&"armor_mender": ExtResource("b_armor_mender"),
 &"armorer": ExtResource("b_armorer"),
 &"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
@@ -249,6 +261,9 @@ player_textures = {
 enemy_textures = {
 &"aftershock": ExtResource("r_aftershock"),
 &"apothecary": ExtResource("r_apothecary"),
+&"armor_echo": ExtResource("r_armor_echo"),
+&"armor_inspector": ExtResource("r_armor_inspector"),
+&"armor_mender": ExtResource("r_armor_mender"),
 &"armorer": ExtResource("r_armorer"),
 &"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),

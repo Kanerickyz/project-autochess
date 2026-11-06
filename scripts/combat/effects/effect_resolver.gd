@@ -13,6 +13,8 @@ var _deck_state: DeckState
 var _economy: RunEconomy
 ## owner.instance_id -> { EffectSpec.get_instance_id(): count }
 var _spec_trigger_counts: Dictionary = {}
+## 修甲徒等：owner.instance_id -> { target.instance_id: true }；OnFriendArmorDepleted 每目标每场仅修一次。
+var _armor_repair_once: Dictionary = {}
 ## 技能 DEAL_DAMAGE 执行期间抑制 OnDealDamage 再入队，避免捎带伤连环刷触发。
 var _suppress_deal_damage_triggers: int = 0
 var _battle_convert_handler: Callable = Callable()
@@ -56,6 +58,7 @@ func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
 		return
 	if event_type == CombatEvents.ON_COMBAT_START:
 		_spec_trigger_counts.clear()
+		_armor_repair_once.clear()
 	if event_type == CombatEvents.ON_ROUND_START:
 		_friend_hurt_this_round = 0
 	if event_type == CombatEvents.ON_DAMAGE_TAKEN:
@@ -140,6 +143,8 @@ static func _can_enqueue_action_on_target(
 	match action.action_type:
 		EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
 			return target.is_alive()
+		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
+			return target.is_alive()
 		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
 			return target.is_alive()
 		_:
@@ -188,6 +193,13 @@ func _enqueue_for_event(
 						continue
 					if not _can_enqueue_action_on_target(action, target, event_type):
 						continue
+					## 友方甲尽修复：同一持有者对同一目标每场只入队一次。
+					if (
+						event_type == CombatEvents.ON_FRIEND_ARMOR_DEPLETED
+						and action.action_type == EffectAction.Type.GRANT_COMBAT_ARMOR
+						and _has_armor_repaired_once(unit, target)
+					):
+						continue
 					var step := QueuedEffectStep.new()
 					step.action = action
 					step.target = target
@@ -210,7 +222,7 @@ func _owner_qualifies_for_event(
 	if owner == null:
 		return false
 	match event_type:
-		CombatEvents.ON_DAMAGE_TAKEN, CombatEvents.ON_DEATH:
+		CombatEvents.ON_DAMAGE_TAKEN, CombatEvents.ON_DEATH, CombatEvents.ON_ARMOR_BLOCKED, CombatEvents.ON_ARMOR_DEPLETED:
 			return payload.target == owner
 		CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL:
 			return payload.source == owner
@@ -237,7 +249,7 @@ func _owner_qualifies_for_event(
 				and payload.target != owner
 				and payload.target.team == owner.team
 			)
-		CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_FRIEND_DAMAGE_TAKEN:
+		CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_FRIEND_DAMAGE_TAKEN, CombatEvents.ON_FRIEND_ARMOR_DEPLETED:
 			return (
 				payload.target != null
 				and payload.target != owner
@@ -733,6 +745,21 @@ func _record_spec_trigger(owner: UnitInstance, spec: EffectSpec) -> void:
 	_spec_trigger_counts[owner.instance_id] = by_spec
 
 
+func _has_armor_repaired_once(owner: UnitInstance, target: UnitInstance) -> bool:
+	if owner == null or target == null:
+		return false
+	var by_target: Dictionary = _armor_repair_once.get(owner.instance_id, {})
+	return bool(by_target.get(target.instance_id, false))
+
+
+func _mark_armor_repaired_once(owner: UnitInstance, target: UnitInstance) -> void:
+	if owner == null or target == null:
+		return
+	var by_target: Dictionary = _armor_repair_once.get(owner.instance_id, {})
+	by_target[target.instance_id] = true
+	_armor_repair_once[owner.instance_id] = by_target
+
+
 func _pick_enemies_adjacent_to_event_target(
 	owner: UnitInstance,
 	payload: CombatEventPayload,
@@ -1047,10 +1074,19 @@ func _execute_action(
 		EffectAction.Type.GRANT_COMBAT_ARMOR:
 			if target == null or not target.is_alive():
 				return false
+			## 友方甲尽修复：同一持有者对同一目标每场仅成功一次。
+			if (
+				spec != null
+				and spec.trigger == CombatEvents.ON_FRIEND_ARMOR_DEPLETED
+				and _has_armor_repaired_once(owner, target)
+			):
+				return false
 			var armor_grant := _scaled_action_value(owner, action.value)
 			if armor_grant <= 0:
 				return false
 			target.grant_combat_temp_armor(armor_grant)
+			if spec != null and spec.trigger == CombatEvents.ON_FRIEND_ARMOR_DEPLETED:
+				_mark_armor_repaired_once(owner, target)
 			print(
 				"[Effect] %s +%d combat armor (total=%d equip=%d temp=%d)"
 				% [
@@ -1062,6 +1098,41 @@ func _execute_action(
 				]
 			)
 			executed = true
+		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
+			if owner == null or not CombatStatusStack.is_valid_id(action.stat_name):
+				return false
+			var per_ally := _scaled_action_value(owner, action.value)
+			if per_ally <= 0:
+				return false
+			var armored_allies := 0
+			for ally in _grid.get_units_by_team(owner.team, true):
+				if ally != null and ally.get_armor_block() > 0:
+					armored_allies += 1
+			var add_stacks := mini(armored_allies, 2) * per_ally
+			if add_stacks <= 0:
+				return false
+			var enemy_team := (
+				UnitInstance.Team.ENEMY
+				if owner.team == UnitInstance.Team.PLAYER
+				else UnitInstance.Team.PLAYER
+			)
+			var applied_any := false
+			for enemy in _grid.get_units_by_team(enemy_team, true):
+				if enemy == null or not enemy.is_alive():
+					continue
+				enemy.combat_statuses.add_stacks(action.stat_name, add_stacks)
+				applied_any = true
+				print(
+					"[Effect] %s +%d %s from armored allies=%d (cap 2, per=%d)"
+					% [
+						enemy.id,
+						add_stacks,
+						action.stat_name,
+						armored_allies,
+						per_ally,
+					]
+				)
+			executed = applied_any
 		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
 			executed = _knockback_away_from_owner(owner, target, action)
 		EffectAction.Type.REMOVE_COMBAT_STATUS:

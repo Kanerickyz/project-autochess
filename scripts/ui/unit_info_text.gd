@@ -20,6 +20,9 @@ const TRIGGER_LABELS := {
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN: "友方受伤时",
 	CombatEvents.ON_ROUND_START: "自己回合开始时",
 	CombatEvents.ON_DAMAGE_TAKEN: "受伤时",
+	CombatEvents.ON_ARMOR_BLOCKED: "护甲挡住伤害时",
+	CombatEvents.ON_ARMOR_DEPLETED: "自身护甲耗尽时",
+	CombatEvents.ON_FRIEND_ARMOR_DEPLETED: "友方护甲耗尽时",
 
 	CombatEvents.ON_DEAL_DAMAGE: "造成伤害时",
 	CombatEvents.ON_KILL: "击杀时",
@@ -283,7 +286,7 @@ static func attachments_for_effect_spec(
 		if action == null:
 			continue
 		match action.action_type:
-			EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
+			EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS, EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
 				var status_id: StringName = action.stat_name
 				if seen.has(status_id):
 					continue
@@ -790,6 +793,11 @@ static func format_action(
 			return "第%d回合开始时，对剩余血量范围内敌人造成当前攻击伤害并自身死亡" % round
 		EffectAction.Type.APPLY_COMBAT_STATUS:
 			return "施加 %s %d 层" % [
+				CombatStatusStack.get_display_name(action.stat_name),
+				scaled_value,
+			]
+		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
+			return "按有护甲友方数（最多 2）对全体敌军施加 %s（每友方 %d 层）" % [
 				CombatStatusStack.get_display_name(action.stat_name),
 				scaled_value,
 			]

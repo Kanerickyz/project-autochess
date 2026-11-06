@@ -68,7 +68,9 @@ func resolve_hit(
 			rolled = CombatStatusStack.adjust_attack_damage(rolled, src)
 		rolled = CombatStatusStack.adjust_incoming_before_armor(rolled, tgt.unit)
 		## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
+		var armor_before := tgt.unit.get_armor_block()
 		var final_amount := tgt.unit.mitigate_incoming_damage(rolled)
+		_emit_armor_mitigation_events(src, tgt.unit, armor_before, rolled, final_amount)
 		if final_amount <= 0:
 			continue
 		var hp_before := tgt.unit.current_hp
@@ -194,7 +196,9 @@ func apply_damage(
 		return false
 	var rolled := CombatStatusStack.adjust_incoming_before_armor(amount, target.unit)
 	## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
+	var armor_before := target.unit.get_armor_block()
 	var final_amount := target.unit.mitigate_incoming_damage(rolled)
+	_emit_armor_mitigation_events(source, target.unit, armor_before, rolled, final_amount)
 	if final_amount <= 0:
 		return false
 	var hp_before := target.unit.current_hp
@@ -276,6 +280,23 @@ func apply_direct_hp_loss(source: UnitInstance, target: RtUnit, amount: int) -> 
 		false,
 	)
 	return true
+
+
+## 有甲挡伤：发 OnArmorBlocked；挡后甲归零时同击再发 OnArmorDepleted / OnFriendArmorDepleted。
+func _emit_armor_mitigation_events(
+	source: UnitInstance,
+	target: UnitInstance,
+	armor_before: int,
+	attempted: int,
+	final_amount: int,
+) -> void:
+	if armor_before <= 0 or attempted <= 0 or final_amount != 0:
+		return
+	_emit(CombatEvents.ON_ARMOR_BLOCKED, source, target, attempted)
+	if target == null or target.get_armor_block() != 0:
+		return
+	_emit(CombatEvents.ON_ARMOR_DEPLETED, source, target, attempted)
+	_emit(CombatEvents.ON_FRIEND_ARMOR_DEPLETED, source, target, attempted)
 
 
 func _emit(
