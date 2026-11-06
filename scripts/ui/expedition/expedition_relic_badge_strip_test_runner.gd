@@ -15,7 +15,7 @@ func _run() -> void:
 	if not StripTest.run():
 		_failures += 1
 	await _test_battle_hud_wiring()
-	await _test_detail_popup_lifecycle()
+	await _test_unified_info_card_lifecycle()
 	if _failures == 0:
 		print("ExpeditionRelicBadgeStripTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -74,37 +74,50 @@ func _root_has_relic_detail_popup() -> bool:
 	return false
 
 
-func _test_detail_popup_lifecycle() -> void:
+func _test_unified_info_card_lifecycle() -> void:
 	var battle := (load(BATTLE_SCENE) as PackedScene).instantiate() as RealtimeBattleController
 	root.add_child(battle)
 	await process_frame
 	var strip := battle.get_relic_badge_strip()
-	_expect(strip != null, "detail: strip present")
-	if strip == null:
+	var arena: RealtimeArenaView = battle.get_node_or_null("%ArenaView") as RealtimeArenaView
+	_expect(strip != null, "info: strip present")
+	_expect(arena != null, "info: arena present")
+	if strip == null or arena == null:
 		battle.queue_free()
 		await process_frame
 		return
+	var bag := ExpeditionRelicBag.new()
 	var relic := ExpeditionRelicData.new()
 	relic.id = "relic_detail_test"
 	relic.display_name = "鼓点耳环"
 	relic.description = "邻格鼓点加成摘要"
 	relic.tier = 2
 	relic.sell_gold = 4
-	strip.show_relic_detail(relic)
+	bag.try_add(relic)
+	battle.set_relic_bag(bag)
 	await process_frame
-	_expect(strip.has_detail_popup(), "detail: popup created after show")
-	_expect(not strip.get_detail_title_text().is_empty(), "detail: title non-empty")
-	_expect(strip.get_detail_title_text() == "鼓点耳环", "detail: title matches display_name")
-	_expect(not strip.get_detail_body_text().is_empty(), "detail: body non-empty")
-	_expect(_root_has_relic_detail_popup(), "detail: RelicDetailPopup on root while open")
+	## 统一文案契约。
+	var body := ExpeditionRelicInfo.detail_text(relic)
+	_expect(body.contains("鼓点耳环"), "info: detail_text has name")
+	_expect(body.contains("邻格鼓点加成摘要"), "info: detail_text has description")
+	_expect(body.contains("出售 4 金"), "info: detail_text has sell gold")
+	## 长按徽章 → Arena 信息卡（非 root Popup）。
+	strip.badge_long_press.emit(0, relic)
+	await process_frame
+	_expect(arena.is_info_card_visible(), "info: arena card visible after long_press signal")
+	_expect(not _root_has_relic_detail_popup(), "info: no legacy RelicDetailPopup on root")
+	strip.badge_long_press_ended.emit(0, relic)
+	await process_frame
+	_expect(not arena.is_info_card_visible(), "info: arena card hidden after long_press_ended")
+	## 兼容 API + 罩层收起。
+	strip.show_relic_detail(relic)
+	_expect(strip.has_detail_popup(), "info: show_relic_detail marks visible")
+	_expect(strip.get_detail_title_text() == "鼓点耳环", "info: title matches display_name")
+	_expect(strip.get_detail_body_text().contains("邻格鼓点加成摘要"), "info: body uses unified detail")
 	battle.set_world_backdrop_mode(true)
 	await process_frame
-	_expect(not strip.has_detail_popup(), "detail: hide_detail via world backdrop")
-	_expect(not _root_has_relic_detail_popup(), "detail: root cleared after backdrop")
-	## 再开一次，验证 battle 释放后 root 无残留。
-	strip.show_relic_detail(relic)
-	await process_frame
-	_expect(_root_has_relic_detail_popup(), "detail: popup reopened")
+	_expect(not strip.has_detail_popup(), "info: hide_detail via world backdrop")
+	_expect(not arena.is_info_card_visible(), "info: arena card cleared on backdrop")
 	battle.queue_free()
 	await process_frame
-	_expect(not _root_has_relic_detail_popup(), "detail: root clear after battle queue_free")
+	_expect(not _root_has_relic_detail_popup(), "info: root clear after battle queue_free")

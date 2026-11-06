@@ -1,10 +1,15 @@
 class_name ExpeditionRelicBadge
 extends Control
 ## 远征行囊单槽圆形徽章：空槽空心描边；占用按 Tier 着色 + 显示名首字。
+## 长按占用槽 → 统一 RealtimeUnitInfoCard 详情（与场上单位一致）。
 
 signal pressed(slot_index: int, relic: ExpeditionRelicData)
+signal long_press(slot_index: int, relic: ExpeditionRelicData)
+signal long_press_ended(slot_index: int, relic: ExpeditionRelicData)
 
 const DEFAULT_DIAMETER := 32.0
+const LONG_PRESS_MS := 380
+const LONG_PRESS_SLOP_PX := 10.0
 
 ## Tier 1/2/3 填充色（无 icon 纹理时的可读占位）。
 const TIER_FILL := {
@@ -17,10 +22,16 @@ var slot_index: int = 0
 var relic: ExpeditionRelicData = null
 var diameter: float = DEFAULT_DIAMETER
 
+var _pressing: bool = false
+var _press_ms: int = -1
+var _press_pos := Vector2.ZERO
+var _info_shown: bool = false
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
+	set_process(false)
 	_apply_min_size()
 	tooltip_text = ""
 	queue_redraw()
@@ -32,14 +43,19 @@ func configure(index: int, relic_data: ExpeditionRelicData, badge_diameter: floa
 	diameter = maxf(22.0, badge_diameter)
 	_apply_min_size()
 	if relic != null and not relic.display_name.is_empty():
-		tooltip_text = relic.display_name
+		tooltip_text = "%s（长按查看）" % relic.display_name
 	else:
 		tooltip_text = "空槽"
+	_reset_press_state()
 	queue_redraw()
 
 
 func is_occupied() -> bool:
 	return relic != null
+
+
+func is_info_long_press_active() -> bool:
+	return _info_shown
 
 
 func glyph_text() -> String:
@@ -59,19 +75,79 @@ func _apply_min_size() -> void:
 	custom_minimum_size = Vector2(diameter, diameter)
 
 
+func _process(_delta: float) -> void:
+	if relic == null:
+		_reset_press_state()
+		return
+	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
+		_info_shown = true
+		_press_ms = -1
+		long_press.emit(slot_index, relic)
+
+
 func _gui_input(event: InputEvent) -> void:
 	if relic == null:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-			pressed.emit(slot_index, relic)
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			_pressing = true
+			_press_ms = Time.get_ticks_msec()
+			_press_pos = mb.position
+			_info_shown = false
+			set_process(true)
 			accept_event()
+		elif _pressing:
+			var shown := _info_shown
+			var r := relic
+			var idx := slot_index
+			_reset_press_state()
+			if shown:
+				long_press_ended.emit(idx, r)
+			else:
+				## 短按仍发 pressed（不弹旧 Popup）；详情只走长按信息卡。
+				pressed.emit(idx, r)
+			accept_event()
+	elif event is InputEventMouseMotion and _pressing:
+		var motion := event as InputEventMouseMotion
+		if _press_ms >= 0 and not _info_shown and motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+			_press_ms = -1
 	elif event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
-			pressed.emit(slot_index, relic)
+			_pressing = true
+			_press_ms = Time.get_ticks_msec()
+			_press_pos = touch.position
+			_info_shown = false
+			set_process(true)
 			accept_event()
+		elif _pressing:
+			var shown_t := _info_shown
+			var r_t := relic
+			var idx_t := slot_index
+			_reset_press_state()
+			if shown_t:
+				long_press_ended.emit(idx_t, r_t)
+			else:
+				pressed.emit(idx_t, r_t)
+			accept_event()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_VISIBILITY_CHANGED:
+		if not is_visible_in_tree() and _info_shown and relic != null:
+			long_press_ended.emit(slot_index, relic)
+		if not is_visible_in_tree():
+			_reset_press_state()
+
+
+func _reset_press_state() -> void:
+	_pressing = false
+	_press_ms = -1
+	_info_shown = false
+	set_process(false)
 
 
 func _draw() -> void:
