@@ -57,10 +57,14 @@ func _build_choice_dicts() -> Array:
 	for i in _candidates.size():
 		var relic := _candidates[i]
 		var selected := i == _selected
+		var desc := _raw_description(relic)
 		out.append({
 			"id": StringName("relic_%d" % i),
 			"label": _format_label(relic),
-			"summary": _format_summary(relic),
+			"summary": StageChoiceBoard.truncate_preview(desc, 14),
+			"detail": _format_detail(relic, desc),
+			"kind_label": "圣物",
+			"tier": clampi(relic.tier, 1, 3) if relic != null else 0,
 			"selected": selected,
 			"meta": i,
 		})
@@ -73,11 +77,23 @@ func _format_label(relic: ExpeditionRelicData) -> String:
 	return "T%d · %s" % [clampi(relic.tier, 1, 3), relic.display_name]
 
 
-func _format_summary(relic: ExpeditionRelicData) -> String:
+func _raw_description(relic: ExpeditionRelicData) -> String:
 	if relic == null:
-		return ""
+		return "空槽"
 	var desc := relic.description.strip_edges() if relic.description != null else ""
+	if desc.is_empty():
+		return relic.display_name if not relic.display_name.is_empty() else "（暂无详细说明）"
 	return desc
+
+
+func _format_detail(relic: ExpeditionRelicData, desc: String = "") -> String:
+	if relic == null:
+		return "空槽。"
+	var body := desc if not desc.is_empty() else _raw_description(relic)
+	return "远征圣物 · %s\n%s\n\n点选后可放入行囊；行囊满时可换下旧件。长按本卡查看说明，松手不代表确认拿取。" % [
+		relic.display_name,
+		body,
+	]
 
 
 func _refresh_cards() -> void:

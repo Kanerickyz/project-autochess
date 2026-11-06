@@ -39,6 +39,20 @@ static func layout_choices(choices: Array, board_size: Vector2i, row_from_top: i
 
 
 ## 点选：先精确格，再同列上半场（卡片视觉占满敌半场高度）。
+## 卡片面短摘要；完整说明放 detail / 长按信息卡。
+static func truncate_preview(text: String, max_chars: int = 14) -> String:
+	var t := text.strip_edges()
+	if t.is_empty() or max_chars <= 0:
+		return t
+	## 只取首行，避免换行撑破单格。
+	var nl := t.find("\n")
+	if nl >= 0:
+		t = t.substr(0, nl).strip_edges()
+	if t.length() <= max_chars:
+		return t
+	return t.substr(0, maxi(1, max_chars - 1)) + "…"
+
+
 static func find_index_at(cards: Array, cell: Vector2i, board_size: Vector2i = Vector2i(5, 4)) -> int:
 	if cell.x < 0 or cell.y < 0:
 		return -1

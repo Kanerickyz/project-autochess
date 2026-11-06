@@ -268,6 +268,8 @@ var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
 var _map_shop_team_drag_id: int = -1
 var _map_shop_team_press_id: int = -1
+## 上半场 StageChoice 卡片按下下标（松手短选 / 长按详情）。
+var _stage_choice_press_index: int = -1
 ## 准备阶段座位拖换：按住已入座角色拖到目标座。
 var _prepare_team_drag_id: int = -1
 var _prepare_team_press_id: int = -1
@@ -381,6 +383,7 @@ func _notification(what: int) -> void:
 		_map_shop_offer_press_index = -1
 		_map_shop_team_drag_id = -1
 		_map_shop_team_press_id = -1
+		_stage_choice_press_index = -1
 		_prepare_team_drag_id = -1
 		_prepare_team_press_id = -1
 		_bench_press_id = -1
@@ -936,6 +939,13 @@ func _trim_feedback_for_unit(unit_id: int) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if stage_choice_active:
+		## 友方半场仍可拖座/长按详情；仅上半场走选项卡。
+		if _should_route_stage_choice_to_ally(event):
+			if recruit_active:
+				_gui_input_recruit(event)
+			else:
+				_gui_input_stage_choice_ally(event)
+			return
 		_gui_input_stage_choice(event)
 		return
 	if enchant_active:
@@ -2105,6 +2115,20 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
+	if stage_choice_active:
+		if recruit_team_slots != null:
+			for i in recruit_team_slots.cells.size():
+				var team_entry := recruit_team_slots.get_entry(i)
+				if team_entry != null:
+					var team_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + ally_off))
+		for ci in stage_choice_cards.size():
+			var choice_info := _info_from_stage_choice_index(ci, enemy_off)
+			if not choice_info.is_empty():
+				out.append(choice_info)
+		if recruit_active:
+			_append_bench_inspectables(out)
+		return out
 	if map_shop_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
@@ -3095,6 +3119,9 @@ func clear_stage_choice_mode() -> void:
 	stage_choice_active = false
 	stage_choice_cards.clear()
 	stage_choice_title = ""
+	_stage_choice_press_index = -1
+	_recruit_team_press_id = -1
+	_recruit_team_drag_id = -1
 	## 招募/商店可能仍占用 recruit_team_slots。
 	if not recruit_active and not map_shop_active:
 		recruit_team_slots = null
@@ -3476,10 +3503,12 @@ func _draw_stage_choice_cards(px: float, off: Vector2) -> void:
 			Color(0.95, 0.97, 0.96, 1.0),
 		)
 		if not summary.is_empty():
+			## 卡片面只露短摘要；完整文案走长按信息卡。
+			var preview := StageChoiceBoard.truncate_preview(summary, 14)
 			draw_string(
 				font,
 				Vector2(text_x, text_y + px * 0.42),
-				summary,
+				preview,
 				HORIZONTAL_ALIGNMENT_LEFT,
 				card_rect.size.x - px * 0.12,
 				summary_size,
@@ -3487,10 +3516,77 @@ func _draw_stage_choice_cards(px: float, off: Vector2) -> void:
 			)
 
 
+## 友方半场或已在拖队伍时，把 StageChoice 输入交给队伍路径。
+func _should_route_stage_choice_to_ally(event: InputEvent) -> bool:
+	if _recruit_team_drag_id >= 0 or _map_shop_team_drag_id >= 0:
+		return true
+	if _recruit_team_press_id >= 0 or _map_shop_team_press_id >= 0 or _bench_press_id >= 0:
+		return true
+	var pos := Vector2.INF
+	if event is InputEventMouseMotion:
+		pos = (event as InputEventMouseMotion).position
+	elif event is InputEventMouseButton:
+		pos = (event as InputEventMouseButton).position
+	if pos == Vector2.INF:
+		return false
+	return _is_pointer_on_ally_half(pos)
+
+
+func _is_pointer_on_ally_half(local_pos: Vector2) -> bool:
+	if bench_visible and is_pointer_over_bench(local_pos):
+		return true
+	var cell := tile_to_cell(local_to_tile(local_pos))
+	if cell == NO_CELL:
+		return false
+	return cell.y >= BoardHalf.midline_row(board_size.y)
+
+
+## StageChoice 纯选阶段：下半场队伍拖换座 / 长按详情（无招募会话时）。
+func _gui_input_stage_choice_ally(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_track_press_motion(motion.position)
+		if _recruit_team_drag_id >= 0:
+			_set_drag_pointer(motion.position)
+		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
+			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
+				_cancel_press()
+				_begin_recruit_team_drag(_recruit_team_press_id, motion.position)
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var cell := tile_to_cell(local_to_tile(mb.position))
+		if mb.pressed:
+			var entry_id := _find_recruit_team_entry_at(cell)
+			if entry_id >= 0:
+				_recruit_team_press_id = entry_id
+				_stage_choice_press_index = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+			return
+		if _info_shown:
+			_recruit_team_press_id = -1
+			_end_press()
+			accept_event()
+			return
+		if _end_press():
+			accept_event()
+		if _recruit_team_drag_id >= 0:
+			_finish_recruit_team_drag(cell, mb.position)
+			accept_event()
+			return
+		_recruit_team_press_id = -1
+
+
 func _gui_input_stage_choice(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_track_press_motion(motion.position)
 		queue_redraw()
 		accept_event()
 		return
@@ -3500,15 +3596,67 @@ func _gui_input_stage_choice(event: InputEvent) -> void:
 			return
 		var cell := tile_to_cell(local_to_tile(button.position))
 		if button.pressed:
-			_press_pos = button.position
+			_recruit_team_press_id = -1
+			var idx := StageChoiceBoard.find_index_at(stage_choice_cards, cell, board_size)
+			if idx >= 0:
+				_stage_choice_press_index = idx
+				## 短按选中；长按只看详情（松手不选）。
+				_begin_press(
+					button.position,
+					_info_from_stage_choice_index(idx, Vector2(0.0, enemy_half_slide_y)),
+					stage_choice_pressed.emit.bind(idx),
+				)
+			else:
+				_stage_choice_press_index = -1
 			accept_event()
 			return
-		## 松手：点选上半场卡片。
-		var idx := StageChoiceBoard.find_index_at(stage_choice_cards, cell, board_size)
-		if idx >= 0:
-			stage_choice_pressed.emit(idx)
-		accept_event()
+		if _info_shown:
+			_stage_choice_press_index = -1
+			_end_press()
+			accept_event()
+			queue_redraw()
+			return
+		## 短按：_end_press 触发 tap → stage_choice_pressed。
+		if _end_press():
+			accept_event()
+		_stage_choice_press_index = -1
 		queue_redraw()
+
+
+func _info_from_stage_choice_index(index: int, half_off: Vector2) -> Dictionary:
+	if index < 0 or index >= stage_choice_cards.size():
+		return {}
+	var raw: Variant = stage_choice_cards[index]
+	if not (raw is Dictionary):
+		return {}
+	var dict := raw as Dictionary
+	var cell: Vector2i = dict.get("cell", NO_CELL)
+	if cell == NO_CELL:
+		return {}
+	var mid := BoardHalf.midline_row(board_size.y)
+	## 卡片视觉占满敌半场高度，信息卡锚在列中心。
+	var center_tile := Vector2(float(cell.x) + 0.5, maxf(0.5, float(mid) * 0.5))
+	var center := tile_to_local(center_tile) + half_off
+	var detail := String(dict.get("detail", "")).strip_edges()
+	if detail.is_empty():
+		detail = String(dict.get("summary", "")).strip_edges()
+	if detail.is_empty():
+		detail = "长按可查看说明；点选确认。"
+	var kind := String(dict.get("kind_label", "选项"))
+	return {
+		"inspect_key": "stage_choice:%d" % index,
+		"center": center,
+		"name": String(dict.get("label", "选项")),
+		"side_player": true,
+		"tier": int(dict.get("tier", 0)),
+		"is_item": true,
+		"kind_label": kind,
+		"cost": 0,
+		"attack": 0,
+		"hp": 0,
+		"skills": detail,
+		"texture": dict.get("texture", null),
+	}
 
 
 func _draw_map_shop_offers(px: float, off: Vector2) -> void:
