@@ -67,6 +67,9 @@ static func run_all() -> bool:
 	_check("wardrum_turn_start_nearby_berserk_star2", _test_wardrum_turn_start_nearby_berserk_star2())
 	_check("armorer_turn_start_random_ally_armor", _test_armorer_turn_start_random_ally_armor())
 	_check("armorer_turn_start_random_ally_armor_star2", _test_armorer_turn_start_random_ally_armor_star2())
+	_check("armor_echo_block_reflect", _test_armor_echo_block_reflect())
+	_check("armor_mender_friend_armor_deplete_once", _test_armor_mender_friend_armor_deplete_once())
+	_check("armor_inspector_combat_start_weak", _test_armor_inspector_combat_start_weak())
 	_check("death_spawn_pack", _test_death_spawn_pack())
 	_check("death_spawn_pack_star2", _test_death_spawn_pack_star2())
 	_check("death_spawn_weak_copy_half", _test_death_spawn_weak_copy_half())
@@ -1560,6 +1563,145 @@ static func _wardrum_nearby_berserk_expect(star_level: int, expected_berserk: in
 		return false
 	if far.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BERSERK) != 0:
 		push_error("wardrum_berserk: far ally should have 0 berserk")
+		return false
+	return true
+
+
+## 甲响：护甲挡住时对施害者造成 1 伤害（每场最多 4 次）。
+static func _test_armor_echo_block_reflect() -> bool:
+	var data := _load_unit("res://resources/units/realtime/armor_echo.tres")
+	if data == null or data.ability == null or data.ability.id != "armor_block_reflect_1":
+		push_error("armor_echo: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("armor_echo: merge_value_mult expected 3")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	bus.combat_event.connect(resolver.on_event)
+	var echo := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
+	echo.armor_block = 3
+	var attacker := _dummy(UnitInstance.Team.ENEMY, 10, {"steps_per_turn": 0, "sight_range": 0.0})
+	attacker.grid_pos = Vector2i(5, 20)
+	grid.place(echo, Vector2i(4, 20))
+	grid.place(attacker, Vector2i(5, 20))
+	var atk_hp0 := attacker.current_hp
+	pipeline.apply_damage(attacker, echo, 3)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if echo.current_hp != echo.get_effective_max_hp():
+		push_error("armor_echo: hp should be full after block")
+		return false
+	if echo.get_armor_block() != 0:
+		push_error("armor_echo: armor should be depleted")
+		return false
+	if attacker.current_hp != atk_hp0 - 1:
+		push_error(
+			"armor_echo: attacker hp=%d expected %d"
+			% [attacker.current_hp, atk_hp0 - 1]
+		)
+		return false
+	return true
+
+
+## 修甲徒：友方甲尽时 +1 临时甲；同一目标每场仅一次。
+static func _test_armor_mender_friend_armor_deplete_once() -> bool:
+	var data := _load_unit("res://resources/units/realtime/armor_mender.tres")
+	if data == null or data.ability == null or data.ability.id != "armor_deplete_repair_1":
+		push_error("armor_mender: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("armor_mender: merge_value_mult expected 3")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	bus.combat_event.connect(resolver.on_event)
+	var mender := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
+	var ally := _dummy(UnitInstance.Team.PLAYER, 20, {"steps_per_turn": 0})
+	ally.grid_pos = Vector2i(5, 20)
+	ally.armor_block = 2
+	var ally2 := _dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally2", "steps_per_turn": 0})
+	ally2.grid_pos = Vector2i(6, 20)
+	ally2.armor_block = 1
+	grid.place(mender, Vector2i(4, 20))
+	grid.place(ally, Vector2i(5, 20))
+	grid.place(ally2, Vector2i(6, 20))
+	## 开战清空修甲记次。
+	var start_payload := CombatEventPayload.new()
+	resolver.on_event(CombatEvents.ON_COMBAT_START, start_payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	pipeline.apply_damage(null, ally, 2)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if ally.combat_temp_armor != 1:
+		push_error("armor_mender: ally temp armor=%d expected 1" % ally.combat_temp_armor)
+		return false
+	## 再次耗尽同一目标：不应再修。
+	pipeline.apply_damage(null, ally, 1)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if ally.combat_temp_armor != 0:
+		push_error("armor_mender: same target must not repair twice")
+		return false
+	## 另一友方仍可修一次。
+	pipeline.apply_damage(null, ally2, 1)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	if ally2.combat_temp_armor != 1:
+		push_error("armor_mender: second ally temp armor=%d expected 1" % ally2.combat_temp_armor)
+		return false
+	return true
+
+
+## 点检官：开战按有甲友方数（最多 2）对全体敌军叠虚弱。
+static func _test_armor_inspector_combat_start_weak() -> bool:
+	var data := _load_unit("res://resources/units/realtime/armor_inspector.tres")
+	if data == null or data.ability == null or data.ability.id != "combat_start_weak_per_armored_ally":
+		push_error("armor_inspector: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("armor_inspector: merge_value_mult expected 3")
+		return false
+	var bus := CombatEventBus.new()
+	var grid := BoardGrid.new()
+	grid.configure(Vector2i(18, 32))
+	var pipeline := DamagePipeline.new(bus, grid)
+	var resolver := EffectResolver.new(grid, bus, pipeline)
+	var inspector := UnitInstance.from_unit_data(data, Vector2i(4, 20), UnitInstance.Team.PLAYER)
+	inspector.armor_block = 1
+	var ally := _dummy(UnitInstance.Team.PLAYER, 20, {"steps_per_turn": 0})
+	ally.grid_pos = Vector2i(5, 20)
+	ally.armor_block = 2
+	var ally_bare := _dummy(UnitInstance.Team.PLAYER, 20, {"id": "bare", "steps_per_turn": 0})
+	ally_bare.grid_pos = Vector2i(6, 20)
+	var enemy := _dummy(UnitInstance.Team.ENEMY, 20, {"steps_per_turn": 0, "sight_range": 0.0})
+	enemy.grid_pos = Vector2i(4, 10)
+	var enemy2 := _dummy(UnitInstance.Team.ENEMY, 20, {"id": "e2", "steps_per_turn": 0, "sight_range": 0.0})
+	enemy2.grid_pos = Vector2i(5, 10)
+	grid.place(inspector, Vector2i(4, 20))
+	grid.place(ally, Vector2i(5, 20))
+	grid.place(ally_bare, Vector2i(6, 20))
+	grid.place(enemy, Vector2i(4, 10))
+	grid.place(enemy2, Vector2i(5, 10))
+	## 有甲友方：inspector + ally = 2 → 虚弱 2 层（cap）。
+	var payload := CombatEventPayload.new()
+	resolver.on_event(CombatEvents.ON_COMBAT_START, payload)
+	while resolver.has_pending_steps():
+		resolver.process_next_step()
+	var weak1 := enemy.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	var weak2 := enemy2.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
+	if weak1 != 2 or weak2 != 2:
+		push_error(
+			"armor_inspector: enemy weak=%d/%d expected 2/2"
+			% [weak1, weak2]
+		)
 		return false
 	return true
 

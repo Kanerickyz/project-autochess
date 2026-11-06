@@ -44,7 +44,9 @@ func apply_damage(
 		adjusted = CombatStatusStack.adjust_attack_damage(adjusted, source)
 	adjusted = CombatStatusStack.adjust_incoming_before_armor(adjusted, target)
 	## MAP_SHOP §5.1：护甲抵消后最终扣血为 0 → 不扣血、不发受伤类触发。
+	var armor_before := target.get_armor_block()
 	var final_amount := target.mitigate_incoming_damage(adjusted)
+	_emit_armor_mitigation_events(source, target, armor_before, adjusted, final_amount)
 	if final_amount <= 0:
 		return
 
@@ -75,6 +77,29 @@ func apply_damage(
 		if source != null:
 			_bus.emit_event(CombatEvents.ON_KILL, payload)
 			_bus.emit_event(CombatEvents.ON_FRIEND_KILL, payload)
+
+
+## 有甲挡伤：发 OnArmorBlocked；挡后甲归零时同击再发 OnArmorDepleted / OnFriendArmorDepleted。
+func _emit_armor_mitigation_events(
+	source: UnitInstance,
+	target: UnitInstance,
+	armor_before: int,
+	attempted: int,
+	final_amount: int,
+) -> void:
+	if _bus == null or target == null:
+		return
+	if armor_before <= 0 or attempted <= 0 or final_amount != 0:
+		return
+	var payload := CombatEventPayload.new()
+	payload.source = source
+	payload.target = target
+	payload.amount = attempted
+	_bus.emit_event(CombatEvents.ON_ARMOR_BLOCKED, payload)
+	if target.get_armor_block() != 0:
+		return
+	_bus.emit_event(CombatEvents.ON_ARMOR_DEPLETED, payload)
+	_bus.emit_event(CombatEvents.ON_FRIEND_ARMOR_DEPLETED, payload)
 
 
 func apply_rolled_damage(
