@@ -42,6 +42,8 @@ signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
 signal bench_empty_pressed(slot_index: int)
+## 阶段选择题：点上半场选项卡片。
+signal stage_choice_pressed(index: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -181,6 +183,11 @@ var recruit_active: bool = false
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
 var map_shop_offers: Array = []
+## 阶段选择题：上半场选项卡片（店|事 / 主题 / 圣物等），下半场 AllyBoard 常驻。
+var stage_choice_active: bool = false
+## Array[Dictionary]：{index, id, label, summary?, selected?, cell, meta?}
+var stage_choice_cards: Array = []
+var stage_choice_title: String = ""
 ## 附魔：上炉下队；上半场熔炉三格，下半场 AllyBoard。
 var enchant_active: bool = false
 var enchant_forge_previews: Array = []
@@ -928,6 +935,9 @@ func _trim_feedback_for_unit(unit_id: int) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if stage_choice_active:
+		_gui_input_stage_choice(event)
+		return
 	if enchant_active:
 		_gui_input_enchant(event)
 		return
@@ -2709,13 +2719,14 @@ func _can_prepare_seat_drag() -> bool:
 		and not catalog_active
 		and not recruit_active
 		and not map_shop_active
+		and not stage_choice_active
 		and not enchant_active
 		and (sim == null or not sim.has_started())
 	)
 
 
 func _can_drag_prepare_or_bench() -> bool:
-	if catalog_active or map_shop_active or enchant_active:
+	if catalog_active or map_shop_active or stage_choice_active or enchant_active:
 		return false
 	if recruit_active:
 		return bench_interactive
@@ -3079,9 +3090,23 @@ func clear_map_shop_mode() -> void:
 	queue_redraw()
 
 
+func clear_stage_choice_mode() -> void:
+	_cancel_press()
+	stage_choice_active = false
+	stage_choice_cards.clear()
+	stage_choice_title = ""
+	## 招募/商店可能仍占用 recruit_team_slots。
+	if not recruit_active and not map_shop_active:
+		recruit_team_slots = null
+	queue_redraw()
+
+
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
+	stage_choice_active = false
+	stage_choice_cards.clear()
+	stage_choice_title = ""
 	## 地图商店复用 recruit_team_slots 画下半场队伍；清招募时勿误清商店。
 	if not map_shop_active:
 		recruit_team_slots = null
@@ -3226,6 +3251,11 @@ func _draw() -> void:
 
 	if catalog_active:
 		_draw_catalog_units(px)
+	elif stage_choice_active:
+		_draw_stage_choice_zone_labels(px, mid, enemy_off, ally_off)
+		_draw_stage_choice_cards(px, enemy_off)
+		_draw_recruit_team(px, ally_off)
+		_draw_bench_row(px)
 	elif enchant_active:
 		_draw_enchant_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_enchant_forge(px, enemy_off)
@@ -3390,6 +3420,95 @@ func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_of
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
 	draw_string(font, top_pos, "商店货架", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+
+
+func _draw_stage_choice_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
+	var rect := get_board_rect()
+	var font := get_theme_default_font()
+	var font_size := clampi(int(px * 0.55), 11, 18)
+	var title := stage_choice_title if not stage_choice_title.is_empty() else "选择"
+	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.55)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	draw_string(font, top_pos, title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.95))
+	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+
+
+func _draw_stage_choice_cards(px: float, off: Vector2) -> void:
+	var font := get_theme_default_font()
+	var title_size := clampi(int(px * 0.42), 12, 22)
+	var summary_size := clampi(int(px * 0.28), 10, 14)
+	var board_pos := get_board_rect().position
+	var mid := BoardHalf.midline_row(board_size.y)
+	## 卡片占满敌半场高度，避免单格挤字。
+	var card_h := maxf(px * 0.85, float(mid) * px - px * 0.2)
+	for i in stage_choice_cards.size():
+		var info: Variant = stage_choice_cards[i]
+		if not (info is Dictionary):
+			continue
+		var dict := info as Dictionary
+		var cell: Vector2i = dict.get("cell", NO_CELL)
+		if cell == NO_CELL:
+			continue
+		var selected := bool(dict.get("selected", false))
+		var pad := px * 0.08
+		var cell_origin := board_pos + Vector2(cell.x, 0) * px + off
+		var card_rect := Rect2(
+			cell_origin + Vector2(pad, pad),
+			Vector2(px - pad * 2.0, card_h - pad * 2.0),
+		)
+		var fill := Color(0.14, 0.18, 0.16, 0.92)
+		var border := Color(0.45, 0.72, 0.62, 1.0) if selected else Color(0.35, 0.50, 0.45, 0.95)
+		if selected:
+			fill = Color(0.18, 0.28, 0.24, 0.96)
+		draw_rect(card_rect, fill, true)
+		draw_rect(card_rect, border, false, 2.5 if selected else 1.5)
+		var label := String(dict.get("label", ""))
+		var summary := String(dict.get("summary", ""))
+		var text_x := card_rect.position.x + px * 0.08
+		var text_y := card_rect.position.y + px * 0.36
+		draw_string(
+			font,
+			Vector2(text_x, text_y),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			card_rect.size.x - px * 0.12,
+			title_size,
+			Color(0.95, 0.97, 0.96, 1.0),
+		)
+		if not summary.is_empty():
+			draw_string(
+				font,
+				Vector2(text_x, text_y + px * 0.42),
+				summary,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				card_rect.size.x - px * 0.12,
+				summary_size,
+				Color(0.82, 0.88, 0.84, 0.95),
+			)
+
+
+func _gui_input_stage_choice(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		queue_redraw()
+		accept_event()
+		return
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var cell := tile_to_cell(local_to_tile(button.position))
+		if button.pressed:
+			_press_pos = button.position
+			accept_event()
+			return
+		## 松手：点选上半场卡片。
+		var idx := StageChoiceBoard.find_index_at(stage_choice_cards, cell, board_size)
+		if idx >= 0:
+			stage_choice_pressed.emit(idx)
+		accept_event()
+		queue_redraw()
 
 
 func _draw_map_shop_offers(px: float, off: Vector2) -> void:

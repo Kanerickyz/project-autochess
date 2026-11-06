@@ -14,8 +14,10 @@ signal recruit_finished(kept_changes: bool)
 signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
+## 上半场选项卡片点选（id 为选项 StringName；index 为卡片下标）。
+signal stage_choice_picked(choice_id: StringName, index: int)
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP, STAGE_CHOICE }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -254,6 +256,7 @@ func _ready() -> void:
 	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
 	_arena.map_shop_offer_drop.connect(_on_map_shop_offer_drop)
 	_arena.map_shop_team_seat_drop.connect(_on_map_shop_team_seat_drop)
+	_arena.stage_choice_pressed.connect(_on_stage_choice_pressed)
 	_arena.prepare_team_seat_drop.connect(_on_prepare_team_seat_drop)
 	_arena.prepare_team_bench_drop.connect(_on_prepare_team_bench_drop)
 	_arena.bench_pressed.connect(_on_bench_pressed)
@@ -1502,6 +1505,97 @@ func _on_enchant_session_finished(did_fuse: bool) -> void:
 
 func is_enchant_sandbox_mode() -> bool:
 	return _enchant_sandbox_mode
+
+
+## 上半场选项卡片 + 下半场 AllyBoard 常驻（店|事 / 圣物等纯选择题）。
+## choices: Array[Dictionary] {id:StringName, label:String, summary?:String, selected?:bool, meta?:Variant}
+func enter_stage_choice(title: String, choices: Array, enter_seconds: float = 0.0) -> void:
+	if not is_node_ready():
+		await ready
+	_set_phase(Phase.STAGE_CHOICE)
+	set_world_backdrop_mode(false)
+	_hide_combat_chrome_for_recruit()
+	_rebuild_recruit_team_slots()
+	if _arena != null:
+		_arena.clear_recruit_mode()
+		_arena.clear_map_shop_mode()
+		_arena.clear_enchant_mode()
+		_arena.stage_choice_active = true
+		_arena.stage_choice_title = title
+		_arena.stage_choice_cards = StageChoiceBoard.layout_choices(choices, _board_size, 0)
+		_arena.recruit_team_slots = _recruit_team_slots
+		_arena.bench_visible = false
+		_arena.enemy_slots = null
+		_arena.enemy_previews = []
+		_arena.sim = null
+		_arena.prepare_slots = null
+		_arena.ally_half_slide_y = 0.0
+		if enter_seconds > 0.001:
+			var travel := _half_slide_travel()
+			_arena.set_stage_half_slide_offscreen(travel)
+			await _play_half_field_enter_animation(enter_seconds)
+		else:
+			_arena.enemy_half_slide_y = 0.0
+		_arena.queue_redraw()
+	_refresh_hud()
+	if _phase_label != null:
+		_phase_label.text = title if not title.is_empty() else "选择"
+		_phase_label.modulate = Color.WHITE
+
+
+func exit_stage_choice() -> void:
+	if _arena != null:
+		_arena.clear_stage_choice_mode()
+		_arena.reset_half_slide()
+	_restore_combat_chrome_after_recruit()
+	if _phase == Phase.STAGE_CHOICE:
+		_set_phase(Phase.IDLE)
+
+
+func refresh_stage_choice_cards(choices: Array, title: String = "") -> void:
+	if _arena == null:
+		return
+	if not title.is_empty():
+		_arena.stage_choice_title = title
+	_arena.stage_choice_cards = StageChoiceBoard.layout_choices(choices, _board_size, 0)
+	_arena.stage_choice_active = true
+	_arena.queue_redraw()
+
+
+func _on_stage_choice_pressed(index: int) -> void:
+	if _arena == null:
+		return
+	## 招募主题盘：阶段仍是 RECRUIT，但上半场为 stage_choice 卡片。
+	if _phase == Phase.RECRUIT and _recruit_session != null:
+		_on_recruit_theme_card_pressed(index)
+		return
+	if _phase != Phase.STAGE_CHOICE:
+		return
+	if index < 0 or index >= _arena.stage_choice_cards.size():
+		return
+	var info: Variant = _arena.stage_choice_cards[index]
+	if not (info is Dictionary):
+		return
+	var choice_id: StringName = (info as Dictionary).get("id", &"")
+	stage_choice_picked.emit(choice_id, index)
+
+
+func _on_recruit_theme_card_pressed(index: int) -> void:
+	if _recruit_session == null or not _recruit_session.theme_commitment_required:
+		return
+	if _recruit_session.has_committed_theme():
+		return
+	if index < 0 or index >= _arena.stage_choice_cards.size():
+		return
+	var info: Variant = _arena.stage_choice_cards[index]
+	if not (info is Dictionary):
+		return
+	var theme_id: StringName = (info as Dictionary).get("id", &"")
+	if not _recruit_session.commit_theme(theme_id):
+		return
+	_clear_recruit_theme_cards()
+	_sync_recruit_arena()
+	_refresh_recruit_hud()
 
 
 ## 地图商店：上半场货架、下半场 AllyBoard 常驻；规则走 MapShopService。
@@ -2766,8 +2860,21 @@ func _sync_recruit_arena() -> void:
 	_rebuild_recruit_team_slots()
 	_arena.recruit_active = true
 	_arena.recruit_team_slots = _recruit_team_slots
-	_arena.recruit_candidates = _build_recruit_candidate_previews()
-	_arena.recruit_items = _build_recruit_item_previews()
+	var theme_pending := (
+		_recruit_session.theme_commitment_required
+		and not _recruit_session.has_committed_theme()
+	)
+	if theme_pending:
+		_arena.recruit_candidates = []
+		_arena.recruit_items = []
+		_arena.recruit_sell_cell = NO_CELL
+		_arena.recruit_lock_cell = NO_CELL
+	else:
+		_clear_recruit_theme_cards()
+		_arena.recruit_candidates = _build_recruit_candidate_previews()
+		_arena.recruit_items = _build_recruit_item_previews()
+		_arena.recruit_sell_cell = _build_recruit_sell_cell()
+		_arena.recruit_lock_cell = _build_recruit_lock_cell()
 	_arena.recruit_selected_candidate = _recruit_selected_candidate
 	_arena.recruit_selected_replace_id = _recruit_selected_replace_id
 	## 按当前选中/拖动候选人判断；满员但可三合一时不进换人态。
@@ -2778,14 +2885,14 @@ func _sync_recruit_arena() -> void:
 	else:
 		_arena.recruit_needs_replace = _recruit_session.needs_replace()
 	_arena.recruit_pending_item_slot = _recruit_pending_item_slot
-	_arena.recruit_sell_cell = _build_recruit_sell_cell()
-	_arena.recruit_lock_cell = _build_recruit_lock_cell()
 	_arena.prepare_slots = null
 	_arena.enemy_slots = null
 	_arena.enemy_previews = []
 	_arena.sim = null
 	_arena.placement_active = false
 	_sync_arena_bench()
+	if theme_pending:
+		_sync_recruit_theme_cards()
 	_arena.queue_redraw()
 
 
@@ -2799,9 +2906,14 @@ func _rebuild_recruit_team_slots() -> void:
 			seat_cols = config.get_seat_cols()
 	## AllyBoard 常驻下半场：与准备同一友方座位几何（enemy_side=false）。
 	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, false)
-	if _recruit_session == null or _recruit_session.deck == null:
+	## 招募会话优先；StageChoice（店|事/圣物）等阶段回落到战斗牌库。
+	var deck: DeckState = null
+	if _recruit_session != null and _recruit_session.deck != null:
+		deck = _recruit_session.deck
+	elif _deck_state != null:
+		deck = _deck_state
+	if deck == null:
 		return
-	var deck := _recruit_session.deck
 	## 只放已入座成员；备战不自动填友方空座。
 	for entry in deck.get_entries():
 		if entry == null or entry.seat_index < 0:
@@ -3306,42 +3418,46 @@ func _try_show_party_bark_after_recruit() -> void:
 	_arena.show_party_bark(bark.speaker_unit_id, bark.line)
 
 
-func _ensure_theme_commitment_panel() -> void:
-	if _theme_commitment_panel != null and is_instance_valid(_theme_commitment_panel):
-		return
-	_theme_commitment_panel = ThemeCommitmentPanel.new()
-	_theme_commitment_panel.name = "ThemeCommitmentPanel"
-	_theme_commitment_panel.theme_committed.connect(_on_theme_committed)
-	_theme_commitment_panel.theme_reroll_pressed.connect(_on_theme_panel_reroll)
-	add_child(_theme_commitment_panel)
-	## 盖在 Layout / Dock / ResultOverlay 之上（与结算遮罩同级全屏）。
-	_theme_commitment_panel.z_index = 50
-	_theme_commitment_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-
 func _maybe_show_theme_commitment() -> void:
-	if _recruit_session == null:
-		return
-	if not _recruit_session.theme_commitment_required:
-		return
-	if _recruit_session.has_committed_theme():
-		return
-	_ensure_theme_commitment_panel()
-	_theme_commitment_panel.show_for_session(_recruit_session)
+	## 主题三选一改为上半场卡片；全屏 ThemeCommitmentPanel 不再弹出。
+	_sync_recruit_theme_cards()
 
 
 func _hide_theme_commitment() -> void:
+	_clear_recruit_theme_cards()
 	if _theme_commitment_panel != null and is_instance_valid(_theme_commitment_panel):
 		_theme_commitment_panel.hide_panel()
 
 
-func _on_theme_committed(_theme_id: StringName) -> void:
-	_sync_recruit_arena()
-	_refresh_recruit_hud()
+func _sync_recruit_theme_cards() -> void:
+	if _arena == null or _recruit_session == null:
+		return
+	if not _recruit_session.theme_commitment_required or _recruit_session.has_committed_theme():
+		_clear_recruit_theme_cards()
+		return
+	var raw: Array = []
+	for theme_id in _recruit_session.get_theme_offers():
+		raw.append({
+			"id": theme_id,
+			"label": UnitTheme.display_name(theme_id),
+			"summary": "主/辅匹配该主题",
+		})
+	_arena.stage_choice_title = "选择主题"
+	_arena.stage_choice_cards = StageChoiceBoard.layout_choices(raw, _board_size, 0)
+	_arena.stage_choice_active = true
+	## 主题未定时不展示候选人货架，避免误点。
+	_arena.recruit_candidates = []
+	_arena.recruit_items = []
+	_arena.queue_redraw()
 
 
-func _on_theme_panel_reroll() -> void:
-	_refresh_recruit_hud()
+func _clear_recruit_theme_cards() -> void:
+	if _arena == null:
+		return
+	if _phase == Phase.RECRUIT:
+		_arena.stage_choice_active = false
+		_arena.stage_choice_cards.clear()
+		_arena.stage_choice_title = ""
 
 
 func _on_recruit_theme_reroll_pressed() -> void:
@@ -3356,7 +3472,7 @@ func _on_recruit_theme_reroll_pressed() -> void:
 		return
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
-	_maybe_show_theme_commitment()
+	_sync_recruit_theme_cards()
 
 
 func _on_recruit_refresh_pressed() -> void:
@@ -4226,6 +4342,11 @@ func _refresh_hud() -> void:
 			_phase_label.text = "附魔"
 		Phase.MAP_SHOP:
 			_phase_label.text = "商店"
+		Phase.STAGE_CHOICE:
+			if _arena != null and not _arena.stage_choice_title.is_empty():
+				_phase_label.text = _arena.stage_choice_title
+			else:
+				_phase_label.text = "选择"
 		_:
 			_phase_label.text = "等待"
 

@@ -15,6 +15,7 @@ description: Enforces BattleShell band layout, Panel/Popup widget contracts, and
 
 1. **友方半场常驻底部**：准备 / 战斗 / 招募 / 地图商店 / 附魔不得把 AllyBoard slide 出屏，不得把队伍画到上半场（禁止 `configure_grid(..., enemy_side=true)` 仅用于「把队伍画上去」）。
 2. **阶段内容占上半场**：招募候选人、商店货架、熔炉槽 → EnemyOrStageBoard；AllyBoard 只绑友方座位数据源。
+2b. **玩家选择题优先上半场卡片**：店|事、主题三选一、圣物三选一等用 `StageChoiceBoard` / `enter_stage_choice` 画在敌半场；**禁止**再弹全屏纯 UI 选择题窗（Run 结束结算除外）。
 3. **棋盘几何**：默认 `board_size = Vector2i(5, 4)`；`DeckConfig` 座位默认 `seat_rows=2`、`seat_cols=5`。
 4. **Widget 分层**：ShellPanel / FloatingPanel / Popup / ModalScreen / Toast——见 `feature-ui-shell`；新 UI **禁止**脚本内私建 `StyleBoxFlat.new()` 充当主题色，须 Theme type variation 或 `scripts/ui/kit/` 工厂。
 5. **Primary CTA 唯一**：每阶段 Dock/浮层只强调一个主按钮样式（`Primary`）。
