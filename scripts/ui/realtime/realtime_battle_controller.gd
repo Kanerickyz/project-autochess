@@ -3563,7 +3563,7 @@ func _try_show_party_bark_after_recruit() -> void:
 
 
 func _maybe_show_theme_commitment() -> void:
-	## 主题三选一改为上半场卡片；全屏 ThemeCommitmentPanel 不再弹出。
+	## 主路径不做主题三选一；保留函数以免旧调用链空引用。
 	_sync_recruit_theme_cards()
 
 

@@ -10,12 +10,12 @@
 - **提出需求时先问验收方式**（见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「验收方式」）：**轻量** = `bash tools/run_light_verify.sh` 加载通过即可，效果由用户验；**完全** = 现行 runner + 按 L 级 QA/GUI。未指定先问再做。
 
 ## 游戏约束
-- 关卡制 / 爬塔 PvE 自走棋：**无地图选路**；线性远征层；**主题承诺招募**养成**队伍**、**准备站位入角色座位**（席位内全体上场；座位默认 **2×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**；普通/精英胜后 **商店或事件二选一** 再主题招募（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌。新增 PVP 或单位微操走位需明确设计需求。
+- 关卡制 / 爬塔 PvE 自走棋：**无地图选路**；线性远征层；**短名单招募**养成**队伍**（**不**按主题/羁绊锁池购人；候选人随品阶解锁在全池抽取）、**准备站位入角色座位**（席位内全体上场；座位默认 **2×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**；普通/精英胜后 **商店或事件二选一** 再招募（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌。新增 PVP 或单位微操走位需明确设计需求。主题标签仍用于**上场主题羁绊**与技能筛选，与招募货架过滤脱钩。
 - **主题羁绊**（护卫 / 骑士团 / 战士 / 工匠 / 亡灵 / 军乐队 / 秘术 / 佣兵）为本版设定，见 Notion Doc ID `feature-unit-theme-bonds`（指针 [Documents/Features/UNIT_THEME_BONDS.md](Documents/Features/UNIT_THEME_BONDS.md)）。流派玩法轴仍来自单位内建技能、增益卡与站位。战斗内同主题团队增益须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
 - 战场 To-Be 为 **5×4** 逻辑格网（竖屏、我下敌上）+ 双方 **2×5** 角色座位（铺满半场）；准备入座用座位吸附；开战后为**回合制自动战**：敌我**混排**固定行动队列、每回合同序依次行动；每一动尽量「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**，可越半场）。单动演出可压短，观战可加速。不用六边形；不做钉座对撞主路径；不做出手条/速度条主交付。主路径时钟 As-Is 已在 `scripts/combat/realtime/` 落地为行动队列（非全员并行）。旧网格工具环（`main.tscn`）仍用 `BoardGrid`，勿当新主路径交付标准。
-- **UI 壳 To-Be（大巴扎式平铺）**：竖屏带状壳；**友方半场跨阶段常驻底部**（招募/商店/附魔/StageChoice 不得把队伍挪到上半场或 slide 出屏）；阶段货架/候选人/选项卡占上半场；**玩家纯 UI 选择题**（店|事 / 主题三选一 / 圣物三选一）优先画成上半场 `StageChoice` 卡片，避免全屏选择题窗（Run 结算除外）。**检视统一**：单位与**圣物**（行囊徽章长按、StageChoice 圣物卡）共用 Arena `RealtimeUnitInfoCard` + `ExpeditionRelicInfo`，禁止独立圣物 Popup。Widget 契约与 Theme 规则见 Notion Doc ID `feature-ui-shell`（指针 [Documents/Features/UI_SHELL.md](Documents/Features/UI_SHELL.md)）与技能 `.cursor/skills/ui-shell/`；触控/动效另遵 `.cursor/skills/apple-hig/`（含长按检视 §3.6）。
+- **UI 壳 To-Be（大巴扎式平铺）**：竖屏带状壳；**友方半场跨阶段常驻底部**（招募/商店/附魔/StageChoice 不得把队伍挪到上半场或 slide 出屏）；阶段货架/候选人/选项卡占上半场；**玩家纯 UI 选择题**（店|事 / 圣物三选一）优先画成上半场 `StageChoice` 卡片，避免全屏选择题窗（Run 结算除外）；**本版招募不做主题三选一**。**检视统一**：单位与**圣物**（行囊徽章长按、StageChoice 圣物卡）共用 Arena `RealtimeUnitInfoCard` + `ExpeditionRelicInfo`，禁止独立圣物 Popup。Widget 契约与 Theme 规则见 Notion Doc ID `feature-ui-shell`（指针 [Documents/Features/UI_SHELL.md](Documents/Features/UI_SHELL.md)）与技能 `.cursor/skills/ui-shell/`；触控/动效另遵 `.cursor/skills/apple-hig/`（含长按检视 §3.6）。
 - 数值优先改 `resources/` 下的 `.tres`（单位、技能、波次、经济、增益、牌库、商店池），避免新增重复硬编码。
 - 主题是中世纪幻想 2D（设定定稿；单位命名/美术可能仍为旧动物占位）；表现与逻辑分离，战斗结果不依赖帧率。
 

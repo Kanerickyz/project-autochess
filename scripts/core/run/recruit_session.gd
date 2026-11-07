@@ -35,11 +35,11 @@ var map_floor_count: int = TierUnlock.DEFAULT_FLOOR_COUNT
 var forward_tier_unlock: bool = false
 ## 开局招募：完成须 ≥1 已入座，且禁用跳过；胜后招募保持 false。
 var require_nonempty_roster: bool = false
-## 进入短名单前须主题三选一（胜后招募主路径）；开局招募关掉，全 T1 池随机。
+## 历史开关：为 true 时先主题三选一再锁池。主路径恒 false（全解锁品阶池）。
 var theme_commitment_required: bool = false
-## 本阶段已承诺主题；未承诺时候选人为空。
+## 已承诺主题（仅 theme_commitment_required 时有效）；主路径保持空。
 var committed_theme: StringName = &""
-## 当前主题盘三选一。
+## 主题盘三选一（仅 theme_commitment_required 时滚动）；主路径保持空。
 var theme_offers: Array[StringName] = []
 
 var _snapshot_gold: int = 0
