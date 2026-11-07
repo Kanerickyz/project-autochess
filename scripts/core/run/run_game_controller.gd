@@ -340,8 +340,7 @@ func _open_opening_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = true
-	## 开局不选主题/羁绊：在全部已解锁品阶池随机（第 0 层尺 → 仅 T1）。
-	## 胜后招募仍走主题三选一（见 _open_recruit）。
+	## 招募不按主题/羁绊锁池：在已解锁品阶全池随机（开局第 0 层尺 → 仅 T1）。
 	_recruit_session.theme_commitment_required = false
 	_recruit_session.forward_tier_unlock = _is_endless()
 	## 开局：第 0 层尺 → 仅 T1。
@@ -495,7 +494,8 @@ func _open_recruit() -> void:
 	rng.seed = _rng.randi()
 	_recruit_session.configure(recruit_config, deck_state, run_economy, rng, relic_bag)
 	_recruit_session.require_nonempty_roster = false
-	_recruit_session.theme_commitment_required = not _is_endless()
+	## 胜后招募同样不按主题/羁绊过滤；品阶仍随层号解锁。
+	_recruit_session.theme_commitment_required = false
 	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(
 		_recruit_progress_ratio(),

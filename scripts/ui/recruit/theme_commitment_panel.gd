@@ -1,6 +1,6 @@
 class_name ThemeCommitmentPanel
 extends Control
-## 招募主题三选一 + 重 roll（2 金）。未选主题前挡住短名单。
+## 历史 UI：主题三选一 + 重 roll。主路径 theme_commitment_required=false，不再弹出。
 ## 布局对齐 RunEndOverlay：全屏遮罩 + CenterContainer 居中面板。
 
 signal theme_committed(theme_id: StringName)

@@ -35,6 +35,7 @@ static func run_all() -> bool:
 	passed = _test_theme_reroll_costs_two_gold() and passed
 	passed = _test_opening_floor_zero_tiers() and passed
 	passed = _test_opening_skips_theme_uses_full_t1_pool() and passed
+	passed = _test_post_battle_skips_theme_uses_unlocked_pool() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -1412,54 +1413,74 @@ static func _test_opening_floor_zero_tiers() -> bool:
 
 
 static func _test_opening_skips_theme_uses_full_t1_pool() -> bool:
-	## 开局：不要求主题承诺；候选人立刻从全 T1 池抽出（可跨羁绊）。
+	## 开局：不按主题锁池；候选人立刻从全 T1 池抽出。
+	return _assert_recruit_skips_theme_full_pool(
+		true, 0, "opening", 1
+	)
+
+
+static func _test_post_battle_skips_theme_uses_unlocked_pool() -> bool:
+	## 胜后招募：同样不按主题锁池；第 4 层起可出 T2。
+	return _assert_recruit_skips_theme_full_pool(
+		false, 4, "post_battle", 2
+	)
+
+
+static func _assert_recruit_skips_theme_full_pool(
+	require_nonempty: bool,
+	map_floor: int,
+	label: String,
+	max_tier: int,
+) -> bool:
 	var deck := _make_deck([])
-	var economy := _make_economy(6)
+	var economy := _make_economy(20)
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 77
+	rng.seed = 77 if require_nonempty else 88
 	session.configure(_make_config(), deck, economy, rng)
-	session.require_nonempty_roster = true
+	session.require_nonempty_roster = require_nonempty
 	session.theme_commitment_required = false
-	session.begin(0.0, 0, 14)
+	session.begin(0.0, map_floor, 14)
 	if session.get_theme_offers().size() != 0:
-		push_error("RecruitSessionTest: opening without theme must not roll theme offers")
+		push_error("RecruitSessionTest: %s without theme must not roll theme offers" % label)
 		return false
 	if session.theme_commitment_required:
-		push_error("RecruitSessionTest: opening theme_commitment_required must stay false")
+		push_error("RecruitSessionTest: %s theme_commitment_required must stay false" % label)
 		return false
 	var cands := session.get_candidates()
 	if cands.size() != RecruitSession.CANDIDATE_COUNT:
-		push_error("RecruitSessionTest: opening should roll 3 candidates without theme")
+		push_error("RecruitSessionTest: %s should roll 3 candidates without theme" % label)
 		return false
 	var themes_seen: Dictionary = {}
 	for unit in cands:
 		if unit == null:
-			push_error("RecruitSessionTest: opening candidate slot empty without theme gate")
+			push_error("RecruitSessionTest: %s candidate slot empty without theme gate" % label)
 			return false
-		if unit.tier != 1:
+		if unit.tier < 1 or unit.tier > max_tier:
 			push_error(
-				"RecruitSessionTest: opening floor0 candidate must be T1, got %s tier=%d"
-				% [unit.id, unit.tier]
+				"RecruitSessionTest: %s floor%d candidate tier out of 1..%d, got %s tier=%d"
+				% [label, map_floor, max_tier, unit.id, unit.tier]
 			)
 			return false
 		for tid in unit.get_theme_ids():
 			themes_seen[tid] = true
-	## 多次重抽：全池应能见到不同主题（非单一羁绊过滤）。
 	for _i in 40:
 		session.try_refresh()
 		for unit in session.get_candidates():
 			if unit == null:
 				continue
-			if unit.tier != 1:
-				push_error("RecruitSessionTest: refresh opening pool must stay T1")
+			if unit.tier < 1 or unit.tier > max_tier:
+				push_error(
+					"RecruitSessionTest: %s refresh pool must stay tier<=%d"
+					% [label, max_tier]
+				)
 				return false
 			for tid in unit.get_theme_ids():
 				themes_seen[tid] = true
 	if themes_seen.size() < 2:
 		push_error(
-			"RecruitSessionTest: opening full T1 pool should span multiple themes, got %s"
-			% str(themes_seen.keys())
+			"RecruitSessionTest: %s unlocked pool should span multiple themes, got %s"
+			% [label, str(themes_seen.keys())]
 		)
 		return false
 	return true
