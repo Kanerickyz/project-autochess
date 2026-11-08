@@ -37,7 +37,7 @@ var _event_relic_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
 var _opening_recruit_pending: bool = false
 var _suppress_map_show: bool = false
-## 主模式线性：战后店|事二选一尚未完成（完成后进主题招募，再 complete）。
+## 主模式线性：战后店|事|跳过尚未完成（完成后进短名单招募，再 complete）。
 var _linear_post_battle_pending: bool = false
 var _shop_or_event_panel: ShopOrEventChoicePanel
 var _relic_stage_choice: RelicStageChoice
@@ -285,7 +285,7 @@ func _on_encounter_completed(won: bool) -> void:
 		run_controller.complete_encounter()
 		return
 
-	## 主模式线性：普通/精英胜 → 店|事二选一 → 主题招募 → 下一层。
+	## 主模式线性：普通/精英胜 → 店|事|跳过 → 短名单招募 → 下一层。
 	if _is_linear_main():
 		_linear_post_battle_pending = true
 		await _open_shop_or_event_choice()
@@ -319,10 +319,14 @@ func _open_shop_or_event_choice() -> void:
 func _on_shop_or_event_chosen(choice: StringName) -> void:
 	if not _linear_post_battle_pending:
 		return
-	if choice == ShopOrEventChoicePanel.CHOICE_EVENT:
-		await _open_event_relic_offer_for_linear_choice()
-	else:
-		await _open_map_shop_for_linear_choice()
+	match choice:
+		ShopOrEventChoicePanel.CHOICE_EVENT:
+			await _open_event_relic_offer_for_linear_choice()
+		ShopOrEventChoicePanel.CHOICE_SKIP:
+			## 跳过商店与事件，直接进短名单招募。
+			await _open_recruit()
+		_:
+			await _open_map_shop_for_linear_choice()
 
 
 ## 开局招募：与胜后同一套 Arena enter_recruit；进度第 0 层；须 ≥1 已入座才能完成。

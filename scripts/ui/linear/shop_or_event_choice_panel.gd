@@ -1,12 +1,48 @@
 class_name ShopOrEventChoicePanel
 extends RefCounted
-## 战后商店或事件二选一（主模式线性远征）。
+## 战后商店 / 事件 / 跳过（主模式线性远征）。
 ## 选项画在 Arena 上半场卡片上（AllyBoard 常驻底部），不再弹 GamePopup。
 
 signal choice_made(choice: StringName)
 
 const CHOICE_SHOP := &"shop"
 const CHOICE_EVENT := &"event"
+const CHOICE_SKIP := &"skip"
+
+
+static func is_valid_choice(choice_id: StringName) -> bool:
+	return (
+		choice_id == CHOICE_SHOP
+		or choice_id == CHOICE_EVENT
+		or choice_id == CHOICE_SKIP
+	)
+
+
+static func build_choice_cards() -> Array:
+	return [
+		{
+			"id": CHOICE_SHOP,
+			"label": "商店",
+			"summary": "消耗品 / 装备",
+			"detail": "进入地图商店：上半场货架购买消耗品与装备，下半场队伍常驻可换座。离开后进入短名单招募。",
+			"kind_label": "去向",
+		},
+		{
+			"id": CHOICE_EVENT,
+			"label": "事件",
+			"summary": "远征圣物等",
+			"detail": "进入远征圣物三选一：点选上半场圣物卡片，长按可看完整效果；可跳过或换下旧件。结束后进入短名单招募。",
+			"kind_label": "去向",
+		},
+		{
+			"id": CHOICE_SKIP,
+			"label": "跳过",
+			"summary": "直接招募",
+			"detail": "本层不进商店也不进事件，直接进入短名单招募。本层拿不到新圣物，也不改商店库存。",
+			"kind_label": "去向",
+		},
+	]
+
 
 var _battle: RealtimeBattleController
 var _active: bool = false
@@ -30,23 +66,7 @@ func show_choice() -> void:
 		choice_made.emit(CHOICE_SHOP)
 		_active = false
 		return
-	var cards: Array = [
-		{
-			"id": CHOICE_SHOP,
-			"label": "商店",
-			"summary": "消耗品 / 装备",
-			"detail": "进入地图商店：上半场货架购买消耗品与装备，下半场队伍常驻可换座。离开后进入主题招募。",
-			"kind_label": "去向",
-		},
-		{
-			"id": CHOICE_EVENT,
-			"label": "事件",
-			"summary": "远征圣物等",
-			"detail": "进入远征圣物三选一：点选上半场圣物卡片，长按可看完整效果；可跳过或换下旧件。结束后进入主题招募。",
-			"kind_label": "去向",
-		},
-	]
-	_battle.enter_stage_choice("战后选择", cards, 0.0)
+	_battle.enter_stage_choice("战后选择", build_choice_cards(), 0.0)
 
 
 func hide_choice() -> void:
@@ -58,7 +78,7 @@ func hide_choice() -> void:
 func _on_stage_picked(choice_id: StringName, _index: int) -> void:
 	if not _active:
 		return
-	if choice_id != CHOICE_SHOP and choice_id != CHOICE_EVENT:
+	if not is_valid_choice(choice_id):
 		return
 	_active = false
 	if _battle != null:
