@@ -15,7 +15,7 @@ description: Enforces BattleShell band layout, Panel/Popup widget contracts, Sta
 
 1. **友方半场常驻底部**：准备 / 战斗 / 招募 / 地图商店 / 附魔 / StageChoice 不得把 AllyBoard slide 出屏，不得把队伍画到上半场（禁止 `configure_grid(..., enemy_side=true)` 仅用于「把队伍画上去」）。
 2. **阶段内容占上半场**：招募候选人、商店货架、熔炉槽、**StageChoice 选项卡** → EnemyOrStageBoard；AllyBoard 只绑友方座位数据源。
-3. **玩家选择题优先上半场卡片**：店|事、圣物三选一等用 `StageChoiceBoard` / `enter_stage_choice` 画在敌半场；**禁止**再弹全屏纯 UI 选择题窗（Run 结束结算除外）。**本版招募不做主题三选一**。
+3. **玩家选择题优先上半场卡片**：店|事|跳过、圣物三选一等用 `StageChoiceBoard` / `enter_stage_choice` 画在敌半场；**禁止**再弹全屏纯 UI 选择题窗（Run 结束结算除外）。**本版招募不做主题三选一**。
 4. **检视统一信息卡**：单位 / 候选人 / 商店货架 / StageChoice 选项 / **圣物** 的详情一律走 Arena `RealtimeUnitInfoCard`（FloatingPanel 契约）。  
    - 圣物文案工厂：`ExpeditionRelicInfo`（徽章长按与 StageChoice 圣物卡共用）。  
    - **禁止**再弹独立 `PopupPanel` / 另起一套圣物详情窗。
