@@ -14,7 +14,6 @@ static func run_all() -> bool:
 	ok = _check("actors_act_sequentially", _test_actors_act_sequentially()) and ok
 	ok = _check("melee_approach_hit_once_per_turn", _test_melee_approach_hit_once_per_turn()) and ok
 	ok = _check("eight_dir_diagonal_step", _test_eight_dir_diagonal_step()) and ok
-	ok = _check("cardinal_move_only_no_diagonal", _test_cardinal_move_only_no_diagonal()) and ok
 	ok = _check("no_attack_until_cell_settled", _test_no_attack_until_cell_settled()) and ok
 	ok = _check("occupancy_blocks_or_detours", _test_occupancy_blocks_or_detours()) and ok
 	ok = _check("chebyshev_attack_reach", _test_chebyshev_attack_reach()) and ok
@@ -96,7 +95,6 @@ const _STAT_OVERRIDE_KEYS := [
 	"max_hp", "attack", "steps_per_turn", "attack_interval",
 	"attack_windup", "attack_reach", "sight_range", "body_radius", "mass",
 	"projectile_speed", "splash_radius", "deploy_time", "attack_range",
-	"cardinal_move_only",
 ]
 
 
@@ -124,10 +122,6 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	data.is_boss_leader = bool(overrides.get("is_boss_leader", false))
 	data.footprint_w = int(overrides.get("footprint_w", 1))
 	data.footprint_h = int(overrides.get("footprint_h", 1))
-	if overrides.has("theme_primary"):
-		data.theme_primary = overrides["theme_primary"] as StringName
-	if overrides.has("theme_secondary"):
-		data.theme_secondary = overrides["theme_secondary"] as StringName
 	if overrides.has("summon_unit"):
 		data.summon_unit = overrides["summon_unit"] as UnitData
 	data.summon_max_alive = int(overrides.get("summon_max_alive", 0))
@@ -190,7 +184,6 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	var e2 := sim.add_unit(make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e2"}), Vector2(3.5, 3.5))
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	## 先友后敌；列优先左→右（同行亦按 x）。
 	var expected: Array[RtUnit] = [f0, f1, e0, e1, e2]
 	if q.size() != expected.size():
 		push_error("queue: size %d expected %d" % [q.size(), expected.size()])
@@ -205,40 +198,31 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	return true
 
 
-## 友方先左列、列内上→下再右移；敌方镜像列内下→上；与 add_unit 先后无关。
-## 用例刻意让「行优先」与「列优先」结果不同。
+## 子序按落点格前→后、左→右，与 add_unit 先后无关。
 static func _test_action_queue_spatial_sort() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 4), 1)
-	var mid := 2
-	## 友：右列前排先 add，左列后排后 add → 列优先应为左列后排先于右列前排。
-	var f_right_front := sim.add_unit(
-		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_right_front"}),
-		Vector2(2.5, float(mid) + 0.5),
+	sim.configure(Vector2i(5, 8), 1)
+	var mid := 4
+	## 后排右先 add、前排左后 add；队列仍应前排左友方优先。
+	var f_back_right := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_r"}),
+		Vector2(4.5, float(mid + 3) + 0.5),
 	)
-	var f_left_back := sim.add_unit(
-		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_left_back"}),
-		Vector2(0.5, float(mid + 1) + 0.5),
+	var f_front_left := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_front_l"}),
+		Vector2(0.5, float(mid) + 0.5),
 	)
-	## 敌：右列先 add；左列前/后乱序 → 列优先整列左先，列内镜像下→上（前排先于后排）。
-	var e_right := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_right"}),
-		Vector2(2.5, float(mid - 2) + 0.5),
+	var e_back := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back"}),
+		Vector2(2.5, float(mid - 3) + 0.5),
 	)
-	var e_left_back := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_back"}),
-		Vector2(0.5, float(mid - 2) + 0.5),
-	)
-	var e_left_front := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_left_front"}),
-		Vector2(0.5, float(mid - 1) + 0.5),
+	var e_front := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_front"}),
+		Vector2(1.5, float(mid - 1) + 0.5),
 	)
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	## 友：x0 后排 → x2 前排；敌：x0 前→后，再 x2
-	var expected: Array[RtUnit] = [
-		f_left_back, f_right_front, e_left_front, e_left_back, e_right
-	]
+	var expected: Array[RtUnit] = [f_front_left, f_back_right, e_front, e_back]
 	if q.size() != expected.size():
 		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
 		return false
@@ -291,7 +275,7 @@ static func _test_actors_act_sequentially() -> bool:
 	if a.cell.y >= 26:
 		push_error("seq: ally did not step (cell=%s)" % a.cell)
 		return false
-	## 友方一动结束后应轮到敌方
+	## 友方一动结束后应轮到敌方（一动结束当拍 current 可能已清空，看变更信号）
 	guard = 0
 	while not actors_seen.has("foe") and guard < 200:
 		sim.advance_fixed_step()
@@ -373,36 +357,6 @@ static func _test_eight_dir_diagonal_step() -> bool:
 		return false
 	if mover.is_stepping():
 		push_error("eight_dir: expected settled after one cell step")
-		return false
-	return true
-
-
-## cardinal_move_only：对角目标时第一步须正交，禁止斜步。
-static func _test_cardinal_move_only_no_diagonal() -> bool:
-	var sim := _new_sim()
-	sim.configure(ARENA, 12)
-	var mover := sim.add_unit(
-		make_unit(UnitInstance.Team.PLAYER, {
-			"steps_per_turn": 30,
-			"attack_reach": 1.0,
-			"attack_windup": 5.0,
-			"sight_range": 30.0,
-			"cardinal_move_only": true,
-		}),
-		Vector2(5.5, 25.5),
-	)
-	sim.add_unit(make_dummy(UnitInstance.Team.ENEMY), Vector2(8.5, 22.5))
-	var start := mover.cell
-	_run_until(sim, RtUnit.CELL_STEP_SECONDS + RealtimeCombatSim.FIXED_DT)
-	var delta: Vector2i = mover.cell - start
-	if absi(delta.x) + absi(delta.y) != 1:
-		push_error(
-			"cardinal_only: expected one orthogonal step, got delta=%s cell=%s"
-			% [delta, mover.cell]
-		)
-		return false
-	if mover.is_stepping():
-		push_error("cardinal_only: expected settled after one cell step")
 		return false
 	return true
 
@@ -1552,8 +1506,7 @@ static func _test_boss_queue_after_each_ally() -> bool:
 ## 首领召唤的枯骨代理须朝远离出生点的方向推进（不能卡死不动）。
 static func _test_boss_summon_minions_advance() -> bool:
 	var sim := _new_sim()
-	## 需要足够纵深让召唤物远离出生点；用沙盘而非正式 5×4。
-	sim.configure(ARENA, 61)
+	sim.configure(Vector2i(5, 8), 61)
 	var boss_data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
 	if boss_data == null or boss_data.summon_unit == null:
 		push_error("summon_advance: giant_knight missing summon_unit")
@@ -1734,17 +1687,17 @@ static func _test_ranged_attack_reach_clamped_to_2() -> bool:
 	return true
 
 
-## 首领 2×2 足迹在正式 5×4 场上应水平居中（足迹中心贴近 board_cx=2.5）。
+## 首领 2×2 足迹在 9 宽场上应水平居中（足迹中心贴近 board_cx=4）。
 static func _test_boss_footprint_horiz_centered() -> bool:
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 4), 62)
-	## 敌方半场居中偏好
+	sim.configure(Vector2i(5, 8), 62)
+	## 敌方前排居中座约 (4,5)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
 			"steps_per_turn": 0, "attack_reach": 1.0,
 		}),
-		Vector2(2.5, 0.5),
+		Vector2(4.5, 5.5),
 	)
 	if boss == null:
 		push_error("footprint_center: boss null")
@@ -1757,7 +1710,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 	for c in cells:
 		sx += c.x
 	var fp_cx := float(sx) / float(cells.size())
-	var board_cx := 2.5
+	var board_cx := 4.0
 	if absf(fp_cx - board_cx) > 0.51:
 		push_error("footprint_center: fp_cx=%s not near board center" % fp_cx)
 		return false
@@ -1767,7 +1720,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 ## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
 static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 	var sim := _new_sim()
-	sim.configure(ARENA, 11)
+	sim.configure(Vector2i(5, 8), 11)
 	var p_right := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 0, "attack_reach": 1.0, "sight_range": 99.0,
@@ -1802,7 +1755,7 @@ static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 ## 左右两路对位时，右路不应被索敌平局拖去左半场。
 static func _test_flanks_do_not_collapse_left() -> bool:
 	var sim := _new_sim()
-	sim.configure(ARENA, 13)
+	sim.configure(Vector2i(5, 8), 13)
 	var p_left := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 2, "attack_reach": 1.0, "attack_windup": 0.0, "sight_range": 99.0,
@@ -1855,13 +1808,13 @@ static func _test_boss_visual_centers_in_footprint() -> bool:
 		push_error("visual_center: static mid=%s want (4,5)" % mid)
 		return false
 	var sim := _new_sim()
-	sim.configure(Vector2i(5, 4), 62)
+	sim.configure(Vector2i(5, 8), 62)
 	var boss := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"id": "boss", "is_boss_leader": true, "footprint_w": 2, "footprint_h": 2,
 			"steps_per_turn": 0, "attack_reach": 1.0,
 		}),
-		Vector2(2.5, 0.5),
+		Vector2(4.5, 5.5),
 	)
 	if boss == null:
 		push_error("visual_center: boss null")

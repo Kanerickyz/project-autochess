@@ -1,6 +1,6 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 回合制自动战纯逻辑模拟：先友后敌行动队列（友先左列列内上→下再右移；敌镜像列内下→上）+ 一动靠近并出手 + 落格顿步。
+## 回合制自动战纯逻辑模拟：先友后敌行动队列 + 一动靠近并出手 + 落格顿步。
 ## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
 ## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
 
@@ -24,7 +24,7 @@ const EFFECT_DRAIN_GUARD := 64
 var elapsed_seconds: float = 0.0
 var fixed_step_count: int = 0
 
-var _arena_size: Vector2 = Vector2(5, 4)
+var _arena_size: Vector2 = Vector2(5, 8)
 var _rng := RandomNumberGenerator.new()
 var _bus: CombatEventBus
 var _owns_bus: bool = false
@@ -48,7 +48,7 @@ var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
-## 开战锁阵生成序（按 add_unit 先后）；排行动队列时友/敌各自按镜像扫描序重排（§7.1）。
+## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
 var _lock_spawn_order: Array[RtUnit] = []
 ## 先友后敌固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
 var _action_queue: Array[RtUnit] = []
@@ -66,8 +66,6 @@ var _turn_refresh_armed_instance_id: int = -1
 var _completed_actor_turns: int = 0
 ## begin_combat 后：开战技能排空且行动队列已排出。
 var _combat_queue_seeded: bool = false
-## 本场开战锁阵时玩家已成形主题（减员不降；仅记录，敌方不享受）。
-var _formed_theme_ids: Array[StringName] = []
 
 
 func _init(bus: CombatEventBus = null) -> void:
@@ -105,7 +103,6 @@ func dispose() -> void:
 	_occupancy.clear()
 	_lock_spawn_order.clear()
 	_action_queue.clear()
-	_formed_theme_ids.clear()
 	_current_actor = null
 	_actor_turn_active = false
 	_had_boss_leader = false
@@ -238,16 +235,6 @@ func find_unit(unit: UnitInstance) -> RtUnit:
 	return _find_rt_for_unit(unit)
 
 
-## 远征圣物钩子追加点伤：走直扣管线（护甲外、可致死、可发事件）。
-func apply_relic_hook_damage(source: UnitInstance, target: UnitInstance, amount: int) -> void:
-	if _pipeline == null or target == null or amount <= 0:
-		return
-	var rt := _find_rt_for_unit(target)
-	if rt == null or not rt.is_alive():
-		return
-	_pipeline.apply_direct_hp_loss(source, rt, amount)
-
-
 func find_unit_by_deck_entry(entry_id: int) -> RtUnit:
 	for rt in _units:
 		if rt.is_player() and rt.unit.deck_entry_id == entry_id and rt.is_alive():
@@ -285,11 +272,6 @@ func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
 	return _boss_try_teleport(rt, origin)
 
 
-## 本场已成形主题 id（开战锁阵结算；减员不降）。
-func get_formed_theme_ids() -> Array[StringName]:
-	return _formed_theme_ids.duplicate()
-
-
 ## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出先友后敌行动队列。
 ## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵/时停播报后再结算并排队列。
 func begin_combat() -> void:
@@ -298,7 +280,6 @@ func begin_combat() -> void:
 	_started = true
 	_completed_actor_turns = 0
 	_combat_queue_seeded = false
-	_apply_theme_bonds_at_lock()
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
 	if defer_effect_resolve:
 		if not has_pending_effects():
@@ -490,19 +471,6 @@ func _flush_combat_start_lock() -> void:
 	_seed_action_queue_if_ready()
 
 
-## 锁阵后按上场友方结算主题成形，并把占位 EffectSpec 挂到载体（敌方不计不享受）。
-func _apply_theme_bonds_at_lock() -> void:
-	_formed_theme_ids.clear()
-	var player_units: Array = []
-	for rt in _lock_spawn_order:
-		if rt == null or rt.unit == null:
-			continue
-		if not rt.is_player():
-			continue
-		player_units.append(rt.unit)
-	_formed_theme_ids = ThemeBondService.apply_formed_bonds_to_player_units(player_units)
-
-
 func _seed_action_queue_if_ready() -> void:
 	if _combat_queue_seeded or not _started or _finished:
 		return
@@ -516,7 +484,7 @@ func _seed_action_queue_if_ready() -> void:
 	_actor_turn_active = false
 
 
-## COMBAT §7.1：普通遭遇先友后敌（友列优先上→下；敌镜像列优先下→上）；Boss 见 BOSS §4.5。
+## COMBAT §7.1：普通遭遇先友后敌；Boss 遭遇见 BOSS §4.5（友→Boss 交错，小兵队尾）。
 func _build_action_queue_from_lock_order() -> void:
 	var friends: Array[RtUnit] = []
 	var enemies: Array[RtUnit] = []
@@ -530,11 +498,11 @@ func _build_action_queue_from_lock_order() -> void:
 	var board_h := int(_arena_size.y)
 	friends.sort_custom(
 		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h, false)
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
 	)
 	enemies.sort_custom(
 		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h, true)
+			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
 	)
 	_action_queue.clear()
 	var boss: RtUnit = null
@@ -618,8 +586,6 @@ func _begin_next_actor_turn() -> void:
 			_actor_turn_active = true
 			_actor_has_attacked = false
 			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate)
-			if candidate.unit != null:
-				candidate.unit.reset_turn_charge_state()
 			## 首领召唤冷却按「自己的行动次数」递减。
 			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
 				candidate.boss_summon_cooldown_left -= 1
@@ -653,7 +619,6 @@ func _end_current_actor_turn() -> void:
 		and ending.unit.banked_turn_refresh_bonus_pending
 	):
 		ending.unit.banked_turn_refresh_bonus_pending = false
-		ending.unit.reset_turn_charge_state()
 		_actor_has_attacked = false
 		_actor_steps_left = RtUnitBrain.turn_step_budget(ending)
 		if ending.state == RtUnit.State.ATTACKING:
@@ -735,11 +700,8 @@ func _advance_current_actor() -> void:
 	if decision.step != Vector2i.ZERO and _actor_steps_left > 0 and not rt.is_boss_leader():
 		var dest: Vector2i = rt.cell + decision.step
 		if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
-			var step_dir: Vector2i = decision.step
 			_move_unit_to_cell(rt, dest)
 			_actor_steps_left -= 1
-			if rt.unit != null:
-				rt.unit.note_orthogonal_charge_step(step_dir)
 			return
 
 	if decision.turn_done:

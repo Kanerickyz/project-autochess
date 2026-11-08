@@ -19,6 +19,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "death_heal_random_ally_2"
-merge_value_mult = 3
 display_name = "死亡时 对随机队友恢复 2 生命"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

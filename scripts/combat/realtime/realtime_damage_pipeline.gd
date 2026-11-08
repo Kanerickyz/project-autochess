@@ -68,9 +68,7 @@ func resolve_hit(
 			rolled = CombatStatusStack.adjust_attack_damage(rolled, src)
 		rolled = CombatStatusStack.adjust_incoming_before_armor(rolled, tgt.unit)
 		## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
-		var armor_before := tgt.unit.get_armor_block()
 		var final_amount := tgt.unit.mitigate_incoming_damage(rolled)
-		_emit_armor_mitigation_events(src, tgt.unit, armor_before, rolled, final_amount)
 		if final_amount <= 0:
 			continue
 		var hp_before := tgt.unit.current_hp
@@ -80,9 +78,6 @@ func resolve_hit(
 			_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
 			_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
 		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before)
-		## 反伤层：造成伤害后攻击方自身掉血（不走护甲、不递归触发反伤）。
-		if src != null and final_amount > 0:
-			_apply_thorns_recoil(src, units)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
 			death_pending.append({
@@ -188,17 +183,12 @@ static func collect_splash_victims(
 
 ## 返回 true 表示目标因本次伤害死亡。
 ## 单体直伤入口（效果等）；普攻主路径走 resolve_hit。
-## units：可选全场 RtUnit 列表，供攻击方反伤层查找自身 RtUnit。
-func apply_damage(
-	source: UnitInstance, target: RtUnit, amount: int, units: Array = []
-) -> bool:
+func apply_damage(source: UnitInstance, target: RtUnit, amount: int) -> bool:
 	if target == null or not target.is_alive() or amount <= 0:
 		return false
 	var rolled := CombatStatusStack.adjust_incoming_before_armor(amount, target.unit)
 	## MAP_SHOP §5.1：护甲全额挡住 → 不扣血、不发受伤类事件。
-	var armor_before := target.unit.get_armor_block()
 	var final_amount := target.unit.mitigate_incoming_damage(rolled)
-	_emit_armor_mitigation_events(source, target.unit, armor_before, rolled, final_amount)
 	if final_amount <= 0:
 		return false
 	var hp_before := target.unit.current_hp
@@ -208,9 +198,6 @@ func apply_damage(
 		_emit(CombatEvents.ON_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
 		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, source, target.unit, final_amount, hp_before)
 	_emit(CombatEvents.ON_DEAL_DAMAGE, source, target.unit, final_amount, hp_before)
-	if source != null and final_amount > 0:
-		var lookup := units if not units.is_empty() else [target]
-		_apply_thorns_recoil(source, lookup)
 	if target.unit.is_alive():
 		return false
 
@@ -224,38 +211,6 @@ func apply_damage(
 		false,
 	)
 	return true
-
-
-## 反伤：造成伤害后按层掉自身生命；不发 ON_DEAL_DAMAGE，避免递归。
-func _apply_thorns_recoil(attacker: UnitInstance, units: Array) -> void:
-	if attacker == null or not attacker.is_alive():
-		return
-	var stacks := attacker.combat_statuses.get_stacks(CombatStatusStack.ID_THORNS)
-	if stacks <= 0:
-		return
-	var rt: RtUnit = null
-	for item in units:
-		var u := item as RtUnit
-		if u != null and u.unit == attacker:
-			rt = u
-			break
-	var hp_before := attacker.current_hp
-	attacker.current_hp = maxi(0, attacker.current_hp - stacks)
-	if attacker.is_alive():
-		_emit(CombatEvents.ON_DAMAGE_TAKEN, attacker, attacker, stacks, hp_before)
-		_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, attacker, attacker, stacks, hp_before)
-		return
-	if rt == null:
-		return
-	_stage_lethal_kill(
-		{
-			"source": attacker,
-			"target": rt,
-			"rolled": stacks,
-			"hp_before": hp_before,
-		},
-		false,
-	)
 
 
 ## 中毒等：直扣生命，不走护甲与虚弱。
@@ -280,23 +235,6 @@ func apply_direct_hp_loss(source: UnitInstance, target: RtUnit, amount: int) -> 
 		false,
 	)
 	return true
-
-
-## 有甲挡伤：发 OnArmorBlocked；挡后甲归零时同击再发 OnArmorDepleted / OnFriendArmorDepleted。
-func _emit_armor_mitigation_events(
-	source: UnitInstance,
-	target: UnitInstance,
-	armor_before: int,
-	attempted: int,
-	final_amount: int,
-) -> void:
-	if armor_before <= 0 or attempted <= 0 or final_amount != 0:
-		return
-	_emit(CombatEvents.ON_ARMOR_BLOCKED, source, target, attempted)
-	if target == null or target.get_armor_block() != 0:
-		return
-	_emit(CombatEvents.ON_ARMOR_DEPLETED, source, target, attempted)
-	_emit(CombatEvents.ON_FRIEND_ARMOR_DEPLETED, source, target, attempted)
 
 
 func _emit(

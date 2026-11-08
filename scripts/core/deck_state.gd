@@ -5,7 +5,7 @@ signal deck_changed
 ## 自动三合一完成：product 为合成体；consumed_seats 为被合三人的座位（可含 -1）。
 signal triple_merged(product: DeckEntry, consumed_seats: Array)
 
-## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 2×5=10）。
+## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 4×5=20）。
 const SEAT_CAP_HARD_MAX := 10
 ## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
 const BENCH_CAPACITY := 5

@@ -12,12 +12,6 @@ const ON_ENEMY_DEATH := &"OnEnemyDeath"
 ## 其他友方受伤时（小队范围）；payload.target = 受伤者。
 const ON_FRIEND_DAMAGE_TAKEN := &"OnFriendDamageTaken"
 const ON_DAMAGE_TAKEN := &"OnDamageTaken"
-## 护甲成功挡住本次伤害（最终扣血 0）；payload.target = 被挡者，payload.source = 攻击者，amount = 试图伤害。
-const ON_ARMOR_BLOCKED := &"OnArmorBlocked"
-## 单位护甲从有→0（本击耗尽）；payload.target = 耗尽者。
-const ON_ARMOR_DEPLETED := &"OnArmorDepleted"
-## 其他友方护甲从有→0（小队范围，过滤口径同 OnFriendDamageTaken）；payload.target = 耗尽者。
-const ON_FRIEND_ARMOR_DEPLETED := &"OnFriendArmorDepleted"
 ## 治疗/恢复生命（仅统计实际增加量）；payload.effect_owner = 施放者。
 const ON_HEAL_APPLIED := &"OnHealApplied"
 

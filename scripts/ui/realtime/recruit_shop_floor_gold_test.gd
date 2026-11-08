@@ -13,7 +13,7 @@ static func run_all() -> bool:
 	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
 	ok = _check("recruit_shop_potion", _test_recruit_shop_potion()) and ok
 	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
-	ok = _check("recruit_candidate_count_default_3", _test_recruit_candidate_count_default_3()) and ok
+	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
 	if ok:
 		print("RecruitShopFloorGoldTest: all passed")
 	else:
@@ -215,13 +215,13 @@ static func _test_banner_repeatable_until_cap() -> bool:
 	return after == null
 
 
-static func _test_recruit_candidate_count_default_3() -> bool:
-	if RecruitSession.CANDIDATE_COUNT != 3:
+static func _test_recruit_candidate_count_default_5() -> bool:
+	if RecruitSession.CANDIDATE_COUNT != 5:
 		return false
-	if RecruitConfig.DEFAULT_CANDIDATE_COUNT != 3:
+	if RecruitConfig.DEFAULT_CANDIDATE_COUNT != 5:
 		return false
 	var cfg := RecruitConfig.new()
-	if cfg.get_candidate_count() != 3:
+	if cfg.get_candidate_count() != 5:
 		return false
 	var session := RecruitSession.new()
 	var deck := _make_deck(5)
@@ -232,4 +232,4 @@ static func _test_recruit_candidate_count_default_3() -> bool:
 	rng.seed = 1
 	session.configure(cfg, deck, econ, rng)
 	session.begin(0.0)
-	return session.get_candidates().size() == 3
+	return session.get_candidates().size() == 5

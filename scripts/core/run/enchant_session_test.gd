@@ -51,7 +51,7 @@ static func _deck_with_two() -> DeckState:
 
 
 static func _test_forge_slot_spacing() -> void:
-	var cells := EnchantLayout.forge_slot_cells(Vector2i(5, 4))
+	var cells := EnchantLayout.forge_slot_cells(Vector2i(5, 8))
 	_assert(cells.size() == 3, "three forge cells")
 	if cells.size() >= 3:
 		_assert(cells[0].x == 0 and cells[1].x == 2 and cells[2].x == 4, "A/B/C spaced")

@@ -38,11 +38,6 @@ enum Type {
 	CONVERT_KILL_TARGET_TO_ALLY,
 	## 本场临时护甲（可叠加；MAP_SHOP §5.1 受伤结算；不占用装备槽、不回写 DeckEntry）。
 	GRANT_COMBAT_ARMOR,
-	## 沿「持有者→目标」正交方向击退 value 格（默认 1）；不吃 merge 拉长；须正交邻格存活、非 Boss 足迹、落点可入。
-	KNOCKBACK_AWAY_FROM_OWNER,
-	## 开战快照：对全体敌军施加战斗状态，层数 = min(有护甲友方数, 2) × scaled_value；stat_name = 状态 id。
-	## 有护甲 = get_armor_block()>0（装备甲+本场临时甲）。须追加在枚举末尾。
-	APPLY_COMBAT_STATUS_PER_ARMORED_ALLY,
 }
 
 enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }
@@ -92,13 +87,13 @@ func validate_config() -> PackedStringArray:
 		Type.APPLY_CELL_EFFECT:
 			if cell_effect == null:
 				issues.append("APPLY_CELL_EFFECT requires cell_effect")
-		Type.APPLY_COMBAT_STATUS, Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
+		Type.APPLY_COMBAT_STATUS:
 			if not CombatStatusStack.is_valid_id(stat_name):
 				issues.append(
 					"combat status stat_name '%s' is not weak/berserk/poison" % String(stat_name)
 				)
 			if value <= 0:
-				issues.append("combat status action requires value > 0")
+				issues.append("APPLY_COMBAT_STATUS requires value > 0")
 		Type.REMOVE_COMBAT_STATUS:
 			if not CombatStatusStack.is_valid_id(stat_name):
 				issues.append(

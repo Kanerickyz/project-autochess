@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_boomling"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 7
 attack = 5
 steps_per_turn = 1
 attack_interval = 1.25
@@ -29,5 +29,4 @@ tier = 3
 command_cost = 4
 stats = SubResource("UnitStats_boomling")
 ability = ExtResource("3_ability")
-theme_primary = &"artisan"
 icon = ExtResource("4_icon")

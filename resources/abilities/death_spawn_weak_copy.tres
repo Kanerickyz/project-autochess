@@ -19,5 +19,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "death_spawn_weak_copy"
-display_name = "死亡时 生成残影×1（基础身体50%；三合一后完全体）"
+display_name = "死亡时 生成残影×1（基础身体50%）"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

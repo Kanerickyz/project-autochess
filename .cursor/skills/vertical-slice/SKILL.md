@@ -5,7 +5,7 @@ description: Dispatches studio roles for a vertical slice with an L0–L5 target
 
 # vertical-slice
 
-主代理当制作人。细则只维护在 Notion Doc ID `process-dev-workflow`（指针 `Documents/DEVELOPMENT_WORKFLOW.md`），不要把长表复制进本技能。
+主代理当制作人。细则只维护在 Documents/DEVELOPMENT_WORKFLOW.md，不要把长表复制进本技能。
 
 ## 何时派
 
@@ -20,7 +20,7 @@ Cursor 角色：`.cursor/agents/<role>.md`，用 Task 委派。Customize 里看�
 返回：文件、结论、达到的等级、证据、下一级缺口、命令/退出码、风险、主代理待处理项
 ```
 
-用户未指定验收方式时，主代理先问再派工。细则见 Notion Doc ID `process-dev-workflow`「验收方式」。
+用户未指定验收方式时，主代理先问再派工。细则见 Documents/DEVELOPMENT_WORKFLOW.md「验收方式」。
 
 `project.godot`、共享场景、枚举由主代理写。每个文件一个写入负责人。共享 checkout 不并行改同一文件。
 

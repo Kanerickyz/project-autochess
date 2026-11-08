@@ -21,9 +21,6 @@ const TRIGGER_WEIGHTS := {
 	CombatEvents.ON_ENEMY_DEATH: 0.95,
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN: 1.05,
 	CombatEvents.ON_DAMAGE_TAKEN: 1.1,
-	CombatEvents.ON_ARMOR_BLOCKED: 1.05,
-	CombatEvents.ON_ARMOR_DEPLETED: 0.85,
-	CombatEvents.ON_FRIEND_ARMOR_DEPLETED: 0.95,
 	CombatEvents.ON_ATTACK_HIT: 1.0,
 	CombatEvents.ON_DEAL_DAMAGE: 1.05,
 	CombatEvents.ON_KILL: 1.25,
@@ -57,9 +54,6 @@ const ACTION_WEIGHTS := {
 	EffectAction.Type.BUFF_STATS_FROM_GOLD_HALF: 1.15,
 	EffectAction.Type.STOCK_FREE_BUFF: 0.5,
 	EffectAction.Type.SHOP_CHARACTER_BONUS_HP: 0.45,
-	EffectAction.Type.APPLY_COMBAT_STATUS: 0.95,
-	EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY: 1.05,
-	EffectAction.Type.GRANT_COMBAT_ARMOR: 0.9,
 }
 
 

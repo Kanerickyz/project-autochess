@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="UnitStats_maul"]
 
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 4
 attack = 5
 steps_per_turn = 1
 attack_interval = 1.5
@@ -29,5 +29,3 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_maul")
 ability = ExtResource("3_ability")
-theme_primary = &"warrior"
-theme_secondary = &"artisan"

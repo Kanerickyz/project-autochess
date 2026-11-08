@@ -14,14 +14,12 @@ signal recruit_finished(kept_changes: bool)
 signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
-## 上半场选项卡片点选（id 为选项 StringName；index 为卡片下标）。
-signal stage_choice_picked(choice_id: StringName, index: int)
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP, STAGE_CHOICE }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
-const DEFAULT_BOARD_SIZE := Vector2i(5, 4)
+const DEFAULT_BOARD_SIZE := Vector2i(5, 8)
 const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn")
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
@@ -85,7 +83,7 @@ var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
-## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
+## 敌方座位几何（镜像 4×5）；准备预览 / 开战落点用，不存 DeckEntry。
 var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []
@@ -120,22 +118,16 @@ var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
-## DockBox 内固定高度滚动宿主：招募/商店/附魔/圣物 HUD 挂此节点，禁止撑高底栏。
-var _phase_dock_host: ScrollContainer
-## 半场阶段锁定的 Dock 高度（优先快照准备态实测值；禁止按内容上抬）。
-var _dock_phase_lock_h: float = 0.0
 var _recruit_title: Label
 var _recruit_hint: Label
 var _recruit_gold: Label
 var _recruit_seat: Label
 var _recruit_refresh_btn: Button
-var _recruit_theme_reroll_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
-var _theme_commitment_panel: ThemeCommitmentPanel
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -148,11 +140,6 @@ var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _enchant_sandbox_mode: bool = false
 var _map_shop_service: MapShopService
 var _map_shop_ui: MapShopBattleExtension = MapShopBattleExtension.new()
-## 远征行囊（Run 注入；战斗只读挂载效果；招募可卖）。
-var _relic_bag: ExpeditionRelicBag
-var _relic_hooks: ExpeditionRelicCombatHooks = ExpeditionRelicCombatHooks.new()
-var _recruit_sell_relic_btn: Button
-var _recruit_relic_panel: VBoxContainer
 ## 主菜单战斗沙盒：无地图/商店/招募/层金；胜负不写远征统计。
 var _combat_sandbox_mode: bool = false
 ## 沙盒粘贴的敌方覆盖（非空则跳过预算抽阵）；元素为 Dictionary unit_id/seat/level。
@@ -179,7 +166,6 @@ var _boss_final_trial_offer: bool = false
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _pop_label: Label = %PopLabel
 @onready var _timer_label: Label = %TimerLabel
-@onready var _relic_badge_strip: ExpeditionRelicBadgeStrip = %RelicBadgeStrip
 @onready var _arena: RealtimeArenaView = %ArenaView
 @onready var _hand_row: HBoxContainer = %HandRow
 @onready var _start_button: Button = %StartButton
@@ -229,20 +215,6 @@ const _PREPARE_SECONDARY_STRETCH := 1.0
 
 
 func _ready() -> void:
-	## 壳 Theme：Layout / Hud / Dock 走 UiKit，禁止私建 StyleBox 当主题。
-	UiKit.apply_shell_theme(self)
-	var layout := get_node_or_null("Layout") as Control
-	if layout != null:
-		UiKit.apply_shell_theme(layout)
-	var hud := get_node_or_null("Layout/Hud") as Control
-	if hud != null:
-		UiKit.apply_variation(hud, UiKit.VAR_HERO_PANEL)
-	var dock := get_node_or_null("Layout/Dock") as Control
-	if dock != null:
-		UiKit.apply_variation(dock, UiKit.VAR_DOCK_PANEL)
-	## 金币 / 圣物已在 PlayerInfoRow（玩家信息行）；Theme 令牌统一金色。
-	if _gold_label != null:
-		_gold_label.add_theme_color_override("font_color", UiKit.COLOR_GOLD)
 	_arena.board_pressed.connect(_on_board_pressed)
 	_arena.card_dropped.connect(_on_card_dropped)
 	_arena.recruit_drop.connect(_on_recruit_drop)
@@ -260,7 +232,6 @@ func _ready() -> void:
 	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
 	_arena.map_shop_offer_drop.connect(_on_map_shop_offer_drop)
 	_arena.map_shop_team_seat_drop.connect(_on_map_shop_team_seat_drop)
-	_arena.stage_choice_pressed.connect(_on_stage_choice_pressed)
 	_arena.prepare_team_seat_drop.connect(_on_prepare_team_seat_drop)
 	_arena.prepare_team_bench_drop.connect(_on_prepare_team_bench_drop)
 	_arena.bench_pressed.connect(_on_bench_pressed)
@@ -286,7 +257,6 @@ func _ready() -> void:
 		_start_button.visible = false
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = false
-	_sync_relic_badge_strip()
 	_refresh_hud()
 
 
@@ -318,46 +288,6 @@ func _process(delta: float) -> void:
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
 	_run_stat_ledger = ledger
 	_stat_collector.configure(ledger)
-
-
-func set_relic_bag(bag: ExpeditionRelicBag) -> void:
-	_relic_bag = bag
-	_sync_relic_badge_strip()
-
-
-func get_relic_bag() -> ExpeditionRelicBag:
-	return _relic_bag
-
-
-func get_relic_badge_strip() -> ExpeditionRelicBadgeStrip:
-	return _relic_badge_strip
-
-
-func _sync_relic_badge_strip() -> void:
-	if _relic_badge_strip == null:
-		return
-	if not _relic_badge_strip.badge_long_press.is_connected(_on_relic_badge_long_press):
-		_relic_badge_strip.badge_long_press.connect(_on_relic_badge_long_press)
-	if not _relic_badge_strip.badge_long_press_ended.is_connected(_on_relic_badge_long_press_ended):
-		_relic_badge_strip.badge_long_press_ended.connect(_on_relic_badge_long_press_ended)
-	_relic_badge_strip.configure(_relic_bag)
-
-
-func _on_relic_badge_long_press(slot_index: int, relic: ExpeditionRelicData) -> void:
-	if _arena == null or relic == null:
-		return
-	var anchor := Vector2(_arena.size.x * 0.72, _arena.size.y * 0.18)
-	if _relic_badge_strip != null:
-		var badge := _relic_badge_strip.get_badge(slot_index)
-		if badge != null and is_instance_valid(badge):
-			var global_center := badge.get_global_rect().get_center()
-			anchor = _arena.get_global_transform_with_canvas().affine_inverse() * global_center
-	_arena.show_relic_info(relic, anchor, "relic_badge:%d" % slot_index)
-
-
-func _on_relic_badge_long_press_ended(_slot_index: int, _relic: ExpeditionRelicData) -> void:
-	if _arena != null:
-		_arena.hide_unit_info()
 
 
 func set_combat_sandbox_mode(enabled: bool) -> void:
@@ -426,11 +356,6 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 			Control.MOUSE_FILTER_IGNORE if enabled else Control.MOUSE_FILTER_STOP
 		)
 	if enabled:
-		## 圣物详情改走 Arena 信息卡；罩层时一并收起。
-		if _relic_badge_strip != null:
-			_relic_badge_strip.hide_detail()
-		if _arena != null:
-			_arena.hide_unit_info()
 		_teardown_sim()
 		if _arena != null:
 			_arena.clear_fx()
@@ -547,12 +472,6 @@ func get_dock() -> Control:
 	return _dock
 
 
-## 半场阶段底栏宿主：固定高度 ScrollContainer，阶段 HUD 挂这里以免撑高 Dock。
-func get_phase_dock_host() -> ScrollContainer:
-	_ensure_phase_dock_host()
-	return _phase_dock_host
-
-
 func flash_hint(text: String) -> void:
 	_show_hint(text)
 
@@ -646,6 +565,23 @@ func _finish_combo_reset_after_skill_tail_if_needed() -> void:
 		return
 	_combo_reset_after_skill_tail = false
 	_reset_combo_display()
+
+
+func _combat_skill_info_presentation_seconds() -> float:
+	var scale := maxf(0.25, time_scale)
+	return (
+		RealtimeTimestopQueue.CARD_PAUSE_SECONDS
+		+ RealtimeTimestopQueue.RESULT_PAUSE_SECONDS
+		+ RealtimeUnitInfoCard.POP_IN_SEC
+		+ 0.35
+	) / scale
+
+
+func _arm_combat_skill_info_visibility() -> void:
+	if _arena == null:
+		return
+	_arena.pin_combat_skill_info()
+	_arena.bump_combat_skill_info_visibility(_combat_skill_info_presentation_seconds())
 
 
 func _release_combat_skill_info_visibility() -> void:
@@ -1111,10 +1047,9 @@ func restart_sandbox_prepare() -> void:
 	start_encounter(encounter, tier, _floor_index, int(_node_type))
 
 
-## 结算后“继续”：胜则先播敌半场退出，再释放本场并发出 encounter_completed。
+## 结算后“继续”：胜则先播半场退出，再释放本场并发出 encounter_completed。
 ## 无 await：半场演出用 Tween 回调，避免 headless 测试卡在空协程上。
-## 胜场仅保留敌/阶段半场 slide，供随后 enter_recruit 上半场内容滑入；
-## AllyBoard 常驻底部，不把 ally_half_slide_y 作为主路径滑出屏。
+## 胜场保留半场 slide，供随后 enter_recruit 同屏滑入（草地/边框不断）。
 func continue_after_result() -> void:
 	if _phase != Phase.RESULT:
 		return
@@ -1158,7 +1093,7 @@ func _complete_continue(won: bool) -> void:
 		_arena.enemy_slots = null
 		_arena.placement_active = false
 	if _preserve_half_slide_for_recruit and won:
-		## 衔接到招募：不闪准备手牌/Dock；仅敌/阶段半场停在屏外；友方半场常驻。
+		## 衔接到招募：不闪准备手牌/Dock；半场停在屏外，草地与外框仍在。
 		_hide_combat_chrome_for_recruit()
 		_set_phase(Phase.IDLE)
 		## 顶栏提前切到招募语义，避免「等待 / 入座 0」闪一下。
@@ -1171,7 +1106,7 @@ func _complete_continue(won: bool) -> void:
 			_pop_label.text = ""
 		if _arena != null:
 			var travel := _half_slide_travel()
-			_arena.set_stage_half_slide_offscreen(travel)
+			_arena.set_half_slide_offscreen(travel)
 			_arena.queue_redraw()
 	else:
 		_rebuild_cards()
@@ -1183,7 +1118,7 @@ func _complete_continue(won: bool) -> void:
 
 
 func _play_half_field_exit_then_continue(won: bool, seconds: float) -> void:
-	## 退场开始即收起战斗 Dock；仅敌/阶段半场上滑出屏，AllyBoard 常驻。
+	## 退场开始即收起战斗 Dock，只留外框+草地+半场内容在变。
 	_hide_combat_chrome_for_recruit()
 	_arena.reset_half_slide()
 	var travel := _half_slide_travel()
@@ -1192,6 +1127,7 @@ func _play_half_field_exit_then_continue(won: bool, seconds: float) -> void:
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(_arena, "enemy_half_slide_y", -travel, seconds)
+	tween.tween_property(_arena, "ally_half_slide_y", travel, seconds)
 	## 属性 Tween 时手动 redraw
 	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
 	tween.chain().tween_callback(_complete_continue.bind(won))
@@ -1348,7 +1284,7 @@ func _play_bench_exit_on_combat_start() -> void:
 	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
 
 
-## 敌/阶段半场向上移出摄像范围（可读占位演出）；AllyBoard 常驻不滑出。供外部 await。
+## 敌半场向上、友半场向下移出摄像范围（可读占位演出）；供外部 await。
 func play_half_field_exit_animation(duration: float = -1.0) -> void:
 	if _arena == null:
 		return
@@ -1358,18 +1294,20 @@ func play_half_field_exit_animation(duration: float = -1.0) -> void:
 	_arena.reset_half_slide()
 	var travel := _half_slide_travel()
 	var tween := create_tween()
+	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(_arena, "enemy_half_slide_y", -travel, seconds)
+	tween.tween_property(_arena, "ally_half_slide_y", travel, seconds)
 	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
 	await tween.finished
 	if _arena != null:
 		_arena.enemy_half_slide_y = -travel
-		_arena.ally_half_slide_y = 0.0
+		_arena.ally_half_slide_y = travel
 		_arena.queue_redraw()
 
 
-## 胜后进入招募：AllyBoard 常驻下半场；上半场滑入候选人货架。规则走 RecruitSession。
+## 胜后进入招募：同屏半场滑入队伍（上）与候选人（下）；规则走 RecruitSession。
 ## headless：enter_seconds≤0 时瞬间到位，不 await 长动画。
 func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void:
 	if session == null:
@@ -1385,20 +1323,18 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 		seconds = session.config.panel_enter_seconds
 	_set_phase(Phase.RECRUIT)
 	_hide_combat_chrome_for_recruit()
-	_hide_other_phase_dock_huds(&"recruit")
 	_show_recruit_hud()
 	## 等一帧让 Dock 最小高度生效，Arena 与准备同尺后再算 slide / 画单位。
 	await get_tree().process_frame
 	_bind_recruit_session()
 	_open_recruit_shop()
-	## 仅上半场（阶段货架）可自屏外滑入；友方半场保持在位。
+	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
+	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
 	if _arena != null:
 		var travel := _half_slide_travel()
-		var already_out := absf(_arena.enemy_half_slide_y) > 1.0
+		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
 		if not already_out:
-			_arena.set_stage_half_slide_offscreen(travel)
-		else:
-			_arena.ally_half_slide_y = 0.0
+			_arena.set_half_slide_offscreen(travel)
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
 	if _arena != null:
@@ -1407,10 +1343,9 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	_recruit_animating = false
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
-	_maybe_show_theme_commitment()
 
 
-## 地图附魔节点：上半场熔炉、下半场 AllyBoard 常驻；规则走 EnchantSession。
+## 地图附魔节点：上附魔台、下队伍；规则走 EnchantSession。
 func enter_enchant(enter_seconds: float = -1.0, expanded_team: bool = false) -> void:
 	if not is_node_ready():
 		await ready
@@ -1429,7 +1364,7 @@ func enter_enchant(enter_seconds: float = -1.0, expanded_team: bool = false) -> 
 	await get_tree().process_frame
 	if _arena != null:
 		var travel := _half_slide_travel()
-		_arena.set_stage_half_slide_offscreen(travel)
+		_arena.set_half_slide_offscreen(travel)
 	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
 	_enchant_ui.rebuild_team_slots(_enchant_slots, _deck_state)
 	if _arena != null:
@@ -1524,99 +1459,7 @@ func is_enchant_sandbox_mode() -> bool:
 	return _enchant_sandbox_mode
 
 
-## 上半场选项卡片 + 下半场 AllyBoard 常驻（店|事 / 圣物等纯选择题）。
-## choices: Array[Dictionary] {id:StringName, label:String, summary?:String, selected?:bool, meta?:Variant}
-func enter_stage_choice(title: String, choices: Array, enter_seconds: float = 0.0) -> void:
-	if not is_node_ready():
-		await ready
-	_set_phase(Phase.STAGE_CHOICE)
-	set_world_backdrop_mode(false)
-	_hide_combat_chrome_for_recruit()
-	_hide_other_phase_dock_huds(&"relic")
-	_rebuild_recruit_team_slots()
-	if _arena != null:
-		_arena.clear_recruit_mode()
-		_arena.clear_map_shop_mode()
-		_arena.clear_enchant_mode()
-		_arena.stage_choice_active = true
-		_arena.stage_choice_title = title
-		_arena.stage_choice_cards = StageChoiceBoard.layout_choices(choices, _board_size, 0)
-		_arena.recruit_team_slots = _recruit_team_slots
-		_arena.bench_visible = false
-		_arena.enemy_slots = null
-		_arena.enemy_previews = []
-		_arena.sim = null
-		_arena.prepare_slots = null
-		_arena.ally_half_slide_y = 0.0
-		if enter_seconds > 0.001:
-			var travel := _half_slide_travel()
-			_arena.set_stage_half_slide_offscreen(travel)
-			await _play_half_field_enter_animation(enter_seconds)
-		else:
-			_arena.enemy_half_slide_y = 0.0
-		_arena.queue_redraw()
-	_refresh_hud()
-	if _phase_label != null:
-		_phase_label.text = title if not title.is_empty() else "选择"
-		_phase_label.modulate = Color.WHITE
-
-
-func exit_stage_choice() -> void:
-	if _arena != null:
-		_arena.clear_stage_choice_mode()
-		_arena.reset_half_slide()
-	_restore_combat_chrome_after_recruit()
-	if _phase == Phase.STAGE_CHOICE:
-		_set_phase(Phase.IDLE)
-
-
-func refresh_stage_choice_cards(choices: Array, title: String = "") -> void:
-	if _arena == null:
-		return
-	if not title.is_empty():
-		_arena.stage_choice_title = title
-	_arena.stage_choice_cards = StageChoiceBoard.layout_choices(choices, _board_size, 0)
-	_arena.stage_choice_active = true
-	_arena.queue_redraw()
-
-
-func _on_stage_choice_pressed(index: int) -> void:
-	if _arena == null:
-		return
-	## 招募主题盘：阶段仍是 RECRUIT，但上半场为 stage_choice 卡片。
-	if _phase == Phase.RECRUIT and _recruit_session != null:
-		_on_recruit_theme_card_pressed(index)
-		return
-	if _phase != Phase.STAGE_CHOICE:
-		return
-	if index < 0 or index >= _arena.stage_choice_cards.size():
-		return
-	var info: Variant = _arena.stage_choice_cards[index]
-	if not (info is Dictionary):
-		return
-	var choice_id: StringName = (info as Dictionary).get("id", &"")
-	stage_choice_picked.emit(choice_id, index)
-
-
-func _on_recruit_theme_card_pressed(index: int) -> void:
-	if _recruit_session == null or not _recruit_session.theme_commitment_required:
-		return
-	if _recruit_session.has_committed_theme():
-		return
-	if index < 0 or index >= _arena.stage_choice_cards.size():
-		return
-	var info: Variant = _arena.stage_choice_cards[index]
-	if not (info is Dictionary):
-		return
-	var theme_id: StringName = (info as Dictionary).get("id", &"")
-	if not _recruit_session.commit_theme(theme_id):
-		return
-	_clear_recruit_theme_cards()
-	_sync_recruit_arena()
-	_refresh_recruit_hud()
-
-
-## 地图商店：上半场货架、下半场 AllyBoard 常驻；规则走 MapShopService。
+## 地图商店：上队伍、下货架；规则走 MapShopService。
 func enter_map_shop(service: MapShopService, enter_seconds: float = -1.0) -> void:
 	if not is_node_ready():
 		await ready
@@ -1635,7 +1478,7 @@ func enter_map_shop(service: MapShopService, enter_seconds: float = -1.0) -> voi
 	await get_tree().process_frame
 	if _arena != null:
 		var travel := _half_slide_travel()
-		_arena.set_stage_half_slide_offscreen(travel)
+		_arena.set_half_slide_offscreen(travel)
 	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
 	if _arena != null:
 		_arena.queue_redraw()
@@ -1727,7 +1570,6 @@ func _on_map_shop_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 func exit_recruit() -> void:
-	_hide_theme_commitment()
 	_close_recruit_shop()
 	_unbind_recruit_session()
 	_recruit_session = null
@@ -1749,17 +1591,15 @@ func _play_half_field_enter_animation(seconds: float) -> void:
 	if _arena == null:
 		return
 	_recruit_animating = true
-	## AllyBoard 常驻：进入动画只复位敌/阶段半场。
-	_arena.ally_half_slide_y = 0.0
 	if seconds <= 0.001:
-		_arena.enemy_half_slide_y = 0.0
-		_arena.bench_slide_y = 0.0
-		_arena.queue_redraw()
+		_arena.reset_half_slide()
 		return
 	var tween := create_tween()
+	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(_arena, "enemy_half_slide_y", 0.0, seconds)
+	tween.tween_property(_arena, "ally_half_slide_y", 0.0, seconds)
 	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
 	await tween.finished
 	if _arena != null:
@@ -1853,45 +1693,6 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
 		_sim.add_unit(unit, place)
-
-	_attach_relic_combat_abilities()
-
-
-## 开战前把行囊圣物 EffectSpec 挂到友方（与主题羁绊同管线）。
-func _attach_relic_combat_abilities() -> void:
-	if _relic_hooks != null:
-		_relic_hooks.unbind()
-	if _sim == null or _relic_bag == null or _relic_bag.get_count() <= 0:
-		return
-	var player_units: Array = []
-	var all_units: Array = []
-	for item in _sim.get_units():
-		var rt := item as RtUnit
-		if rt == null or rt.unit == null:
-			continue
-		all_units.append(rt.unit)
-		if rt.is_player():
-			player_units.append(rt.unit)
-	ExpeditionRelicEffectService.attach_combat_abilities(
-		player_units,
-		_relic_bag,
-		_deck_state,
-		int(_board_size.y),
-	)
-	if _relic_hooks != null and _bus != null:
-		_relic_hooks.bind(
-			_bus,
-			_relic_bag,
-			all_units,
-			last_seed,
-			Callable(self, "_deal_relic_hook_damage"),
-		)
-
-
-func _deal_relic_hook_damage(source: UnitInstance, target: UnitInstance, amount: int) -> void:
-	if _sim == null:
-		return
-	_sim.apply_relic_hook_damage(source, target, amount)
 
 
 func _set_phase(phase: Phase) -> void:
@@ -2109,8 +1910,6 @@ func _teardown_sim() -> void:
 	_lock_phase_active = false
 	if _timestop_queue != null:
 		_timestop_queue.clear()
-	if _relic_hooks != null:
-		_relic_hooks.unbind()
 	if _sim != null:
 		_sim.dispose()
 		_sim = null
@@ -2225,7 +2024,7 @@ func _ensure_prepare_action_row() -> void:
 	else:
 		add_child(_prepare_action_row)
 		_start_button.reparent(_prepare_action_row)
-	_start_button.custom_minimum_size = Vector2(0, 46)
+	_start_button.custom_minimum_size = Vector2(0, 40)
 	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_start_button.size_flags_stretch_ratio = _PREPARE_START_STRETCH
 
@@ -2237,7 +2036,7 @@ func _ensure_layout_clipboard_buttons() -> void:
 		_copy_layout_button = Button.new()
 		_copy_layout_button.name = "CopyLayoutButton"
 		_copy_layout_button.unique_name_in_owner = true
-		_copy_layout_button.custom_minimum_size = Vector2(0, 46)
+		_copy_layout_button.custom_minimum_size = Vector2(0, 40)
 		_copy_layout_button.text = "复制布局"
 		_copy_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_copy_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
@@ -2252,7 +2051,7 @@ func _ensure_layout_clipboard_buttons() -> void:
 		_paste_layout_button = Button.new()
 		_paste_layout_button.name = "PasteLayoutButton"
 		_paste_layout_button.unique_name_in_owner = true
-		_paste_layout_button.custom_minimum_size = Vector2(0, 46)
+		_paste_layout_button.custom_minimum_size = Vector2(0, 40)
 		_paste_layout_button.text = "粘贴布局"
 		_paste_layout_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_paste_layout_button.size_flags_stretch_ratio = _PREPARE_SECONDARY_STRETCH
@@ -2359,35 +2158,72 @@ func _on_paste_layout_pressed() -> void:
 func _ensure_paste_layout_dialog() -> void:
 	if _paste_dialog != null and is_instance_valid(_paste_dialog):
 		return
-	## 沙盒粘贴布局：走 GamePopup + ContentSlot（Theme/KitPopupPanel），勿私建 StyleBox。
-	var popup := UiKit.instantiate_popup()
-	popup.name = "PasteLayoutDialog"
-	popup.dismiss_on_dim = true
-	popup.configure(
-		"粘贴布局",
-		"把阵容/布局文本贴到下方，再点「应用」。",
-		"应用",
-		"取消",
-	)
+	## 全屏遮罩 + 居中小面板；按钮用与 Dock 相同的普通 Button（高 36/40）。
+	var overlay := ColorRect.new()
+	overlay.name = "PasteLayoutDialog"
+	overlay.color = Color(0, 0, 0, 0.55)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(300, 280)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.16, 0.13, 0.11, 0.97)
+	panel_style.border_width_top = 2
+	panel_style.border_width_bottom = 2
+	panel_style.border_width_left = 2
+	panel_style.border_width_right = 2
+	panel_style.border_color = Color(0.42, 0.33, 0.22, 1)
+	panel_style.set_content_margin_all(10.0)
+	panel.add_theme_stylebox_override("panel", panel_style)
+	## 竖屏：约屏宽 86%、屏高 42%，避免再占满屏。
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	center.add_child(panel)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	panel.add_child(body)
+	var title := Label.new()
+	title.text = "粘贴布局"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	body.add_child(title)
+	var tip := Label.new()
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.text = "把阵容/布局文本贴到下方，再点「应用」。"
+	tip.add_theme_font_size_override("font_size", 13)
+	body.add_child(tip)
 	## TextEdit 自带纵向滚动；占满中间区域，底部按钮始终可见。
 	_paste_edit = TextEdit.new()
-	_paste_edit.name = "PasteEdit"
 	_paste_edit.placeholder_text = "PAC_BATTLE v1 …"
 	_paste_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_paste_edit.scroll_fit_content_height = false
 	_paste_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_paste_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_paste_edit.custom_minimum_size = Vector2(260, 100)
-	popup.set_custom_content(_paste_edit)
-	_paste_cancel_button = popup.get_secondary_button()
-	_paste_apply_button = popup.get_primary_button()
-	if _paste_cancel_button != null:
-		_paste_cancel_button.name = "PasteCancelButton"
-	if _paste_apply_button != null:
-		_paste_apply_button.name = "PasteApplyButton"
-	popup.secondary_pressed.connect(_hide_paste_layout_dialog)
-	popup.primary_pressed.connect(_on_paste_dialog_confirmed)
-	_paste_dialog = popup
+	body.add_child(_paste_edit)
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	btn_row.size_flags_vertical = Control.SIZE_SHRINK_END
+	body.add_child(btn_row)
+	_paste_cancel_button = Button.new()
+	_paste_cancel_button.name = "PasteCancelButton"
+	_paste_cancel_button.text = "取消"
+	_paste_cancel_button.custom_minimum_size = Vector2(0, 40)
+	_paste_cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_cancel_button.pressed.connect(_hide_paste_layout_dialog)
+	btn_row.add_child(_paste_cancel_button)
+	_paste_apply_button = Button.new()
+	_paste_apply_button.name = "PasteApplyButton"
+	_paste_apply_button.text = "应用"
+	_paste_apply_button.custom_minimum_size = Vector2(0, 40)
+	_paste_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_paste_apply_button.pressed.connect(_on_paste_dialog_confirmed)
+	btn_row.add_child(_paste_apply_button)
+	_paste_dialog = overlay
 	add_child(_paste_dialog)
 	## 按视口收紧面板，保证按钮始终在屏内。
 	_paste_dialog.resized.connect(_fit_paste_layout_panel)
@@ -2397,15 +2233,15 @@ func _ensure_paste_layout_dialog() -> void:
 func _fit_paste_layout_panel() -> void:
 	if _paste_dialog == null or not is_instance_valid(_paste_dialog):
 		return
-	var panel: Control = null
-	if _paste_dialog is GamePopup:
-		panel = (_paste_dialog as GamePopup).get_panel()
+	var center := _paste_dialog.get_child(0) as CenterContainer
+	if center == null or center.get_child_count() < 1:
+		return
+	var panel := center.get_child(0) as Control
 	if panel == null:
 		return
 	var vp := get_viewport_rect().size
 	if vp.x < 8.0 or vp.y < 8.0:
 		return
-	## 竖屏：约屏宽 86%、屏高 42%，避免再占满屏。
 	var w := clampf(vp.x * 0.86, 260.0, 420.0)
 	var h := clampf(vp.y * 0.42, 240.0, 360.0)
 	panel.custom_minimum_size = Vector2(w, h)
@@ -2417,19 +2253,14 @@ func _show_paste_layout_dialog(prefill: String) -> void:
 	if _paste_edit != null:
 		_paste_edit.text = prefill
 		_paste_edit.select_all()
-	if _paste_dialog is GamePopup:
-		(_paste_dialog as GamePopup).open()
-	elif _paste_dialog != null:
-		_paste_dialog.visible = true
-		_paste_dialog.move_to_front()
+	_paste_dialog.visible = true
+	_paste_dialog.move_to_front()
 	## 下一帧再抢焦点，避免被 Dock 按钮吃掉。
 	call_deferred("_focus_paste_edit")
 
 
 func _hide_paste_layout_dialog() -> void:
-	if _paste_dialog is GamePopup:
-		(_paste_dialog as GamePopup).close(false)
-	elif _paste_dialog != null and is_instance_valid(_paste_dialog):
+	if _paste_dialog != null and is_instance_valid(_paste_dialog):
 		_paste_dialog.visible = false
 
 
@@ -2690,16 +2521,21 @@ func _build_enemy_spawns_from_override(rows: Array) -> Array:
 func _ensure_recruit_hud() -> void:
 	if _recruit_hud != null and is_instance_valid(_recruit_hud):
 		return
-	## Dock 内嵌招募条：用 DockPanel 变体，勿私建 StyleBoxFlat。
-	_recruit_hud = UiKit.make_dock_panel()
+	_recruit_hud = PanelContainer.new()
 	_recruit_hud.name = "RecruitHud"
 	_recruit_hud.visible = false
 	_recruit_hud.mouse_filter = Control.MOUSE_FILTER_STOP
 	_recruit_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	## 放进固定高度 PhaseDockHost：招募内容可滚动，Dock/Arena 比例不变。
-	_ensure_phase_dock_host()
-	if _phase_dock_host != null:
-		_phase_dock_host.add_child(_recruit_hud)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.14, 0.12, 0.92)
+	style.set_content_margin_all(8.0)
+	_recruit_hud.add_theme_stylebox_override("panel", style)
+	## 放进 Dock：招募时保持底栏占位，Arena 格像素与准备/战斗一致。
+	var dock_box: Node = null
+	if _dock != null:
+		dock_box = _dock.get_node_or_null("DockBox")
+	if dock_box != null:
+		dock_box.add_child(_recruit_hud)
 	else:
 		_recruit_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 		_recruit_hud.offset_top = -132.0
@@ -2730,10 +2566,7 @@ func _ensure_recruit_hud() -> void:
 
 	_recruit_hint = Label.new()
 	_recruit_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_recruit_hint.text = "将上半场候选人拖到下半场队伍"
-	_recruit_hint.clip_text = true
-	_recruit_hint.custom_minimum_size = Vector2(0, 20)
-	_recruit_hint.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_recruit_hint.text = "将下半场候选人拖到上半场队伍"
 	box.add_child(_recruit_hint)
 
 	var row := HBoxContainer.new()
@@ -2744,11 +2577,6 @@ func _ensure_recruit_hud() -> void:
 	_recruit_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_recruit_refresh_btn.pressed.connect(_on_recruit_refresh_pressed)
 	row.add_child(_recruit_refresh_btn)
-	_recruit_theme_reroll_btn = Button.new()
-	_recruit_theme_reroll_btn.text = "主题重 roll"
-	_recruit_theme_reroll_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_recruit_theme_reroll_btn.pressed.connect(_on_recruit_theme_reroll_pressed)
-	row.add_child(_recruit_theme_reroll_btn)
 	_recruit_skip_btn = Button.new()
 	_recruit_skip_btn.text = "跳过"
 	_recruit_skip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2760,133 +2588,30 @@ func _ensure_recruit_hud() -> void:
 	_recruit_finish_btn.pressed.connect(_on_recruit_finish_pressed)
 	row.add_child(_recruit_finish_btn)
 
-	_recruit_sell_relic_btn = Button.new()
-	_recruit_sell_relic_btn.text = "卖圣物"
-	_recruit_sell_relic_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_recruit_sell_relic_btn.pressed.connect(_on_recruit_sell_relic_toggle)
-	row.add_child(_recruit_sell_relic_btn)
 
-	var relic_scroll := ScrollContainer.new()
-	relic_scroll.name = "RecruitRelicScroll"
-	relic_scroll.visible = false
-	relic_scroll.custom_minimum_size = Vector2(0, 72)
-	relic_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	relic_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.add_child(relic_scroll)
-	_recruit_relic_panel = VBoxContainer.new()
-	_recruit_relic_panel.name = "RecruitRelicPanel"
-	_recruit_relic_panel.visible = true
-	_recruit_relic_panel.add_theme_constant_override("separation", 4)
-	_recruit_relic_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	relic_scroll.add_child(_recruit_relic_panel)
-
-
-## 准备 / 招募 / 商店 / 附魔 / StageChoice 共用的固定 Dock 高度。
-## 禁止按 `_dock.size.y` 上抬（否则每进一次半场阶段会越锁越高）。
+## 准备阶段底栏等效高度：手牌行 + 开战 + DockBox 间距 + panel 上下边距。
+## 本版已取消准备刷新手牌，不再计入刷新钮高度。
+## 开局招募时开战钮尚未显示，不能用当前 _dock.size（会偏矮 → Arena 变高）。
 func _prepare_equivalent_dock_height() -> float:
 	var hand_h := 88.0
 	if _hand_row != null:
 		hand_h = maxf(_hand_row.custom_minimum_size.y, hand_h)
-	var start_h := 46.0
+	var start_h := 40.0
 	if _start_button != null:
 		start_h = maxf(_start_button.custom_minimum_size.y, start_h)
 	var sep := 6.0
-	var margin_tb := 14.0 ## DockPanel Theme content_margin top+bottom
+	var margin_tb := 14.0 ## StyleBoxFlat_dock content_margin top 6 + bottom 8
 	return margin_tb + hand_h + sep + start_h
 
 
-func _dock_panel_margin_tb() -> float:
-	return 14.0
-
-
-func _ensure_phase_dock_host() -> void:
-	if _phase_dock_host != null and is_instance_valid(_phase_dock_host):
-		return
-	if _dock == null:
-		return
-	var dock_box := _dock.get_node_or_null("DockBox") as Node
-	if dock_box == null:
-		return
-	var existing := dock_box.get_node_or_null("PhaseDockHost") as ScrollContainer
-	if existing != null:
-		_phase_dock_host = existing
-		return
-	_phase_dock_host = ScrollContainer.new()
-	_phase_dock_host.name = "PhaseDockHost"
-	_phase_dock_host.visible = false
-	_phase_dock_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_phase_dock_host.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_phase_dock_host.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_phase_dock_host.clip_contents = true
-	dock_box.add_child(_phase_dock_host)
-
-
-func _resolve_dock_phase_lock_height() -> float:
-	var formula := _prepare_equivalent_dock_height()
-	## 准备 chrome 仍可见且已完成布局时快照实测高度；未布局完则回退公式，禁止吃到偏小值。
-	if (
-		_dock != null
-		and _hand_row != null
-		and _hand_row.visible
-		and _dock.size.y >= formula - 1.0
-	):
-		return _dock.size.y
-	return formula
-
-
-func _lock_dock_phase_height() -> void:
-	if _dock == null:
-		return
-	_ensure_phase_dock_host()
-	## 整局只锁定一次：避免反复快照或内容撑开造成棘轮上抬。
-	if _dock_phase_lock_h <= 1.0:
-		_dock_phase_lock_h = _resolve_dock_phase_lock_height()
-	var h := _dock_phase_lock_h
-	var content_h := maxf(64.0, h - _dock_panel_margin_tb())
-	_dock.visible = true
-	_dock.clip_contents = true
-	## 固定高度：与准备底栏同尺；ScrollContainer 上报的最小高度不随 HUD 内容增长。
-	_dock.custom_minimum_size.y = h
-	if _phase_dock_host != null:
-		_phase_dock_host.custom_minimum_size.y = content_h
-		_phase_dock_host.visible = true
-
-
-func _unlock_dock_phase_height() -> void:
-	if _dock == null:
-		return
-	_dock.clip_contents = false
-	_dock.custom_minimum_size.y = 0.0
-	if _phase_dock_host != null and is_instance_valid(_phase_dock_host):
-		_phase_dock_host.visible = false
-		_phase_dock_host.custom_minimum_size.y = 0.0
-
-
-## 半场阶段互斥：只留当前 HUD，避免 PhaseDockHost 叠多层内容。
-func _hide_other_phase_dock_huds(except: StringName = &"") -> void:
-	if except != &"recruit":
-		_hide_recruit_hud()
-	if except != &"map_shop" and _map_shop_ui != null:
-		_map_shop_ui.hide_hud()
-	if except != &"enchant" and _enchant_ui != null:
-		_enchant_ui.hide_hud()
-	## RelicStageChoice HUD 挂在 PhaseDockHost，名称固定。
-	if except != &"relic":
-		var host := _phase_dock_host
-		if host == null and _dock != null:
-			var dock_box := _dock.get_node_or_null("DockBox") as Node
-			if dock_box != null:
-				host = dock_box.get_node_or_null("PhaseDockHost") as ScrollContainer
-		if host != null:
-			var relic_hud := host.get_node_or_null("RelicStageHud") as CanvasItem
-			if relic_hud != null:
-				relic_hud.visible = false
-
-
 func _hide_combat_chrome_for_recruit() -> void:
-	## 先在准备 chrome 可见时解析锁定高度，再藏手牌/开战，最后打开 PhaseDockHost。
-	if _dock_phase_lock_h <= 1.0:
-		_dock_phase_lock_h = _resolve_dock_phase_lock_height()
+	## 只藏手牌/开战/刷新；Dock 锁到准备等效高度，避免开局/胜后招募 Arena 变高变宽。
+	if _dock != null:
+		_dock.visible = true
+		var keep_h := _prepare_equivalent_dock_height()
+		if _dock.size.y > keep_h:
+			keep_h = _dock.size.y
+		_dock.custom_minimum_size.y = keep_h
 	if _hand_row != null:
 		_hand_row.visible = false
 	if _prepare_action_row != null:
@@ -2895,46 +2620,27 @@ func _hide_combat_chrome_for_recruit() -> void:
 		_start_button.visible = false
 	if _refresh_button != null:
 		_refresh_button.visible = false
-	if _tape_row != null:
-		_tape_row.visible = false
 	if _result_overlay != null:
 		_result_overlay.visible = false
-	_lock_dock_phase_height()
 
 
 func _restore_combat_chrome_after_recruit() -> void:
-	_unlock_dock_phase_height()
-	_hide_other_phase_dock_huds(&"")
+	if _dock != null:
+		_dock.visible = true
+		_dock.custom_minimum_size.y = 0.0
 	if _hand_row != null:
 		_hand_row.visible = true
 
 
 func _show_recruit_hud() -> void:
 	_ensure_recruit_hud()
-	_hide_other_phase_dock_huds(&"recruit")
 	if _recruit_hud != null:
 		_recruit_hud.visible = true
 
 
 func _hide_recruit_hud() -> void:
-	_set_recruit_relic_panel_open(false)
 	if _recruit_hud != null:
 		_recruit_hud.visible = false
-
-
-func _recruit_relic_scroll() -> ScrollContainer:
-	if _recruit_hud == null:
-		return null
-	return _recruit_hud.find_child("RecruitRelicScroll", true, false) as ScrollContainer
-
-
-func _set_recruit_relic_panel_open(open: bool) -> void:
-	var scroll := _recruit_relic_scroll()
-	if scroll != null:
-		scroll.visible = open
-	if _recruit_relic_panel != null and not open:
-		for child in _recruit_relic_panel.get_children():
-			child.queue_free()
 
 
 func _bind_recruit_session() -> void:
@@ -2988,21 +2694,8 @@ func _sync_recruit_arena() -> void:
 	_rebuild_recruit_team_slots()
 	_arena.recruit_active = true
 	_arena.recruit_team_slots = _recruit_team_slots
-	var theme_pending := (
-		_recruit_session.theme_commitment_required
-		and not _recruit_session.has_committed_theme()
-	)
-	if theme_pending:
-		_arena.recruit_candidates = []
-		_arena.recruit_items = []
-		_arena.recruit_sell_cell = NO_CELL
-		_arena.recruit_lock_cell = NO_CELL
-	else:
-		_clear_recruit_theme_cards()
-		_arena.recruit_candidates = _build_recruit_candidate_previews()
-		_arena.recruit_items = _build_recruit_item_previews()
-		_arena.recruit_sell_cell = _build_recruit_sell_cell()
-		_arena.recruit_lock_cell = _build_recruit_lock_cell()
+	_arena.recruit_candidates = _build_recruit_candidate_previews()
+	_arena.recruit_items = _build_recruit_item_previews()
 	_arena.recruit_selected_candidate = _recruit_selected_candidate
 	_arena.recruit_selected_replace_id = _recruit_selected_replace_id
 	## 按当前选中/拖动候选人判断；满员但可三合一时不进换人态。
@@ -3013,14 +2706,14 @@ func _sync_recruit_arena() -> void:
 	else:
 		_arena.recruit_needs_replace = _recruit_session.needs_replace()
 	_arena.recruit_pending_item_slot = _recruit_pending_item_slot
+	_arena.recruit_sell_cell = _build_recruit_sell_cell()
+	_arena.recruit_lock_cell = _build_recruit_lock_cell()
 	_arena.prepare_slots = null
 	_arena.enemy_slots = null
 	_arena.enemy_previews = []
 	_arena.sim = null
 	_arena.placement_active = false
 	_sync_arena_bench()
-	if theme_pending:
-		_sync_recruit_theme_cards()
 	_arena.queue_redraw()
 
 
@@ -3032,17 +2725,12 @@ func _rebuild_recruit_team_slots() -> void:
 		if config != null:
 			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
-	## AllyBoard 常驻下半场：与准备同一友方座位几何（enemy_side=false）。
-	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, false)
-	## 招募会话优先；StageChoice（店|事/圣物）等阶段回落到战斗牌库。
-	var deck: DeckState = null
-	if _recruit_session != null and _recruit_session.deck != null:
-		deck = _recruit_session.deck
-	elif _deck_state != null:
-		deck = _deck_state
-	if deck == null:
+	## 上半场落点用敌半场区域，行序与我半场一致（前排在上），seat_index 与准备共用。
+	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
+	if _recruit_session == null or _recruit_session.deck == null:
 		return
-	## 只放已入座成员；备战不自动填友方空座。
+	var deck := _recruit_session.deck
+	## 只放已入座成员；备战不自动填上区空座。
 	for entry in deck.get_entries():
 		if entry == null or entry.seat_index < 0:
 			continue
@@ -3102,10 +2790,10 @@ func _build_recruit_item_previews() -> Array:
 
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
-	## 阶段货架占上半场（敌区）：候选人一行占满宽度（gap=0）。
-	## 5×4：候选 y=0；道具/锁/卖同行 y=1（仍 < mid）。
+	## 招募半场第 1 行：候选人一行占满宽度（gap=0）；mid 行留给备战中缝。
+	## 下方留空一行 + 道具/锁/卖行，故上限 y-3。
 	var mid := BoardHalf.midline_row(_board_size.y)
-	var y := clampi(mid - 2, 0, maxi(0, mid - 1))
+	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 3))
 	var gap := 0
 	var block_w := n
 	if block_w > _board_size.x:
@@ -3119,17 +2807,17 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
-## 招募动作行 y：候选人下一行，仍落在上半场（y < mid）。
+## 招募半场第 2 行 y：候选人下再空一行（cand_y+2）；道具/锁定/出售共用，禁止落到 +3。
 func _recruit_action_row_y() -> int:
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var cand_count := RecruitSession.CANDIDATE_COUNT
 	if _recruit_session != null:
 		cand_count = _recruit_session.get_candidate_slot_count()
 	var cand := _build_recruit_candidate_cells(cand_count)
-	var y := clampi(mid - 1, 0, maxi(0, mid - 1))
+	var y := mid + 3
 	if not cand.is_empty():
-		y = cand[0].y + 1
-	return clampi(y, 0, maxi(0, mid - 1))
+		y = cand[0].y + 2
+	return clampi(y, mid, maxi(mid, _board_size.y - 1))
 
 
 func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
@@ -3181,6 +2869,7 @@ func _refresh_recruit_hud() -> void:
 		return
 	var gold := _recruit_session.economy.gold if _recruit_session.economy != null else 0
 	var deck := _recruit_session.deck
+	var roster_n := deck.size() if deck != null else 0
 	var seated_n := deck.get_seated_count() if deck != null else 0
 	var bench_n := deck.get_bench_count() if deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
@@ -3195,39 +2884,16 @@ func _refresh_recruit_hud() -> void:
 		]
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
-			_recruit_hint.text = "点下半场队伍角色使用药水，或拖到角色上"
-		elif (
-			_recruit_session.theme_commitment_required
-			and not _recruit_session.has_committed_theme()
-		):
-			_recruit_hint.text = "请先选择本阶段主题"
-		elif _recruit_session.require_nonempty_roster and seated_n < 1:
-			_recruit_hint.text = "开局招募：至少 1 名已入座后才能继续"
+			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
+		elif _recruit_session.require_nonempty_roster and roster_n < 1:
+			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
-			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到下半场替换（旧人不退金）；可三合一时可点买"
+			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
 			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
-		_recruit_refresh_btn.disabled = (
-			_recruit_animating
-			or not _recruit_session.has_committed_theme()
-			or not _recruit_session.can_refresh()
-		)
+		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
-	if _recruit_theme_reroll_btn != null:
-		var theme_on := _recruit_session.theme_commitment_required
-		_recruit_theme_reroll_btn.visible = theme_on
-		_recruit_theme_reroll_btn.disabled = (
-			_recruit_animating or not theme_on or not _recruit_session.can_reroll_themes()
-		)
-		_recruit_theme_reroll_btn.text = "主题重 roll（%d 金）" % _recruit_session.get_theme_reroll_cost()
-		if theme_on and UnitTheme.is_valid_id(_recruit_session.committed_theme):
-			if _recruit_title != null:
-				_recruit_title.text = "招募 · %s" % UnitTheme.display_name(
-					_recruit_session.committed_theme
-				)
-		elif _recruit_title != null:
-			_recruit_title.text = "招募"
 	if _recruit_skip_btn != null:
 		## 开局隐藏跳过；胜后显示。
 		_recruit_skip_btn.visible = not _recruit_session.require_nonempty_roster
@@ -3244,63 +2910,6 @@ func _refresh_recruit_hud() -> void:
 		]
 	if _encounter_label != null:
 		_encounter_label.text = "招募"
-	_refresh_recruit_relic_sell_ui()
-
-
-func _refresh_recruit_relic_sell_ui() -> void:
-	var bag := _relic_bag
-	if _recruit_session != null and _recruit_session.get_relic_bag() != null:
-		bag = _recruit_session.get_relic_bag()
-	var count := bag.get_count() if bag != null else 0
-	if _recruit_sell_relic_btn != null:
-		_recruit_sell_relic_btn.disabled = _recruit_animating or count <= 0
-		_recruit_sell_relic_btn.text = "卖圣物（%d）" % count
-	var scroll := _recruit_relic_scroll()
-	if _recruit_relic_panel == null or scroll == null or not scroll.visible:
-		return
-	for child in _recruit_relic_panel.get_children():
-		child.queue_free()
-	if bag == null or count <= 0:
-		var empty := Label.new()
-		empty.text = "行囊无圣物可卖"
-		_recruit_relic_panel.add_child(empty)
-		return
-	var title := Label.new()
-	title.text = "点选出售圣物换金（与拖卖队伍成员不同）"
-	_recruit_relic_panel.add_child(title)
-	for i in count:
-		var relic := bag.get_at(i)
-		var btn := Button.new()
-		var name := relic.display_name if relic != null else "？"
-		var gold := relic.resolve_sell_gold() if relic != null else 0
-		btn.text = "出售 %s（+%d 金）" % [name, gold]
-		btn.pressed.connect(_on_recruit_sell_relic_index.bind(i))
-		_recruit_relic_panel.add_child(btn)
-
-
-func _on_recruit_sell_relic_toggle() -> void:
-	if _phase != Phase.RECRUIT or _recruit_animating:
-		return
-	var scroll := _recruit_relic_scroll()
-	if scroll == null:
-		return
-	_set_recruit_relic_panel_open(not scroll.visible)
-	_refresh_recruit_relic_sell_ui()
-
-
-func _on_recruit_sell_relic_index(bag_index: int) -> void:
-	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
-		return
-	var result := _recruit_session.try_sell_relic(bag_index)
-	if result.get("ok", false):
-		if _recruit_hint != null:
-			var relic: ExpeditionRelicData = result.get("relic") as ExpeditionRelicData
-			var name := relic.display_name if relic != null else "圣物"
-			_recruit_hint.text = "已出售圣物 %s，获得 %d 金" % [name, int(result.get("gold", 0))]
-		_refresh_recruit_hud()
-		return
-	if _recruit_hint != null:
-		_recruit_hint.text = "无法出售圣物（%s）" % String(result.get("reason", "unknown"))
 
 
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
@@ -3324,10 +2933,6 @@ func _on_recruit_drop_rejected(reason: StringName) -> void:
 
 
 func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
-	## StageChoice（店|事/圣物）下半场仍可换座。
-	if _phase == Phase.STAGE_CHOICE:
-		_try_stage_choice_seat_swap(entry_id, target_seat)
-		return
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
 	if _is_bench_entry(entry_id):
@@ -3348,19 +2953,7 @@ func _on_recruit_team_seat_drop(entry_id: int, target_seat: int) -> void:
 		_recruit_hint.text = "无法换座"
 
 
-func _try_stage_choice_seat_swap(entry_id: int, target_seat: int) -> void:
-	if _deck_state == null:
-		return
-	if not _deck_state.swap_seats(entry_id, target_seat):
-		return
-	_rebuild_recruit_team_slots()
-	if _arena != null:
-		_arena.recruit_team_slots = _recruit_team_slots
-		_arena.queue_redraw()
-	_refresh_hud()
-
-
-## 招募：拖下半场已入座成员松手落在备战格 → 入备战。
+## 招募：拖上区已入座成员松手落在备战格 → 入备战。
 func _on_recruit_team_bench_drop(entry_id: int, bench_slot: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
@@ -3412,7 +3005,7 @@ func _on_recruit_candidate_pressed(candidate_index: int) -> void:
 func _on_recruit_team_pressed(entry_id: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
 		return
-	## 待用药水：点下半场成员结算。
+	## 待用药水：点上区成员结算。
 	if _recruit_pending_item_slot >= 0:
 		_try_apply_recruit_potion(_recruit_pending_item_slot, entry_id)
 		return
@@ -3447,9 +3040,9 @@ func _on_recruit_item_pressed(item_slot: int) -> void:
 		_sync_recruit_arena()
 		_refresh_recruit_hud()
 		return
-	## 药水：进入选目标；也可拖到下半场角色。
+	## 药水：进入选目标；也可拖到上区角色。
 	_recruit_pending_item_slot = item_slot
-	_show_recruit_item_hint("点下半场队伍角色使用药水，或拖到角色上")
+	_show_recruit_item_hint("点上区队伍角色使用药水，或拖到角色上")
 	_sync_recruit_arena()
 
 
@@ -3534,7 +3127,7 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 		"no_gold":
 			_recruit_hint.text = "金币不足"
 		"roster_full", "need_replace":
-			_recruit_hint.text = "拥有已满：请出售腾位，或点选下半场角色替换"
+			_recruit_hint.text = "拥有已满：请出售腾位，或点选上区角色替换"
 		"seat_cap_full":
 			_recruit_hint.text = "上场席位已满"
 		_:
@@ -3560,66 +3153,6 @@ func _try_show_party_bark_after_recruit() -> void:
 	if _phase != Phase.RECRUIT or _arena == null:
 		return
 	_arena.show_party_bark(bark.speaker_unit_id, bark.line)
-
-
-func _maybe_show_theme_commitment() -> void:
-	## 主路径不做主题三选一；保留函数以免旧调用链空引用。
-	_sync_recruit_theme_cards()
-
-
-func _hide_theme_commitment() -> void:
-	_clear_recruit_theme_cards()
-	if _theme_commitment_panel != null and is_instance_valid(_theme_commitment_panel):
-		_theme_commitment_panel.hide_panel()
-
-
-func _sync_recruit_theme_cards() -> void:
-	if _arena == null or _recruit_session == null:
-		return
-	if not _recruit_session.theme_commitment_required or _recruit_session.has_committed_theme():
-		_clear_recruit_theme_cards()
-		return
-	var raw: Array = []
-	for theme_id in _recruit_session.get_theme_offers():
-		var theme_name := UnitTheme.display_name(theme_id)
-		raw.append({
-			"id": theme_id,
-			"label": theme_name,
-			"summary": "主/辅匹配",
-			"detail": "主题「%s」：本阶段招募候选人须主或辅主题匹配。选定后开放短名单；可用金币重 roll 主题。" % theme_name,
-			"kind_label": "主题",
-		})
-	_arena.stage_choice_title = "选择主题"
-	_arena.stage_choice_cards = StageChoiceBoard.layout_choices(raw, _board_size, 0)
-	_arena.stage_choice_active = true
-	## 主题未定时不展示候选人货架，避免误点。
-	_arena.recruit_candidates = []
-	_arena.recruit_items = []
-	_arena.queue_redraw()
-
-
-func _clear_recruit_theme_cards() -> void:
-	if _arena == null:
-		return
-	if _phase == Phase.RECRUIT:
-		_arena.stage_choice_active = false
-		_arena.stage_choice_cards.clear()
-		_arena.stage_choice_title = ""
-
-
-func _on_recruit_theme_reroll_pressed() -> void:
-	if _recruit_animating or _recruit_session == null:
-		return
-	if not _recruit_session.theme_commitment_required:
-		return
-	if not _recruit_session.try_reroll_themes():
-		if _recruit_hint != null:
-			_recruit_hint.text = "金币不足，无法重 roll 主题"
-		_refresh_recruit_hud()
-		return
-	_sync_recruit_arena()
-	_refresh_recruit_hud()
-	_sync_recruit_theme_cards()
 
 
 func _on_recruit_refresh_pressed() -> void:
@@ -3916,13 +3449,14 @@ func _start_next_skill_card() -> void:
 	if batch == null:
 		_sim.release_presentation()
 		return
+	_timestop_queue.begin_card(batch.owner, batch.spec, time_scale)
 	_register_combo_for_skill_intro(batch.owner)
 	_presentation_block_elapsed = 0.0
-	## 战斗内不再弹出单位/技能介绍卡；直接结算并进入结果拍（飘字/短提示）。
-	_resolve_skill_card_safe()
+	_arm_combat_skill_info_visibility()
+	_show_skill_trigger_info_for_owner(batch.owner, batch.spec)
 
 
-## 结算待播批次：写真值并进入结果拍（已取消介绍卡拍）。
+## 卡拍结束：先离开 AWAITING（避免结算脚本中断后永久假死），再写真值与结果拍。
 func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	## 先进入 RESULT，保证即便 resolve 中途 SCRIPT ERROR，时停也不会粘在 AWAITING_RESOLVE。
@@ -3936,6 +3470,11 @@ func _resolve_skill_card_safe() -> void:
 	_last_resolved_payload = null
 	if _timestop_queue != null:
 		_timestop_queue.begin_result(payload, time_scale)
+	if _arena != null:
+		var scale := maxf(0.25, time_scale)
+		_arena.bump_combat_skill_info_visibility(
+			RealtimeTimestopQueue.RESULT_PAUSE_SECONDS / scale + 0.15
+		)
 	if payload != null:
 		_present_effect_result(payload, true)
 
@@ -4015,11 +3554,14 @@ func _drain_pending_effects_silent() -> void:
 		guard += 1
 
 
-## 锁阵等：结果数字/短提示（已结算；不再弹介绍卡）。
+## 锁阵等：介绍卡 + 结果数字（已结算）。
 func _present_effect_feedback(payload: CombatEventPayload, with_callout: bool = false) -> void:
 	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
 	_register_combo_for_skill_intro(owner)
+	_arm_combat_skill_info_visibility()
+	_show_skill_trigger_info_card(payload)
 	_present_effect_result(payload, with_callout)
+	_release_combat_skill_info_visibility()
 
 
 ## 技能结果反馈：效果管线已结算后的数字/短提示；普攻命中不走此路径。
@@ -4082,6 +3624,35 @@ func _resolve_feedback_center(target: UnitInstance, payload: CombatEventPayload)
 	return Vector2(_board_size) * 0.5
 
 
+func _show_skill_trigger_info_card(payload: CombatEventPayload) -> void:
+	if payload == null:
+		return
+	var owner := payload.effect_owner if payload.effect_owner != null else payload.source
+	_show_skill_trigger_info_for_owner(owner, payload.effect_spec)
+
+
+func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: EffectSpec = null) -> void:
+	if _arena == null or owner == null:
+		return
+	var tile := Vector2(owner.grid_pos) + Vector2(0.5, 0.5)
+	var atk := owner.get_effective_attack() if owner.has_method("get_effective_attack") else 0
+	var hp := owner.current_hp
+	if _sim != null:
+		var rt := _sim.find_unit(owner)
+		if rt != null:
+			atk = rt.get_effective_attack()
+			hp = rt.get_current_hp()
+			tile = rt.position
+	var skills := ""
+	var attachments: Array = []
+	if trigger_spec != null:
+		skills = UnitInfoText.format_trigger_spec_line(owner, trigger_spec, true)
+		attachments = UnitInfoText.attachments_for_effect_spec(owner, trigger_spec, true)
+	_arena.show_skill_trigger_info(
+		owner, owner.team == UnitInstance.Team.PLAYER, atk, hp, tile, skills, attachments
+	)
+
+
 func _on_combat_finished(won: bool) -> void:
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
@@ -4097,9 +3668,8 @@ func _on_combat_finished(won: bool) -> void:
 		and not _combat_sandbox_mode
 		and not _final_trial_active
 	):
-		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）+ 圣物加成。
-		var relic_bonus := ExpeditionRelicEffectService.sum_bonus_floor_gold(_relic_bag)
-		_floor_gold = _economy.grant_floor_gold(_floor_index, relic_bonus)
+		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
+		_floor_gold = _economy.grant_floor_gold(_floor_index)
 	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
 	if _final_trial_active:
@@ -4285,8 +3855,11 @@ func _ensure_bench_row() -> void:
 
 
 func _rebuild_bench_slots() -> void:
-	## 备战贴在 AllyBoard 下沿（棋盘外虚拟行）；招募亦同——不再占 midline（会与友方前排重叠）。
-	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, -1)
+	## 招募：备战夹在队伍半场与招募半场之间（midline）；准备/战斗仍在友方半场下方。
+	var row_y := -1
+	if _phase == Phase.RECRUIT:
+		row_y = BoardHalf.midline_row(_board_size.y)
+	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
 		return
 	_deck_state.get_bench_entries()
@@ -4382,9 +3955,6 @@ func _combat_phase_status_text() -> String:
 func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
-	## 仅 bag 引用变化时同步；占用刷新依赖 bag_changed。
-	if _relic_badge_strip != null and _relic_badge_strip.get_bag() != _relic_bag:
-		_sync_relic_badge_strip()
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return
@@ -4395,22 +3965,15 @@ func _refresh_hud() -> void:
 		var layer := FinalTrialBalance.display_layer_for_wave(_final_trial_wave_index)
 		var stat := FinalTrialBalance.stat_for_wave(_final_trial_wave_index)
 		_encounter_label.text = "最终试炼 · 第 %d 层（%d/%d）" % [layer, stat, stat]
-	elif _floor_index > 0:
-		## 顶栏以层号为主；遭遇短名作次要后缀。
-		var encounter_name := _encounter.display_name if _encounter != null else ""
-		if encounter_name.is_empty():
-			_encounter_label.text = "第 %d 层" % _floor_index
-		else:
-			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
 	elif _encounter != null:
-		_encounter_label.text = _encounter.display_name
+		var encounter_name := _encounter.display_name
+		if _floor_index > 0:
+			_encounter_label.text = "第 %d 层 · %s" % [_floor_index, encounter_name]
+		else:
+			_encounter_label.text = encounter_name
 	else:
 		_encounter_label.text = "实时战斗"
-	if _gold_label != null:
-		_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
-		var gold_row := _gold_label.get_parent() as Control
-		if gold_row != null:
-			UiStatIcons.ensure_gold_icon(gold_row)
+	_gold_label.text = UiStatIcons.format_gold_label(_economy.gold if _economy != null else 0)
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
@@ -4451,11 +4014,6 @@ func _refresh_hud() -> void:
 			_phase_label.text = "附魔"
 		Phase.MAP_SHOP:
 			_phase_label.text = "商店"
-		Phase.STAGE_CHOICE:
-			if _arena != null and not _arena.stage_choice_title.is_empty():
-				_phase_label.text = _arena.stage_choice_title
-			else:
-				_phase_label.text = "选择"
 		_:
 			_phase_label.text = "等待"
 

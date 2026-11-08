@@ -8,7 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_berserker"]
 script = ExtResource("2_stats")
-max_hp = 5
+max_hp = 6
 attack = 10
 steps_per_turn = 1
 attack_interval = 1.15
@@ -30,5 +30,4 @@ tier = 3
 command_cost = 4
 stats = SubResource("UnitStats_berserker")
 ability = ExtResource("3_ability")
-theme_primary = &"warrior"
 icon = ExtResource("icon_tex")

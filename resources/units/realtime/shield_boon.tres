@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_shield_boon"]
 script = ExtResource("2_stats")
-max_hp = 15
+max_hp = 4
 attack = 1
 steps_per_turn = 1
 attack_interval = 1.4
@@ -29,5 +29,4 @@ tier = 1
 command_cost = 4
 stats = SubResource("UnitStats_shield_boon")
 ability = ExtResource("3_ability")
-theme_primary = &"guard"
 icon = ExtResource("icon_tex")

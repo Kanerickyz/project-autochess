@@ -59,12 +59,6 @@ enum Condition {
 	KILL_FROM_ATTACK,
 	## 持有者 banked_turn_refresh_charges > 0。
 	OWNER_HAS_BANKED_TURN_REFRESH_CHARGE,
-	## 持有者本动已完成同轴正交冲锋（≥2 格连续迈步）。
-	OWNER_COMPLETED_ORTHOGONAL_CHARGE,
-	## 事件目标与持有者正交相邻（曼哈顿=1；不含斜邻）。
-	EVENT_TARGET_ORTHOGONAL_ADJACENT,
-	## 持有者当前生命 ≤ 其有效生命上限的一半（苦修血印等）。
-	OWNER_AT_OR_BELOW_HALF_HP,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
@@ -77,9 +71,6 @@ const TRIGGER_NAMES: PackedStringArray = [
 	"OnEnemyDeath",
 	"OnFriendDamageTaken",
 	"OnDamageTaken",
-	"OnArmorBlocked",
-	"OnArmorDepleted",
-	"OnFriendArmorDepleted",
 
 	"OnDealDamage",
 	"OnKill",
@@ -106,8 +97,6 @@ const TRIGGER_NAMES: PackedStringArray = [
 ## 0 = unlimited. Counts successful enqueues per owner+spec this combat.
 @export_range(0, 99, 1) var max_triggers_per_combat: int = 0
 @export var condition: Condition = Condition.NONE
-## 非空时：目标须挂有该主题（主或辅，见 UnitTheme / UnitData.get_theme_ids）。
-@export var require_theme: StringName = &""
 
 
 func is_trigger_registered() -> bool:

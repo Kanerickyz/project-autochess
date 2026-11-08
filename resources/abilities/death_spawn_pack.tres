@@ -20,5 +20,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 script = ExtResource("1_ab")
 id = "death_spawn_pack"
 display_name = "散兵余烬"
-merge_value_mult = 3
+merge_value_mult = 4
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

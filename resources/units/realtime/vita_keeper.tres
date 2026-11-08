@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_vita_keeper"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 4
 attack = 4
 steps_per_turn = 2
 attack_interval = 1.0
@@ -28,4 +28,3 @@ tier = 2
 command_cost = 3
 stats = SubResource("UnitStats_vita_keeper")
 ability = ExtResource("3_ability")
-theme_primary = &"guard"

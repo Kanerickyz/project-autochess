@@ -4,12 +4,9 @@ extends RefCounted
 const ID_WEAK := &"weak"
 const ID_BERSERK := &"berserk"
 const ID_POISON := &"poison"
-## 远征圣物「殉道荆冠」等：造成伤害时自身受 1 点/层。
-const ID_THORNS := &"thorns"
 const MAX_STACKS := 15
-const THORNS_SOFT_CAP := 2
 
-const DISPLAY_ORDER: Array[StringName] = [ID_WEAK, ID_BERSERK, ID_POISON, ID_THORNS]
+const DISPLAY_ORDER: Array[StringName] = [ID_WEAK, ID_BERSERK, ID_POISON]
 
 var _stacks: Dictionary = {}
 
@@ -19,7 +16,6 @@ static func is_valid_id(status_id: StringName) -> bool:
 		status_id == ID_WEAK
 		or status_id == ID_BERSERK
 		or status_id == ID_POISON
-		or status_id == ID_THORNS
 	)
 
 
@@ -31,8 +27,6 @@ static func get_display_name(status_id: StringName) -> String:
 			return "狂暴"
 		ID_POISON:
 			return "中毒"
-		ID_THORNS:
-			return "反伤"
 		_:
 			return String(status_id)
 
@@ -45,8 +39,6 @@ static func get_rule_summary(status_id: StringName) -> String:
 			return "普攻伤害在护甲前 +1（每层）。"
 		ID_POISON:
 			return "你的回合开始时失去生命（每层 1 点，先于回合开始技能）。"
-		ID_THORNS:
-			return "造成伤害时自身失去生命（每层 1 点；层数软顶 2）。"
 		_:
 			return ""
 
@@ -73,8 +65,7 @@ func add_stacks(status_id: StringName, delta: int) -> int:
 	if not is_valid_id(status_id) or delta == 0:
 		return get_stacks(status_id)
 	var next := get_stacks(status_id) + delta
-	var cap := THORNS_SOFT_CAP if status_id == ID_THORNS else MAX_STACKS
-	next = clampi(next, 0, cap)
+	next = clampi(next, 0, MAX_STACKS)
 	if next <= 0:
 		_stacks.erase(status_id)
 	else:

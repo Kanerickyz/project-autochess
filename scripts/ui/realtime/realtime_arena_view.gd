@@ -6,44 +6,42 @@ extends Control
 
 signal board_pressed(tile_pos: Vector2)
 signal card_dropped(entry_id: int, tile_pos: Vector2)
-## 招募：候选人拖放到下半场 AllyBoard；replace_entry_id≥0 为替换（仅点选路径会发）；seat_index≥0 为指定空座。
+## 招募：候选人拖放到上半场；replace_entry_id≥0 为替换（仅点选路径会发）；seat_index≥0 为指定空座。
 signal recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int)
 ## 招募：候选人拖到非法落点（如已占座）；reason 如 occupied_seat。
 signal recruit_drop_rejected(reason: StringName)
 signal recruit_candidate_pressed(candidate_index: int)
 signal recruit_team_pressed(entry_id: int)
-## 招募：下半场队伍成员拖到出售落点松手。
+## 招募：上区队伍成员拖到出售落点松手。
 signal recruit_sell(entry_id: int)
 ## 招募：下区候选人拖到锁定落点松手（切换锁定）。
 signal recruit_candidate_lock(candidate_index: int)
-## 招募：下半场成员拖到空座或另一成员座位换座。
+## 招募：上区成员拖到空座或另一成员座位换座。
 signal recruit_team_seat_drop(entry_id: int, target_seat: int)
-## 招募：点下半场空座（备战选中后上阵用）。
+## 招募：点上区空座（备战选中后上阵用）。
 signal recruit_empty_seat_pressed(seat_index: int)
 ## 招募道具行：点击道具槽。
 signal recruit_item_pressed(item_slot: int)
-## 招募道具行：药水拖到下半场队伍成员。
+## 招募道具行：药水拖到上区队伍成员。
 signal recruit_item_drop(item_slot: int, entry_id: int)
 ## 附魔：队伍成员拖到时机格 A / 效果格 B。
 signal enchant_forge_drop(entry_id: int, slot: StringName)
-## 附魔：下半场队伍换座（AllyBoard 常驻）。
+## 附魔：下半场队伍换座（与招募上区同规则）。
 signal enchant_team_seat_drop(entry_id: int, target_seat: int)
-## 地图商店：上半场货架拖到下半场角色；kind = consumable | equipment。
+## 地图商店：货架拖到上半场角色；kind = consumable | equipment。
 signal map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int)
-## 地图商店：下半场队伍换座。
+## 地图商店：上区队伍换座。
 signal map_shop_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备阶段：拖已入座角色到空座或另一座位换座（写回由控制器处理）。
 signal prepare_team_seat_drop(entry_id: int, target_seat: int)
 ## 准备：拖已入座角色松手落在备战格。
 signal prepare_team_bench_drop(entry_id: int, bench_slot: int)
-## 招募：拖下半场/备战成员松手落在备战格（或未落座时由控制器兼容）。
+## 招募：拖上区/备战成员松手落在备战格（或未落座时由控制器兼容）。
 signal recruit_team_bench_drop(entry_id: int, bench_slot: int)
 ## 点备战已占格（选中 / 药水等）。
 signal bench_pressed(entry_id: int)
 ## 点备战空格（接收已选入座角色下阵）。
 signal bench_empty_pressed(slot_index: int)
-## 阶段选择题：点上半场选项卡片。
-signal stage_choice_pressed(index: int)
 
 const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
@@ -139,7 +137,7 @@ const DRAG_SOURCE_ALPHA := 0.32
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
 
-var board_size: Vector2i = Vector2i(5, 4)
+var board_size: Vector2i = Vector2i(5, 8)
 ## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
 const REFERENCE_BOARD_WIDTH := 9.0
 const REFERENCE_BOARD_HEIGHT := 16.0
@@ -157,7 +155,7 @@ var ghost_unit_id: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
-## 备战区：准备/战斗/招募均在棋盘底边下方（AllyBoard 下沿）；不占 midline。
+## 备战区：准备/战斗在棋盘底边下方；招募时在 midline 中缝（队伍与招募半场之间）。
 var bench_slots: PrepareSlotBoard
 ## 准备/战斗/招募显示备战行；附魔/商店/目录关闭。
 var bench_visible: bool = false
@@ -170,25 +168,19 @@ const BENCH_GAP_TILES := 0.25
 const BENCH_ROW_TILES := 1.0
 ## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
 var presentation_time_scale: float = 1.0
-## 胜后阶段半场退出/进入：敌/阶段半场像素位移（由控制器 Tween）。
-## AllyBoard 跨阶段常驻：主路径不把 ally_half_slide_y 滑出屏。
+## 胜后半场退出/招募进入：上半场 / 下半场像素位移（由控制器 Tween）。
 ## 草地与外框不随位移；仅半场色调与单位/座位内容滑动。
 var enemy_half_slide_y: float = 0.0
 var ally_half_slide_y: float = 0.0
 ## 开战后备战行向下移出屏（准备/战斗棋盘外一行；与半场 slide 独立）。
 var bench_slide_y: float = 0.0
-## 招募模式：下半场画队伍（AllyBoard）、上半场画候选人货架（不走战斗 sim）。
+## 招募模式：上半场画队伍、下半场画候选人（不走战斗 sim）。
 var recruit_active: bool = false
-## 地图商店：下半场队伍、上半场消耗品+装备货架。
+## 地图商店：上半场队伍、下半场消耗品+装备货架（与招募分区一致）。
 var map_shop_active: bool = false
 ## Array[Dictionary]：{index, kind, item, cell, cost?, affordable?, label?, summary?}
 var map_shop_offers: Array = []
-## 阶段选择题：上半场选项卡片（店|事 / 主题 / 圣物等），下半场 AllyBoard 常驻。
-var stage_choice_active: bool = false
-## Array[Dictionary]：{index, id, label, summary?, selected?, cell, meta?}
-var stage_choice_cards: Array = []
-var stage_choice_title: String = ""
-## 附魔：上炉下队；上半场熔炉三格，下半场 AllyBoard。
+## 附魔：上炉下队；上半场熔炉三格，下半场队伍座位。
 var enchant_active: bool = false
 var enchant_forge_previews: Array = []
 ## 友方队伍区纵向滚动（行）；试验场单位过多时启用。
@@ -201,7 +193,7 @@ var catalog_active: bool = false
 var catalog_plain_backdrop: bool = false
 ## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
 var catalog_visual_scale_override: float = -1.0
-## 下半场友方队伍座位（几何同准备 AllyBoard 2×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
@@ -214,11 +206,11 @@ var catalog_preview_level: int = 1
 var recruit_selected_candidate: int = -1
 var recruit_selected_replace_id: int = -1
 var recruit_needs_replace: bool = false
-## 待用药水槽；≥0 时点下半场队伍成员结算。
+## 待用药水槽；≥0 时点上区队伍成员结算。
 var recruit_pending_item_slot: int = -1
-## 上半场出售落点格；与候选人/道具槽分离，避免混手势。
+## 下区出售落点格；与候选人/道具槽分离，避免混手势。
 var recruit_sell_cell: Vector2i = NO_CELL
-## 上半场锁定落点格：候选人拖入切换锁定（与出售对称）。
+## 下区锁定落点格：候选人拖入切换锁定（与出售对称）。
 var recruit_lock_cell: Vector2i = NO_CELL
 ## 拖到出售落点时预览退金（由控制器写入）。
 var recruit_sell_preview_gold: int = 0
@@ -268,8 +260,6 @@ var _map_shop_offer_drag_index: int = -1
 var _map_shop_offer_press_index: int = -1
 var _map_shop_team_drag_id: int = -1
 var _map_shop_team_press_id: int = -1
-## 上半场 StageChoice 卡片按下下标（松手短选 / 长按详情）。
-var _stage_choice_press_index: int = -1
 ## 准备阶段座位拖换：按住已入座角色拖到目标座。
 var _prepare_team_drag_id: int = -1
 var _prepare_team_press_id: int = -1
@@ -287,7 +277,7 @@ var _press_pos := Vector2.ZERO
 var _press_ms: int = -1
 var _press_info: Dictionary = {}
 var _press_tap: Callable
-## 三合一演出态（招募 AllyBoard）；由 play_triple_merge_animation 驱动。
+## 三合一演出态（招募上区）；由 play_triple_merge_animation 驱动。
 var _merge_active: bool = false
 var _merge_tween: Tween
 var _merge_survivor_seat: int = -1
@@ -383,7 +373,6 @@ func _notification(what: int) -> void:
 		_map_shop_offer_press_index = -1
 		_map_shop_team_drag_id = -1
 		_map_shop_team_press_id = -1
-		_stage_choice_press_index = -1
 		_prepare_team_drag_id = -1
 		_prepare_team_press_id = -1
 		_bench_press_id = -1
@@ -448,13 +437,13 @@ func get_board_rect() -> Rect2:
 	return Rect2(origin, board_px)
 
 
-## 备战格中心本地坐标。准备/战斗/招募：棋盘外虚拟行（AllyBoard 下沿）。
+## 备战格中心本地坐标。招募：逻辑格中心（midline）；准备/战斗：棋盘外虚拟行。
 func bench_slot_center_local(slot_index: int) -> Vector2:
 	if bench_slots == null or slot_index < 0 or slot_index >= bench_slots.cells.size():
 		return Vector2.ZERO
 	var cell := bench_slots.cells[slot_index]
 	var px := get_cell_px()
-	## 兼容旧棋盘内备战格：与座位同口径的格心。
+	## 棋盘内备战（招募中缝）：与座位同口径的格心。
 	if cell.y < board_size.y:
 		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)) + Vector2(0.0, bench_slide_y)
 	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
@@ -516,12 +505,12 @@ func is_pointer_over_bench(local_pos: Vector2 = Vector2.INF) -> bool:
 	return find_bench_slot_at_local(pos) >= 0
 
 
-## 招募下半场队伍成员纸片中心（本地坐标，含半场 slide）；找不到返回零向量且 ok=false。
+## 招募上区队伍成员纸片中心（本地坐标，含半场 slide）；找不到返回零向量且 ok=false。
 func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
 	var result := {"ok": false, "tip": Vector2.ZERO}
 	if not recruit_active or recruit_team_slots == null or unit_id.is_empty():
 		return result
-	var ally_off := Vector2(0.0, ally_half_slide_y)
+	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	for i in recruit_team_slots.cells.size():
 		var entry := recruit_team_slots.get_entry(i)
 		if entry == null or entry.unit == null:
@@ -529,7 +518,7 @@ func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
 		if String(entry.unit.id) != unit_id:
 			continue
 		var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-		var center := tile_to_local(tile) + ally_off
+		var center := tile_to_local(tile) + enemy_off
 		## 尖角对准纸片上沿略上方。
 		var tip := center + Vector2(0.0, -get_cell_px() * 0.55)
 		result["ok"] = true
@@ -938,16 +927,6 @@ func _trim_feedback_for_unit(unit_id: int) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if stage_choice_active:
-		## 友方半场仍可拖座/长按详情；仅上半场走选项卡。
-		if _should_route_stage_choice_to_ally(event):
-			if recruit_active:
-				_gui_input_recruit(event)
-			else:
-				_gui_input_stage_choice_ally(event)
-			return
-		_gui_input_stage_choice(event)
-		return
 	if enchant_active:
 		_gui_input_enchant(event)
 		return
@@ -1786,19 +1765,6 @@ func show_deck_entry_info(entry: DeckEntry, local_anchor: Vector2) -> bool:
 	return true
 
 
-## 右上角圣物徽章等：与 StageChoice / 单位同一套 RealtimeUnitInfoCard。
-func show_relic_info(
-	relic: ExpeditionRelicData,
-	local_anchor: Vector2,
-	inspect_key: String = "",
-) -> bool:
-	var info := ExpeditionRelicInfo.info_dict(relic, local_anchor, inspect_key)
-	if info.is_empty():
-		return false
-	_show_info_card(info)
-	return true
-
-
 func _show_info_card(info: Dictionary, slide_dir: float = 0.0) -> void:
 	if info.is_empty():
 		return
@@ -1980,17 +1946,29 @@ func bump_combat_skill_info_visibility(extra_seconds: float) -> void:
 		_auto_info_until_clock = until
 
 
-## 兼容旧调用：战斗技能触发不再自动弹介绍卡（长按检视仍走 show_unit_info）。
+## 技能触发时先弹出与长按相同的单位信息卡（含技能介绍）。
+## skills_override 非空时只展示本条触发（RichText / BBCode）。
 func show_skill_trigger_info(
-	_unit: UnitInstance,
-	_is_player: bool,
-	_attack: int,
-	_hp: int,
-	_tile_pos: Vector2,
-	_skills_override: String = "",
-	_attachments: Array = [],
+	unit: UnitInstance,
+	is_player: bool,
+	attack: int,
+	hp: int,
+	tile_pos: Vector2,
+	skills_override: String = "",
+	attachments: Array = [],
 ) -> void:
-	return
+	if unit == null:
+		return
+	var off := Vector2(0.0, ally_half_slide_y if is_player else enemy_half_slide_y)
+	var center := tile_to_local(tile_pos) + off
+	var info := _info_from_instance(unit, is_player, attack, hp, center)
+	info["attachments"] = attachments
+	if not skills_override.is_empty():
+		info["skills"] = skills_override
+	_show_combat_broadcast_info_card(info)
+	play_combat_skill_info_reel_intro()
+	var life := SKILL_INFO_SECONDS / maxf(0.25, presentation_time_scale)
+	bump_combat_skill_info_visibility(life)
 
 
 ## 展示步 ①：整张**战斗技能介绍卡**（主卡）。
@@ -2116,29 +2094,15 @@ func _collect_inspectables() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
-	if stage_choice_active:
-		if recruit_team_slots != null:
-			for i in recruit_team_slots.cells.size():
-				var team_entry := recruit_team_slots.get_entry(i)
-				if team_entry != null:
-					var team_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + ally_off))
-		for ci in stage_choice_cards.size():
-			var choice_info := _info_from_stage_choice_index(ci, enemy_off)
-			if not choice_info.is_empty():
-				out.append(choice_info)
-		if recruit_active:
-			_append_bench_inspectables(out)
-		return out
 	if map_shop_active:
 		if recruit_team_slots != null:
 			for i in recruit_team_slots.cells.size():
 				var team_entry := recruit_team_slots.get_entry(i)
 				if team_entry != null:
 					var team_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + ally_off))
+					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + enemy_off))
 		for oi in map_shop_offers.size():
-			var offer_info := _info_from_map_shop_offer_index(oi, enemy_off)
+			var offer_info := _info_from_map_shop_offer_index(oi, ally_off)
 			if not offer_info.is_empty():
 				out.append(offer_info)
 		return out
@@ -2169,7 +2133,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 				var entry := recruit_team_slots.get_entry(i)
 				if entry != null:
 					var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
-					out.append(_info_from_entry(entry, tile_to_local(tile) + ally_off))
+					out.append(_info_from_entry(entry, tile_to_local(tile) + enemy_off))
 		for cand in recruit_candidates:
 			if not (cand is Dictionary):
 				continue
@@ -2181,7 +2145,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 				out.append(
 					_info_from_unit_data(
 						unit,
-						tile_to_local(tile) + enemy_off,
+						tile_to_local(tile) + ally_off,
 						"cand:%d" % cand_i,
 						1,
 						int(cand.get("cost", 0)),
@@ -2189,12 +2153,12 @@ func _collect_inspectables() -> Array[Dictionary]:
 					)
 				)
 		for oi in recruit_items.size():
-			var item_info := _info_from_recruit_item_index(oi, enemy_off)
+			var item_info := _info_from_recruit_item_index(oi, ally_off)
 			if not item_info.is_empty():
 				out.append(item_info)
 		var lock_info := _info_from_recruit_action_cell(
 			recruit_lock_cell,
-			enemy_off,
+			ally_off,
 			"recruit_lock",
 			"锁定",
 			"操作",
@@ -2205,12 +2169,12 @@ func _collect_inspectables() -> Array[Dictionary]:
 			out.append(lock_info)
 		var sell_info := _info_from_recruit_action_cell(
 			recruit_sell_cell,
-			enemy_off,
+			ally_off,
 			"recruit_sell",
 			"卖出",
 			"操作",
 			RECRUIT_TEX_SELL,
-			"把下半场队伍或备战成员拖到此处出售，获得正常退金并腾位。\n长按只看介绍，不会卖出；拖超过阈值后松手才成交，可拖回取消。",
+			"把上区或备战成员拖到此处出售，获得正常退金并腾位。\n长按只看介绍，不会卖出；拖超过阈值后松手才成交，可拖回取消。",
 		)
 		if not sell_info.is_empty():
 			out.append(sell_info)
@@ -2274,7 +2238,7 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	if key.is_empty():
 		key = "entry:%d" % entry.entry_id
 	var unit_cost := entry.unit.cost if entry.unit != null else 0
-	var info := {
+	return {
 		"inspect_key": key,
 		"center": center,
 		"name": entry.get_display_name(),
@@ -2290,8 +2254,6 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
-	_put_theme_fields(info, entry.unit if entry != null else null)
-	return info
 
 
 func _info_from_unit_data(
@@ -2324,7 +2286,6 @@ func _info_from_unit_data(
 		"recruit_cost": maxi(0, data.cost),
 		"recruit_cost_affordable": true,
 	}
-	_put_theme_fields(info, data)
 	if recruit_cost >= 0:
 		info["recruit_cost"] = recruit_cost
 		info["recruit_cost_affordable"] = recruit_cost_affordable
@@ -2334,7 +2295,7 @@ func _info_from_unit_data(
 func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: int, center: Vector2) -> Dictionary:
 	var unit_id := unit.unit_data.id if unit.unit_data != null else ""
 	var unit_cost := unit.unit_data.cost if unit.unit_data != null else 0
-	var info := {
+	return {
 		"inspect_key": "inst:%d" % unit.get_instance_id(),
 		"center": center,
 		"name": UnitInfoText.get_display_name(unit),
@@ -2349,19 +2310,6 @@ func _info_from_instance(unit: UnitInstance, is_player: bool, attack: int, hp: i
 		"recruit_cost": maxi(0, unit_cost),
 		"recruit_cost_affordable": true,
 	}
-	## 敌方本版不计主题：卡头也不挂徽。
-	if is_player:
-		_put_theme_fields(info, unit.unit_data if unit != null else null)
-	return info
-
-
-func _put_theme_fields(info: Dictionary, data: UnitData) -> void:
-	if data == null:
-		return
-	if UnitTheme.is_valid_id(data.theme_primary):
-		info["theme_primary"] = data.theme_primary
-	if UnitTheme.is_valid_id(data.theme_secondary) and data.theme_secondary != data.theme_primary:
-		info["theme_secondary"] = data.theme_secondary
 
 
 ## 招募半场道具：与地图商店同用 RealtimeUnitInfoCard（is_item）。
@@ -2386,13 +2334,13 @@ func _info_from_recruit_item_index(index: int, half_off: Vector2) -> Dictionary:
 		PrepareItemData.ItemType.HP_POTION:
 			kind_label = "消耗品"
 			skills = (
-				"永久 +%s%d 生命上限。\n拖到下半场队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
+				"永久 +%s%d 生命上限。\n拖到上区队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
 				% [UnitInfoText.STAT_ICON_HP, bonus]
 			)
 		PrepareItemData.ItemType.ATK_POTION:
 			kind_label = "消耗品"
 			skills = (
-				"永久 +%s%d 攻击。\n拖到下半场队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
+				"永久 +%s%d 攻击。\n拖到上区队伍角色使用，或点选后再点目标；即时扣金，整局保留。"
 				% [UnitInfoText.STAT_ICON_ATK, bonus]
 			)
 		PrepareItemData.ItemType.BANNER:
@@ -2468,14 +2416,14 @@ func _info_from_map_shop_offer_index(index: int, half_off: Vector2) -> Dictionar
 		if eq != null:
 			armor = eq.get_armor_block()
 			skills = (
-				"护甲：有护甲时不扣血（伤害大于护甲时护甲归零、溢出也不扣血）。\n挂在一名队伍成员上，跨节点保留；离开战斗节点后回满；每角色最多一件。抵挡 %d。"
+				"护甲：有护甲时不扣血（伤害大于护甲时护甲归零、溢出也不扣血）。\n挂在一名队伍成员上，跨节点保留；离开战斗节点后回满；每角色最多一件。"
 				% armor
 			)
 	else:
 		var cons := offer.get("item") as MapShopConsumableData
 		if cons != null:
 			skills = (
-				"%s\n永久改变目标角色属性；拖到下半场角色使用，该槽清空。"
+				"%s\n永久改变目标角色属性；拖到上半场角色使用，该槽清空。"
 				% cons.get_effect_summary()
 			)
 		else:
@@ -2573,8 +2521,7 @@ func _finish_recruit_item_drag(cell: Vector2i) -> void:
 		queue_redraw()
 		return
 	var mid := BoardHalf.midline_row(board_size.y)
-	## 队伍在下半场：上半场货架格非法。
-	if cell == NO_CELL or cell.y < mid:
+	if cell == NO_CELL or cell.y >= mid:
 		queue_redraw()
 		return
 	var entry_id := _find_recruit_team_entry_at(cell)
@@ -2603,8 +2550,7 @@ func _finish_recruit_drag(cell: Vector2i) -> void:
 		queue_redraw()
 		return
 	var mid := BoardHalf.midline_row(board_size.y)
-	## 队伍在下半场：上半场非法（锁/卖已先处理）。
-	if cell == NO_CELL or cell.y < mid:
+	if cell == NO_CELL or cell.y >= mid:
 		queue_redraw()
 		return
 	var replace_id := _find_recruit_team_entry_at(cell)
@@ -2666,8 +2612,8 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 		queue_redraw()
 		return
 	var release_pos := release_local if release_local != Vector2.ZERO else get_local_mouse_position()
-	## 精确命中座位（换座 / 备战上阵）；备战须优先于「最近空座」吸附，
-	## 否则松手在备战行会被友方后排空座抢走。
+	## 精确命中座位（换座 / 备战上阵）；中缝备战须优先于「最近空座」吸附，
+	## 否则松手在 midline 备战会被上区后排空座抢走。
 	var seat_i := _find_recruit_team_seat_at(cell)
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
@@ -2744,14 +2690,13 @@ func _can_prepare_seat_drag() -> bool:
 		and not catalog_active
 		and not recruit_active
 		and not map_shop_active
-		and not stage_choice_active
 		and not enchant_active
 		and (sim == null or not sim.has_started())
 	)
 
 
 func _can_drag_prepare_or_bench() -> bool:
-	if catalog_active or map_shop_active or stage_choice_active or enchant_active:
+	if catalog_active or map_shop_active or enchant_active:
 		return false
 	if recruit_active:
 		return bench_interactive
@@ -2948,8 +2893,7 @@ func _finish_map_shop_offer_drag(cell: Vector2i) -> void:
 		queue_redraw()
 		return
 	var mid := BoardHalf.midline_row(board_size.y)
-	## 货架在上、队伍在下：须松在下半场角色上。
-	if cell == NO_CELL or cell.y < mid:
+	if cell == NO_CELL or cell.y >= mid:
 		queue_redraw()
 		return
 	var entry_id := _find_recruit_team_entry_at(cell)
@@ -3057,7 +3001,7 @@ func _drop_data(at_position: Vector2, data: Variant) -> void:
 		var index := int(dict[RECRUIT_CANDIDATE_KEY])
 		_recruit_drag_index = -1
 		var mid := BoardHalf.midline_row(board_size.y)
-		if cell == NO_CELL or cell.y < mid:
+		if cell == NO_CELL or cell.y >= mid:
 			return
 		var replace_id := _find_recruit_team_entry_at(cell)
 		var seat_i := _find_recruit_team_seat_at(cell)
@@ -3115,27 +3059,10 @@ func clear_map_shop_mode() -> void:
 	queue_redraw()
 
 
-func clear_stage_choice_mode() -> void:
-	_cancel_press()
-	stage_choice_active = false
-	stage_choice_cards.clear()
-	stage_choice_title = ""
-	_stage_choice_press_index = -1
-	_recruit_team_press_id = -1
-	_recruit_team_drag_id = -1
-	## 招募/商店可能仍占用 recruit_team_slots。
-	if not recruit_active and not map_shop_active:
-		recruit_team_slots = null
-	queue_redraw()
-
-
 func clear_recruit_mode() -> void:
 	_cancel_press()
 	recruit_active = false
-	stage_choice_active = false
-	stage_choice_cards.clear()
-	stage_choice_title = ""
-	## 地图商店复用 recruit_team_slots 画下半场队伍；清招募时勿误清商店。
+	## 地图商店复用 recruit_team_slots 画上半场；清招募时勿误清商店。
 	if not map_shop_active:
 		recruit_team_slots = null
 	recruit_candidates.clear()
@@ -3222,20 +3149,14 @@ func clear_catalog_mode() -> void:
 	catalog_plain_backdrop = false
 	catalog_preview_level = 1
 	catalog_units.clear()
-	board_size = Vector2i(5, 4)
+	board_size = Vector2i(5, 8)
 	queue_redraw()
 
 
-## 仅敌/阶段半场移出屏；AllyBoard 常驻底部（主路径）。
-func set_stage_half_slide_offscreen(travel: float) -> void:
-	enemy_half_slide_y = -absf(travel)
-	ally_half_slide_y = 0.0
-	queue_redraw()
-
-
-## 兼容旧调用：等同 set_stage_half_slide_offscreen（不再把友方滑出屏）。
 func set_half_slide_offscreen(travel: float) -> void:
-	set_stage_half_slide_offscreen(travel)
+	enemy_half_slide_y = -absf(travel)
+	ally_half_slide_y = absf(travel)
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -3279,11 +3200,6 @@ func _draw() -> void:
 
 	if catalog_active:
 		_draw_catalog_units(px)
-	elif stage_choice_active:
-		_draw_stage_choice_zone_labels(px, mid, enemy_off, ally_off)
-		_draw_stage_choice_cards(px, enemy_off)
-		_draw_recruit_team(px, ally_off)
-		_draw_bench_row(px)
 	elif enchant_active:
 		_draw_enchant_zone_labels(px, mid, enemy_off, ally_off)
 		_draw_enchant_forge(px, enemy_off)
@@ -3295,21 +3211,21 @@ func _draw() -> void:
 				_draw_enchant_team_seat_hint(px)
 	elif map_shop_active:
 		_draw_map_shop_zone_labels(px, mid, enemy_off, ally_off)
-		_draw_map_shop_offers(px, enemy_off)
-		_draw_recruit_team(px, ally_off)
+		_draw_recruit_team(px, enemy_off)
+		_draw_map_shop_offers(px, ally_off)
 		if _map_shop_offer_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_offer_drop_hint(px, mid)
 		elif _map_shop_team_drag_id >= 0 and _hover_cell != NO_CELL:
 			_draw_map_shop_team_seat_hint(px)
 	elif recruit_active:
 		_draw_recruit_zone_labels(px, mid, enemy_off, ally_off)
-		## 上半场货架先画，再画下半场 AllyBoard / 备战，避免纸片盖住队伍。
-		_draw_recruit_candidates(px, enemy_off)
-		_draw_recruit_items(px, enemy_off)
-		_draw_recruit_sell_slot(px, enemy_off)
-		_draw_recruit_lock_slot(px, enemy_off)
-		_draw_recruit_team(px, ally_off)
+		_draw_recruit_team(px, enemy_off)
+		## 备战在中缝、候选在下半场：先画备战再画候选，避免纸片盖住招募席。
 		_draw_bench_row(px)
+		_draw_recruit_candidates(px, ally_off)
+		_draw_recruit_items(px, ally_off)
+		_draw_recruit_sell_slot(px, ally_off)
+		_draw_recruit_lock_slot(px, ally_off)
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
 		elif _recruit_item_drag_index >= 0 and _hover_cell != NO_CELL:
@@ -3358,7 +3274,7 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
-	## 备战行：准备/战斗在友方半场下方；招募已在队伍之后绘制。
+	## 备战行：准备/战斗在友方半场下方；招募已在候选之前绘制。
 	if not recruit_active:
 		_draw_bench_row(px)
 	_draw_fx(px)
@@ -3436,8 +3352,8 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var font_size := clampi(int(px * 0.55), 11, 18)
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
-	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -3446,218 +3362,8 @@ func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_of
 	var font_size := clampi(int(px * 0.55), 11, 18)
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, "商店货架", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
-	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-
-
-func _draw_stage_choice_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
-	var rect := get_board_rect()
-	var font := get_theme_default_font()
-	var font_size := clampi(int(px * 0.55), 11, 18)
-	var title := stage_choice_title if not stage_choice_title.is_empty() else "选择"
-	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.55)
-	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.95))
-	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-
-
-func _draw_stage_choice_cards(px: float, off: Vector2) -> void:
-	var font := get_theme_default_font()
-	var title_size := clampi(int(px * 0.42), 12, 22)
-	var summary_size := clampi(int(px * 0.28), 10, 14)
-	var board_pos := get_board_rect().position
-	var mid := BoardHalf.midline_row(board_size.y)
-	## 卡片占满敌半场高度，避免单格挤字。
-	var card_h := maxf(px * 0.85, float(mid) * px - px * 0.2)
-	for i in stage_choice_cards.size():
-		var info: Variant = stage_choice_cards[i]
-		if not (info is Dictionary):
-			continue
-		var dict := info as Dictionary
-		var cell: Vector2i = dict.get("cell", NO_CELL)
-		if cell == NO_CELL:
-			continue
-		var selected := bool(dict.get("selected", false))
-		var pad := px * 0.08
-		var cell_origin := board_pos + Vector2(cell.x, 0) * px + off
-		var card_rect := Rect2(
-			cell_origin + Vector2(pad, pad),
-			Vector2(px - pad * 2.0, card_h - pad * 2.0),
-		)
-		var fill := Color(0.14, 0.18, 0.16, 0.92)
-		var border := Color(0.45, 0.72, 0.62, 1.0) if selected else Color(0.35, 0.50, 0.45, 0.95)
-		if selected:
-			fill = Color(0.18, 0.28, 0.24, 0.96)
-		draw_rect(card_rect, fill, true)
-		draw_rect(card_rect, border, false, 2.5 if selected else 1.5)
-		var label := String(dict.get("label", ""))
-		var summary := String(dict.get("summary", ""))
-		var text_x := card_rect.position.x + px * 0.08
-		var text_y := card_rect.position.y + px * 0.36
-		draw_string(
-			font,
-			Vector2(text_x, text_y),
-			label,
-			HORIZONTAL_ALIGNMENT_LEFT,
-			card_rect.size.x - px * 0.12,
-			title_size,
-			Color(0.95, 0.97, 0.96, 1.0),
-		)
-		if not summary.is_empty():
-			## 卡片面只露短摘要；完整文案走长按信息卡。
-			var preview := StageChoiceBoard.truncate_preview(summary, 14)
-			draw_string(
-				font,
-				Vector2(text_x, text_y + px * 0.42),
-				preview,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				card_rect.size.x - px * 0.12,
-				summary_size,
-				Color(0.82, 0.88, 0.84, 0.95),
-			)
-
-
-## 友方半场或已在拖队伍时，把 StageChoice 输入交给队伍路径。
-func _should_route_stage_choice_to_ally(event: InputEvent) -> bool:
-	if _recruit_team_drag_id >= 0 or _map_shop_team_drag_id >= 0:
-		return true
-	if _recruit_team_press_id >= 0 or _map_shop_team_press_id >= 0 or _bench_press_id >= 0:
-		return true
-	var pos := Vector2.INF
-	if event is InputEventMouseMotion:
-		pos = (event as InputEventMouseMotion).position
-	elif event is InputEventMouseButton:
-		pos = (event as InputEventMouseButton).position
-	if pos == Vector2.INF:
-		return false
-	return _is_pointer_on_ally_half(pos)
-
-
-func _is_pointer_on_ally_half(local_pos: Vector2) -> bool:
-	if bench_visible and is_pointer_over_bench(local_pos):
-		return true
-	var cell := tile_to_cell(local_to_tile(local_pos))
-	if cell == NO_CELL:
-		return false
-	return cell.y >= BoardHalf.midline_row(board_size.y)
-
-
-## StageChoice 纯选阶段：下半场队伍拖换座 / 长按详情（无招募会话时）。
-func _gui_input_stage_choice_ally(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		_track_press_motion(motion.position)
-		if _recruit_team_drag_id >= 0:
-			_set_drag_pointer(motion.position)
-		elif _recruit_team_press_id >= 0 and _recruit_team_drag_id < 0 and not _info_shown:
-			if motion.position.distance_to(_press_pos) > LONG_PRESS_SLOP_PX:
-				_cancel_press()
-				_begin_recruit_team_drag(_recruit_team_press_id, motion.position)
-		accept_event()
-		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index != MOUSE_BUTTON_LEFT:
-			return
-		var cell := tile_to_cell(local_to_tile(mb.position))
-		if mb.pressed:
-			var entry_id := _find_recruit_team_entry_at(cell)
-			if entry_id >= 0:
-				_recruit_team_press_id = entry_id
-				_stage_choice_press_index = -1
-				_begin_press(mb.position, inspect_at(mb.position), Callable())
-				accept_event()
-			return
-		if _info_shown:
-			_recruit_team_press_id = -1
-			_end_press()
-			accept_event()
-			return
-		if _end_press():
-			accept_event()
-		if _recruit_team_drag_id >= 0:
-			_finish_recruit_team_drag(cell, mb.position)
-			accept_event()
-			return
-		_recruit_team_press_id = -1
-
-
-func _gui_input_stage_choice(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
-		_track_press_motion(motion.position)
-		queue_redraw()
-		accept_event()
-		return
-	if event is InputEventMouseButton:
-		var button := event as InputEventMouseButton
-		if button.button_index != MOUSE_BUTTON_LEFT:
-			return
-		var cell := tile_to_cell(local_to_tile(button.position))
-		if button.pressed:
-			_recruit_team_press_id = -1
-			var idx := StageChoiceBoard.find_index_at(stage_choice_cards, cell, board_size)
-			if idx >= 0:
-				_stage_choice_press_index = idx
-				## 短按选中；长按只看详情（松手不选）。
-				_begin_press(
-					button.position,
-					_info_from_stage_choice_index(idx, Vector2(0.0, enemy_half_slide_y)),
-					stage_choice_pressed.emit.bind(idx),
-				)
-			else:
-				_stage_choice_press_index = -1
-			accept_event()
-			return
-		if _info_shown:
-			_stage_choice_press_index = -1
-			_end_press()
-			accept_event()
-			queue_redraw()
-			return
-		## 短按：_end_press 触发 tap → stage_choice_pressed。
-		if _end_press():
-			accept_event()
-		_stage_choice_press_index = -1
-		queue_redraw()
-
-
-func _info_from_stage_choice_index(index: int, half_off: Vector2) -> Dictionary:
-	if index < 0 or index >= stage_choice_cards.size():
-		return {}
-	var raw: Variant = stage_choice_cards[index]
-	if not (raw is Dictionary):
-		return {}
-	var dict := raw as Dictionary
-	var cell: Vector2i = dict.get("cell", NO_CELL)
-	if cell == NO_CELL:
-		return {}
-	var mid := BoardHalf.midline_row(board_size.y)
-	## 卡片视觉占满敌半场高度，信息卡锚在列中心。
-	var center_tile := Vector2(float(cell.x) + 0.5, maxf(0.5, float(mid) * 0.5))
-	var center := tile_to_local(center_tile) + half_off
-	var detail := String(dict.get("detail", "")).strip_edges()
-	if detail.is_empty():
-		detail = String(dict.get("summary", "")).strip_edges()
-	if detail.is_empty():
-		detail = "长按可查看说明；点选确认。"
-	var kind := String(dict.get("kind_label", "选项"))
-	return {
-		"inspect_key": "stage_choice:%d" % index,
-		"center": center,
-		"name": String(dict.get("label", "选项")),
-		"side_player": true,
-		"tier": int(dict.get("tier", 0)),
-		"is_item": true,
-		"kind_label": kind,
-		"cost": 0,
-		"attack": 0,
-		"hp": 0,
-		"skills": detail,
-		"texture": dict.get("texture", null),
-	}
+	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
+	draw_string(font, bot_pos, "商店货架", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_map_shop_offers(px: float, off: Vector2) -> void:
@@ -3718,8 +3424,7 @@ func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
 	if cell == NO_CELL:
 		return
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
-	## 合法目标：下半场队伍格。
-	if cell.y < mid:
+	if cell.y >= mid:
 		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
 		return
 	var ok := _find_recruit_team_entry_at(cell) >= 0
@@ -3899,15 +3604,13 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
 		)
-		var body_center := tile_to_local(center_tile) + off
-		_draw_theme_bond_badges(body_center, entry.unit, px, alpha)
 		var atk := 0
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
-			body_center, atk, hp, alpha, px, entry.get_armor_block()
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
 	if _merge_active:
 		_draw_merge_fx(px, off)
@@ -3966,8 +3669,6 @@ func _draw_catalog_units(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, label, px, true, Vector2.ZERO,
 			true, unit_id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit_id, cell.x + cell.y * 8),
 		)
-		var body_center := tile_to_local(center_tile)
-		_draw_theme_bond_badges(body_center, unit, px, 0.95)
 		var atk := 0
 		var hp := 0
 		var armor := 0
@@ -3979,7 +3680,7 @@ func _draw_catalog_units(px: float) -> void:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
 			atk = (stats.attack if stats != null else 0) * preview_mult
 			hp = (stats.max_hp if stats != null else 0) * preview_mult
-		_draw_stat_badges(body_center, atk, hp, 0.95, px, armor)
+		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px, armor)
 
 
 func _draw_merge_fx(px: float, off: Vector2) -> void:
@@ -4079,15 +3780,13 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
 			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
 		)
-		var body_center := tile_to_local(center_tile) + off
-		_draw_theme_bond_badges(body_center, unit, px, alpha)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
 		## 攻/血缩进单格；价签第二行（见 _draw_stat_badges）。
 		_draw_stat_badges(
-			body_center, atk, hp, alpha, px, 0, cost, affordable
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
 		)
 		if locked:
 			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
@@ -4151,8 +3850,7 @@ func _draw_recruit_item_drop_hint(px: float, mid: int) -> void:
 	if cell == NO_CELL:
 		return
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
-	## 合法目标：下半场队伍格。
-	if cell.y < mid:
+	if cell.y >= mid:
 		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
 		return
 	var ok := _find_recruit_team_entry_at(cell) >= 0
@@ -4173,7 +3871,7 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 	if cell == NO_CELL:
 		return
 	var cell_rect := Rect2(get_board_rect().position + Vector2(cell) * px, Vector2(px, px))
-	## 锁区在上半场：拖候选人落锁为合法高亮。
+	## 锁区在下半场：拖候选人落锁为合法高亮。
 	if _is_recruit_lock_cell(cell):
 		draw_rect(cell_rect, Color(0.95, 0.85, 0.35, 0.4))
 		if _drag_visual_alive:
@@ -4193,11 +3891,10 @@ func _draw_recruit_drop_hint(px: float, mid: int) -> void:
 			_drag_unit_id,
 		)
 		return
-	## 上半场（非锁）非法；下半场空座可绿。
-	if cell.y < mid:
+	if cell.y >= mid:
 		draw_rect(cell_rect, Color(1.0, 0.25, 0.2, 0.3))
 		return
-	## 已上场友方格：非法（候选人不可直接盖上去）；仅空座可绿。
+	## 已上场友方格：非法（候选人不可直接盖上去）；仅空座 / 空地上半场可绿。
 	var ok := _find_recruit_team_entry_at(cell) < 0
 	draw_rect(cell_rect, Color(0.35, 0.95, 0.45, 0.35) if ok else Color(1.0, 0.25, 0.2, 0.3))
 	if _drag_visual_alive:
@@ -4259,15 +3956,13 @@ func _draw_prepare_slots(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
-		var body_center := tile_to_local(center_tile) + off
-		_draw_theme_bond_badges(body_center, entry.unit, px, alpha)
 		var atk := 0
 		var hp := 0
 		if stats != null:
 			atk = maxi(1, stats.attack + entry.bonus_attack)
 			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
 		_draw_stat_badges(
-			body_center, atk, hp, alpha, px, entry.get_armor_block()
+			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
 		)
 
 
@@ -4333,7 +4028,6 @@ func _draw_bench_row(px: float) -> void:
 			1.0,
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
-		_draw_theme_bond_badges(center, entry.unit, px, alpha)
 		var atk := DeckUpgradeService.get_display_attack(entry)
 		var hp := DeckUpgradeService.get_display_max_hp(entry)
 		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
@@ -4403,9 +4097,6 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
-		## 仅友方挂主题徽；开战压暗缩小，养队扫读优先。
-		if rt.is_player() and rt.unit != null:
-			_draw_theme_bond_badges(center, rt.unit.unit_data, px, alpha, started)
 		_draw_stat_badges(
 			center,
 			rt.get_effective_attack(),
@@ -4694,26 +4385,6 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 
 
 ## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
-## 友方纸片肩侧主题徽：主大实心、辅小空心；开战压暗缩小。敌方不挂。
-func _draw_theme_bond_badges(
-	center: Vector2,
-	data: UnitData,
-	px: float,
-	alpha: float = 1.0,
-	combat_dim: bool = false,
-) -> void:
-	if data == null or not UnitTheme.is_valid_id(data.theme_primary):
-		return
-	var r := px * 0.11
-	var a := alpha
-	if combat_dim:
-		r *= 0.65
-		a *= 0.45
-	## 右肩/头侧，避开脚下攻血标。
-	var anchor := center + Vector2(px * 0.30, -px * 0.36)
-	ThemeBondBadgeDraw.draw_pair(self, anchor, data.theme_primary, data.theme_secondary, r, a)
-
-
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,

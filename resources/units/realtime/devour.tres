@@ -29,6 +29,4 @@ tier = 3
 command_cost = 4
 stats = SubResource("UnitStats_devour")
 ability = ExtResource("3_ability")
-theme_primary = &"undead"
-theme_secondary = &"arcane"
 icon = ExtResource("icon_tex")
