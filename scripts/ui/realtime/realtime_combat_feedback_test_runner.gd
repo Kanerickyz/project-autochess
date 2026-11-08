@@ -149,7 +149,7 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(String(status_pops[0]["text"]).find("虚弱") >= 0, "mapper: weak label")
 
 	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	arena.size = Vector2(393, 700)
 	root.add_child(arena)
 	arena.spawn_gold_coin_burst(Vector2(2.5, 10.5), 2)
@@ -266,55 +266,30 @@ func _test_rider_enemy_death_feedback() -> void:
 		return
 
 	_expect(battle.try_start_combat(), "rider: start combat")
-	## 5×4 贴身交战极快：开战当帧冻钟，避免 await 一帧后已清场。
-	battle.time_scale = 0.0
 	await process_frame
 	var arena := battle.get_arena()
 	var sim := battle.get_sim()
-	_expect(sim != null and not sim.is_finished(), "rider: combat still open after freeze")
-	if sim == null or sim.is_finished():
-		battle.queue_free()
-		await process_frame
-		return
 	arena.clear_fx()
 	battle._timestop_queue.clear()
 	if sim.get_effect_resolver() != null:
 		sim.get_effect_resolver().clear_pending()
 	sim.release_presentation()
-	sim.defer_effect_resolve = true
-	## 5×4 敌方更少：先塞一只木桩，避免击杀唯一敌人直接终局吞掉反馈。
-	sim.add_unit(
-		RealtimeCombatSimTest.make_dummy(
-			UnitInstance.Team.ENEMY,
-			100000,
-			{"steps_per_turn": 0, "sight_range": 0.0, "id": "feedback_stake"},
-		),
-		Vector2(0.5, 0.5),
-	)
 	var before := arena.get_feedback_count()
 	var enemy_rt: RtUnit = null
-	var enemy_count := 0
 	for item in sim.get_units():
 		var rt := item as RtUnit
-		if rt == null or rt.is_player() or not rt.is_alive():
-			continue
-		enemy_count += 1
-		if enemy_rt == null and (rt.unit == null or rt.unit.id != "feedback_stake"):
+		if rt != null and not rt.is_player() and rt.is_alive():
 			enemy_rt = rt
-	_expect(enemy_rt != null and enemy_count >= 2, "rider: have enemy to kill")
+			break
+	_expect(enemy_rt != null, "rider: have enemy to kill")
 	if enemy_rt != null:
-		## defer 时停：入队后须播完结果拍才有 ON_EFFECT_RESOLVED 反馈。
+		## defer 时停：入队后须播完介绍/结果拍才有 ON_EFFECT_RESOLVED 反馈。
 		sim._pipeline.apply_damage(null, enemy_rt, 999)
 	battle.time_scale = 8.0
-	## 敌亡入队跨至少一帧；勿在 pending 仍 false 时跳过等待。
 	var guard := 0
-	while guard < 180:
+	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
 		await process_frame
 		guard += 1
-		if arena.get_feedback_count() > before:
-			break
-		if guard > 2 and not battle.is_timestop_blocking() and not sim.has_pending_effects():
-			break
 	_expect(arena.get_feedback_count() > before, "rider: enemy-death effect yields feedback")
 	var has_stat := false
 	for fb in arena.get_feedback_entries():
@@ -367,7 +342,7 @@ func _test_basic_attack_does_not_float() -> void:
 
 
 func _test_timestop_queue_blocks_sim() -> void:
-	## 直接结算 + 结果拍：待结算批次入队后立刻写入真值，结果拍期间仍阻塞模拟。
+	## 先卡再结算：待结算批次入队后先阻塞并展示，卡拍结束才写入真值。
 	var battle := _make_battle(99)
 	await process_frame
 	_expect(_seat_first_hand(battle), "timestop: seat one unit")
@@ -393,7 +368,7 @@ func _test_timestop_queue_blocks_sim() -> void:
 		await process_frame
 		return
 
-	## 故意压血，便于断言治疗在结果拍立刻结算。
+	## 故意压血，便于断言治疗在卡拍之后才结算。
 	target.current_hp = maxi(1, target.get_effective_max_hp() - 10)
 	var hp_before := target.current_hp
 	var action := EffectAction.new()
@@ -409,27 +384,26 @@ func _test_timestop_queue_blocks_sim() -> void:
 	batch.entries.append(step)
 	_expect(resolver != null, "timestop: effect resolver")
 	resolver._pending_batches.append(batch)
-	_expect(sim.has_pending_effects(), "timestop: pending before resolve")
+	_expect(sim.has_pending_effects(), "timestop: pending before card")
 
 	await process_frame
-	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
-	_expect(battle.is_timestop_blocking(), "timestop: result phase blocks after pending")
-	_expect(not sim.has_pending_effects(), "timestop: resolved without intro card")
-	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied immediately")
-	_expect(not arena.is_info_card_visible(), "timestop: no skill intro info card")
+	_expect(battle.is_timestop_blocking(), "timestop: card phase blocks after pending")
+	_expect(sim.has_pending_effects(), "timestop: not resolved during card")
+	_expect(target.current_hp == hp_before, "timestop: hp unchanged during card")
 	for _i in 3:
 		await process_frame
 	_expect(sim.fixed_step_count == steps_before, "timestop: sim steps frozen while queue active")
 
-	## 加速耗尽结果拍（约 0.4 / scale）
+	## 加速耗尽卡拍+结果拍（约 1.0+0.4 / scale）
 	battle.time_scale = 8.0
 	var guard := 0
 	while (battle.is_timestop_blocking() or sim.has_pending_effects()) and guard < 120:
 		await process_frame
 		guard += 1
 	_expect(not battle.is_timestop_blocking(), "timestop: queue drains")
-	_expect(not sim.has_pending_effects(), "timestop: effects resolved after result")
-	_expect(target.current_hp == timestop_heal_cap, "timestop: heal remains after result")
+	_expect(not sim.has_pending_effects(), "timestop: effects resolved after card")
+	var timestop_heal_cap := mini(hp_before + 5, target.get_effective_max_hp())
+	_expect(target.current_hp == timestop_heal_cap, "timestop: heal applied after card")
 	_expect(arena.get_feedback_count() > 0, "timestop: result feedback after resolve")
 	_expect(not sim.presentation_hold, "timestop: presentation hold released")
 
@@ -438,13 +412,12 @@ func _test_timestop_queue_blocks_sim() -> void:
 
 
 func _test_tape_next_skips_stuck_timestop() -> void:
-	## 「下一动」须能跳过结果拍；否则时停阻塞时 _tape_step_once 永远无法步进（战斗假死）。
+	## 「下一动」须能跳过技能介绍拍；否则时停阻塞时 _tape_step_once 永远无法步进（战斗假死）。
 	var battle := _make_battle(101)
 	await process_frame
 	_expect(_seat_first_hand(battle), "tape-skip: seat one unit")
 	_expect(battle.try_start_combat(), "tape-skip: start combat")
 	var sim := battle.get_sim()
-	var arena := battle.get_arena()
 	battle._timestop_queue.clear()
 	var resolver := sim.get_effect_resolver()
 	if resolver != null:
@@ -479,16 +452,15 @@ func _test_tape_next_skips_stuck_timestop() -> void:
 	resolver._pending_batches.append(batch)
 
 	await process_frame
-	var heal_cap := mini(hp_before + 3, target.get_effective_max_hp())
-	_expect(battle.is_timestop_blocking(), "tape-skip: result blocks")
-	_expect(not sim.has_pending_effects(), "tape-skip: resolved without intro card")
-	_expect(target.current_hp == heal_cap, "tape-skip: healed immediately")
-	_expect(not arena.is_info_card_visible(), "tape-skip: no skill intro info card")
+	_expect(battle.is_timestop_blocking(), "tape-skip: card blocks")
+	_expect(sim.has_pending_effects(), "tape-skip: still pending during card")
+	_expect(target.current_hp == hp_before, "tape-skip: not healed during card")
 
 	## 同步强制收拍；随后关掉 step_once，避免本帧把整场打完干扰血量断言。
 	battle._on_tape_next_pressed()
-	_expect(not sim.has_pending_effects(), "tape-skip: next keeps pending empty")
-	_expect(target.current_hp == heal_cap, "tape-skip: heal remains after next")
+	_expect(not sim.has_pending_effects(), "tape-skip: next resolves pending")
+	var heal_cap := mini(hp_before + 3, target.get_effective_max_hp())
+	_expect(target.current_hp == heal_cap, "tape-skip: heal applied after next")
 	battle._tape_step_once = false
 	battle._tape_paused = true
 	await process_frame
@@ -569,21 +541,12 @@ func _test_tape_next_unsticks_ally_death_spawn_lifecycle() -> void:
 	await process_frame
 	_expect(_seat_first_hand(battle), "lifecycle: seat")
 	_expect(battle.try_start_combat(), "lifecycle: start")
-	battle.time_scale = 0.0
-	await process_frame
 	var sim := battle.get_sim()
-	var arena := battle.get_arena()
-	_expect(sim != null and not sim.is_finished(), "lifecycle: combat still open after freeze")
-	if sim == null or sim.is_finished():
-		battle.queue_free()
-		await process_frame
-		return
 	battle._timestop_queue.clear()
 	var resolver := sim.get_effect_resolver()
 	if resolver != null:
 		resolver.clear_pending()
 	sim.release_presentation()
-	sim.defer_effect_resolve = true
 
 	var soul_data := load("res://resources/units/realtime/soulcaller.tres") as UnitData
 	_expect(soul_data != null and soul_data.ability != null, "lifecycle: soulcaller data")
@@ -591,38 +554,30 @@ func _test_tape_next_unsticks_ally_death_spawn_lifecycle() -> void:
 		battle.queue_free()
 		await process_frame
 		return
-	## 落在 5×4 我半场空位，避免夹在旧 5×8 行上被 clamp 叠格。
-	var caller := UnitInstance.from_unit_data(soul_data, Vector2i(0, 3), UnitInstance.Team.PLAYER)
-	sim.add_unit(caller, Vector2(0.5, 3.5))
+	var caller := UnitInstance.from_unit_data(soul_data, Vector2i(2, 6), UnitInstance.Team.PLAYER)
+	sim.add_unit(caller, Vector2(2.5, 6.5))
 	var fodder := UnitInstance.from_unit_data(
 		load("res://resources/units/realtime/knight.tres") as UnitData,
-		Vector2i(4, 3),
+		Vector2i(1, 6),
 		UnitInstance.Team.PLAYER,
 	)
-	var fodder_rt := sim.add_unit(fodder, Vector2(4.5, 3.5))
+	var fodder_rt := sim.add_unit(fodder, Vector2(1.5, 6.5))
 	_expect(fodder_rt != null, "lifecycle: fodder on field")
 
 	## 击杀友方角色 → OnFriendDeath 入队义士应召（defer 不立刻结算）。
 	sim._pipeline.apply_damage(null, fodder_rt, 999)
-	## defer 下致死先入 pending deaths；空队列时 flush 才会发 OnFriendDeath。
-	sim.flush_idle_death_presentations()
-	var wait_q := 0
-	while not (sim.has_pending_effects() or battle.is_timestop_blocking()) and wait_q < 30:
-		await process_frame
-		wait_q += 1
 	_expect(sim.has_pending_effects() or battle.is_timestop_blocking(), "lifecycle: death queued or presenting")
 
-	## 等到结果拍/时停，再人工粘住 AWAITING（复现结算回调中断）。
+	## 等到介绍卡，再人工粘住 AWAITING（复现 card_done 中断）。
 	battle.time_scale = 8.0
 	var wait_card := 0
-	while not battle.is_timestop_blocking() and wait_card < 90:
+	while not battle.is_timestop_blocking() and wait_card < 30:
 		await process_frame
 		wait_card += 1
 	if battle.is_timestop_blocking():
 		battle._timestop_queue._phase = RealtimeTimestopQueue.Phase.AWAITING_RESOLVE
 		battle._timestop_queue._remaining = 0.0
 		sim.hold_for_presentation()
-	_expect(arena != null and not arena.is_info_card_visible(), "lifecycle: no skill intro info card")
 
 	var steps_before := sim.fixed_step_count
 	## 点「下一动」：须拆掉时停/待结算，并在随后帧推进固定步。

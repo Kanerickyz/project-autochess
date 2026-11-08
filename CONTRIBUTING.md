@@ -55,16 +55,8 @@
 - 场景尽量用编辑器修改；文本修改保持资源 ID/UID 与引用。提交前确认没有丢失 `.uid` 或 `.import`。
 - 共享 `Resource` 进入运行时实例前判断是否需 `duplicate()`，避免商店、牌库、战斗单位串数值。
 - 视觉效果保持 **GL Compatibility**（WebGL 2）可用；不要依赖仅 Forward Plus 的特性。2D 精灵与图标放 `assets/`；生成脚本会覆盖同名文件时，执行前核对范围并保留原资产。浏览器试玩见 [Documents/WEB_DEPLOY.md](Documents/WEB_DEPLOY.md)。
-- 策划改单位数据优先用 `addons/unit_catalog_editor/`；改波次时间表用 `addons/wave_spawn_editor/`。改完实时主路径单位后同步 Notion Doc ID `content-units-roster`（必要时更新指针 `Documents/Content/UNITS_ROSTER.md` 的 Summary）。
+- 策划改单位数据优先用 `addons/unit_catalog_editor/`；改波次时间表用 `addons/wave_spawn_editor/`。改完实时主路径单位后同步 [Documents/Content/UNITS_ROSTER.md](Documents/Content/UNITS_ROSTER.md)。
 - Python 工具沿用 stdlib 风格，路径相对脚本根目录。
-
-## 设计文档贡献
-
-- **权威源**：游戏设计规格在 Notion「Autochess — 设计文档」库（Hub / 数据库 URL 见 [AGENTS.md](AGENTS.md)「开始工作」）。
-- **检索**：用 **Doc ID** 或 Notion search；本地 [Documents/INDEX.md](Documents/INDEX.md) 与 [Documents/NOTION_DOC_MAP.md](Documents/NOTION_DOC_MAP.md) 仅为指针与映射。
-- **改规格**：只改 Notion 页；新建时在库中增行，并在 git 新增对应路径指针、更新 `Documents/INDEX.md`。
-- **勿**在 `Documents/**/*.md` 指针文件写正文；Notion 与本地冲突时**以 Notion 为准**。
-- **实现**：代码与 `resources/` 下 `.tres` 仍走 git PR；改单位数据后同步 Notion Doc ID `content-units-roster`（必要时更新指针 Summary）。
 
 ## Cursor
 

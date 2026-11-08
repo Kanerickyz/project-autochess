@@ -16,12 +16,6 @@ extends Resource
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
 
-@export_group("Theme Bond")
-## 主主题（可招友方必有；八主题见 UnitTheme）。熔印者等留空。
-@export var theme_primary: StringName = &""
-## 辅主题（可选；空=无辅）。
-@export var theme_secondary: StringName = &""
-
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、对砍例外、足迹策略机。
 @export var is_boss_leader: bool = false
@@ -61,16 +55,6 @@ func pick_summon_unit(rng: RandomNumberGenerator = null) -> UnitData:
 @export var portrait_head: Texture2D
 ## 纸面角色身体（棋盘 paper mode）；留空则使用 0_body 占位。
 @export var portrait_body: Texture2D
-
-
-## 主+辅主题 id（空辅不列入；非法 id 跳过）。
-func get_theme_ids() -> Array[StringName]:
-	var out: Array[StringName] = []
-	if UnitTheme.is_valid_id(theme_primary):
-		out.append(theme_primary)
-	if UnitTheme.is_valid_id(theme_secondary) and theme_secondary != theme_primary:
-		out.append(theme_secondary)
-	return out
 
 
 ## 【已停用】勿再用于出牌/商店费用。

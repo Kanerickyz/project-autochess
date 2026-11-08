@@ -1,101 +1,173 @@
 # Project Autochess — 文档索引
 
-> **设计规格权威源在 Notion。** 本目录下各 `.md` 仅为指针，请勿在此修改正文。  
-> **实现与数值权威仍在 git**：`resources/`、场景与 GDScript。
+> 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-30
+>
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 5 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 回合制敌我混排依次行动（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+>
+> **产品线 0.6**：`application/config/version` 自 **`6.0.1`** 起（主菜单 `v6.0.…`）；`0.5.*` 线已结束。细则见 [CONTRIBUTING.md](../CONTRIBUTING.md)「应用版本号」。
 
-| 入口 | URL |
-|------|-----|
-| **Hub** | https://app.notion.com/p/40ff89936db681b5880cec3af0087789 |
-| **设计文档数据库** | https://app.notion.com/p/9293e582b53d437dbe88b28d21251a5f |
-| **完整映射表** | [NOTION_DOC_MAP.md](./NOTION_DOC_MAP.md) |
+## 快速导航
 
-## 按 Kind 浏览（Notion）
+| 文档 | 说明 |
+|------|------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 当前工程状态、推荐目录树、核心系统划分 |
+| [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
+| [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
+| [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
+| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
+| [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
+| [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
+| [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
+| [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
+| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写） |
+| [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
+| [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含回血三条；挂载见角色库 §6） |
+| [Features/MAIN_MENU.md](./Features/MAIN_MENU.md) | **主菜单**（局外 Hub；动态营地远景视差 + 指针跟手） |
+| [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
+| [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
+| [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
+| [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
+| [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、无通关/精英/Boss、稀疏商店、成绩＝地图层深） |
+| [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
+| [Features/COMBAT_STATUS.md](./Features/COMBAT_STATUS.md) | **战斗状态**（虚弱/狂暴/中毒；仅遭遇内叠层；长按信息卡） |
+| [Features/ENEMY_SPAWN_BUDGET.md](./Features/ENEMY_SPAWN_BUDGET.md) | **队伍强度抽阵**（E＝κ×S＋层护栏；人数≈阵容；Boss 不吃真队、不跟人数） |
+| [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
+| [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备＋半场换座；本切片不含买人） |
+| [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、一动内八向落格顿步越线） |
+| [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
+| [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
+| [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
+| [Reference/SAP_SHOP_SYSTEM.md](./Reference/SAP_SHOP_SYSTEM.md) | **SAP 商店机制**参考（经济 / Tier / Roll / 合成） |
+| [Reference/RISK_OF_RAIN_2.md](./Reference/RISK_OF_RAIN_2.md) | **Risk of Rain 2** 基础版道具 / 装备 / 技能参考（外部资料） |
+| [Reference/MASTER_OF_PIECE.md](./Reference/MASTER_OF_PIECE.md) | **弈战征途 / Master of Piece** 系统 / 道具 / 机制参考（外部资料） |
 
-### Vision
+## 编辑器插件（策划工具）
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 游戏愿景 — 中世纪幻想 2D 自走棋（PvE） | [打开](https://app.notion.com/40ff89936db681f0bbdbec82e053543e) | [`GAME_VISION.md`](./GAME_VISION.md) |
+在 Godot **项目 → 项目设置 → 插件** 中启用：
 
-### Arch
+| 插件 | Dock 名称 | 用途 |
+|------|-----------|------|
+| `addons/unit_catalog_editor/` | **Unit Catalog** | 按**友方 / 敌方 / 全部**浏览编辑 `resources/units/*.tres`（`UnitData.team_default`） |
+| `addons/wave_spawn_editor/` | **Wave Spawn** | 可视化编辑 `WaveData` 刷怪时间表 |
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 架构说明 — Project Autochess | [打开](https://app.notion.com/40ff89936db681c5851ee8efbefa59de) | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
+角色目录：搜索 → **排序**（Tier / 攻 / 血 / 距，可勾选降序）→ 选单位 → 改属性/技能/头像 → **保存**；友方单位无 `ability` 时状态栏会提示。
 
-### Feature
+## 仓库文件索引（当前）
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 增益卡系统 | [打开](https://app.notion.com/40ff89936db681288588fed0307b2337) | [`BUFF_SYSTEM.md`](./BUFF_SYSTEM.md) |
-| Boss（首领遭遇） | [打开](https://app.notion.com/40ff89936db681d6bd18fef95f433f0b) | [`Features/BOSS.md`](./Features/BOSS.md) |
-| 战斗 | [打开](https://app.notion.com/40ff89936db68194a95bf6e02cf1faf0) | [`Features/COMBAT.md`](./Features/COMBAT.md) |
-| 战斗观战反馈 | [打开](https://app.notion.com/40ff89936db68190915ad30f76c7989f) | [`Features/COMBAT_FEEDBACK.md`](./Features/COMBAT_FEEDBACK.md) |
-| 战斗状态（Combat Status） | [打开](https://app.notion.com/40ff89936db6813887c5e1afd3648e3e) | [`Features/COMBAT_STATUS.md`](./Features/COMBAT_STATUS.md) |
-| 战斗关卡 | [打开](https://app.notion.com/40ff89936db681d8b822c921a4511016) | [`Features/COMBATLEVEL.md`](./Features/COMBATLEVEL.md) |
-| 战斗壳与 UI Kit | [打开](https://app.notion.com/p/410f89936db6814f8baaf72c05f280c3) | [`Features/UI_SHELL.md`](./Features/UI_SHELL.md) |
-| 附魔（熔炉） | [打开](https://app.notion.com/40ff89936db68176bf39fa43c4d4506e) | [`Features/ENCHANT.md`](./Features/ENCHANT.md) |
-| 无尽模式 | [打开](https://app.notion.com/40ff89936db681e3b5a3d9cf870920a2) | [`Features/ENDLESS.md`](./Features/ENDLESS.md) |
-| 队伍强度抽阵 | [打开](https://app.notion.com/40ff89936db68186977ed05cf72cb3a2) | [`Features/ENEMY_SPAWN_BUDGET.md`](./Features/ENEMY_SPAWN_BUDGET.md) |
-| 远征行囊与远征圣物 | [打开](https://app.notion.com/40ff89936db6812ba784c5fde323529a) | [`Features/EXPEDITION_RELICS.md`](./Features/EXPEDITION_RELICS.md) |
-| 游戏基础循环 | [打开](https://app.notion.com/40ff89936db6811cbc1be494b99b0612) | [`Features/GAME_LOOP.md`](./Features/GAME_LOOP.md) |
-| 主菜单 | [打开](https://app.notion.com/40ff89936db681c69aaaef6ca970c359) | [`Features/MAIN_MENU.md`](./Features/MAIN_MENU.md) |
-| 远征层进度 | [打开](https://app.notion.com/40ff89936db6811cbc2ff61a3ecdcef4) | [`Features/MAP.md`](./Features/MAP.md) |
-| 地图商店 | [打开](https://app.notion.com/40ff89936db68173a9dbf7c58e4dc7fa) | [`Features/MAP_SHOP.md`](./Features/MAP_SHOP.md) |
-| 对局记录 | [打开](https://app.notion.com/40ff89936db6819e91cae2525eda54c0) | [`Features/MATCH_HISTORY.md`](./Features/MATCH_HISTORY.md) |
-| 玩家 | [打开](https://app.notion.com/40ff89936db681408e9cd6451f433d5a) | [`Features/PLAYER.md`](./Features/PLAYER.md) |
-| 招募 | [打开](https://app.notion.com/40ff89936db68121ac36f015f6b91526) | [`Features/RECRUIT.md`](./Features/RECRUIT.md) |
-| 招募阶段道具与角色行 | [打开](https://app.notion.com/40ff89936db68164a704d30d78649e7f) | [`Features/RECRUIT_SHOP.md`](./Features/RECRUIT_SHOP.md) |
-| 沙盒、阵容分享与观战录音机 | [打开](https://app.notion.com/40ff89936db68133822ffb04e49bc89c) | [`Features/SANDBOX.md`](./Features/SANDBOX.md) |
-| Sim Balance · 决策 AI（批跑专用） | [打开](https://app.notion.com/40ff89936db681babfd2e74f0c74e720) | [`Features/SIM_BALANCE_AI.md`](./Features/SIM_BALANCE_AI.md) |
-| 角色技能 | [打开](https://app.notion.com/40ff89936db6812690e5dce599cea787) | [`Features/UNIT_ABILITIES.md`](./Features/UNIT_ABILITIES.md) |
-| 队伍羁绊台词（Party Bark） | [打开](https://app.notion.com/40ff89936db681589219ec977f9203d3) | [`Features/UNIT_PARTY_BARKS.md`](./Features/UNIT_PARTY_BARKS.md) |
-| 主题羁绊 | [打开](https://app.notion.com/40ff89936db6815684a0fe95f83a3dd6) | [`Features/UNIT_THEME_BONDS.md`](./Features/UNIT_THEME_BONDS.md) |
-| 角色单位 | [打开](https://app.notion.com/40ff89936db681f38011c8829273c7a6) | [`Features/UNITS.md`](./Features/UNITS.md) |
+含 **M1 棋盘** + **M2 战斗** + **M3.5 技能** + **M3b 商店/牌库**（角色 + 增益、Tier roll、满库替换；手牌 As-Is 为整库展示，抽 5 To-Be）。
 
-### Content
+```
+Project Autochess/
+├── Documents/
+├── scenes/main/main.tscn
+├── scenes/ui/board_*.tscn, hand_panel, shop_panel, *_modal
+├── scripts/core/              # deck_state, shop_service, board_controller
+├── scripts/data/              # deck_config, shop_offer, shop_pool_config
+├── resources/deck/default_deck.tres
+├── resources/shop/dev_shop_pool.tres
+└── ...
+```
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| Boss 内容册（第一只） | [打开](https://app.notion.com/40ff89936db6819e8bcbc730639fc4d3) | [`Content/BOSS_ROSTER.md`](./Content/BOSS_ROSTER.md) |
-| 角色设计与落地流程（CHARACTER_DESIGN） | [打开](https://app.notion.com/40ff89936db68107bf70cb59dc992739) | [`Content/CHARACTER_DESIGN.md`](./Content/CHARACTER_DESIGN.md) |
-| 远征圣物库（EXPEDITION_RELICS_ROSTER） | [打开](https://app.notion.com/40ff89936db6813fbc5ad6b4faeae71a) | [`Content/EXPEDITION_RELICS_ROSTER.md`](./Content/EXPEDITION_RELICS_ROSTER.md) |
-| Content 索引 | [打开](https://app.notion.com/40ff89936db681c2ace3f3ef6a3656d9) | [`Content/INDEX.md`](./Content/INDEX.md) |
-| 旧纸剪贴涂鸦风 — 美术规范 | [打开](https://app.notion.com/40ff89936db68148b53cf8f7fac38db2) | [`Content/PAPER_CUTOUT_ART_BRIEF.md`](./Content/PAPER_CUTOUT_ART_BRIEF.md) |
-| 角色技能库（UNIT_ABILITIES_ROSTER） | [打开](https://app.notion.com/40ff89936db68134ae7bda5b919d10dd) | [`Content/UNIT_ABILITIES_ROSTER.md`](./Content/UNIT_ABILITIES_ROSTER.md) |
-| 队伍羁绊台词库 | [打开](https://app.notion.com/40ff89936db6816fad0ff5caa28843bb) | [`Content/UNIT_PARTY_BARKS_ROSTER.md`](./Content/UNIT_PARTY_BARKS_ROSTER.md) |
-| 友方角色库（UNITS_ROSTER） | [打开](https://app.notion.com/40ff89936db681fa9b8ee467cd7d741a) | [`Content/UNITS_ROSTER.md`](./Content/UNITS_ROSTER.md) |
+## 推荐 `res://` 结构（待实现）
 
-### Process
+实现阶段可按 [ARCHITECTURE.md](./ARCHITECTURE.md) 在项目中创建下列路径，并在本索引中勾选进度。
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 游戏开发与 Sub-agent 工作流 | [打开](https://app.notion.com/40ff89936db6814a87cdccecdf1d2c19) | [`DEVELOPMENT_WORKFLOW.md`](./DEVELOPMENT_WORKFLOW.md) |
+| 路径 | 职责 | 状态 |
+|------|------|------|
+| `scenes/main/main.tscn` | 对局根场景、Camera2D | **M1 已实现** |
+| `scenes/_legacy/ui/board_view.tscn` | 旧 2D 棋盘（非热路径，无玩家切换入口） | **Legacy** |
+| `scenes/ui/board_world.tscn` | 3D 战场（主路径；无 2D/3D 切换） | **已实现** |
+| `scenes/ui/board_cell.tscn` | 格子 Area2D | **M1 已实现** |
+| `scenes/units/placeholder_unit.tscn` | 占位单位视觉 | **M1 已实现** |
+| `scripts/core/board_grid.gd` | 格占用、`get_empty_cells` | **M1 已实现** |
+| `scripts/core/board_controller.gd` | 牌库/手牌/商店/布阵（击杀掉金已否决） | **M3b 已实现** |
+| `scripts/core/run_economy.gd` | 金币余额、击杀奖励、波次结算金 | **M3 已实现** |
+| `scripts/core/shop_service.gd` | 双卡种商店、Tier roll、购买、刷新 | **M3b 已实现** |
+| `scripts/core/deck_state.gd` | 牌库条目、满库替换、`attach_buff` | **M3b 已实现** |
+| `scripts/core/deck_entry.gd` | 牌库单条目 | **M3b 已实现** |
+| `scripts/core/draw_service.gd` | 每波 PREPARE 无放回抽 `draw_count` | **已实现**（冷却队列 / 可见窗 4 仍为 To-Be） |
+| `scenes/ui/shop_panel.tscn` | 双卡种商店 UI（角色 + 增益） | **M3b 已实现** |
+| `scenes/ui/hand_panel.tscn` | 手牌 / 牌库条目（As-Is 整库） | **M3b 已实现** |
+| `scenes/ui/deck_replace_modal.tscn` | 满库替换弹窗 | **M3b 已实现** |
+| `scenes/ui/buff_attach_modal.tscn` | 增益附加弹窗 | **已实现** |
+| `scripts/data/deck_config.gd` | 牌库初始/上限/抽牌数 | **M3b 已实现** |
+| `scripts/data/shop_offer.gd` | 角色卡 / 增益卡 Offer | **已实现** |
+| `resources/buffs/` | 增益卡 `.tres` | **已实现** |
+| `scripts/data/buff_card_data.gd` | 增益卡资源 | **已实现** |
+| `scripts/core/tier_unlock.gd` | Tier 1–6 解锁 | **已实现** |
+| `resources/deck/default_deck.tres` | 默认牌库配置 | **M3b 已实现** |
+| `scenes/ui/player_hud.tscn` | 金币 HUD | **M3 已实现** |
+| `resources/economy/` | `EconomyConfig` | **M3 已实现** |
+| `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
+| `resources/levels/wfc_demo_8x8.tres` | 旧网格工具环 WFC 演示关（`main.tscn` 可选）；**非** Run 主路径 | **M1 已实现** |
+| `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 5×8 + 座位见 COMBATLEVEL） | **Run 已实现** |
+| `resources/levels/board_legacy_4x8.tres` | 旧 4×8 格子棋盘（线性开发关工具） | **Legacy** |
+| `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
+| `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |
+| `scripts/combat/realtime/` | `RealtimeCombatSim` 固定时间步模拟（As-Is 实时并行弱滑动；To-Be 回合制依次 + 一动内落格顿步） | **已实现 / 待对齐** |
+| `resources/units/realtime/` | 友方二十四人（魔幻简名 + 1:1 技能挂载；含原十人英文 id） | **已实现** |
+| `resources/deck/realtime_starter_deck.tres` | Run 起始牌库（九人，不含民兵） | **已实现** |
+| `scenes/ui/placeholder/` | 地图非战斗节点占位界面 | **已实现** |
+| `resources/runs/act1_map.tres` | Act1 地图配置 + 遭遇池 | **Run 已实现** |
+| `resources/encounters/` | `EncounterData`（自 `wave_*.tres` 拆分） | **Run 已实现** |
+| `scenes/main/run_game.tscn` | 爬塔 Run 主入口（地图 + 遭遇） | **Run 已实现** |
+| `scenes/ui/map/` | 地图选路 UI | **Run 已实现** |
+| `scripts/core/run/` | RunController、MapGenerator、RunGameController | **Run 已实现** |
+| `scenes/ui/`（其余） | 商店、手牌、弹窗、HUD | **M3b 已实现** |
+| `scenes/units/`（其余） | 正式单位预制体 | 未实现 |
+| `scenes/combat/` | 战斗舞台、投射物、特效 | 已创建（骨架） |
+| `scripts/autoload/` | 仅 `GameSettings`（无全局 EventBus/GameState） | **已实现** |
+| `scripts/core/` | 棋盘、经济、牌库、商店 | **M3b 已实现** |
+| `scripts/ui/` | 棋盘 Cell/View 脚本 | **M1 已实现** |
+| `resources/levels/` | `LevelData` | **M1 已实现** |
+| `scripts/combat/events/` | `CombatEventBus`、战斗事件载荷 | 已创建（骨架） |
+| `scripts/combat/effects/` | `EffectResolver`、`StatModifierStack` | **M3.5 已实现** |
+| `scripts/combat/` | `CombatArena`、tick、伤害管线 | **M2 已实现** |
+| `scripts/data/` | `EffectSpec`、`AbilityData`、`UnitData` | **M3.5 已实现** |
+| `resources/units/test_*.tres` | 三样本测试单位 | **M3.5 已实现** |
+| `resources/abilities/` | 单位技能资源；规则见 [UNIT_ABILITIES](./Features/UNIT_ABILITIES.md)；内容归 Content；商店技能 `.tres` **待迁出** | **M3.5+** |
+| `resources/effects/` | 可复用效果片段（可选） | 空目录（效果嵌在 ability `.tres`） |
+| `resources/traits/` | 羁绊 `.tres`（**远期**，非 v1） | 不实现 |
+| `resources/items/` | 装备（可选） | 空目录（未使用） |
+| `assets/sprites/` | 2D 精灵与图集 | 已创建（骨架） |
+| `assets/audio/` | BGM / SFX | 已创建（骨架） |
+| `assets/fonts/` | UI 字体 | 见项目 Theme |
 
-### Reference
+## 引擎配置摘要
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 弈战征途（Master of Piece）参考 | [打开](https://app.notion.com/40ff89936db68132aaf0d8aa68b67d38) | [`Reference/MASTER_OF_PIECE.md`](./Reference/MASTER_OF_PIECE.md) |
-| Risk of Rain 2 参考 — 基础版 | [打开](https://app.notion.com/40ff89936db6815bbe44d8104bb7cadd) | [`Reference/RISK_OF_RAIN_2.md`](./Reference/RISK_OF_RAIN_2.md) |
-| Super Auto Pets 商店系统参考 — Turtle Pack | [打开](https://app.notion.com/40ff89936db681a88487fd36b80b5b66) | [`Reference/SAP_SHOP_SYSTEM.md`](./Reference/SAP_SHOP_SYSTEM.md) |
-| Super Auto Pets 参考 — Turtle Pack | [打开](https://app.notion.com/40ff89936db6815aa2c8d2f0397000b2) | [`Reference/SUPER_AUTO_PETS.md`](./Reference/SUPER_AUTO_PETS.md) |
+| 项 | 值 |
+|----|-----|
+| 引擎 | Godot **4.6** |
+| 项目名 | Project Autochess |
+| 特性标签 | `4.6`, `GL Compatibility`（WebGL 2 / 浏览器导出所需） |
+| 物理（3D） | Jolt Physics |
+| 渲染器 | `gl_compatibility`（含 ETC2/ASTC 导入，便于 Web） |
+| 窗口 | 1920×1080，`canvas_items` + `keep`（16:9，Web/桌面一致） |
 
-### Note
+## 核心系统对照（规划）
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| 远征行囊 / 远征圣物 — 设计共识摘要 | [打开](https://app.notion.com/40ff89936db6813c8de1d5cf08eb79e4) | [`DesignNotes/EXPEDITION_RELICS_CONSENSUS.md`](./DesignNotes/EXPEDITION_RELICS_CONSENSUS.md) |
+| 系统 | 职责 | 详见 |
+|------|------|------|
+| Level / Wave | 关卡配置、遭遇、`MatchStateMachine` | GAME_VISION · **M2c** |
+| Run / Map | 爬塔地图、选路、节点类型、Boss | GAME_VISION · **Run** |
+| Run / Match | 遭遇内：准备入槽 → 开战观战 → 结算；地图商店 | GAME_VISION · **M2c / Run** |
+| Economy & Shop | 角色卡/增益卡、Tier、牌库、波次结算（无击杀掉金） | **GAME_VISION** · **BUFF_SYSTEM** · **ARCHITECTURE** · **M3b** |
+| Board & Deck | 可变棋盘 + 本波 cycle 手牌（抽牌/战中补人 To-Be） | **GAME_VISION** · **M3b** |
+| Combat Sim | `CombatArena`、固定 tick、`UnitBrain` | ARCHITECTURE §3.4 · **M2b** |
+| Spawn | `SpawnSystem` 出兵（As-Is 半场候选；To-Be 敌方座位） | **M2a** · ARCHITECTURE §3.3 · [COMBATLEVEL](./Features/COMBATLEVEL.md) |
+| Effect / Synergy | `EffectResolver` + `EffectSpec` + 3 样本技能 | ARCHITECTURE §3.7 · **M3.5** |
+| Units & Abilities | 单位数据、星级、`AbilityData` | **Features/UNITS** · **Features/UNIT_ABILITIES** · ARCHITECTURE §3.5 |
+| UI Layer | 与逻辑解耦的界面 | ARCHITECTURE §3.6 |
 
-### Ops
+## 协作入口
 
-| 文档 | Notion | 本地指针 |
-|------|--------|----------|
-| Web 部署（GitHub Pages） | [打开](https://app.notion.com/40ff89936db6815991cae94ddc211662) | [`WEB_DEPLOY.md`](./WEB_DEPLOY.md) |
+项目规则在根目录 [AGENTS.md](../AGENTS.md)，代码与 Godot 规范在 [CONTRIBUTING.md](../CONTRIBUTING.md)。Cursor 角色、规则和技能在 `.cursor/`。
 
-## 本地路径说明
+## 维护说明
 
-- 仓库内保留与旧版相同的路径名，便于 AGENTS.md、CONTRIBUTING 与代码注释中的相对链接不断裂。
-- 需要编辑规格时，在 Notion 对应页面修改；合并前可对照 [NOTION_DOC_MAP.md](./NOTION_DOC_MAP.md) 的 Doc ID。
-
-Hub：https://app.notion.com/p/40ff89936db681b5880cec3af0087789
+- 新增场景或 Autoload 后：更新 **仓库文件索引** 与 **推荐结构** 状态列。
+- 新增/修改实时主路径单位后：更新 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)。技能规则见 [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md)；技能内容池见 [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md)。
+- 重大设计变更：同步 `ARCHITECTURE.md` / `Features/` 与本页导航。当前规格以 [GAME_VISION.md](./GAME_VISION.md) 为准；**不做的内容默认不写进文档**（见 [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) 养成规范）。
+- 外部游戏参考资料（如 SAP 数值对照、RoR2 道具、Master of Piece 机制）放在 `Documents/Reference/`，与架构 / 策划文档分离；**勿**与 [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) 等自研规格混淆。SAP **单位/食物数据**与**商店机制**分列 `SUPER_AUTO_PETS.md` 与 `SAP_SHOP_SYSTEM.md`；对冲战棋 Roguelike 参考见 `MASTER_OF_PIECE.md`。

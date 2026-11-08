@@ -1,9 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scripts/ui/expedition/expedition_relic_badge_strip.gd" id="1_strip"]
-
-[node name="ExpeditionRelicBadgeStrip" type="HBoxContainer"]
-custom_minimum_size = Vector2(0, 32)
-theme_override_constants/separation = 4
-alignment = 2
-script = ExtResource("1_strip")

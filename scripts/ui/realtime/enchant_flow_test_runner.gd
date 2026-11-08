@@ -218,15 +218,14 @@ func _test_enchant_team_seat_swap() -> void:
 func _test_enchant_scroll_vs_drag_gesture() -> void:
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	root.add_child(arena)
 	await process_frame
 	var deck_cfg := DeckConfig.new()
 	deck_cfg.max_size = 24
 	var deck := DeckState.new()
 	deck.configure(deck_cfg)
-	## 5×4 我半场仅 2×5=10 格可视；留空格测滚动手势，勿铺满。
-	for i in 7:
+	for i in 12:
 		var u := UnitData.new()
 		u.id = "mem_%d" % i
 		u.stats = UnitStats.new()

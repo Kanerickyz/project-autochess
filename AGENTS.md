@@ -1,21 +1,20 @@
 # Project Autochess：项目级工作规则
 
 ## 开始工作
-- 用中文沟通；检查 `git status`，保留用户修改。设计规格先查 Notion「Autochess — 设计文档」库（**Hub**：https://app.notion.com/p/40ff89936db681b5880cec3af0087789 · **数据库**：https://app.notion.com/p/9293e582b53d437dbe88b28d21251a5f）；本地入口 [Documents/INDEX.md](Documents/INDEX.md) 与 [Documents/NOTION_DOC_MAP.md](Documents/NOTION_DOC_MAP.md)。用 **Doc ID** 或 Notion search 检索正文；本地 `Documents/` **仅指针**，与 Notion 冲突时**以 Notion 为准**。
-- 设计意图以 Notion 库为准（示例 Doc ID：`game-vision`、`buff-system`、`feature-unit-abilities`、`feature-player`）；**实现与数值**以 git 代码、场景与 `resources/` 下 `.tres` 为准。发现冲突要说明，不把建议写成已完成。商店细则以愿景、架构摘要与实现为准（已删除旧 `SHOP_SYSTEM.md`）；文档 To-Be 为**队伍**养成，As-Is 仍可能是牌库/手牌。
-- 胜负与主循环以 Notion Doc ID `game-vision`（指针 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)）定稿为准（规格定稿 ≠ 代码已对齐时须对照实现）。写规格在 **Notion 页**完成，并遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。技能规则见 Doc ID `feature-unit-abilities`；技能内容池见 `content-unit-abilities-roster`。
+- 用中文沟通；先读 [Documents/INDEX.md](Documents/INDEX.md)、相关设计文档和目标模块；检查 `git status`，保留用户修改。
+- 设计意图来自 [Documents/GAME_VISION.md](Documents/GAME_VISION.md)、[Documents/BUFF_SYSTEM.md](Documents/BUFF_SYSTEM.md) 与 `Documents/Features/`（角色技能见 [Features/UNIT_ABILITIES.md](Documents/Features/UNIT_ABILITIES.md)；玩家拥有物见 [Features/PLAYER.md](Documents/Features/PLAYER.md)）；现有行为来自代码、场景与资源。发现冲突要说明，不把建议写成已完成。商店细则以愿景、架构摘要与实现为准（已删除旧 `SHOP_SYSTEM.md`）；文档 To-Be 为**队伍**养成，As-Is 仍可能是牌库/手牌。
+- 胜负与主循环以 [Documents/GAME_VISION.md](Documents/GAME_VISION.md) 定稿为准（文档定稿 ≠ 代码已对齐时须对照实现）。写文档时遵守 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「养成规范」：**当前不做的默认不写进规格**。技能规则见 [Documents/Features/UNIT_ABILITIES.md](Documents/Features/UNIT_ABILITIES.md)，技能内容池见 [Documents/Content/UNIT_ABILITIES_ROSTER.md](Documents/Content/UNIT_ABILITIES_ROSTER.md)。
 - Godot 4.6、GDScript，默认入口 `scenes/main/main_menu.tscn`。
 - Cloud Agent 环境应提供 PATH 上的 `godot`（4.6）；可用 `GODOT_BIN` 覆盖。Headless 验证：`godot --headless --path . --script res://scripts/**/*_test_runner.gd`。GUI 验收用桌面 DISPLAY（常见为 `:1`）；无声卡时引擎会回退 dummy 音频驱动，属预期。
 - 用户当前请求优先于项目默认规则；只解决当前范围，不顺带重写游戏系统。
 - **提出需求时先问验收方式**（见 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md)「验收方式」）：**轻量** = `bash tools/run_light_verify.sh` 加载通过即可，效果由用户验；**完全** = 现行 runner + 按 L 级 QA/GUI。未指定先问再做。
 
 ## 游戏约束
-- 关卡制 / 爬塔 PvE 自走棋：**无地图选路**；线性远征层；**短名单招募**养成**队伍**（**不**按主题/羁绊锁池购人；候选人随品阶解锁在全池抽取）、**准备站位入角色座位**（席位内全体上场；座位默认 **2×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**；普通/精英胜后 **商店 / 事件 / 跳过** 三选一（跳过则直接招募）再招募（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌。新增 PVP 或单位微操走位需明确设计需求。主题标签仍用于**上场主题羁绊**与技能筛选，与招募货架过滤脱钩。
-- **主题羁绊**（护卫 / 骑士团 / 战士 / 工匠 / 亡灵 / 军乐队 / 秘术 / 佣兵）为本版设定，见 Notion Doc ID `feature-unit-theme-bonds`（指针 [Documents/Features/UNIT_THEME_BONDS.md](Documents/Features/UNIT_THEME_BONDS.md)）。流派玩法轴仍来自单位内建技能、增益卡与站位。战斗内同主题团队增益须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
+- 关卡制 / 爬塔 PvE 自走棋：商店完整养成**队伍**、**准备站位入角色座位**（席位内全体上场；座位默认 **4×5** 铺满半场，上场人数上限另计）、开战后天**纯观战**（不能改阵）；普通/精英胜后**招募**短名单再回地图（Boss 胜直接通关）。上场单位**回合制依次自动战斗**、玩家不可拖动。无号令；无遭遇内抽牌/手牌；席位上限可在商店提高。新增 PVP、羁绊或单位微操走位需明确设计需求。
+- v1 不含种族/职业羁绊。流派来自单位内建技能、增益卡与槽位站位。若将来加羁绊必须复用 `EffectSpec` / `EffectResolver`，禁止另写一套 Buff。
 - 所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。
 - 战斗触发只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接改其他单位属性。流程与 UI 可用 Autoload；战斗内触发不走全局 Bus。
-- 战场 To-Be 为 **5×4** 逻辑格网（竖屏、我下敌上）+ 双方 **2×5** 角色座位（铺满半场）；准备入座用座位吸附；开战后为**回合制自动战**：敌我**混排**固定行动队列、每回合同序依次行动；每一动尽量「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**，可越半场）。单动演出可压短，观战可加速。不用六边形；不做钉座对撞主路径；不做出手条/速度条主交付。主路径时钟 As-Is 已在 `scripts/combat/realtime/` 落地为行动队列（非全员并行）。旧网格工具环（`main.tscn`）仍用 `BoardGrid`，勿当新主路径交付标准。
-- **UI 壳 To-Be（大巴扎式平铺）**：竖屏带状壳；**友方半场跨阶段常驻底部**（招募/商店/附魔/StageChoice 不得把队伍挪到上半场或 slide 出屏）；阶段货架/候选人/选项卡占上半场；**玩家纯 UI 选择题**（店|事|跳过 / 圣物三选一）优先画成上半场 `StageChoice` 卡片，避免全屏选择题窗（Run 结算除外）；**本版招募不做主题三选一**。**检视统一**：单位与**圣物**（行囊徽章长按、StageChoice 圣物卡）共用 Arena `RealtimeUnitInfoCard` + `ExpeditionRelicInfo`，禁止独立圣物 Popup。Widget 契约与 Theme 规则见 Notion Doc ID `feature-ui-shell`（指针 [Documents/Features/UI_SHELL.md](Documents/Features/UI_SHELL.md)）与技能 `.cursor/skills/ui-shell/`；触控/动效另遵 `.cursor/skills/apple-hig/`（含长按检视 §3.6）。
+- 战场 To-Be 为 **5×8** 逻辑格网（竖屏、我下敌上）+ 双方 **4×5** 角色座位（铺满半场）；准备入座用座位吸附；开战后为**回合制自动战**：敌我**混排**固定行动队列、每回合同序依次行动；每一动尽量「八向靠近 + 能打则出手」（一动内**落格顿步**、**一格一体**，可越半场）。单动演出可压短，观战可加速。不用六边形；不做钉座对撞主路径；不做出手条/速度条主交付。主路径时钟 As-Is 已在 `scripts/combat/realtime/` 落地为行动队列（非全员并行）。旧网格工具环（`main.tscn`）仍用 `BoardGrid`，勿当新主路径交付标准。
 - 数值优先改 `resources/` 下的 `.tres`（单位、技能、波次、经济、增益、牌库、商店池），避免新增重复硬编码。
 - 主题是中世纪幻想 2D（设定定稿；单位命名/美术可能仍为旧动物占位）；表现与逻辑分离，战斗结果不依赖帧率。
 
@@ -30,7 +29,7 @@
 - 主代理负责需求、任务拆分、共享文件、集成和交付；小型串行修改由主代理完成。跨模块切片按 [Documents/DEVELOPMENT_WORKFLOW.md](Documents/DEVELOPMENT_WORKFLOW.md) 派专职角色；设计已定要落地用 `implement` skill，完整纵切片用 `vertical-slice` skill。
 - Cursor 角色在 `.cursor/agents/*.md`，用 Task 委派。Customize 里看不见就不算已加载；改为手读对应 `.md` 再传合同。不能声称文件已自动加载。
 - 每个纵切片自带目标等级 L0–L5。同时最多三个子代理。未触达的职业不强制到场。`project.godot`、共享场景与枚举由主代理统一修改。
-- **新建或修改角色**（名/id、攻血、主技能、入池）：用 `.cursor/skills/characterdesign/`；**阶段 I** 先按 `design-brainstorm` 与用户对齐并派只读 `game-designer`（必要时 `balance-designer`），**用户确认后** **阶段 II** 再更新 Notion Doc ID `content-character-design` / 花名册（指针 [Documents/Content/CHARACTER_DESIGN.md](Documents/Content/CHARACTER_DESIGN.md)）与 `resources/units/`；终稿前 icon 默认 `res://assets/sprites/placeholders/character_dev.png`。
+- **新建或修改角色**（名/id、攻血、主技能、入池）：用 `.cursor/skills/characterdesign/`；**阶段 I** 先按 `design-brainstorm` 与用户对齐并派只读 `game-designer`（必要时 `balance-designer`），**用户确认后** **阶段 II** 再更新 [CHARACTER_DESIGN.md](Documents/Content/CHARACTER_DESIGN.md) / 花名册与 `resources/units/`；终稿前 icon 默认 `res://assets/sprites/placeholders/character_dev.png`。
 - **完全验收**下：集成后 QA 按目标等级给出结论，reviewer 只读审查；阻断退回实现。L5 只修缺陷。验证用 `verify-godot`，画面用 `gui-acceptance`。**轻量验收**不派 QA/GUI，加载烟测即可。
 - 切片等级不取代文档里的 M1–M3 / Run 里程碑；里程碑描述已实现范围，L0–L5 描述当前切片质量；验收方式见 DEVELOPMENT_WORKFLOW。
 

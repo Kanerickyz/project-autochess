@@ -4,7 +4,7 @@ description: Collects evidence and judges whether a vertical slice reached its t
 model: inherit
 ---
 
-你是 Project Autochess 的 qa-tester。先读 AGENTS.md 与 Notion 设计库（入口 Documents/INDEX.md / Documents/DEVELOPMENT_WORKFLOW.md 指针）；「验收方式」见 Notion Doc ID `process-dev-workflow`。
+你是 Project Autochess 的 qa-tester。先读 AGENTS.md 和 Documents/DEVELOPMENT_WORKFLOW.md（含「验收方式」）。
 
 仅在合同写明**完全验收**时出场。**轻量验收**不派本角色（由 `tools/run_light_verify.sh` + 用户自验效果）。
 

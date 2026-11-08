@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_relic_aegis"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 7
 attack = 2
 steps_per_turn = 1
 attack_interval = 1.3
@@ -28,4 +28,3 @@ tier = 2
 command_cost = 4
 stats = SubResource("UnitStats_relic_aegis")
 ability = ExtResource("3_ability")
-theme_primary = &"undead"

@@ -13,8 +13,6 @@ var _deck_state: DeckState
 var _economy: RunEconomy
 ## owner.instance_id -> { EffectSpec.get_instance_id(): count }
 var _spec_trigger_counts: Dictionary = {}
-## 修甲徒等：owner.instance_id -> { target.instance_id: true }；OnFriendArmorDepleted 每目标每场仅修一次。
-var _armor_repair_once: Dictionary = {}
 ## 技能 DEAL_DAMAGE 执行期间抑制 OnDealDamage 再入队，避免捎带伤连环刷触发。
 var _suppress_deal_damage_triggers: int = 0
 var _battle_convert_handler: Callable = Callable()
@@ -58,7 +56,6 @@ func on_event(event_type: StringName, payload: CombatEventPayload) -> void:
 		return
 	if event_type == CombatEvents.ON_COMBAT_START:
 		_spec_trigger_counts.clear()
-		_armor_repair_once.clear()
 	if event_type == CombatEvents.ON_ROUND_START:
 		_friend_hurt_this_round = 0
 	if event_type == CombatEvents.ON_DAMAGE_TAKEN:
@@ -143,10 +140,6 @@ static func _can_enqueue_action_on_target(
 	match action.action_type:
 		EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
 			return target.is_alive()
-		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
-			return target.is_alive()
-		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
-			return target.is_alive()
 		_:
 			return true
 
@@ -193,13 +186,6 @@ func _enqueue_for_event(
 						continue
 					if not _can_enqueue_action_on_target(action, target, event_type):
 						continue
-					## 友方甲尽修复：同一持有者对同一目标每场只入队一次。
-					if (
-						event_type == CombatEvents.ON_FRIEND_ARMOR_DEPLETED
-						and action.action_type == EffectAction.Type.GRANT_COMBAT_ARMOR
-						and _has_armor_repaired_once(unit, target)
-					):
-						continue
 					var step := QueuedEffectStep.new()
 					step.action = action
 					step.target = target
@@ -222,7 +208,7 @@ func _owner_qualifies_for_event(
 	if owner == null:
 		return false
 	match event_type:
-		CombatEvents.ON_DAMAGE_TAKEN, CombatEvents.ON_DEATH, CombatEvents.ON_ARMOR_BLOCKED, CombatEvents.ON_ARMOR_DEPLETED:
+		CombatEvents.ON_DAMAGE_TAKEN, CombatEvents.ON_DEATH:
 			return payload.target == owner
 		CombatEvents.ON_DEAL_DAMAGE, CombatEvents.ON_KILL:
 			return payload.source == owner
@@ -249,7 +235,7 @@ func _owner_qualifies_for_event(
 				and payload.target != owner
 				and payload.target.team == owner.team
 			)
-		CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_FRIEND_DAMAGE_TAKEN, CombatEvents.ON_FRIEND_ARMOR_DEPLETED:
+		CombatEvents.ON_FRIEND_DEATH, CombatEvents.ON_FRIEND_DAMAGE_TAKEN:
 			return (
 				payload.target != null
 				and payload.target != owner
@@ -309,7 +295,7 @@ func _resolve_targets(
 			if payload.target != null:
 				result.append(payload.target)
 		EffectSpec.TargetSelector.RANDOM_ALLY:
-			var picked := _pick_random_ally(owner, spec.exclude_owner, spec.require_theme)
+			var picked := _pick_random_ally(owner, spec.exclude_owner)
 			if picked != null:
 				result.append(picked)
 		EffectSpec.TargetSelector.ALL_UNITS:
@@ -366,9 +352,7 @@ func _resolve_targets(
 			if payload.source != null and payload.source.is_alive():
 				result.append(payload.source)
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
-			result.append_array(
-				_pick_nearby_allies(owner, spec.exclude_owner, spec.require_theme)
-			)
+			result.append_array(_pick_nearby_allies(owner, spec.exclude_owner))
 		EffectSpec.TargetSelector.NEARBY_ENEMIES:
 			result.append_array(_pick_nearby_enemies(owner))
 		EffectSpec.TargetSelector.LOWEST_CURRENT_HP_ALLY:
@@ -389,27 +373,7 @@ func _resolve_targets(
 			var any_unit := _pick_random_any_unit(owner, spec.exclude_owner)
 			if any_unit != null:
 				result.append(any_unit)
-	return _filter_targets_by_theme(result, spec.require_theme)
-
-
-static func _unit_has_theme(unit: UnitInstance, theme_id: StringName) -> bool:
-	if unit == null or unit.unit_data == null:
-		return false
-	if not UnitTheme.is_valid_id(theme_id):
-		return true
-	return theme_id in unit.unit_data.get_theme_ids()
-
-
-func _filter_targets_by_theme(
-	units: Array[UnitInstance], theme_id: StringName
-) -> Array[UnitInstance]:
-	if not UnitTheme.is_valid_id(theme_id):
-		return units
-	var filtered: Array[UnitInstance] = []
-	for unit in units:
-		if _unit_has_theme(unit, theme_id):
-			filtered.append(unit)
-	return filtered
+	return result
 
 
 
@@ -435,16 +399,12 @@ func _spec_uses_cell_targets(spec: EffectSpec) -> bool:
 	)
 
 
-func _pick_random_ally(
-	owner: UnitInstance, exclude_owner: bool, require_theme: StringName = &""
-) -> UnitInstance:
+func _pick_random_ally(owner: UnitInstance, exclude_owner: bool) -> UnitInstance:
 	if owner == null:
 		return null
 	var candidates: Array[UnitInstance] = []
 	for unit in _grid.get_units_by_team(owner.team, true):
 		if exclude_owner and unit.instance_id == owner.instance_id:
-			continue
-		if not _unit_has_theme(unit, require_theme):
 			continue
 		candidates.append(unit)
 	if candidates.is_empty():
@@ -686,32 +646,8 @@ func _spec_condition_met(
 			return payload != null and payload.from_attack
 		EffectSpec.Condition.OWNER_HAS_BANKED_TURN_REFRESH_CHARGE:
 			return owner != null and owner.banked_turn_refresh_charges > 0
-		EffectSpec.Condition.OWNER_COMPLETED_ORTHOGONAL_CHARGE:
-			if owner == null or not owner.completed_orthogonal_charge:
-				return false
-			## 圣殿冲锋：冲锋成功后的本动普攻仅对正交邻格生效。
-			return _units_orthogonally_adjacent(owner, payload.target if payload != null else null)
-		EffectSpec.Condition.EVENT_TARGET_ORTHOGONAL_ADJACENT:
-			return _units_orthogonally_adjacent(
-				owner, payload.target if payload != null else null
-			)
-		EffectSpec.Condition.OWNER_AT_OR_BELOW_HALF_HP:
-			if owner == null or not owner.is_alive():
-				return false
-			var max_hp := owner.get_effective_max_hp()
-			if max_hp <= 0:
-				return false
-			return owner.current_hp * 2 <= max_hp
 		_:
 			return true
-
-
-static func _units_orthogonally_adjacent(a: UnitInstance, b: UnitInstance) -> bool:
-	if a == null or b == null:
-		return false
-	var ac := a.grid_pos
-	var bc := b.grid_pos
-	return absi(ac.x - bc.x) + absi(ac.y - bc.y) == 1
 
 
 static func _unit_below_max_hp(unit: UnitInstance) -> bool:
@@ -743,21 +679,6 @@ func _record_spec_trigger(owner: UnitInstance, spec: EffectSpec) -> void:
 	var key := spec.get_instance_id()
 	by_spec[key] = int(by_spec.get(key, 0)) + 1
 	_spec_trigger_counts[owner.instance_id] = by_spec
-
-
-func _has_armor_repaired_once(owner: UnitInstance, target: UnitInstance) -> bool:
-	if owner == null or target == null:
-		return false
-	var by_target: Dictionary = _armor_repair_once.get(owner.instance_id, {})
-	return bool(by_target.get(target.instance_id, false))
-
-
-func _mark_armor_repaired_once(owner: UnitInstance, target: UnitInstance) -> void:
-	if owner == null or target == null:
-		return
-	var by_target: Dictionary = _armor_repair_once.get(owner.instance_id, {})
-	by_target[target.instance_id] = true
-	_armor_repair_once[owner.instance_id] = by_target
 
 
 func _pick_enemies_adjacent_to_event_target(
@@ -813,9 +734,7 @@ func _pick_nearby_enemies(owner: UnitInstance) -> Array[UnitInstance]:
 
 
 ## 持有者附近友方（切比雪夫 ≤ EffectSpec.NEARBY_ALLY_RADIUS；现为周围一格）。
-func _pick_nearby_allies(
-	owner: UnitInstance, exclude_owner: bool, require_theme: StringName = &""
-) -> Array[UnitInstance]:
+func _pick_nearby_allies(owner: UnitInstance, exclude_owner: bool) -> Array[UnitInstance]:
 	var result: Array[UnitInstance] = []
 	if owner == null or _grid == null:
 		return result
@@ -827,8 +746,6 @@ func _pick_nearby_allies(
 		if unit == null or not unit.is_alive():
 			continue
 		if exclude_owner and unit.instance_id == owner.instance_id:
-			continue
-		if not _unit_has_theme(unit, require_theme):
 			continue
 		var cell := unit.grid_pos
 		var unit_cell := _grid.find_cell_of(unit)
@@ -1074,19 +991,10 @@ func _execute_action(
 		EffectAction.Type.GRANT_COMBAT_ARMOR:
 			if target == null or not target.is_alive():
 				return false
-			## 友方甲尽修复：同一持有者对同一目标每场仅成功一次。
-			if (
-				spec != null
-				and spec.trigger == CombatEvents.ON_FRIEND_ARMOR_DEPLETED
-				and _has_armor_repaired_once(owner, target)
-			):
-				return false
 			var armor_grant := _scaled_action_value(owner, action.value)
 			if armor_grant <= 0:
 				return false
 			target.grant_combat_temp_armor(armor_grant)
-			if spec != null and spec.trigger == CombatEvents.ON_FRIEND_ARMOR_DEPLETED:
-				_mark_armor_repaired_once(owner, target)
 			print(
 				"[Effect] %s +%d combat armor (total=%d equip=%d temp=%d)"
 				% [
@@ -1098,43 +1006,6 @@ func _execute_action(
 				]
 			)
 			executed = true
-		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
-			if owner == null or not CombatStatusStack.is_valid_id(action.stat_name):
-				return false
-			var per_ally := _scaled_action_value(owner, action.value)
-			if per_ally <= 0:
-				return false
-			var armored_allies := 0
-			for ally in _grid.get_units_by_team(owner.team, true):
-				if ally != null and ally.get_armor_block() > 0:
-					armored_allies += 1
-			var add_stacks := mini(armored_allies, 2) * per_ally
-			if add_stacks <= 0:
-				return false
-			var enemy_team := (
-				UnitInstance.Team.ENEMY
-				if owner.team == UnitInstance.Team.PLAYER
-				else UnitInstance.Team.PLAYER
-			)
-			var applied_any := false
-			for enemy in _grid.get_units_by_team(enemy_team, true):
-				if enemy == null or not enemy.is_alive():
-					continue
-				enemy.combat_statuses.add_stacks(action.stat_name, add_stacks)
-				applied_any = true
-				print(
-					"[Effect] %s +%d %s from armored allies=%d (cap 2, per=%d)"
-					% [
-						enemy.id,
-						add_stacks,
-						action.stat_name,
-						armored_allies,
-						per_ally,
-					]
-				)
-			executed = applied_any
-		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
-			executed = _knockback_away_from_owner(owner, target, action)
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if target == null:
 				return false
@@ -1496,46 +1367,6 @@ func _execute_fuse_explode_batch(
 	return executed
 
 
-## 沿持有者→目标正交方向击退；格数用 action.value 原值（不吃 merge）。Boss 足迹/斜邻/堵死失败。
-func _knockback_away_from_owner(
-	owner: UnitInstance,
-	target: UnitInstance,
-	action: EffectAction,
-) -> bool:
-	if owner == null or target == null or action == null:
-		return false
-	if not target.is_alive() or target.is_boss_leader():
-		return false
-	if target.get_footprint_size() != Vector2i(1, 1):
-		return false
-	var owner_cell := _grid.find_cell_of(owner)
-	var target_cell := _grid.find_cell_of(target)
-	if owner_cell == Vector2i(-1, -1) or target_cell == Vector2i(-1, -1):
-		return false
-	var delta := target_cell - owner_cell
-	if absi(delta.x) + absi(delta.y) != 1:
-		return false
-	var dir := delta
-	## 升星不拉长击退格数：固定基础 value。
-	var steps := maxi(1, action.value)
-	var cur := target_cell
-	var moved := false
-	for _i in steps:
-		var nxt: Vector2i = cur + dir
-		if not _grid.can_place_at(nxt):
-			break
-		if not _grid.move_unit_for(target, nxt):
-			break
-		cur = nxt
-		moved = true
-	if moved:
-		print(
-			"[Effect] %s knockback %s -> %s (%d cells)"
-			% [owner.id, target.id, str(cur), absi(cur.x - target_cell.x) + absi(cur.y - target_cell.y)]
-		)
-	return moved
-
-
 func _pick_teleport_cell_adjacent_to_target(
 	owner: UnitInstance,
 	target: UnitInstance,
@@ -1731,15 +1562,6 @@ func _spawn_unit(
 		if action.spawn_owner_base_percent > 0 and payload.target.stats != null and spawned.stats != null:
 			## 按死者基础身体（忽略本场临时层）百分比缩放攻/血。
 			var pct := action.spawn_owner_base_percent
-			## 残影：1★ 按配置百分比；三合一后（2★+）生成完全体（死者基础身体 100%）。
-			var pct_ability: AbilityData = owner.get_main_ability() if owner != null else null
-			if (
-				owner != null
-				and owner.level >= 2
-				and pct_ability != null
-				and pct_ability.id == "death_spawn_weak_copy"
-			):
-				pct = 100
 			var base_atk := payload.target.stats.attack
 			var base_hp := payload.target.stats.max_hp
 			spawned.stats.attack = maxi(1, base_atk * pct / 100)

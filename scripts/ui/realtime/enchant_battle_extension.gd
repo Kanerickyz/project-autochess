@@ -1,7 +1,6 @@
 class_name EnchantBattleExtension
 extends RefCounted
 ## 附魔阶段：Arena 拖拽 + 底栏（重置 / 随机 / 融合 / 跳过 / 继续）。
-## 壳契约：熔炉在上半场（敌区）；队伍在下半场 AllyBoard（configure_grid enemy_side=false）常驻。
 
 
 var _battle: RealtimeBattleController
@@ -43,8 +42,6 @@ func is_expanded_team() -> bool:
 
 func show_hud() -> void:
 	_ensure_hud()
-	if _battle != null:
-		_battle._hide_other_phase_dock_huds(&"enchant")
 	_hud.visible = true
 	_refresh()
 
@@ -93,7 +90,7 @@ func _build_forge_previews() -> Array:
 	var out: Array = []
 	if _session == null:
 		return out
-	var board_size := Vector2i(5, 4)
+	var board_size := Vector2i(5, 8)
 	if _battle != null:
 		board_size = _battle.get_board_size()
 	var slot_cells := EnchantLayout.forge_slot_cells(board_size)
@@ -120,7 +117,7 @@ func _entry_on_forge(entry_id: int) -> bool:
 
 
 func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
-	var board_size := Vector2i(5, 4)
+	var board_size := Vector2i(5, 8)
 	if _battle != null:
 		board_size = _battle.get_board_size()
 	if _expanded_team:
@@ -141,7 +138,6 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 		if config != null:
 			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
-	## 下半场 AllyBoard：与准备/招募同一友方座位几何（勿改 enemy_side=true）。
 	slots.configure_grid(seat_rows, seat_cols, board_size, false, false)
 	for entry in deck.get_entries():
 		if entry == null or _entry_on_forge(entry.entry_id):
@@ -164,14 +160,7 @@ func _ensure_hud() -> void:
 	_hud = VBoxContainer.new()
 	_hud.name = "EnchantHud"
 	_hud.visible = false
-	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var host: Node = null
-	if _battle != null:
-		host = _battle.get_phase_dock_host()
-	if host != null:
-		host.add_child(_hud)
-	else:
-		dock.add_child(_hud)
+	dock.add_child(_hud)
 	_stats_label = Label.new()
 	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

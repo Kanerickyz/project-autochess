@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_enemy_knight"]
 script = ExtResource("2_stats")
-max_hp = 15
+max_hp = 4
 attack = 1
 steps_per_turn = 1
 attack_interval = 1.4
@@ -31,4 +31,3 @@ command_cost = 4
 stats = SubResource("UnitStats_enemy_knight")
 team_default = 1
 ability = ExtResource("3_ability")
-theme_primary = &"guard"

@@ -21,7 +21,6 @@ func _run() -> void:
 	_test_empty_starter_deck_and_session_gate()
 	await _test_opening_enter_recruit_ui()
 	await _test_arena_height_prepare_vs_recruit()
-	await _test_dock_height_stable_across_reenter()
 	if _failures == 0:
 		print("OpeningRecruitFlowTest: all passed")
 	quit(0 if _failures == 0 else 1)
@@ -107,16 +106,15 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	## 阶段货架占上半场：候选 mid-2；动作行 cand+1（仍 < mid）；AllyBoard 在下半场；备战在棋盘外。
+	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+2（中间空一行）；备战夹在队伍与候选之间。
 	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var expected_cand_y := clampi(mid_y - 2, 0, maxi(0, mid_y - 1))
-	var expected_action_y := clampi(expected_cand_y + 1, 0, maxi(0, mid_y - 1))
+	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
+	var expected_action_y := expected_cand_y + 2
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
-	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 3 slots")
+	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
-		_expect(cell.y == expected_cand_y, "candidate y in enemy half (stage shelf)")
-		_expect(cell.y < mid_y, "candidates above mid")
+		_expect(cell.y == expected_cand_y, "candidate y == recruit half row 1 (mid+1)")
 		## 一行五格：x 互不重叠（5 宽棋盘 gap=0 → x=0..4）。
 		var xs: Dictionary = {}
 		var same_y := true
@@ -131,16 +129,15 @@ func _test_opening_enter_recruit_ui() -> void:
 	_expect(not arena.recruit_items.is_empty(), "item row present")
 	if not arena.recruit_items.is_empty():
 		var item0: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item0.y == expected_action_y, "item row on action y")
-		_expect(item0.y > expected_cand_y, "action row below candidates")
-		_expect(item0.y < mid_y, "action row still in enemy half")
+		_expect(item0.y == expected_action_y, "item row y == cand_y+2")
+		_expect(item0.y - expected_cand_y == 2, "candidate/item row delta == 2")
 		for info in arena.recruit_items:
 			var ic: Vector2i = info.get("cell", Vector2i(-1, -1))
 			_expect(ic.y == expected_action_y, "all items share action row")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell same row as items")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock same row as items")
 	_expect(arena.recruit_sell_cell != arena.recruit_lock_cell, "sell/lock not overlapping")
-	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell on action row")
+	_expect(arena.recruit_sell_cell.y == expected_cand_y + 2, "sell on cand_y+2")
 
 	## 道具 / 锁定 / 卖出均可长按 inspect（同 is_item 信息卡路径）。
 	if not arena.recruit_items.is_empty():
@@ -149,7 +146,7 @@ func _test_opening_enter_recruit_ui() -> void:
 		if offer0.get("item") != null and offer_cell.x >= 0:
 			var offer_center := (
 				arena.tile_to_local(Vector2(offer_cell) + Vector2(0.5, 0.5))
-				+ Vector2(0.0, arena.enemy_half_slide_y)
+				+ Vector2(0.0, arena.ally_half_slide_y)
 			)
 			var offer_info := arena.inspect_at(offer_center)
 			_expect(
@@ -159,7 +156,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	if arena.recruit_lock_cell.x >= 0:
 		var lock_center := (
 			arena.tile_to_local(Vector2(arena.recruit_lock_cell) + Vector2(0.5, 0.5))
-			+ Vector2(0.0, arena.enemy_half_slide_y)
+			+ Vector2(0.0, arena.ally_half_slide_y)
 		)
 		var lock_info := arena.inspect_at(lock_center)
 		_expect(
@@ -171,7 +168,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	if arena.recruit_sell_cell.x >= 0:
 		var sell_center := (
 			arena.tile_to_local(Vector2(arena.recruit_sell_cell) + Vector2(0.5, 0.5))
-			+ Vector2(0.0, arena.enemy_half_slide_y)
+			+ Vector2(0.0, arena.ally_half_slide_y)
 		)
 		var sell_info := arena.inspect_at(sell_center)
 		_expect(
@@ -181,30 +178,34 @@ func _test_opening_enter_recruit_ui() -> void:
 			"recruit sell inspectable",
 		)
 
-	## 下半场 AllyBoard：友方半场几何；前排在上。
+	## 上半场队伍块：敌半场区域；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
 	var team_max_y := -1
 	if arena.recruit_team_slots != null and arena.recruit_team_slots.slot_count >= 1:
 		var team_front := arena.recruit_team_slots.get_cell(0)
 		var team_back := arena.recruit_team_slots.get_cell(5)
 		var mid := BoardHalf.midline_row(battle.get_board_size().y)
-		_expect(team_front.y >= mid, "team block on ally half")
+		_expect(team_front.y < mid, "team block on enemy half")
 		_expect(team_front.y < team_back.y, "recruit front row above back (ally row order)")
-		_expect(not arena.recruit_team_slots.is_enemy_side, "recruit team uses ally geometry")
 		for si in arena.recruit_team_slots.slot_count:
 			team_max_y = maxi(team_max_y, arena.recruit_team_slots.get_cell(si).y)
 
-	## 招募备战：AllyBoard 下沿（棋盘外虚拟行）。
+	## 招募备战：逻辑 y = midline，中心介于队伍区与候选区之间。
 	_expect(arena.bench_visible and arena.bench_slots != null, "recruit bench visible")
 	if arena.bench_slots != null and arena.bench_slots.slot_count > 0:
-		var board_h := battle.get_board_size().y
-		_expect(arena.bench_slots.get_cell(0).y == board_h, "recruit bench cells below board")
+		_expect(arena.bench_slots.get_cell(0).y == mid_y, "recruit bench cells on midline")
 		var bench_center := arena.bench_slot_center_local(0)
 		var hit_i := arena.find_bench_slot_at_local(bench_center)
 		_expect(hit_i == 0, "recruit bench hit-test maps center to slot 0")
-		if team_max_y >= 0:
+		if team_max_y >= 0 and not arena.recruit_candidates.is_empty():
 			var team_bottom := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5))
-			_expect(bench_center.y > team_bottom.y, "recruit bench below ally team")
+			var cand_center := arena.tile_to_local(
+				Vector2(arena.recruit_candidates[0].get("cell", Vector2i.ZERO)) + Vector2(0.5, 0.5)
+			)
+			_expect(
+				bench_center.y > team_bottom.y and bench_center.y < cand_center.y,
+				"recruit bench center y between team and candidates"
+			)
 
 	var finished: Array = []
 	battle.recruit_finished.connect(func(kept: bool) -> void: finished.append(kept))
@@ -260,68 +261,6 @@ func _test_arena_height_prepare_vs_recruit() -> void:
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(dock != null and dock.visible, "dock visible in post-win-style recruit")
 	_expect(absf(arena.size.y - prepare_h) <= 2.0, "arena height matches prepare")
-	var host := dock.find_child("PhaseDockHost", true, false) as ScrollContainer
-	_expect(host != null and host.visible, "PhaseDockHost visible in recruit")
-	_expect(host.custom_minimum_size.y > 60.0, "PhaseDockHost has fixed content height")
-
-	battle.queue_free()
-	await process_frame
-
-
-func _test_dock_height_stable_across_reenter() -> void:
-	## 多次进出招募：Dock 最小高度不得棘轮上抬。
-	var deck := DeckState.new()
-	deck.configure(_make_empty_deck_config())
-	deck.add_entry(load(KNIGHT) as UnitData)
-	deck.add_entry(load(ARCHER) as UnitData)
-
-	var economy := RunEconomy.new()
-	economy.configure(load(ECONOMY_PATH) as EconomyConfig)
-	economy.reset()
-	economy.grant(40)
-
-	var battle := (load(BATTLE_SCENE) as PackedScene).instantiate() as RealtimeBattleController
-	battle.rng_seed = 91
-	battle.half_exit_seconds = 0.0
-	battle.recruit_enter_seconds = 0.0
-	root.add_child(battle)
-	await process_frame
-	battle.setup(deck, economy, load(LEVEL_PATH) as LevelData)
-	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
-	await process_frame
-
-	var dock := battle.get_node_or_null("Layout/Dock") as Control
-	_expect(dock != null, "dock exists for reenter test")
-	var locked_heights: Array[float] = []
-	for i in 3:
-		var session := RecruitSession.new()
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 100 + i
-		session.configure(load(RECRUIT_PATH) as RecruitConfig, deck, economy, rng)
-		session.require_nonempty_roster = false
-		session.begin(0.2)
-		await battle.enter_recruit(session, 0.0)
-		await process_frame
-		await process_frame
-		locked_heights.append(dock.custom_minimum_size.y)
-		## 打开卖圣物列表也不应抬高 Dock min。
-		if battle.has_method("_on_recruit_sell_relic_toggle"):
-			battle._on_recruit_sell_relic_toggle()
-			await process_frame
-			locked_heights.append(dock.custom_minimum_size.y)
-		battle._on_recruit_finish_pressed()
-		await process_frame
-
-	_expect(locked_heights.size() >= 3, "collected locked heights")
-	if not locked_heights.is_empty():
-		var first := locked_heights[0]
-		_expect(first >= 140.0, "first lock >= prepare-equivalent")
-		var max_h := first
-		var min_h := first
-		for h in locked_heights:
-			max_h = maxf(max_h, h)
-			min_h = minf(min_h, h)
-		_expect(absf(max_h - min_h) <= 1.0, "dock min height stable across reenter (no ratchet)")
 
 	battle.queue_free()
 	await process_frame

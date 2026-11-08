@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_bloodwage"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 4
 attack = 4
 steps_per_turn = 1
 attack_interval = 1.2
@@ -29,5 +29,4 @@ tier = 2
 command_cost = 3
 stats = SubResource("UnitStats_bloodwage")
 ability = ExtResource("3_ability")
-theme_primary = &"mercenary"
 icon = ExtResource("4_icon")

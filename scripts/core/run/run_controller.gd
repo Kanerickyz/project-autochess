@@ -10,8 +10,6 @@ signal map_updated
 var phase: RunPhase = RunPhase.MAP
 var run_state: RunState = RunState.new()
 var map_config: RunMapConfig
-## 主模式线性层表元数据（无尽为 null）。
-var linear_progress: LinearRunProgress
 var _rng := RandomNumberGenerator.new()
 var _pending_node: MapNodeRuntime
 ## 败局时正在打的战斗层号（商店不升层；无尽成绩用）。
@@ -31,35 +29,16 @@ func is_endless() -> bool:
 	return map_config != null and map_config.endless_mode
 
 
-## 主爬塔：线性远征（无地图选路）。无尽仍走 EndlessMapGenerator。
-func is_linear_main() -> bool:
-	return map_config != null and not is_endless()
-
-
-## 品阶倒数窗用战斗层数（不含 Boss）；无线性表时回退 map_config.floor_count。
-func get_recruit_floor_count() -> int:
-	if is_endless():
-		return TierUnlock.DEFAULT_FLOOR_COUNT
-	if linear_progress != null:
-		return maxi(1, linear_progress.combat_floor_count)
-	if map_config != null:
-		return maxi(1, map_config.floor_count - 1)
-	return TierUnlock.DEFAULT_FLOOR_COUNT
-
-
 func start_run() -> void:
 	run_state.reset_progress()
 	defeat_reached_floor = 0
-	linear_progress = null
 	if map_config == null:
 		push_error("RunController: map_config is null")
 		return
 	if is_endless():
 		run_state.map_state = EndlessMapGenerator.generate(map_config, _rng)
 	else:
-		var generated: Dictionary = LinearRunProgress.generate(map_config, _rng)
-		linear_progress = generated.get("progress") as LinearRunProgress
-		run_state.map_state = generated.get("map_state") as MapState
+		run_state.map_state = MapGenerator.generate(map_config, _rng)
 	run_state.current_node_id = -1
 	if run_state.map_state.start_node_id >= 0:
 		run_state.map_state.complete_node(run_state.map_state.start_node_id)
@@ -175,14 +154,11 @@ func fail_run() -> void:
 		defeat_reached_floor = maxi(1, run_state.completed_encounter_count + 1)
 	_pending_node = null
 	run_state.reset_progress()
-	linear_progress = null
 	if map_config != null:
 		if is_endless():
 			run_state.map_state = EndlessMapGenerator.generate(map_config, _rng)
 		else:
-			var generated: Dictionary = LinearRunProgress.generate(map_config, _rng)
-			linear_progress = generated.get("progress") as LinearRunProgress
-			run_state.map_state = generated.get("map_state") as MapState
+			run_state.map_state = MapGenerator.generate(map_config, _rng)
 		run_state.map_state.mark_current(-1)
 	_set_phase(RunPhase.RUN_DEFEAT)
 	map_updated.emit()

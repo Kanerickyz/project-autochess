@@ -20,9 +20,6 @@ const TRIGGER_LABELS := {
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN: "友方受伤时",
 	CombatEvents.ON_ROUND_START: "自己回合开始时",
 	CombatEvents.ON_DAMAGE_TAKEN: "受伤时",
-	CombatEvents.ON_ARMOR_BLOCKED: "护甲挡住伤害时",
-	CombatEvents.ON_ARMOR_DEPLETED: "自身护甲耗尽时",
-	CombatEvents.ON_FRIEND_ARMOR_DEPLETED: "友方护甲耗尽时",
 
 	CombatEvents.ON_DEAL_DAMAGE: "造成伤害时",
 	CombatEvents.ON_KILL: "击杀时",
@@ -104,26 +101,12 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
-## 主题文案辅助：「主题：主」或「主题：主 / 辅」；无主题返回空。
-## 信息卡扫读改走卡头徽；本函数保留给测试 / 其它文案。
-static func get_theme_line_from_unit_data(data: UnitData) -> String:
-	if data == null:
-		return ""
-	if not UnitTheme.is_valid_id(data.theme_primary):
-		return ""
-	var primary := UnitTheme.display_name(data.theme_primary)
-	if UnitTheme.is_valid_id(data.theme_secondary) and data.theme_secondary != data.theme_primary:
-		return "主题：%s / %s" % [primary, UnitTheme.display_name(data.theme_secondary)]
-	return "主题：%s" % primary
-
-
 static func get_skills_block_from_unit_data(
 	data: UnitData, level: int = 1, with_stat_icons: bool = false
 ) -> String:
 	if data == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	## 主题改挂卡头徽+中文名；技能区不再写「主题：」行。
 	if data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(data.ability, level)
 		lines.append(format_ability("技能", data.ability, scale, with_stat_icons, level))
@@ -149,7 +132,6 @@ static func get_skills_block_from_entry(entry: DeckEntry, with_stat_icons: bool 
 	if entry == null or entry.unit == null:
 		return "无技能"
 	var lines: PackedStringArray = []
-	## 主题改挂卡头徽+中文名；技能区不再写「主题：」行。
 	var main_ab := entry.get_main_ability()
 	if main_ab != null:
 		var scale := 1
@@ -286,7 +268,7 @@ static func attachments_for_effect_spec(
 		if action == null:
 			continue
 		match action.action_type:
-			EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS, EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
+			EffectAction.Type.APPLY_COMBAT_STATUS, EffectAction.Type.REMOVE_COMBAT_STATUS:
 				var status_id: StringName = action.stat_name
 				if seen.has(status_id):
 					continue
@@ -366,7 +348,6 @@ static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) 
 		return "无技能"
 
 	var lines: PackedStringArray = []
-	## 主题改挂卡头徽+中文名；技能区不再写「主题：」行。
 	if unit.unit_data.ability != null:
 		var scale := UnitInstance.ability_value_multiplier_for(unit.unit_data.ability, unit.level)
 		lines.append(
@@ -403,7 +384,7 @@ static func format_trigger_spec_line(
 		for passive in unit.unit_data.passives:
 			if passive != null:
 				candidates.append(passive)
-		for attached in unit.attached_abilities:
+		for attached in unit.unit_data.attached_abilities:
 			if attached != null:
 				candidates.append(attached)
 	for ability in candidates:
@@ -538,22 +519,12 @@ static func format_effect_spec(
 		spec.trigger == CombatEvents.ON_FRIEND_DAMAGE_TAKEN
 		and spec.condition == EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP
 	):
-		if UnitTheme.is_valid_id(spec.require_theme):
-			trigger = "%s受伤且未满血时" % UnitTheme.display_name(spec.require_theme)
-		else:
-			trigger = "友方受伤且该友方未满血时"
+		trigger = "友方受伤且该友方未满血时"
 	elif (
 		spec.trigger == CombatEvents.ON_KILL
 		and spec.condition == EffectSpec.Condition.KILL_FROM_ATTACK
 	):
 		trigger = "攻击击杀时"
-	elif (
-		spec.trigger == CombatEvents.ON_DEAL_DAMAGE
-		and spec.condition == EffectSpec.Condition.OWNER_COMPLETED_ORTHOGONAL_CHARGE
-	):
-		trigger = "冲锋后普攻时"
-	elif spec.condition == EffectSpec.Condition.EVENT_TARGET_ORTHOGONAL_ADJACENT:
-		trigger = "%s（正交邻格）" % trigger
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
 	var has_spawn_or_split := false
@@ -585,21 +556,12 @@ static func format_effect_spec(
 
 
 static func _format_target(spec: EffectSpec) -> String:
-	var theme_label := ""
-	if UnitTheme.is_valid_id(spec.require_theme):
-		theme_label = UnitTheme.display_name(spec.require_theme)
 	match spec.target_selector:
 		EffectSpec.TargetSelector.SELF:
 			return "对自身"
 		EffectSpec.TargetSelector.EVENT_TARGET:
-			if not theme_label.is_empty():
-				return "对该%s" % theme_label
 			return "对事件目标"
 		EffectSpec.TargetSelector.RANDOM_ALLY:
-			if not theme_label.is_empty():
-				if spec.exclude_owner:
-					return "对随机其他%s" % theme_label
-				return "对随机%s" % theme_label
 			if spec.exclude_owner:
 				return "对随机其他队友"
 			return "对随机队友"
@@ -620,8 +582,6 @@ static func _format_target(spec: EffectSpec) -> String:
 		EffectSpec.TargetSelector.ALL_SHOP_CHARACTERS:
 			return "对商店角色"
 		EffectSpec.TargetSelector.ALL_ALLIES:
-			if not theme_label.is_empty():
-				return "对全体%s" % theme_label
 			return "对全体队友"
 		EffectSpec.TargetSelector.FIRST_ENEMY:
 			return "对前排敌人"
@@ -646,10 +606,6 @@ static func _format_target(spec: EffectSpec) -> String:
 		EffectSpec.TargetSelector.EVENT_SOURCE:
 			return "对施害者"
 		EffectSpec.TargetSelector.NEARBY_ALLIES:
-			if not theme_label.is_empty():
-				if spec.exclude_owner:
-					return "对周围一格其他%s" % theme_label
-				return "对周围一格%s" % theme_label
 			if spec.exclude_owner:
 				return "对周围一格其他友方"
 			return "对周围一格友方"
@@ -796,16 +752,8 @@ static func format_action(
 				CombatStatusStack.get_display_name(action.stat_name),
 				scaled_value,
 			]
-		EffectAction.Type.APPLY_COMBAT_STATUS_PER_ARMORED_ALLY:
-			return "按有护甲友方数（最多 2）对全体敌军施加 %s（每友方 %d 层）" % [
-				CombatStatusStack.get_display_name(action.stat_name),
-				scaled_value,
-			]
 		EffectAction.Type.GRANT_COMBAT_ARMOR:
 			return "获得本场临时护甲 +%d" % scaled_value
-		EffectAction.Type.KNOCKBACK_AWAY_FROM_OWNER:
-			## 击退格数不吃升星倍率。
-			return "击退 %d 格" % maxi(1, action.value)
 		EffectAction.Type.REMOVE_COMBAT_STATUS:
 			if scaled_value <= 0:
 				return "驱散 %s" % CombatStatusStack.get_display_name(action.stat_name)
@@ -858,7 +806,6 @@ static func _trigger_prefixes_for_bold() -> PackedStringArray:
 		out.append(t)
 	var extra: PackedStringArray = [
 		"攻击击杀时",
-		"冲锋后普攻时",
 		"友方角色死亡时",
 		"友方随从被召唤时",
 		"友方受伤且该友方未满血时",

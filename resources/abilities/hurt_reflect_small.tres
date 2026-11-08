@@ -18,6 +18,5 @@ actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
 [resource]
 script = ExtResource("1_ab")
 id = "hurt_reflect_small"
-merge_value_mult = 3
 display_name = "受伤时 对施害者造成1伤害"
 effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

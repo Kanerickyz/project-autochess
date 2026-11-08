@@ -1,7 +1,7 @@
 class_name RealtimeTimestopQueue
 extends RefCounted
 ## 战斗内技能行动播报队列（Features/COMBAT_FEEDBACK §5.2）。
-## 现主路径直接 RESULT（结果数字/短提示）；SHOW_CARD 仅保留兼容/恢复路径，不再弹介绍卡。
+## 两拍：SHOW_CARD（介绍卡，尚未改真值）→ RESULT（结算后结果数字/短提示）。
 ## 待结算批次仍在 EffectResolver 队里；本队列只管表现时钟与阶段。
 
 enum Phase {

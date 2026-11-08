@@ -19,9 +19,6 @@ static func run_all() -> bool:
 	_check("lethal_skips_hurt", _test_lethal_skips_hurt())
 	_check("realtime_lethal_skips_hurt", _test_realtime_lethal_skips_hurt())
 	_check("nonlethal_still_hurts", _test_nonlethal_still_hurts())
-	_check("armor_block_emits_blocked_and_depleted", _test_armor_block_events())
-	_check("armor_partial_block_no_depleted", _test_armor_partial_block_no_depleted())
-	_check("realtime_armor_block_events", _test_realtime_armor_block_events())
 	if _failures == 0:
 		print("ArmorDamageBoundaryTest: all tests passed")
 	else:
@@ -343,107 +340,5 @@ static func _test_nonlethal_still_hurts() -> bool:
 	if int(counts[CombatEvents.ON_FRIEND_DAMAGE_TAKEN]) != 1:
 		return false
 	if int(counts[CombatEvents.ON_DEATH]) != 0:
-		return false
-	return true
-
-
-static func _count_armor_events(bus: CombatEventBus) -> Dictionary:
-	var counts := {
-		CombatEvents.ON_DAMAGE_TAKEN: 0,
-		CombatEvents.ON_FRIEND_DAMAGE_TAKEN: 0,
-		CombatEvents.ON_ARMOR_BLOCKED: 0,
-		CombatEvents.ON_ARMOR_DEPLETED: 0,
-		CombatEvents.ON_FRIEND_ARMOR_DEPLETED: 0,
-	}
-	bus.combat_event.connect(func(event_type: StringName, _payload: CombatEventPayload) -> void:
-		if counts.has(event_type):
-			counts[event_type] = int(counts[event_type]) + 1
-	)
-	return counts
-
-
-## 有甲挡尽：发 OnArmorBlocked + OnArmorDepleted；不发 OnDamageTaken。
-static func _test_armor_block_events() -> bool:
-	var grid := BoardGrid.new()
-	grid.configure(Vector2i(8, 8))
-	var bus := CombatEventBus.new()
-	var pipeline := DamagePipeline.new(bus, grid)
-	var attacker := UnitInstance.new("atk", Vector2i(0, 0), UnitInstance.Team.PLAYER)
-	var target := UnitInstance.new("tank", Vector2i(1, 0), UnitInstance.Team.ENEMY)
-	target.stats = UnitStats.new()
-	target.stats.max_hp = 20
-	target.current_hp = 20
-	target.armor_block = 3
-	grid.place(attacker, Vector2i(0, 0))
-	grid.place(target, Vector2i(1, 0))
-	var counts := _count_armor_events(bus)
-	pipeline.apply_damage(attacker, target, 5)
-	if target.current_hp != 20:
-		return false
-	if target.get_armor_block() != 0:
-		return false
-	if int(counts[CombatEvents.ON_DAMAGE_TAKEN]) != 0:
-		return false
-	if int(counts[CombatEvents.ON_FRIEND_DAMAGE_TAKEN]) != 0:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_BLOCKED]) != 1:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_DEPLETED]) != 1:
-		return false
-	if int(counts[CombatEvents.ON_FRIEND_ARMOR_DEPLETED]) != 1:
-		return false
-	return true
-
-
-## 有甲未耗尽：只发 OnArmorBlocked，不发耗尽。
-static func _test_armor_partial_block_no_depleted() -> bool:
-	var grid := BoardGrid.new()
-	grid.configure(Vector2i(8, 8))
-	var bus := CombatEventBus.new()
-	var pipeline := DamagePipeline.new(bus, grid)
-	var target := UnitInstance.new("tank", Vector2i(1, 0), UnitInstance.Team.ENEMY)
-	target.stats = UnitStats.new()
-	target.stats.max_hp = 20
-	target.current_hp = 20
-	target.armor_block = 5
-	grid.place(target, Vector2i(1, 0))
-	var counts := _count_armor_events(bus)
-	pipeline.apply_damage(null, target, 2)
-	if target.get_armor_block() != 3:
-		return false
-	if int(counts[CombatEvents.ON_DAMAGE_TAKEN]) != 0:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_BLOCKED]) != 1:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_DEPLETED]) != 0:
-		return false
-	if int(counts[CombatEvents.ON_FRIEND_ARMOR_DEPLETED]) != 0:
-		return false
-	return true
-
-
-static func _test_realtime_armor_block_events() -> bool:
-	var bus := CombatEventBus.new()
-	var pipeline := RealtimeDamagePipeline.new(bus)
-	var unit := UnitInstance.new("tank", Vector2i(0, 0), UnitInstance.Team.PLAYER)
-	unit.stats = UnitStats.new()
-	unit.stats.max_hp = 10
-	unit.current_hp = 10
-	unit.armor_block = 4
-	var rt := RtUnit.new(unit, Vector2(0.5, 0.5))
-	rt.skip_deploy()
-	var counts := _count_armor_events(bus)
-	var died := pipeline.apply_damage(null, rt, 4)
-	if died or unit.current_hp != 10:
-		return false
-	if unit.get_armor_block() != 0:
-		return false
-	if int(counts[CombatEvents.ON_DAMAGE_TAKEN]) != 0:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_BLOCKED]) != 1:
-		return false
-	if int(counts[CombatEvents.ON_ARMOR_DEPLETED]) != 1:
-		return false
-	if int(counts[CombatEvents.ON_FRIEND_ARMOR_DEPLETED]) != 1:
 		return false
 	return true
