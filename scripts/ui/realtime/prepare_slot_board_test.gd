@@ -87,12 +87,12 @@ static func _test_fills_half_field() -> bool:
 		max_y = maxi(max_y, cell.y)
 	if seen.size() != 10 or ally.slot_count != 10:
 		return false
-	## 行距 1：块高 3，半场高 4 → 居中后 y = mid+1 / mid+3（隔一格）。
-	return (
-		min_y == mid + 1
-		and max_y == mid + 3
-		and max_y - min_y == 2
-	)
+	## 逻辑相邻行居中：y = mid+1 / mid+2；半格观感由 get_display_center 额外拉开。
+	if not (min_y == mid + 1 and max_y == mid + 2 and max_y - min_y == 1):
+		return false
+	var front_c := ally.get_display_center(0)
+	var back_c := ally.get_display_center(5)
+	return is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP)
 
 
 static func _test_bench_row_below_board() -> bool:

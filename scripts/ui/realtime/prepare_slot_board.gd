@@ -4,8 +4,10 @@ extends RefCounted
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 座位行间距（格）；2×5 在 4 行半场内取 1 → 前后排隔一格，减轻立绘重叠且不过分拉开。
-const SEAT_ROW_GAP_CELLS := 1
+## 逻辑行间距（整格）；0 = 相邻行占座。半格观感见 SEAT_ROW_EXTRA_GAP。
+const SEAT_ROW_GAP_CELLS := 0
+## 前后排额外行距（格）：叠在相邻逻辑行上，使格心距 = 1 + 本值（隔半格 → 0.5）。
+const SEAT_ROW_EXTRA_GAP := 0.5
 ## 座位列间距（格）；默认 0 铺满棋盘宽。与行距分离，避免加行距时因列向放不下整块被收拢。
 const SEAT_COL_GAP_CELLS := 0
 ## 兼容旧名：等同列间距（历史调用若仍引用则不影响行距）。
@@ -16,6 +18,8 @@ var seat_cols: int = DEFAULT_SEAT_COLS
 ## 座位总数（= seat_rows × seat_cols）；保留旧字段名供调用方兼容。
 var slot_count: int = 0
 var is_enemy_side: bool = false
+## 与 configure_grid 的 match_ally_row_order 一致；影响 get_display_center 前后排偏移方向。
+var match_ally_row_order: bool = false
 var cells: Array[Vector2i] = []
 ## 与 cells 等长；null 表示空座。友方存 DeckEntry；敌方座位表可仅用几何。
 var occupants: Array = []
@@ -32,6 +36,8 @@ func clear() -> void:
 	slot_count = 0
 	seat_rows = 0
 	seat_cols = 0
+	is_enemy_side = false
+	match_ally_row_order = false
 
 
 func configure_custom_cells(custom_cells: Array[Vector2i]) -> void:
@@ -41,6 +47,7 @@ func configure_custom_cells(custom_cells: Array[Vector2i]) -> void:
 	seat_rows = 0
 	seat_cols = 0
 	is_enemy_side = false
+	match_ally_row_order = false
 	occupants.resize(slot_count)
 	seat_assign_seq.resize(slot_count)
 	for i in slot_count:
@@ -53,13 +60,14 @@ func configure_grid(
 	cols: int,
 	board_size: Vector2i,
 	enemy_side: bool = false,
-	match_ally_row_order: bool = false,
+	p_match_ally_row_order: bool = false,
 ) -> void:
 	clear()
 	seat_rows = maxi(1, rows)
 	seat_cols = maxi(1, cols)
 	slot_count = seat_rows * seat_cols
 	is_enemy_side = enemy_side
+	match_ally_row_order = p_match_ally_row_order
 	cells = build_grid_cells(
 		board_size, seat_rows, seat_cols, enemy_side, match_ally_row_order
 	)
@@ -182,6 +190,25 @@ func get_cell(slot_index: int) -> Vector2i:
 	if slot_index < 0 or slot_index >= cells.size():
 		return Vector2i(-1, -1)
 	return cells[slot_index]
+
+
+## 绘制/开战落点用的格心（可含半格行距）；逻辑占座仍用 get_cell 整格。
+func get_display_center(slot_index: int) -> Vector2:
+	var cell := get_cell(slot_index)
+	if cell.x < 0:
+		return Vector2(-1.0, -1.0)
+	var center := Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)
+	if seat_rows < 2 or seat_cols <= 0 or SEAT_ROW_EXTRA_GAP <= 0.0:
+		return center
+	var row_i := slot_index / seat_cols
+	var spread := SEAT_ROW_EXTRA_GAP * 0.5
+	## 敌方战斗半场：前排（row 0）y 更大；友方/招募同序：前排 y 更小。
+	var enemy_combat_order := is_enemy_side and not match_ally_row_order
+	if enemy_combat_order:
+		center.y += spread if row_i == 0 else -spread
+	else:
+		center.y += -spread if row_i == 0 else spread
+	return center
 
 
 func get_entry(slot_index: int) -> DeckEntry:

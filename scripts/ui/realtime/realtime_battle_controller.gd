@@ -1207,7 +1207,7 @@ func _build_final_trial_enemy_spawns(wave_index: int) -> Array:
 		unit.level = 1
 		spawns.append({
 			"unit": unit,
-			"position": _enemy_spawn_visual_position(unit, cell),
+			"position": _enemy_spawn_visual_position(unit, cell, _enemy_slots.get_display_center(seat_i)),
 			"seat_index": seat_i,
 		})
 		placed += 1
@@ -1688,7 +1688,7 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			continue
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
-		_sim.add_unit(unit, Vector2(cell) + Vector2(0.5, 0.5))
+		_sim.add_unit(unit, _slots.get_display_center(slot_i))
 
 	for spawn in _enemy_spawns:
 		var place: Vector2 = spawn["position"]
@@ -1696,7 +1696,7 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 		if seat_i >= 0 and _enemy_slots != null:
 			var seat_cell := _enemy_slots.get_cell(seat_i)
 			if seat_cell != Vector2i(-1, -1):
-				place = Vector2(seat_cell) + Vector2(0.5, 0.5)
+				place = _enemy_slots.get_display_center(seat_i)
 		## 必须每次新建实例：spawn["unit"] 会在首场战斗中被改血/改修饰，倒带重用会残血开局。
 		var unit := _fresh_enemy_unit_for_spawn(spawn.get("unit") as UnitInstance, place)
 		if unit == null:
@@ -1799,7 +1799,7 @@ func _roll_enemy_spawns_legacy(rng: RandomNumberGenerator) -> Array:
 		var unit := UnitInstance.from_unit_data(ud, cell, UnitInstance.Team.ENEMY)
 		result.append({
 			"unit": unit,
-			"position": _enemy_spawn_visual_position(unit, cell),
+			"position": _enemy_spawn_visual_position(unit, cell, _enemy_slots.get_display_center(seat_i)),
 			"seat_index": seat_i,
 		})
 	return result
@@ -1844,7 +1844,7 @@ func _roll_enemy_spawns_budget(rng: RandomNumberGenerator, budget_cfg: SpawnBudg
 		_apply_enemy_star_level(unit, star_lv)
 		result.append({
 			"unit": unit,
-			"position": _enemy_spawn_visual_position(unit, cell),
+			"position": _enemy_spawn_visual_position(unit, cell, _enemy_slots.get_display_center(seat_i)),
 			"seat_index": seat_i,
 		})
 	## 星级身体 → 面板跟队 → 层向 flat（flat 在跟队后加，不被均值归一吃掉）。
@@ -1881,11 +1881,18 @@ func _apply_enemy_star_level(unit: UnitInstance, level: int) -> void:
 
 
 ## 多格足迹：预览/开场表现落在足迹几何中心（2×2 四格正中），非锚座格心。
-func _enemy_spawn_visual_position(unit: UnitInstance, seat_cell: Vector2i) -> Vector2:
+## seat_center 非 INF 时用于 1×1（含半格行距）；足迹单位仍按整格锚座扩。
+func _enemy_spawn_visual_position(
+	unit: UnitInstance,
+	seat_cell: Vector2i,
+	seat_center: Vector2 = Vector2(INF, INF),
+) -> Vector2:
 	var size := Vector2i(1, 1)
 	if unit != null:
 		size = unit.get_footprint_size()
 	if size.x <= 1 and size.y <= 1:
+		if seat_center.x != INF and seat_center.y != INF:
+			return seat_center
 		return Vector2(seat_cell) + Vector2(0.5, 0.5)
 	var origin := RealtimeCombatSim.pick_empty_footprint_origin(
 		seat_cell, size, _board_size, UnitInstance.Team.ENEMY
@@ -2559,7 +2566,7 @@ func _build_enemy_spawns_from_override(rows: Array) -> Array:
 		unit.level = clampi(int(row.get("level", 1)), 1, 3)
 		spawns.append({
 			"unit": unit,
-			"position": _enemy_spawn_visual_position(unit, cell),
+			"position": _enemy_spawn_visual_position(unit, cell, _enemy_slots.get_display_center(seat_i)),
 			"seat_index": seat_i,
 		})
 	return spawns
