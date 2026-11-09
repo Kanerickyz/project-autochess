@@ -2539,7 +2539,7 @@ static func _test_turn_start_strike_weakest_mount() -> bool:
 	if data.ability.id != "turn_start_strike_weakest":
 		push_error("shinobi: wrong ability id %s" % data.ability.id)
 		return false
-	if data.tier != 2 or data.stats.max_hp != 4 or data.stats.attack != 4:
+	if data.tier != 2 or data.stats.max_hp != 15 or data.stats.attack != 4:
 		push_error("shinobi: body stats mismatch")
 		return false
 	return true
