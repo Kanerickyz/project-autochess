@@ -201,6 +201,7 @@ func _populate_damage_mode_options() -> void:
 	_damage_mode_option.clear()
 	_damage_mode_option.add_item("固定数值", EffectAction.DamageMode.FIXED)
 	_damage_mode_option.add_item("攻击力%", EffectAction.DamageMode.OWNER_ATTACK_PERCENT)
+	_damage_mode_option.add_item("目标状态层数×值", EffectAction.DamageMode.TARGET_STATUS_STACKS)
 
 
 func _safe_option_select(option: OptionButton, index: int) -> void:

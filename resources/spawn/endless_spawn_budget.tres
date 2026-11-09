@@ -52,6 +52,12 @@
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_flower_drum.tres" id="u_flower_drum"]
 [ext_resource type="Resource" path="res://resources/units/enemies/enemy_wood_drum.tres" id="u_wood_drum"]
 
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_poison_fletch.tres" id="u_poison_fletch"]
+
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_blight_blade.tres" id="u_blight_blade"]
+
+[ext_resource type="Resource" path="res://resources/units/enemies/enemy_venom_glutton.tres" id="u_venom_glutton"]
+
 [resource]
 script = ExtResource("1_cfg")
 enabled = true
@@ -79,7 +85,7 @@ panel_floor_growth = 0.05
 floor_flat_atk_per_level = 1
 floor_flat_hp_per_level = 1
 floor_star2_per_level = 0
-formation_tags = Array[String](["frontline", "skirmish", "backline"])
+formation_tags = Array[String](["frontline", "skirmish", "backline", ExtResource("u_poison_fletch"), ExtResource("u_blight_blade"), ExtResource("u_venom_glutton")])
 formation_weight_frontline = 2.0
 formation_weight_skirmish = 2.0
 formation_weight_backline = 1.0

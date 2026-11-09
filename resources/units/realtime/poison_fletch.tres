@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/deal_damage_apply_poison.tres" id="3_ability"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_poison_fletch_blue.png" id="icon_tex"]
+
+[sub_resource type="Resource" id="UnitStats_poison_fletch"]
+script = ExtResource("2_stats")
+max_hp = 1
+attack = 3
+steps_per_turn = 1
+attack_range = 2
+attack_interval = 1.0
+attack_windup = 0.35
+attack_reach = 2.0
+sight_range = 5.5
+body_radius = 0.5
+visual_half_width = 0.55
+visual_half_height = 0.7
+mass = 1.0
+projectile_speed = 10.0
+splash_radius = 0.0
+deploy_time = 1.0
+
+[resource]
+script = ExtResource("1_unit")
+id = "poison_fletch"
+display_name = "毒羽"
+cost = 2
+tier = 1
+command_cost = 3
+stats = SubResource("UnitStats_poison_fletch")
+ability = ExtResource("3_ability")
+icon = ExtResource("icon_tex")

@@ -59,6 +59,8 @@ enum Condition {
 	KILL_FROM_ATTACK,
 	## 持有者 banked_turn_refresh_charges > 0。
 	OWNER_HAS_BANKED_TURN_REFRESH_CHARGE,
+	## 事件目标指定战斗状态层数 > 0（状态 id 见 condition_stat_name；空则 false）。
+	EVENT_TARGET_HAS_COMBAT_STATUS,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
@@ -97,6 +99,8 @@ const TRIGGER_NAMES: PackedStringArray = [
 ## 0 = unlimited. Counts successful enqueues per owner+spec this combat.
 @export_range(0, 99, 1) var max_triggers_per_combat: int = 0
 @export var condition: Condition = Condition.NONE
+## 仅 Condition.EVENT_TARGET_HAS_COMBAT_STATUS 使用：战斗状态 id（如 poison）；空则条件不成立。
+@export var condition_stat_name: StringName = &""
 
 
 func is_trigger_registered() -> bool:
@@ -107,6 +111,14 @@ func validate_config() -> PackedStringArray:
 	var issues: PackedStringArray = []
 	if not is_trigger_registered():
 		issues.append("trigger '%s' is not a known CombatEvents/ShopEvents name" % String(trigger))
+	if condition == Condition.EVENT_TARGET_HAS_COMBAT_STATUS:
+		if condition_stat_name == StringName():
+			issues.append("EVENT_TARGET_HAS_COMBAT_STATUS requires condition_stat_name")
+		elif not CombatStatusStack.is_valid_id(condition_stat_name):
+			issues.append(
+				"condition_stat_name '%s' is not weak/berserk/poison"
+				% String(condition_stat_name)
+			)
 	for action in actions:
 		if action == null:
 			issues.append("actions contains null EffectAction")

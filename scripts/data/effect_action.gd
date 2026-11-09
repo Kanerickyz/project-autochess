@@ -40,7 +40,12 @@ enum Type {
 	GRANT_COMBAT_ARMOR,
 }
 
-enum DamageMode { FIXED, OWNER_ATTACK_PERCENT }
+enum DamageMode {
+	FIXED,
+	OWNER_ATTACK_PERCENT,
+	## 伤害 = 目标当前 stat_name 战斗状态层数 × value（经升星倍率；层数 0 → 0）。
+	TARGET_STATUS_STACKS,
+}
 
 const STAT_NAMES: Array[StringName] = [
 	&"attack",

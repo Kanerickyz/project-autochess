@@ -135,6 +135,9 @@ static func _score_action(action: EffectAction) -> float:
 		EffectAction.Type.DEAL_DAMAGE:
 			if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 				base *= 1.05
+			elif action.damage_mode == EffectAction.DamageMode.TARGET_STATUS_STACKS:
+				## 读层加伤依赖目标状态，可靠度略降。
+				base *= 0.98
 		_:
 			pass
 	return base
