@@ -15,6 +15,8 @@ var cell: Vector2i = Vector2i.ZERO
 var step_dest: Vector2i = Vector2i.ZERO
 ## 表现位置（格心或格间插值；不参与出手判定）
 var position: Vector2 = Vector2.ZERO
+## 站立表现相对 footprint_center 的偏移（如准备半格行距）；逻辑占格仍为整数 cell。
+var visual_bias: Vector2 = Vector2.ZERO
 var state: State = State.DEPLOYING
 var target: RtUnit
 var deploy_remaining: float = 0.0
@@ -43,7 +45,7 @@ func _init(p_unit: UnitInstance, p_position: Vector2) -> void:
 	cell = Vector2i(floori(p_position.x), floori(p_position.y))
 	step_dest = cell
 	## 多格足迹单位：表现锚在足迹几何中心，而非锚点格心。
-	position = footprint_center(cell)
+	position = standing_visual_at(cell)
 	step_t = 1.0
 	deploy_remaining = maxf(0.0, get_stats().deploy_time)
 	state = State.DEPLOYING if deploy_remaining > 0.0 else State.MOVING
@@ -169,6 +171,11 @@ static func cell_center(p_cell: Vector2i) -> Vector2:
 	return Vector2(p_cell) + Vector2(0.5, 0.5)
 
 
+## 站立时的表现坐标：足迹几何中心 + visual_bias（半格行距等）。
+func standing_visual_at(p_cell: Vector2i) -> Vector2:
+	return footprint_center(p_cell) + visual_bias
+
+
 static func chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
@@ -200,20 +207,20 @@ func get_occupied_cell() -> Vector2i:
 	return step_dest if is_stepping() else cell
 
 
-## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值）。
+## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值；保留 visual_bias）。
 func snap_to_cell(p_cell: Vector2i) -> void:
 	cell = p_cell
 	step_dest = p_cell
-	position = footprint_center(cell)
+	position = standing_visual_at(cell)
 	step_t = 1.0
 	step_from = position
 	step_to = position
 
 
-## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；表现从足迹中心插值。
+## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；表现从当前位插值到目标站立位。
 func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
-	step_from = footprint_center(from_cell)
-	step_to = footprint_center(dest_cell)
+	step_from = position
+	step_to = standing_visual_at(dest_cell)
 	cell = from_cell
 	step_dest = dest_cell
 	step_t = 0.0
@@ -227,7 +234,7 @@ const CELL_STEP_SECONDS := 0.2
 ## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
 func advance_step_visual(dt: float) -> void:
 	if not is_stepping():
-		position = footprint_center(cell)
+		position = standing_visual_at(cell)
 		return
 	var duration := maxf(0.05, CELL_STEP_SECONDS)
 	var delta_t := dt / duration
@@ -242,6 +249,6 @@ func advance_step_visual(dt: float) -> void:
 func _commit_step() -> void:
 	cell = step_dest
 	step_t = 1.0
-	position = footprint_center(cell)
+	position = standing_visual_at(cell)
 	step_from = position
 	step_to = position

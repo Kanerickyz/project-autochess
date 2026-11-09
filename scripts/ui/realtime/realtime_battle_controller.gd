@@ -29,6 +29,8 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var half_exit_seconds: float = 0.5
 ## 招募半场滑入秒数；≤0 瞬切。
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
+## PREPARE→COMBAT 阵容落点过渡秒数；≤0 瞬切。默认跟 recruit 节奏接近。
+@export_range(0.0, 2.0, 0.05) var combat_lineup_enter_seconds: float = 0.3
 
 var last_seed: int = 0
 
@@ -155,6 +157,8 @@ var _tape_stats_disabled: bool = false
 ## 时停/出击演出卡住时的墙钟看门狗（秒）；超时强制收拍，避免 Web 端假死。
 const PRESENTATION_STUCK_SECONDS := 3.5
 var _presentation_block_elapsed: float = 0.0
+## PREPARE→COMBAT 阵容 Tween；播放期间 hold 固定步。
+var _lineup_enter_tween: Tween = null
 ## Boss 胜后可选最终试炼；进行中阵容锁定、连续波次。
 var _final_trial_active: bool = false
 var _final_trial_wave_index: int = 0
@@ -1627,7 +1631,7 @@ func _begin_combat_from_prepare() -> void:
 	_reset_combo_display()
 	_reset_tape_state()
 
-	_spawn_combat_sim_from_lock(false)
+	var lineup_moves := _spawn_combat_sim_from_lock(false)
 
 	## 3) 双方生成之后：未入座手牌回抽、清空手牌、准备结束。
 	_card_flow.return_hand_to_draw(_encounter_rng)
@@ -1642,10 +1646,13 @@ func _begin_combat_from_prepare() -> void:
 	_set_phase(Phase.COMBAT)
 	_update_tape_controls()
 	_play_bench_exit_on_combat_start()
+	_play_combat_lineup_enter(lineup_moves)
 
 
 ## 从当前准备座位 + _enemy_spawns 重建 sim；silent=true 时用于倒带重演（立刻排空技能、不绑统计）。
-func _spawn_combat_sim_from_lock(silent: bool) -> void:
+## 非 silent 时返回阵容过渡条目：{rt, from, to}。
+func _spawn_combat_sim_from_lock(silent: bool) -> Array:
+	var lineup_moves: Array = []
 	var keep_lock := _lock_phase_active
 	_teardown_sim()
 	_lock_phase_active = keep_lock
@@ -1688,7 +1695,14 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			continue
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
-		_sim.add_unit(unit, _slots.get_display_center(slot_i))
+		var from_pos := _slots.get_display_center(slot_i)
+		var rt := _sim.add_unit(unit, from_pos)
+		if rt != null and not silent:
+			lineup_moves.append({
+				"rt": rt,
+				"from": from_pos,
+				"to": rt.standing_visual_at(rt.cell),
+			})
 
 	for spawn in _enemy_spawns:
 		var place: Vector2 = spawn["position"]
@@ -1703,7 +1717,91 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 			continue
 		if unit.stats != null:
 			unit.stats.deploy_time = 0.0
-		_sim.add_unit(unit, place)
+		var rt := _sim.add_unit(unit, place)
+		if rt != null and not silent:
+			lineup_moves.append({
+				"rt": rt,
+				"from": place,
+				"to": rt.standing_visual_at(rt.cell),
+			})
+	return lineup_moves
+
+
+## PREPARE 纸片/敌预览 → 开战站立位；半格 bias 已生效时 from≈to 可跳过。
+func _play_combat_lineup_enter(moves: Array) -> void:
+	_kill_lineup_enter_tween()
+	if moves.is_empty() or _sim == null:
+		return
+	var seconds := combat_lineup_enter_seconds
+	var need_tween := seconds > 0.001
+	if need_tween:
+		need_tween = false
+		for item in moves:
+			var from_pos: Vector2 = item["from"]
+			var to_pos: Vector2 = item["to"]
+			if from_pos.distance_to(to_pos) >= 0.02:
+				need_tween = true
+				break
+	if not need_tween:
+		for item in moves:
+			var rt: RtUnit = item["rt"]
+			if rt == null:
+				continue
+			rt.position = item["to"]
+			rt.step_from = rt.position
+			rt.step_to = rt.position
+		if _arena != null:
+			_arena.queue_redraw()
+		return
+	for item in moves:
+		var rt: RtUnit = item["rt"]
+		if rt == null:
+			continue
+		rt.position = item["from"]
+		rt.step_from = rt.position
+		rt.step_to = rt.position
+	_sim.hold_for_presentation()
+	_lineup_enter_tween = create_tween()
+	_lineup_enter_tween.set_parallel(true)
+	_lineup_enter_tween.set_ease(Tween.EASE_OUT)
+	_lineup_enter_tween.set_trans(Tween.TRANS_CUBIC)
+	for item in moves:
+		var rt: RtUnit = item["rt"]
+		if rt == null:
+			continue
+		_lineup_enter_tween.tween_property(rt, "position", item["to"], seconds)
+	_lineup_enter_tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
+	_lineup_enter_tween.finished.connect(_on_combat_lineup_enter_finished, CONNECT_ONE_SHOT)
+
+
+func _kill_lineup_enter_tween() -> void:
+	if _lineup_enter_tween != null and is_instance_valid(_lineup_enter_tween):
+		_lineup_enter_tween.kill()
+	_lineup_enter_tween = null
+
+
+func _is_lineup_enter_playing() -> bool:
+	return (
+		_lineup_enter_tween != null
+		and is_instance_valid(_lineup_enter_tween)
+		and _lineup_enter_tween.is_running()
+	)
+
+
+func _on_combat_lineup_enter_finished() -> void:
+	_lineup_enter_tween = null
+	if _sim == null:
+		return
+	## 仅在无其它演出门闩时放行；时停/待结算技能由 _tick_combat_presentation 继续 hold。
+	if _timestop_queue != null and _timestop_queue.is_blocking():
+		return
+	if _sim.has_pending_effects():
+		return
+	if _arena != null and _arena.has_active_combat_action_tween() and not _sim.is_actor_turn_active():
+		return
+	_sim.release_presentation()
+	if _arena != null:
+		_arena.queue_redraw()
 
 
 func _set_phase(phase: Phase) -> void:
@@ -1947,6 +2045,7 @@ func _build_enemy_previews(spawns: Array) -> Array:
 
 func _teardown_sim() -> void:
 	_lock_phase_active = false
+	_kill_lineup_enter_tween()
 	if _timestop_queue != null:
 		_timestop_queue.clear()
 	if _sim != null:
@@ -3400,6 +3499,10 @@ func _tick_combat_presentation(delta: float) -> void:
 	var scaled_dt := delta * time_scale
 	if _sim.presentation_hold:
 		_sim.advance_attack_windup_under_hold(scaled_dt)
+	## PREPARE→COMBAT 阵容过渡：卡住固定步，避免首帧闪现后立刻开打。
+	if _is_lineup_enter_playing():
+		_sim.hold_for_presentation()
+		return
 	if (
 		_sim.has_started()
 		and not _sim.is_action_queue_seeded()

@@ -173,6 +173,13 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 		return null
 	var rt := RtUnit.new(unit, RtUnit.cell_center(cell))
 	rt.snap_to_cell(cell)
+	## 传入 position 与落点同锚时保留半格等表现偏移（逻辑格仍为整数 cell）。
+	var pos_anchor := Vector2i(floori(position.x), floori(position.y))
+	if pos_anchor == cell:
+		rt.visual_bias = position - rt.footprint_center(cell)
+		rt.position = rt.standing_visual_at(cell)
+		rt.step_from = rt.position
+		rt.step_to = rt.position
 	rt.spawn_time = elapsed_seconds
 	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
@@ -1616,7 +1623,7 @@ func _sync_rt_positions_from_effect_grid() -> void:
 		rt.cell = cell
 		rt.step_dest = cell
 		rt.step_t = 1.0
-		rt.position = rt.footprint_center(cell)
+		rt.position = rt.standing_visual_at(cell)
 		_occupy_footprint(rt, cell)
 		rt.unit.grid_pos = cell
 
