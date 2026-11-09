@@ -36,7 +36,7 @@
 ## 3. As-Is 实现
 
 - 代码：`MainMenuParallaxBackground`（`PhaseGridBackground`）+ `main_menu_background.gdshader` — **两种深色**纯色**正方形棋盘**格，自**右上向左下**缓慢滚动；指针仅轻微改 `pointer_offset`。
-- **局内复用**：战斗 / 准备 / 招募 / 地图商店 / 附魔 / 地图选路共用同一 Shader，色板见 `PhaseGridPalettes`（战斗为焦橙炭褐；地图深蓝；招募墨绿；商店琥珀；附魔品红）。
+- **局内复用**：战斗 / 准备 / 招募 / 地图商店 / 附魔 / 地图选路共用**同一块常驻** `PhaseGridBackground`（不随阶段销毁/隐藏）；换阶段只 **lerp 双色**（约 0.75s）。色板见 `PhaseGridPalettes`（战斗焦橙；地图深蓝；招募墨绿；商店琥珀；附魔品红）。
 - 待美术：可改为营地分层图或替换 `color_dark_a/b`；静态图回退仍可用 `menu_background.jpg`。
 - 静态回退：可将场景 `Background` 改回单 `TextureRect`（或接设置关动效）。
 

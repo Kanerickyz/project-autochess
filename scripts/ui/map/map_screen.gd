@@ -22,11 +22,11 @@ func _ready() -> void:
 func show_map(run_controller: RunController, hint_override: String = "") -> void:
 	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	## 动态格底由战场层常驻绘制并渐变主题色；地图不再叠第二层背景硬切。
 	if _world_bg != null:
-		_world_bg.visible = true
-		_world_bg.set_theme_id(PhaseGridPalettes.ThemeId.MAP, false)
+		_world_bg.visible = false
 	if _scrim != null:
-		_scrim.visible = true
+		_scrim.visible = false
 	if run_controller != null and run_controller.map_config != null:
 		_title_label.text = run_controller.map_config.act_display_name
 	else:

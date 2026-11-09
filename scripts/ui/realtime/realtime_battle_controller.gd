@@ -338,14 +338,16 @@ func _on_deck_triple_merged(product: DeckEntry, consumed_seats: Array) -> void:
 	})
 
 
-## Run 地图阶段：保留竞技场背景作世界底图，隐藏战斗 HUD。
+## Run 地图阶段：动态格底常驻屏幕，仅切主题色；隐藏战斗 HUD。
 func set_world_backdrop_mode(enabled: bool) -> void:
 	_world_backdrop_mode = enabled
 	if _solid_bg != null:
-		## 地图自带同款动态格底；关掉战斗底以免叠色发灰。
-		_solid_bg.visible = not enabled
-		if not enabled:
-			_apply_phase_grid_theme(_phase, false)
+		## 背景始终可见：地图用 MAP 色板渐变，离开地图回到当前阶段色。
+		_solid_bg.visible = true
+		if enabled:
+			_solid_bg.set_theme_id(PhaseGridPalettes.ThemeId.MAP, true)
+		else:
+			_apply_phase_grid_theme(_phase, true)
 	if _hud != null:
 		_hud.visible = not enabled
 	if _dock != null:
