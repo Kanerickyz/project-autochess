@@ -10,6 +10,7 @@ static func run_all() -> bool:
 	ok = _check("recruit_matches_ally_row_order", _test_recruit_matches_ally_row_order()) and ok
 	ok = _check("recruit_front_not_enemy_front", _test_recruit_front_not_enemy_front()) and ok
 	ok = _check("fills_half_field", _test_fills_half_field()) and ok
+	ok = _check("combat_row_bias_follows_cell", _test_combat_row_bias_follows_cell()) and ok
 	ok = _check("bench_row_below_board", _test_bench_row_below_board()) and ok
 	if ok:
 		print("PrepareSlotBoardTest: all passed")
@@ -93,6 +94,27 @@ static func _test_fills_half_field() -> bool:
 	var front_c := ally.get_display_center(0)
 	var back_c := ally.get_display_center(5)
 	return is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP)
+
+
+static func _test_combat_row_bias_follows_cell() -> bool:
+	var board := Vector2i(5, 8)
+	var front_y := 5
+	var back_y := 6
+	var front_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, front_y), board, false)
+	var back_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, back_y), board, false)
+	var mid_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 4), board, false)
+	if not is_equal_approx(front_b.y, -PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5):
+		return false
+	if not is_equal_approx(back_b.y, PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5):
+		return false
+	if mid_b != Vector2.ZERO:
+		return false
+	var enemy_front := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 2), board, true)
+	var enemy_back := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 1), board, true)
+	return (
+		is_equal_approx(enemy_front.y, PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5)
+		and is_equal_approx(enemy_back.y, -PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5)
+	)
 
 
 static func _test_bench_row_below_board() -> bool:
