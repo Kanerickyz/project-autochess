@@ -15,8 +15,10 @@ var cell: Vector2i = Vector2i.ZERO
 var step_dest: Vector2i = Vector2i.ZERO
 ## 表现位置（格心或格间插值；不参与出手判定）
 var position: Vector2 = Vector2.ZERO
-## 站立表现相对 footprint_center 的偏移（如准备半格行距）；逻辑占格仍为整数 cell。
+## 站立表现相对 footprint_center 的偏移（缓存；以当前/目标格座位行为准，寻路换行须刷新）。
 var visual_bias: Vector2 = Vector2.ZERO
+## 棋盘逻辑尺寸；供按座位行计算半格 bias（add_unit 写入）。
+var arena_size: Vector2i = Vector2i(5, 8)
 var state: State = State.DEPLOYING
 var target: RtUnit
 var deploy_remaining: float = 0.0
@@ -171,9 +173,20 @@ static func cell_center(p_cell: Vector2i) -> Vector2:
 	return Vector2(p_cell) + Vector2(0.5, 0.5)
 
 
-## 站立时的表现坐标：足迹几何中心 + visual_bias（半格行距等）。
+## 按逻辑格所属默认座位行计算半格偏移（非座位行 → ZERO）。
+func bias_for_cell(p_cell: Vector2i) -> Vector2:
+	return PrepareSlotBoard.combat_row_visual_bias(p_cell, arena_size, not is_player())
+
+
+## 刷新并缓存 visual_bias（落格/开战时调用）。
+func refresh_visual_bias(p_cell: Vector2i = Vector2i(-99999, -99999)) -> void:
+	var use_cell := cell if p_cell == Vector2i(-99999, -99999) else p_cell
+	visual_bias = bias_for_cell(use_cell)
+
+
+## 站立时的表现坐标：足迹几何中心 + **该格**座位行半格偏移（勿用过期 spawn bias）。
 func standing_visual_at(p_cell: Vector2i) -> Vector2:
-	return footprint_center(p_cell) + visual_bias
+	return footprint_center(p_cell) + bias_for_cell(p_cell)
 
 
 static func chebyshev(a: Vector2i, b: Vector2i) -> int:
@@ -207,17 +220,19 @@ func get_occupied_cell() -> Vector2i:
 	return step_dest if is_stepping() else cell
 
 
-## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值；保留 visual_bias）。
+## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值；按该格座位行刷新 bias）。
 func snap_to_cell(p_cell: Vector2i) -> void:
 	cell = p_cell
 	step_dest = p_cell
+	refresh_visual_bias(cell)
 	position = standing_visual_at(cell)
 	step_t = 1.0
 	step_from = position
 	step_to = position
 
 
-## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；表现从当前位插值到目标站立位。
+## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；
+## step_to 用 **目标格** 座位行半格，避免带着出发行 bias 压扁前后排间距。
 func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
 	step_from = position
 	step_to = standing_visual_at(dest_cell)
@@ -249,6 +264,7 @@ func advance_step_visual(dt: float) -> void:
 func _commit_step() -> void:
 	cell = step_dest
 	step_t = 1.0
+	refresh_visual_bias(cell)
 	position = standing_visual_at(cell)
 	step_from = position
 	step_to = position

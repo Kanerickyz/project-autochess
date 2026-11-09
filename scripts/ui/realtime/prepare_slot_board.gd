@@ -211,6 +211,33 @@ func get_display_center(slot_index: int) -> Vector2:
 	return center
 
 
+## 战斗寻路用：逻辑格若落在默认 2×5 座位前/后排，返回半格 Y 偏移；否则 ZERO。
+## 按「当前格所属座位行」计算，避免开局 bias 随单位换行把前后排间距压扁/颠倒。
+static func combat_row_visual_bias(
+	cell: Vector2i,
+	board_size: Vector2i,
+	enemy_side: bool,
+) -> Vector2:
+	if SEAT_ROW_EXTRA_GAP <= 0.0 or board_size.x <= 0 or board_size.y <= 0:
+		return Vector2.ZERO
+	var grid := build_grid_cells(
+		board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, enemy_side, false
+	)
+	if grid.is_empty() or DEFAULT_SEAT_COLS <= 0:
+		return Vector2.ZERO
+	var spread := SEAT_ROW_EXTRA_GAP * 0.5
+	for row_i in DEFAULT_SEAT_ROWS:
+		var idx := row_i * DEFAULT_SEAT_COLS
+		if idx >= grid.size():
+			break
+		if grid[idx].y != cell.y:
+			continue
+		if enemy_side:
+			return Vector2(0.0, spread if row_i == 0 else -spread)
+		return Vector2(0.0, -spread if row_i == 0 else spread)
+	return Vector2.ZERO
+
+
 func get_entry(slot_index: int) -> DeckEntry:
 	if slot_index < 0 or slot_index >= occupants.size():
 		return null

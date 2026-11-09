@@ -203,7 +203,33 @@ func _test_battle_controller_rules() -> void:
 			is_equal_approx(back_rt.position.y, slots.get_display_center(5).y),
 			"controller: combat back ally matches prepare display center"
 		)
-	## 开战敌攻血与准备模板一致（回归：曾只读底模导致无尽层向加压丢失）。
+		## 寻路换行：带着开局 bias 会压扁半格；应按目标格座位行重算。
+		var front_cell := front_rt.cell
+		var back_cell := back_rt.cell
+		front_rt.begin_step(front_cell, back_cell)
+		while front_rt.is_stepping():
+			front_rt.advance_step_visual(0.05)
+		back_rt.begin_step(back_cell, front_cell)
+		while back_rt.is_stepping():
+			back_rt.advance_step_visual(0.05)
+		_expect(front_rt.cell == back_cell, "controller: front ally stepped onto back row")
+		_expect(back_rt.cell == front_cell, "controller: back ally stepped onto front row")
+		_expect(
+			is_equal_approx(
+				front_rt.position.y - back_rt.position.y,
+				1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
+			),
+			"controller: half-cell gap survives pathfinding row swap"
+		)
+		_expect(
+			is_equal_approx(back_rt.position.y, slots.get_display_center(0).y),
+			"controller: unit on front row uses front-row display y after pathfind"
+		)
+		_expect(
+			is_equal_approx(front_rt.position.y, slots.get_display_center(5).y),
+			"controller: unit on back row uses back-row display y after pathfind"
+		)
+	## 开战敌攻血与准备模板一致（回归：曾只读底模导致面板/层向加压丢失）。
 	var combat_stats_match := true
 	for spawn in battle._enemy_spawns:
 		var prep: UnitInstance = spawn.get("unit") as UnitInstance
