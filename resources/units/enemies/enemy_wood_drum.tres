@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_enemy_wood_drum"]
 script = ExtResource("2_stats")
-max_hp = 2
+max_hp = 10
 attack = 2
 steps_per_turn = 1
 attack_interval = 1.2
