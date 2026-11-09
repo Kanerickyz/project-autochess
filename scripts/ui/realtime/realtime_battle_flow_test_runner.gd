@@ -101,12 +101,12 @@ func _test_battle_controller_rules() -> void:
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
 	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
-	## 5×8 / 2×5 / 行距 2：列 x=0..4；我半场 y=4,7；敌半场 y=3,0（前排近中线）。
-	_expect(slots.get_cell(0) == Vector2i(0, 4), "controller: ally front-left near mid with row gap")
-	_expect(slots.get_cell(1) == Vector2i(1, 4), "controller: ally adjacent columns")
+	## 5×8 / 2×5 / 行距 1：列 x=0..4；我半场 y=5,7；敌半场 y=3,1（前排近中线）。
+	_expect(slots.get_cell(0) == Vector2i(0, 5), "controller: ally front-left near mid with row gap")
+	_expect(slots.get_cell(1) == Vector2i(1, 5), "controller: ally adjacent columns")
 	_expect(slots.get_cell(5) == Vector2i(0, 7), "controller: ally back row first col spaced")
 	_expect(enemy_slots.get_cell(0) == Vector2i(0, 3), "controller: enemy front-left near mid with row gap")
-	_expect(enemy_slots.get_cell(5) == Vector2i(0, 0), "controller: enemy back-left spaced")
+	_expect(enemy_slots.get_cell(5) == Vector2i(0, 1), "controller: enemy back-left spaced")
 
 	## 清空全部座位后不可开战；再入一座可开战（绕过手牌宽度，直接清槽）。
 	var first_cleared: DeckEntry = null

@@ -4,8 +4,8 @@ extends RefCounted
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 座位行间距（格）；2×5 在 4 行半场内取 2 → 前后排隔开，避免立绘重叠。
-const SEAT_ROW_GAP_CELLS := 2
+## 座位行间距（格）；2×5 在 4 行半场内取 1 → 前后排隔一格，减轻立绘重叠且不过分拉开。
+const SEAT_ROW_GAP_CELLS := 1
 ## 座位列间距（格）；默认 0 铺满棋盘宽。与行距分离，避免加行距时因列向放不下整块被收拢。
 const SEAT_COL_GAP_CELLS := 0
 ## 兼容旧名：等同列间距（历史调用若仍引用则不影响行距）。

@@ -87,11 +87,11 @@ static func _test_fills_half_field() -> bool:
 		max_y = maxi(max_y, cell.y)
 	if seen.size() != 10 or ally.slot_count != 10:
 		return false
-	## 行距 2：块高 4 铺满半场，前后排隔开（y = mid / mid+3）。
+	## 行距 1：块高 3，半场高 4 → 居中后 y = mid+1 / mid+3（隔一格）。
 	return (
-		min_y == mid
+		min_y == mid + 1
 		and max_y == mid + 3
-		and max_y - min_y >= 2
+		and max_y - min_y == 2
 	)
 
 
