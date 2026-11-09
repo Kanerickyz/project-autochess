@@ -18,6 +18,9 @@ const MOUNT_TABLE := {
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
 	"apothecary": "turn_start_nearby_enemies_apply_poison",
+	"poison_fletch": "deal_damage_apply_poison",
+	"blight_blade": "deal_vs_poisoned_add_poison",
+	"venom_glutton": "deal_damage_bonus_from_poison_stacks",
 }
 
 const EMPTY_ABILITY_IDS := ["giant_knight"]
@@ -56,6 +59,9 @@ static func run_all() -> bool:
 	_check("kill_gain_atk_mid", _test_kill_gain_atk_mid())
 	_check("ally_death_self_atk_mid", _test_ally_death_self_atk_mid())
 	_check("archer_deal_apply_weak", _test_archer_deal_apply_weak())
+	_check("poison_fletch_deal_apply_poison", _test_poison_fletch_deal_apply_poison())
+	_check("blight_blade_amplify_only_if_poisoned", _test_blight_blade_amplify_only_if_poisoned())
+	_check("venom_glutton_bonus_from_poison_stacks", _test_venom_glutton_bonus_from_poison_stacks())
 	_check("first_hurt_harden_once", _test_first_hurt_harden_once())
 	_check("first_hurt_harden_star2", _test_first_hurt_harden_star2())
 	_check("hunter_friend_summoned_buff", _test_hunter_friend_summoned_buff())
@@ -1182,6 +1188,190 @@ static func _test_archer_deal_apply_weak() -> bool:
 	var weak_stacks := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_WEAK)
 	if weak_stacks < 1:
 		push_error("archer_weak: expected weak on target, got %d stacks" % weak_stacks)
+		return false
+	return true
+
+
+## 毒羽：造成伤害时对目标施加中毒 1 层。
+static func _test_poison_fletch_deal_apply_poison() -> bool:
+	var data := _load_unit("res://resources/units/realtime/poison_fletch.tres")
+	if data == null or data.ability == null or data.ability.id != "deal_damage_apply_poison":
+		push_error("poison_fletch: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("poison_fletch: merge_value_mult expected 3")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 560)
+	var fletch := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	fletch.unit.stats.attack_windup = 0.0
+	fletch.unit.stats.attack_interval = 0.4
+	var enemy := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 22.5),
+	)
+	var guard := 0
+	while (
+		enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON) < 1
+		and guard < 400
+	):
+		sim.advance_fixed_step()
+		guard += 1
+	sim._drain_effects()
+	var poison_stacks := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if poison_stacks < 1:
+		push_error("poison_fletch: expected poison on target, got %d" % poison_stacks)
+		return false
+	return true
+
+
+## 蚀刃：仅对已中毒目标追加中毒；干净目标不加层。
+static func _test_blight_blade_amplify_only_if_poisoned() -> bool:
+	var data := _load_unit("res://resources/units/realtime/blight_blade.tres")
+	if data == null or data.ability == null or data.ability.id != "deal_vs_poisoned_add_poison":
+		push_error("blight_blade: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("blight_blade: merge_value_mult expected 3")
+		return false
+	var specs := data.ability.effect_specs
+	if (
+		specs.is_empty()
+		or specs[0] == null
+		or specs[0].condition != EffectSpec.Condition.EVENT_TARGET_HAS_COMBAT_STATUS
+		or specs[0].condition_stat_name != CombatStatusStack.ID_POISON
+	):
+		push_error("blight_blade: expected EVENT_TARGET_HAS_COMBAT_STATUS poison")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 561)
+	var blade := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	blade.unit.stats.attack_windup = 0.0
+	blade.unit.stats.attack_interval = 0.4
+	blade.unit.stats.steps_per_turn = 0
+	blade.unit.stats.attack_reach = 2.0
+	var clean := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0, "id": "clean"},
+		),
+		Vector2(9.5, 21.5),
+	)
+	var guard := 0
+	var hp_before := clean.unit.current_hp
+	while clean.unit.current_hp >= hp_before and guard < 400:
+		sim.advance_fixed_step()
+		guard += 1
+	sim._drain_effects()
+	if clean.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON) != 0:
+		push_error("blight_blade: clean target should stay unpoisoned")
+		return false
+
+	var sim2 := _new_sim()
+	sim2.configure(ARENA, 562)
+	var blade2 := sim2.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	blade2.unit.stats.attack_windup = 0.0
+	blade2.unit.stats.attack_interval = 0.4
+	blade2.unit.stats.steps_per_turn = 0
+	blade2.unit.stats.attack_reach = 2.0
+	var poisoned := sim2.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0, "id": "poisoned"},
+		),
+		Vector2(9.5, 21.5),
+	)
+	poisoned.unit.combat_statuses.add_stacks(CombatStatusStack.ID_POISON, 2)
+	guard = 0
+	while (
+		poisoned.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON) < 3
+		and guard < 400
+	):
+		sim2.advance_fixed_step()
+		guard += 1
+	sim2._drain_effects()
+	var after := poisoned.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if after != 3:
+		push_error("blight_blade: poisoned target stacks=%d expected 3" % after)
+		return false
+	return true
+
+
+## 毒噬：读毒层加伤不耗层；额外 DEAL_DAMAGE 不连锁 OnDealDamage。
+static func _test_venom_glutton_bonus_from_poison_stacks() -> bool:
+	var data := _load_unit("res://resources/units/realtime/venom_glutton.tres")
+	if data == null or data.ability == null or data.ability.id != "deal_damage_bonus_from_poison_stacks":
+		push_error("venom_glutton: ability not mounted")
+		return false
+	if data.ability.merge_value_mult != 3:
+		push_error("venom_glutton: merge_value_mult expected 3")
+		return false
+	var act: EffectAction = null
+	if not data.ability.effect_specs.is_empty() and data.ability.effect_specs[0] != null:
+		var acts: Array = data.ability.effect_specs[0].actions
+		if not acts.is_empty():
+			act = acts[0] as EffectAction
+	if (
+		act == null
+		or act.action_type != EffectAction.Type.DEAL_DAMAGE
+		or act.damage_mode != EffectAction.DamageMode.TARGET_STATUS_STACKS
+		or act.stat_name != CombatStatusStack.ID_POISON
+	):
+		push_error("venom_glutton: expected DEAL_DAMAGE TARGET_STATUS_STACKS poison")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 563)
+	var glutton := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
+	glutton.unit.stats.attack_windup = 0.0
+	glutton.unit.stats.attack_interval = 8.0
+	glutton.unit.stats.steps_per_turn = 0
+	glutton.unit.stats.attack_reach = 2.0
+	glutton.unit.stats.splash_radius = 0.0
+	var enemy := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			500,
+			{"steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 21.5),
+	)
+	var poison_stacks := 5
+	enemy.unit.combat_statuses.add_stacks(CombatStatusStack.ID_POISON, poison_stacks)
+	var expected_hit := glutton.unit.get_effective_attack() + poison_stacks
+	## 敌方回合毒伤会扣血但不耗层；只认「单步掉血 == 攻+毒层」的那一击，避免把毒跳伤算进连锁。
+	var seen_hit := false
+	var guard := 0
+	while not seen_hit and guard < 500:
+		var hp0 := enemy.unit.current_hp
+		var stacks0 := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+		sim.advance_fixed_step()
+		sim._drain_effects()
+		var drop := hp0 - enemy.unit.current_hp
+		if stacks0 == poison_stacks and drop == expected_hit:
+			seen_hit = true
+			break
+		## 若 suppress 失效，同一步可能掉更多（攻+毒层+连锁）。
+		if stacks0 == poison_stacks and drop > expected_hit:
+			push_error(
+				"venom_glutton: drop %d > expected %d (OnDealDamage chain?)"
+				% [drop, expected_hit]
+			)
+			return false
+		guard += 1
+	if not seen_hit:
+		push_error("venom_glutton: never saw attack+poison hit of %d" % expected_hit)
+		return false
+	var after_poison := enemy.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if after_poison != poison_stacks:
+		push_error(
+			"venom_glutton: poison stacks consumed %d -> %d" % [poison_stacks, after_poison]
+		)
 		return false
 	return true
 

@@ -59,7 +59,7 @@ static func _map_action(
 
 	match action.action_type:
 		EffectAction.Type.DEAL_DAMAGE, EffectAction.Type.FRIENDS_HURT_AOE:
-			var dmg := _resolve_damage_amount(owner, action)
+			var dmg := _resolve_damage_amount(owner, action, target)
 			if dmg <= 0:
 				return {}
 			return {
@@ -261,11 +261,22 @@ static func _scaled_value(owner: UnitInstance, value: int) -> int:
 	return value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
 
 
-static func _resolve_damage_amount(owner: UnitInstance, action: EffectAction) -> int:
+static func _resolve_damage_amount(
+	owner: UnitInstance,
+	action: EffectAction,
+	target: UnitInstance = null,
+) -> int:
 	if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 		if owner == null:
 			return 0
 		return maxi(1, owner.get_effective_attack() * action.percent / 100)
+	if action.damage_mode == EffectAction.DamageMode.TARGET_STATUS_STACKS:
+		if target == null or action.stat_name == StringName():
+			return 0
+		var stacks := target.combat_statuses.get_stacks(action.stat_name)
+		if stacks <= 0:
+			return 0
+		return stacks * _scaled_value(owner, action.value)
 	return _scaled_value(owner, action.value)
 
 

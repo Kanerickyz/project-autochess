@@ -646,6 +646,16 @@ func _spec_condition_met(
 			return payload != null and payload.from_attack
 		EffectSpec.Condition.OWNER_HAS_BANKED_TURN_REFRESH_CHARGE:
 			return owner != null and owner.banked_turn_refresh_charges > 0
+		EffectSpec.Condition.EVENT_TARGET_HAS_COMBAT_STATUS:
+			if (
+				payload == null
+				or payload.target == null
+				or spec.condition_stat_name == StringName()
+			):
+				return false
+			if not CombatStatusStack.is_valid_id(spec.condition_stat_name):
+				return false
+			return payload.target.combat_statuses.get_stacks(spec.condition_stat_name) > 0
 		_:
 			return true
 
@@ -1036,7 +1046,7 @@ func _execute_action(
 		EffectAction.Type.DEAL_DAMAGE:
 			if _pipeline == null or target == null or not target.is_alive():
 				return false
-			var damage_value := _resolve_damage_value(owner, action)
+			var damage_value := _resolve_damage_value(owner, action, target)
 			_suppress_deal_damage_triggers += 1
 			_pipeline.apply_rolled_damage(owner, target, damage_value)
 			_suppress_deal_damage_triggers = maxi(0, _suppress_deal_damage_triggers - 1)
@@ -1452,11 +1462,23 @@ func _scaled_action_value(owner: UnitInstance, value: int) -> int:
 	return value * UnitInstance.ability_value_multiplier_for(ability, owner.level)
 
 
-func _resolve_damage_value(owner: UnitInstance, action: EffectAction) -> int:
+func _resolve_damage_value(
+	owner: UnitInstance,
+	action: EffectAction,
+	target: UnitInstance = null,
+) -> int:
 	if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 		if owner == null:
 			return 0
 		return maxi(1, owner.get_effective_attack() * action.percent / 100)
+	if action.damage_mode == EffectAction.DamageMode.TARGET_STATUS_STACKS:
+		if target == null or action.stat_name == StringName():
+			return 0
+		var stacks := target.combat_statuses.get_stacks(action.stat_name)
+		if stacks <= 0:
+			return 0
+		var per_stack := _scaled_action_value(owner, action.value)
+		return stacks * per_stack
 	return _scaled_action_value(owner, action.value)
 
 

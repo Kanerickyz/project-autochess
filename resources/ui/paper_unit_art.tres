@@ -113,11 +113,21 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/placeholders/character_dev.png" id="dev_player"]
 
 
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_poison_fletch_blue.png" id="b_poison_fletch"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blight_blade_blue.png" id="b_blight_blade"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_venom_glutton_blue.png" id="b_venom_glutton"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_poison_fletch_red.png" id="r_poison_fletch"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_blight_blade_red.png" id="r_blight_blade"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_venom_glutton_red.png" id="r_venom_glutton"]
+
 [resource]
 script = ExtResource("1_cat")
 archetype_by_unit_id = {
 "aftershock": &"aftershock",
 "apothecary": &"apothecary",
+"venom_glutton": &"venom_glutton",
+"blight_blade": &"blight_blade",
+"poison_fletch": &"poison_fletch",
 "armorer": &"armorer",
 "arcane": &"arcane",
 "archer": &"archer",
@@ -185,6 +195,9 @@ default_archetype = &"spear"
 player_textures = {
 &"aftershock": ExtResource("b_aftershock"),
 &"apothecary": ExtResource("b_apothecary"),
+&"poison_fletch": ExtResource("b_poison_fletch"),
+&"blight_blade": ExtResource("b_blight_blade"),
+&"venom_glutton": ExtResource("b_venom_glutton"),
 &"armorer": ExtResource("b_armorer"),
 &"arcane": ExtResource("b_arcane"),
 &"archer": ExtResource("b_archer"),
@@ -245,6 +258,9 @@ player_textures = {
 enemy_textures = {
 &"aftershock": ExtResource("r_aftershock"),
 &"apothecary": ExtResource("r_apothecary"),
+&"poison_fletch": ExtResource("r_poison_fletch"),
+&"blight_blade": ExtResource("r_blight_blade"),
+&"venom_glutton": ExtResource("r_venom_glutton"),
 &"armorer": ExtResource("r_armorer"),
 &"arcane": ExtResource("r_arcane"),
 &"archer": ExtResource("r_archer"),
