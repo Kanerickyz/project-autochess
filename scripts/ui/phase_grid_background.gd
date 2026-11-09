@@ -9,7 +9,7 @@ const SCROLL_SPEED := 0.25
 const SCROLL_RAMP_DURATION := 1.05
 const PARALLAX_TWEEN_DURATION := 0.32
 const PARALLAX_RETARGET_DISTANCE := 1.25
-const PALETTE_TWEEN_DURATION := 0.45
+const PALETTE_TWEEN_DURATION := 0.75
 ## 棋盘绕屏幕中心旋转（弧度），减轻正对屏幕的方正感。
 const GRID_ROTATION_RAD := -0.22
 
@@ -61,22 +61,34 @@ func set_palette(color_a: Color, color_b: Color, animate: bool = true) -> void:
 		_color_a = color_a
 		_color_b = color_b
 		return
+	if (
+		is_equal_approx(_color_a.r, color_a.r)
+		and is_equal_approx(_color_a.g, color_a.g)
+		and is_equal_approx(_color_a.b, color_a.b)
+		and is_equal_approx(_color_b.r, color_b.r)
+		and is_equal_approx(_color_b.g, color_b.g)
+		and is_equal_approx(_color_b.b, color_b.b)
+	):
+		return
 	if not animate:
 		_apply_palette_immediate(color_a, color_b)
 		return
+	## 中途改主题：从当前已显示色继续 lerp，背景节点始终可见不销毁。
 	if _palette_tween != null and _palette_tween.is_valid():
 		_palette_tween.kill()
 	var from_a := _color_a
 	var from_b := _color_b
 	_palette_tween = create_tween()
-	_palette_tween.set_parallel(true)
 	_palette_tween.tween_method(
 		func(t: float) -> void:
 			_apply_palette_immediate(from_a.lerp(color_a, t), from_b.lerp(color_b, t)),
 		0.0,
 		1.0,
 		PALETTE_TWEEN_DURATION
-	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_palette_tween.tween_callback(func() -> void:
+		_apply_palette_immediate(color_a, color_b)
+	)
 
 
 func _build_layers() -> void:
