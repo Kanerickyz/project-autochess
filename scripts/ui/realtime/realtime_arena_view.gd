@@ -214,6 +214,11 @@ var recruit_sell_cell: Vector2i = NO_CELL
 var recruit_lock_cell: Vector2i = NO_CELL
 ## 拖到出售落点时预览退金（由控制器写入）。
 var recruit_sell_preview_gold: int = 0
+## 准备/招募入座邻座 aura 预览：entry_id → {atk:int, hp:int}（不写 DeckEntry）。
+var lineup_aura_bonuses: Dictionary = {}
+## 小丑牌风徽章缩放：entry_id → float（1=常态）。
+var _lineup_aura_badge_scale: Dictionary = {}
+var _lineup_aura_tweens: Dictionary = {}
 
 
 var _hover_cell: Vector2i = NO_CELL
@@ -642,6 +647,129 @@ func tile_to_cell(tile_pos: Vector2) -> Vector2i:
 	if cell.x < 0 or cell.y < 0 or cell.x >= board_size.x or cell.y >= board_size.y:
 		return NO_CELL
 	return cell
+
+
+## 写入邻座 aura 预览；对比旧值，对 delta≠0 的 entry 播徽章弹跳 + 短飘 ±N。
+func set_lineup_aura_bonuses(next: Dictionary) -> void:
+	var prev := lineup_aura_bonuses
+	var merged_next: Dictionary = {}
+	for key in next.keys():
+		var eid := int(key)
+		var raw: Variant = next[key]
+		if raw is Dictionary:
+			merged_next[eid] = {
+				"atk": int((raw as Dictionary).get("atk", 0)),
+				"hp": int((raw as Dictionary).get("hp", 0)),
+			}
+	lineup_aura_bonuses = merged_next
+	var ids: Dictionary = {}
+	for key in prev.keys():
+		ids[int(key)] = true
+	for key in merged_next.keys():
+		ids[int(key)] = true
+	for eid in ids.keys():
+		var old_b: Dictionary = prev.get(int(eid), {"atk": 0, "hp": 0})
+		if old_b is not Dictionary:
+			old_b = {"atk": 0, "hp": 0}
+		var new_b: Dictionary = merged_next.get(int(eid), {"atk": 0, "hp": 0})
+		var d_atk := int(new_b.get("atk", 0)) - int(old_b.get("atk", 0))
+		var d_hp := int(new_b.get("hp", 0)) - int(old_b.get("hp", 0))
+		if d_atk == 0 and d_hp == 0:
+			continue
+		_punch_lineup_aura_badge(int(eid), d_atk, d_hp)
+	queue_redraw()
+
+
+func _punch_lineup_aura_badge(entry_id: int, d_atk: int, d_hp: int) -> void:
+	var old_tw: Tween = _lineup_aura_tweens.get(entry_id) as Tween
+	if old_tw != null and old_tw.is_valid():
+		old_tw.kill()
+	_lineup_aura_badge_scale[entry_id] = 1.0
+	var peak := 1.22 if (d_atk + d_hp) > 0 else 0.86
+	var tw := create_tween()
+	_lineup_aura_tweens[entry_id] = tw
+	tw.tween_method(
+		func(v: float) -> void:
+			_lineup_aura_badge_scale[entry_id] = v
+			queue_redraw(),
+		1.0,
+		peak,
+		0.09,
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_method(
+		func(v: float) -> void:
+			_lineup_aura_badge_scale[entry_id] = v
+			queue_redraw(),
+		peak,
+		1.0,
+		0.12,
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.finished.connect(func() -> void:
+		_lineup_aura_badge_scale.erase(entry_id)
+		_lineup_aura_tweens.erase(entry_id)
+		queue_redraw()
+	, CONNECT_ONE_SHOT)
+	var tile := _find_lineup_entry_tile(entry_id)
+	if tile.x < 0.0:
+		return
+	var parts: PackedStringArray = []
+	if d_atk != 0:
+		parts.append("%+d" % d_atk)
+	if d_hp != 0:
+		parts.append("%+d" % d_hp)
+	if parts.is_empty():
+		return
+	var tip := ""
+	if d_atk != 0 and d_hp == 0:
+		tip = "攻"
+	elif d_hp != 0 and d_atk == 0:
+		tip = "血"
+	add_feedback_popup(
+		RealtimeEffectFeedback.KIND_STAT,
+		" ".join(parts),
+		tile,
+		true,
+		entry_id,
+		d_atk + d_hp,
+		"lineup_aura:%d" % entry_id,
+		tip,
+	)
+
+
+func _find_lineup_entry_tile(entry_id: int) -> Vector2:
+	var boards: Array = [prepare_slots, recruit_team_slots]
+	for board_v in boards:
+		var board := board_v as PrepareSlotBoard
+		if board == null or board.cells.is_empty():
+			continue
+		for i in board.cells.size():
+			var entry: DeckEntry = board.get_entry(i)
+			if entry != null and entry.entry_id == entry_id:
+				var cell: Vector2i = board.cells[i]
+				return Vector2(cell) + Vector2(0.5, 0.5)
+	return Vector2(-1.0, -1.0)
+
+
+func _lineup_aura_for(entry_id: int) -> Dictionary:
+	var raw: Variant = lineup_aura_bonuses.get(entry_id, null)
+	if raw is Dictionary:
+		return raw as Dictionary
+	return {"atk": 0, "hp": 0}
+
+
+func _entry_display_atk_hp(entry: DeckEntry) -> Vector2i:
+	if entry == null:
+		return Vector2i(1, 1)
+	var atk := DeckUpgradeService.get_display_attack(entry)
+	var hp := DeckUpgradeService.get_display_max_hp(entry)
+	var aura := _lineup_aura_for(entry.entry_id)
+	atk += int(aura.get("atk", 0))
+	hp += int(aura.get("hp", 0))
+	return Vector2i(maxi(1, atk), maxi(1, hp))
+
+
+func _entry_badge_scale(entry_id: int) -> float:
+	return float(_lineup_aura_badge_scale.get(entry_id, 1.0))
 
 
 func add_splash_fx(center: Vector2, radius: float) -> void:
@@ -2238,14 +2366,15 @@ func _info_from_entry(entry: DeckEntry, center: Vector2, inspect_key: String = "
 	if key.is_empty():
 		key = "entry:%d" % entry.entry_id
 	var unit_cost := entry.unit.cost if entry.unit != null else 0
+	var stats := _entry_display_atk_hp(entry)
 	return {
 		"inspect_key": key,
 		"center": center,
 		"name": entry.get_display_name(),
 		"side_player": true,
 		"tier": entry.unit.tier if entry.unit != null else 0,
-		"attack": maxi(1, DeckUpgradeService.get_display_attack(entry)),
-		"hp": maxi(1, DeckUpgradeService.get_display_max_hp(entry)),
+		"attack": stats.x,
+		"hp": stats.y,
 		"armor": entry.get_armor_block(),
 		"skills": UnitInfoText.get_skills_block_from_entry(entry, true),
 		"attachments": UnitInfoText.collect_info_attachments_from_entry(entry, true),
@@ -3604,13 +3733,17 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
 		)
-		var atk := 0
-		var hp := 0
-		if stats != null:
-			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+		var display := _entry_display_atk_hp(entry)
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+			tile_to_local(center_tile) + off,
+			display.x,
+			display.y,
+			alpha,
+			px,
+			entry.get_armor_block(),
+			-1,
+			true,
+			_entry_badge_scale(entry.entry_id),
 		)
 	if _merge_active:
 		_draw_merge_fx(px, off)
@@ -3956,13 +4089,17 @@ func _draw_prepare_slots(px: float) -> void:
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
-		var atk := 0
-		var hp := 0
-		if stats != null:
-			atk = maxi(1, stats.attack + entry.bonus_attack)
-			hp = maxi(1, stats.max_hp + entry.bonus_max_hp)
+		var display := _entry_display_atk_hp(entry)
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, entry.get_armor_block()
+			tile_to_local(center_tile) + off,
+			display.x,
+			display.y,
+			alpha,
+			px,
+			entry.get_armor_block(),
+			-1,
+			true,
+			_entry_badge_scale(entry.entry_id),
 		)
 
 
@@ -4394,6 +4531,7 @@ func _draw_stat_badges(
 	armor: int = 0,
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
+	badge_scale: float = 1.0,
 ) -> void:
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
@@ -4401,6 +4539,8 @@ func _draw_stat_badges(
 	var primary_count := 2 + (1 if show_armor else 0)
 	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
 	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
+	var scale := maxf(0.5, badge_scale)
+	badge *= scale
 	var gap := badge.y * STAT_BADGE_GAP_MUL
 	var top := center.y + px * 0.38 + badge.y * 0.05
 	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
