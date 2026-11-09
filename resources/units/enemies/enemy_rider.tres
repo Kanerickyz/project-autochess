@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_enemy_rider"]
 script = ExtResource("2_stats")
-max_hp = 3
+max_hp = 15
 attack = 6
 steps_per_turn = 2
 attack_interval = 0.75
