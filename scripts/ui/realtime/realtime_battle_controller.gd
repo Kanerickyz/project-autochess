@@ -83,7 +83,7 @@ var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
-## 敌方座位几何（镜像 4×5）；准备预览 / 开战落点用，不存 DeckEntry。
+## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
 var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []

@@ -1,10 +1,10 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 4×5 铺满半场（与 5×8 棋盘对齐）；满座 ≠ 上场人数上限。
+## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，半场内垂直居中）；满座 ≠ 上场人数上限。
 
-const DEFAULT_SEAT_ROWS := 4
+const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 座位行/列间距；0 = 铺满半场（4×5 对 4 行半场必须为 0）。
+## 座位行/列间距；0 = 紧贴（2×5 在 4 行半场内由 _centered_row_ys 居中，空行留白）。
 const SEAT_GAP_CELLS := 0
 
 var seat_rows: int = DEFAULT_SEAT_ROWS
@@ -66,7 +66,7 @@ func configure_grid(
 		seat_assign_seq[i] = -1
 
 
-## 兼容旧单排 API：改为默认 4×5 网格（忽略旧 slot_count，改用默认行列）。
+## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
 func configure(_p_slot_count: int, board_size: Vector2i) -> void:
 	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
 
