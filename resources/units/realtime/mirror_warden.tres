@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="UnitStats_mirror_warden"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 15
 attack = 6
 steps_per_turn = 1
 attack_interval = 1.3
