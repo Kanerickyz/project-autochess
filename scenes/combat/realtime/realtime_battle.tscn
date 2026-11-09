@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/realtime/realtime_battle_controller.gd" id="1_ctrl"]
 [ext_resource type="Script" path="res://scripts/ui/realtime/realtime_arena_view.gd" id="2_arena"]
+[ext_resource type="Script" path="res://scripts/ui/phase_grid_background.gd" id="3_gridbg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
 bg_color = Color(0.1, 0.13, 0.16, 0.95)
@@ -28,7 +29,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ctrl")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -36,7 +37,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.2, 0.28, 0.18, 1)
+script = ExtResource("3_gridbg")
+initial_theme = 3
+enable_pointer_parallax = false
 
 [node name="Layout" type="VBoxContainer" parent="."]
 layout_mode = 1

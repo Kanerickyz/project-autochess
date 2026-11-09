@@ -8,7 +8,7 @@ const FADE_SECONDS := 0.28
 @onready var _map_view: MapView = %MapView
 @onready var _title_label: Label = %TitleLabel
 @onready var _hint_label: Label = %HintLabel
-@onready var _world_bg: TextureRect = %WorldBackground
+@onready var _world_bg: PhaseGridBackground = %WorldBackground
 @onready var _scrim: ColorRect = %Scrim
 
 var _fade_tween: Tween
@@ -24,6 +24,7 @@ func show_map(run_controller: RunController, hint_override: String = "") -> void
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	if _world_bg != null:
 		_world_bg.visible = true
+		_world_bg.set_theme_id(PhaseGridPalettes.ThemeId.MAP, false)
 	if _scrim != null:
 		_scrim.visible = true
 	if run_controller != null and run_controller.map_config != null:

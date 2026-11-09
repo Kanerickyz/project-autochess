@@ -47,6 +47,7 @@ const DRAG_KEY := "rt_entry_id"
 const RECRUIT_CANDIDATE_KEY := "rt_recruit_candidate"
 const RECRUIT_ITEM_KEY := "rt_recruit_item_slot"
 const NO_CELL := Vector2i(-1, -1)
+## 全屏底图改由 PhaseGridBackground 承担；保留常量供遗留引用/工具。
 const ARENA_BACKGROUND := preload("res://assets/sprites/paper_cutout/env/arena_background.jpg")
 ## 背景图左右树林各占原图宽度的比例；棋盘只压进树林内缘这部分，避免座位被树盖住。
 const BACKGROUND_TREE_BAND := 0.15
@@ -3296,10 +3297,8 @@ func _draw() -> void:
 	var ally_off := Vector2(0.0, ally_half_slide_y)
 	_frame_shake = _motion.get_shake_offset()
 	draw_set_transform(_frame_shake)
-	## 背景不随半场 slide，保证胜→招募同屏背景不断；纯目录模式不画场景底。
-	if not (catalog_active and catalog_plain_backdrop):
-		draw_texture_rect(ARENA_BACKGROUND, _get_background_rect().grow(SHAKE_BLEED_PX), false)
-	## 半场色调与单位/座位随内容滑动；角色库用统一淡色；纯目录只留透明底给卡牌格。
+	## 动态棋盘格由父级 PhaseGridBackground 绘制；此处只铺半场轻色调帮助敌我分区。
+	## 纯目录模式不铺色，留给卡牌格。
 	if catalog_active and catalog_plain_backdrop:
 		pass
 	elif catalog_active:
