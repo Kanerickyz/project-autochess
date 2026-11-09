@@ -194,7 +194,7 @@ var catalog_active: bool = false
 var catalog_plain_backdrop: bool = false
 ## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
 var catalog_visual_scale_override: float = -1.0
-## 上半场队伍座位（几何同敌方 4×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
@@ -523,7 +523,7 @@ func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
 			continue
 		if String(entry.unit.id) != unit_id:
 			continue
-		var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+		var tile := recruit_team_slots.get_display_center(i)
 		var center := tile_to_local(tile) + enemy_off
 		## 尖角对准纸片上沿略上方。
 		var tip := center + Vector2(0.0, -get_cell_px() * 0.55)
@@ -746,8 +746,7 @@ func _find_lineup_entry_tile(entry_id: int) -> Vector2:
 		for i in board.cells.size():
 			var entry: DeckEntry = board.get_entry(i)
 			if entry != null and entry.entry_id == entry_id:
-				var cell: Vector2i = board.cells[i]
-				return Vector2(cell) + Vector2(0.5, 0.5)
+				return board.get_display_center(i)
 	return Vector2(-1.0, -1.0)
 
 
@@ -2025,8 +2024,7 @@ func _bring_inspect_slot_to_front(
 		var slot_i: int = indices[idx]
 		if slot_i < 0 or slot_i >= slots.cells.size():
 			continue
-		var cell: Vector2i = slots.cells[slot_i]
-		var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+		var center := tile_to_local(slots.get_display_center(slot_i)) + half_off
 		if center.distance_squared_to(focus_c) <= hit_r2:
 			focus_at = idx
 			break
@@ -2228,7 +2226,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 			for i in recruit_team_slots.cells.size():
 				var team_entry := recruit_team_slots.get_entry(i)
 				if team_entry != null:
-					var team_tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					var team_tile := recruit_team_slots.get_display_center(i)
 					out.append(_info_from_entry(team_entry, tile_to_local(team_tile) + enemy_off))
 		for oi in map_shop_offers.size():
 			var offer_info := _info_from_map_shop_offer_index(oi, ally_off)
@@ -2261,7 +2259,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 			for i in recruit_team_slots.cells.size():
 				var entry := recruit_team_slots.get_entry(i)
 				if entry != null:
-					var tile := Vector2(recruit_team_slots.cells[i]) + Vector2(0.5, 0.5)
+					var tile := recruit_team_slots.get_display_center(i)
 					out.append(_info_from_entry(entry, tile_to_local(tile) + enemy_off))
 		for cand in recruit_candidates:
 			if not (cand is Dictionary):
@@ -2325,7 +2323,7 @@ func _collect_inspectables() -> Array[Dictionary]:
 		for i in prepare_slots.cells.size():
 			var entry := prepare_slots.get_entry(i)
 			if entry != null:
-				var tile := Vector2(prepare_slots.cells[i]) + Vector2(0.5, 0.5)
+				var tile := prepare_slots.get_display_center(i)
 				out.append(_info_from_entry(entry, tile_to_local(tile) + team_off))
 	for preview in enemy_previews:
 		if not (preview is Dictionary):
@@ -3717,11 +3715,10 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 	## 两遍：先立绘后攻血，避免邻座剪影盖数字。
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
-		var cell: Vector2i = recruit_team_slots.cells[i]
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
 		if entry == null:
 			continue
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var center_tile := recruit_team_slots.get_display_center(i)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
@@ -4126,11 +4123,10 @@ func _draw_prepare_slots(px: float) -> void:
 	## 两遍：先全员立绘，再攻血（立绘不再挡住邻座数字）。
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
-		var cell: Vector2i = prepare_slots.cells[i]
 		var entry: DeckEntry = prepare_slots.get_entry(i)
 		if entry == null:
 			continue
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var center_tile := prepare_slots.get_display_center(i)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0

@@ -1,6 +1,6 @@
 class_name PrepareSlotBoardTest
 extends RefCounted
-## 座位几何：战斗半场前排近中线；招募上区与我半场同行序；4×5 铺满半场。
+## 座位几何：战斗半场前排近中线；招募上区与我半场同行序；2×5 半场内垂直居中。
 
 
 static func run_all() -> bool:
@@ -28,31 +28,31 @@ static func _check(name: String, passed: bool) -> bool:
 
 static func _test_ally_front_above_back() -> bool:
 	var board := PrepareSlotBoard.new()
-	board.configure_grid(4, 5, Vector2i(5, 8), false)
+	board.configure_grid(2, 5, Vector2i(5, 8), false)
 	var front := board.get_cell(0)
-	var back := board.get_cell(15) ## 末行首列
+	var back := board.get_cell(5) ## 末行首列
 	var mid := BoardHalf.midline_row(8)
-	return front.y >= mid and front.y < back.y and board.slot_count == 20
+	return front.y >= mid and front.y < back.y and board.slot_count == 10
 
 
 static func _test_enemy_front_near_midline() -> bool:
 	var board := PrepareSlotBoard.new()
-	board.configure_grid(4, 5, Vector2i(5, 8), true)
+	board.configure_grid(2, 5, Vector2i(5, 8), true)
 	var front := board.get_cell(0)
-	var back := board.get_cell(15)
+	var back := board.get_cell(5)
 	var mid := BoardHalf.midline_row(8)
 	return front.y < mid and front.y > back.y
 
 
 static func _test_recruit_matches_ally_row_order() -> bool:
 	var recruit := PrepareSlotBoard.new()
-	recruit.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	recruit.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	var ally := PrepareSlotBoard.new()
-	ally.configure_grid(4, 5, Vector2i(5, 8), false)
+	ally.configure_grid(2, 5, Vector2i(5, 8), false)
 	var r_front := recruit.get_cell(0)
-	var r_back := recruit.get_cell(15)
+	var r_back := recruit.get_cell(5)
 	var a_front := ally.get_cell(0)
-	var a_back := ally.get_cell(15)
+	var a_back := ally.get_cell(5)
 	## 同行序：前排 y 小于后排；列对齐。
 	if not (r_front.y < r_back.y and a_front.y < a_back.y):
 		return false
@@ -64,22 +64,35 @@ static func _test_recruit_matches_ally_row_order() -> bool:
 static func _test_recruit_front_not_enemy_front() -> bool:
 	## 招募上区前排 ≠ 敌方前排落点（避免再退回旧颠倒映射）。
 	var recruit := PrepareSlotBoard.new()
-	recruit.configure_grid(4, 5, Vector2i(5, 8), true, true)
+	recruit.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	var enemy := PrepareSlotBoard.new()
-	enemy.configure_grid(4, 5, Vector2i(5, 8), true, false)
+	enemy.configure_grid(2, 5, Vector2i(5, 8), true, false)
 	return recruit.get_cell(0).y != enemy.get_cell(0).y
 
 
 static func _test_fills_half_field() -> bool:
+	## 2×5 居中落在半场内（共 10 格）；半场仍 4 行高，不要求填满 20 格。
 	var ally := PrepareSlotBoard.new()
-	ally.configure_grid(4, 5, Vector2i(5, 8), false)
+	ally.configure_grid(2, 5, Vector2i(5, 8), false)
 	var mid := BoardHalf.midline_row(8)
+	var half_bottom := 8
 	var seen: Dictionary = {}
+	var min_y := 999
+	var max_y := -1
 	for cell in ally.cells:
-		if cell.y < mid or cell.x < 0 or cell.x >= 5:
+		if cell.y < mid or cell.y >= half_bottom or cell.x < 0 or cell.x >= 5:
 			return false
 		seen["%d,%d" % [cell.x, cell.y]] = true
-	return seen.size() == 20
+		min_y = mini(min_y, cell.y)
+		max_y = maxi(max_y, cell.y)
+	if seen.size() != 10 or ally.slot_count != 10:
+		return false
+	## 逻辑相邻行居中：y = mid+1 / mid+2；半格观感由 get_display_center 额外拉开。
+	if not (min_y == mid + 1 and max_y == mid + 2 and max_y - min_y == 1):
+		return false
+	var front_c := ally.get_display_center(0)
+	var back_c := ally.get_display_center(5)
+	return is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP)
 
 
 static func _test_bench_row_below_board() -> bool:

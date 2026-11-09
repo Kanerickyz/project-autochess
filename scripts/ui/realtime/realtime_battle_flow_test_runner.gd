@@ -70,10 +70,10 @@ func _test_battle_controller_rules() -> void:
 	## 本版准备无手牌抽选：清牌区后按 DeckState 持久占位入座。
 	_expect(battle.get_hand().is_empty(), "controller: prepare hand empty (no encounter draw)")
 	var slots := battle.get_slot_board()
-	_expect(slots.seat_rows == 4 and slots.seat_cols == 5, "controller: ally seats 4x5")
-	_expect(slots.slot_count == 20, "controller: ally seat total 20")
+	_expect(slots.seat_rows == 2 and slots.seat_cols == 5, "controller: ally seats 2x5")
+	_expect(slots.slot_count == 10, "controller: ally seat total 10")
 	var enemy_slots := battle.get_enemy_slot_board()
-	_expect(enemy_slots.seat_rows == 4 and enemy_slots.seat_cols == 5, "controller: enemy seats 4x5")
+	_expect(enemy_slots.seat_rows == 2 and enemy_slots.seat_cols == 5, "controller: enemy seats 2x5")
 	_expect(enemy_slots.is_enemy_side, "controller: enemy seat board flagged")
 	var deploy_cap := battle.get_deploy_cap()
 	_expect(deploy_cap == mini(deck.get_max_size(), deck.get_slot_count()), "controller: deploy_cap from max_size ∩ seats")
@@ -95,18 +95,25 @@ func _test_battle_controller_rules() -> void:
 			break
 	_expect(enemies_on_seats, "controller: enemy spawns land on enemy seats")
 
-	## 前排更近中线、后排更靠己方底（4×5 铺满：末行索引 15）
+	## 前排更近中线、后排更靠己方底（2×5 居中：末行索引 5）
 	var mid := BoardHalf.midline_row(battle.get_board_size().y)
-	_expect(slots.get_cell(0).y < slots.get_cell(15).y, "controller: ally front row nearer mid than back")
+	_expect(slots.get_cell(0).y < slots.get_cell(5).y, "controller: ally front row nearer mid than back")
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
-	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(15).y, "controller: enemy front row nearer mid than back")
+	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
-	## 5×8 / 4×5 / 无间距：列 x=0..4；我半场 y=4..7；敌半场 y=3..0（前排近中线）。
-	_expect(slots.get_cell(0) == Vector2i(0, 4), "controller: ally front-left fills half")
-	_expect(slots.get_cell(1) == Vector2i(1, 4), "controller: ally adjacent columns")
-	_expect(slots.get_cell(5) == Vector2i(0, 5), "controller: ally next row no gap")
-	_expect(enemy_slots.get_cell(0) == Vector2i(0, 3), "controller: enemy front-left near mid")
-	_expect(enemy_slots.get_cell(15) == Vector2i(0, 0), "controller: enemy back-left at top")
+	## 5×8 / 2×5：逻辑相邻居中；显示格心再隔半格（距 1.5）。
+	_expect(slots.get_cell(0) == Vector2i(0, 5), "controller: ally front-left centered in half")
+	_expect(slots.get_cell(1) == Vector2i(1, 5), "controller: ally adjacent columns")
+	_expect(slots.get_cell(5) == Vector2i(0, 6), "controller: ally back row first col")
+	_expect(enemy_slots.get_cell(0) == Vector2i(0, 2), "controller: enemy front-left near mid")
+	_expect(enemy_slots.get_cell(5) == Vector2i(0, 1), "controller: enemy back-left centered")
+	_expect(
+		is_equal_approx(
+			slots.get_display_center(5).y - slots.get_display_center(0).y,
+			1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
+		),
+		"controller: ally display centers spaced half cell"
+	)
 
 	## 清空全部座位后不可开战；再入一座可开战（绕过手牌宽度，直接清槽）。
 	var first_cleared: DeckEntry = null
