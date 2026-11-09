@@ -1,17 +1,16 @@
 class_name LineupAuraPreview
 extends RefCounted
 ## 准备/招募座位邻接 aura 预览：纯函数，不写 DeckEntry 永久数值。
-## 仅识别四件「上场」挂载；备战席不参与（调用方只传入已入座 board）。
+## 仅识别旗手/咒刃/盾祷「上场」邻座挂载；备战席不参与（调用方只传入已入座 board）。
+## 铁心仍为开战，不进预览。
 
 const ID_BANNER := "combat_start_buff_nearby_allies_mid"
 const ID_EDGE := "combat_start_nearby_ally_atk_1"
 const ID_SHIELD := "combat_start_nearby_ally_hp_1"
-const ID_IRON := "combat_start_self_max_hp_mid"
 
 const BANNER_ATK := 4
 const EDGE_ATK := 1
 const SHIELD_HP := 1
-const IRON_HP := 12
 
 
 ## 从 PrepareSlotBoard 汇总 entry_id → {atk:int, hp:int}。
@@ -36,8 +35,6 @@ static func compute(occupants: Array, cells: Array) -> Dictionary:
 			continue
 		var mult := UnitInstance.ability_value_multiplier_for(ability, source.level)
 		match ability.id:
-			ID_IRON:
-				_add_bonus(bonuses, source.entry_id, 0, IRON_HP * mult)
 			ID_BANNER:
 				_apply_nearby(bonuses, occupants, cells, i, BANNER_ATK * mult, 0)
 			ID_EDGE:

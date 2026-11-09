@@ -101,7 +101,7 @@ static func run_all() -> bool:
 	_check("devour_rt_defer_kills_left_right", _test_devour_rt_defer_kills_left_right())
 	_check("devour_rt_pending_before_attack", _test_devour_rt_pending_before_attack())
 	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
-	_check("deploy_iron_heart", _test_deploy_iron_heart())
+	_check("combat_start_iron_heart", _test_combat_start_iron_heart())
 	_check("deploy_edge_hex", _test_deploy_edge_hex())
 	_check("deploy_shield_boon", _test_deploy_shield_boon())
 	_check("deploy_banner_nearby", _test_deploy_banner_nearby())
@@ -2885,7 +2885,7 @@ static func _test_devour_star2_skips_boss() -> bool:
 	return true
 
 
-static func _test_deploy_iron_heart() -> bool:
+static func _test_combat_start_iron_heart() -> bool:
 	var data := _load_unit("res://resources/units/realtime/iron_heart.tres")
 	if data == null or data.ability == null or data.ability.id != "combat_start_self_max_hp_mid":
 		push_error("iron_heart: ability mount")
@@ -2895,12 +2895,12 @@ static func _test_deploy_iron_heart() -> bool:
 		return false
 	var sim := _new_sim()
 	sim.configure(ARENA, 501)
-	var unit := _make_from_data(data, UnitInstance.Team.PLAYER)
-	var base := unit.get_effective_max_hp()
-	var rt := sim.add_unit(unit, Vector2(2.5, 6.5))
+	var rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var base := rt.unit.get_effective_max_hp()
+	sim.begin_combat()
 	if rt.unit.get_effective_max_hp() != base + 12:
 		push_error(
-			"iron_heart: max_hp %d -> %d expected +12 on summon"
+			"iron_heart: max_hp %d -> %d expected +12"
 			% [base, rt.unit.get_effective_max_hp()]
 		)
 		return false
@@ -2909,11 +2909,12 @@ static func _test_deploy_iron_heart() -> bool:
 	sim2.configure(ARENA, 511)
 	var merged := _make_from_data(data, UnitInstance.Team.PLAYER)
 	merged.level = 2
-	var base2 := merged.get_effective_max_hp()
 	var rt2 := sim2.add_unit(merged, Vector2(2.5, 6.5))
+	var base2 := rt2.unit.get_effective_max_hp()
+	sim2.begin_combat()
 	if rt2.unit.get_effective_max_hp() != base2 + 36:
 		push_error(
-			"iron_heart 2★: max_hp %d -> %d expected +36 on summon"
+			"iron_heart 2★: max_hp %d -> %d expected +36"
 			% [base2, rt2.unit.get_effective_max_hp()]
 		)
 		return false
