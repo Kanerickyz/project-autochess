@@ -4,8 +4,12 @@ extends RefCounted
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
-## 座位行/列间距；0 = 紧贴（2×5 在 4 行半场内由 _centered_row_ys 居中，空行留白）。
-const SEAT_GAP_CELLS := 0
+## 座位行间距（格）；2×5 在 4 行半场内取 2 → 前后排隔开，避免立绘重叠。
+const SEAT_ROW_GAP_CELLS := 2
+## 座位列间距（格）；默认 0 铺满棋盘宽。与行距分离，避免加行距时因列向放不下整块被收拢。
+const SEAT_COL_GAP_CELLS := 0
+## 兼容旧名：等同列间距（历史调用若仍引用则不影响行距）。
+const SEAT_GAP_CELLS := SEAT_COL_GAP_CELLS
 
 var seat_rows: int = DEFAULT_SEAT_ROWS
 var seat_cols: int = DEFAULT_SEAT_COLS
@@ -102,27 +106,31 @@ static func build_grid_cells(
 ) -> Array[Vector2i]:
 	var n_rows := maxi(1, rows)
 	var n_cols := maxi(1, cols)
-	var gap := maxi(0, SEAT_GAP_CELLS)
+	var row_gap := maxi(0, SEAT_ROW_GAP_CELLS)
+	var col_gap := maxi(0, SEAT_COL_GAP_CELLS)
 	var mid := BoardHalf.midline_row(board_size.y)
 	var half_h := mid if enemy_side else maxi(0, board_size.y - mid)
-	## 块放不下半场/棋盘宽时自动收拢间距，保证能铺满。
-	var block_w := n_cols + (n_cols - 1) * gap
-	var block_h := n_rows + (n_rows - 1) * gap
-	if block_w > board_size.x or block_h > half_h:
-		gap = 0
+	## 块放不下半场/棋盘宽时分别收拢对应轴向间距。
+	var block_w := n_cols + (n_cols - 1) * col_gap
+	var block_h := n_rows + (n_rows - 1) * row_gap
+	if block_w > board_size.x:
+		col_gap = 0
 		block_w = n_cols
+	if block_h > half_h:
+		row_gap = 0
 		block_h = n_rows
-	var stride := 1 + gap
+	var col_stride := 1 + col_gap
+	var row_stride := 1 + row_gap
 	var start_x := (board_size.x - block_w) / 2
 	start_x = clampi(start_x, 0, maxi(0, board_size.x - 1))
 	var row_ys := _centered_row_ys(
-		board_size.y, n_rows, stride, block_h, enemy_side, match_ally_row_order
+		board_size.y, n_rows, row_stride, block_h, enemy_side, match_ally_row_order
 	)
 	var result: Array[Vector2i] = []
 	for row_i in row_ys.size():
 		var y: int = row_ys[row_i]
 		for c in n_cols:
-			var x := start_x + c * stride
+			var x := start_x + c * col_stride
 			x = clampi(x, 0, maxi(0, board_size.x - 1))
 			result.append(Vector2i(x, y))
 	return result
