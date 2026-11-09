@@ -4,6 +4,7 @@
 > 功能规则见 [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md)；友方角色见 [UNITS_ROSTER.md](./UNITS_ROSTER.md)。  
 > **本篇写**：技能内容池——名称、触发、效果草案、相对强度。  
 > **本篇不写**：定点数 / 百分比；玩家可见流派标签。挂载（**1 技能 ↔ 1 角色**）见 [UNITS_ROSTER.md](./UNITS_ROSTER.md) §6。  
+> 内部流派轴见 [Features/ARCHETYPE.md](../Features/ARCHETYPE.md)；中毒流汇总见 [POISON_ARCHETYPE.md](./POISON_ARCHETYPE.md)。  
 > **【资源】** 本篇技能条目均有 ability 资源；**三十七人** 1:1 挂载已绑（见角色库 §6）。援军呼应为 `ally_deploy_self_atk_small`（OnFriendSummoned）。
 
 
@@ -72,7 +73,7 @@
 | `turn_start_nearby_allies_apply_berserk` | 战鼓狂暴 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格友方**施加 **狂暴 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自身） | **中庸** | 鼓手 | `NEARBY_ALLIES` + `exclude_owner` |
 | `turn_start_random_ally_combat_armor_2` | 匠甲加护 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**随机一名其他友方**授予本场临时护甲 **+2**（三合一后 **+6**；`merge_value_mult=3`；可叠加；不含自己；结算同 MAP_SHOP §5.1；遭遇结束清除） | **中庸** | 甲胄师 | `RANDOM_ALLY` + `exclude_owner` |
 | `turn_start_nearby_hp_small` | 固脉一剂 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时生命上限与当前各 **+2**（三合一后 **+8**；`merge_value_mult=4`） | **中庸** | （池内；药师已不挂载） | 医疗·加厚 |
-| `turn_start_nearby_enemies_apply_poison` | 药雾蚀敌 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格敌军**施加 **中毒 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 药师 | 状态·控场；`NEARBY_ENEMIES` |
+| `turn_start_nearby_enemies_apply_poison` | 药雾蚀敌 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格敌军**施加 **中毒 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 药师 | 异常·中毒·邻格施加；`NEARBY_ENEMIES`；见 [POISON_ARCHETYPE.md](./POISON_ARCHETYPE.md) |
 | `turn_start_strike_weakest` | 影袭落刃 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，瞬移至**当前生命最低**敌人邻格并对其造成技能伤害（1★ **2**；三合一升星后 **7**；不触发普攻连击） | **中庸～偏强** | 影刺 | 刺杀·斩后；**【新】** |
 | `kill_grant_actor_turn_refresh` | 血怒再袭 | 出手 · 条件稀有 | 否 | 自己击杀时，**重置本动步数并允许再普攻**（不触发自己回合开始技能；**每场无限次**） | **偏强** | 狂战士 | 收割·连动；`OnActorTurnRefresh` |
 | `turn_start_devour_lr_allies` | 左右吞噬 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，消灭**正交左右邻格**友方，自身本场获得其**全部**有效攻击与生命上限（同步抬当前生命；经死亡管线，可触发友亡）。三合一后同规则且**排除首领**；吞取值**不**套全局 ×6（`merge_value_mult=1`） | **偏强** | 吞噬 | 献祭·吞纳；`ORTHOGONAL_LEFT_RIGHT_ALLIES` + `ABSORB_STATS_AND_KILL` |
@@ -111,6 +112,17 @@
 | `death_spawn_strong_copy` | 临终分身 | 退场 · 偶尔多次 | 否 | 自己死亡时，生成 **1** 只偏厚复制代理（无主技能） | **偏强** | （池内；禁卫已不挂载） | 厚复制 |
 | `kill_convert_event_target_to_ally` | 镜誓策反 | 出手 · 条件稀有 | 否 | **普攻击杀**时，将**事件目标**策反为持有者同队；**生命回满**并清空本场战斗临时状态；**保留**目标原主技能与身体；**首领免疫**；**不写入队伍**（遭遇结束清场） | **偏强** | 禁卫 | 见 UNIT_ABILITIES §6.1 |
 | `death_spawn_pack` | 散兵余烬 | 退场 · 偶尔多次 | 否 | 自己死亡时，生成 **1** 只 **1/1** 随从（三合一后 **4/4**；`merge_value_mult=4`） | **中庸** | 余烬 | 见 §4 |
+
+### 3.4 中毒流草案（异常流 · 本切片）
+
+> 规则见 [Features/ARCHETYPE.md](../Features/ARCHETYPE.md)；汇总见 [POISON_ARCHETYPE.md](./POISON_ARCHETYPE.md)。  
+> **【资源】** 下表除药雾蚀敌外均为 Content 草案：**未**建 ability `.tres`、**未**挂角色。毒厚加创依赖读层伤害模式【实现 To-Be】。
+
+| id（暂定） | 显示名 | 大类 · 频率 | 小队 | 效果草案（无点数） | 综合 | 挂载 | 内部备注 |
+|------------|--------|-------------|------|--------------------|------|------|----------|
+| `deal_damage_apply_poison` | 毒矢沾衣 | 出手 · 高频 | 否 | 自己造成伤害时，对**事件目标**施加中毒**小幅**层数 | **偏弱～中庸** | （待挂） | 异常·中毒·命中施加 |
+| `deal_vs_poisoned_add_poison` | 蚀疮加深 | 出手 · 偶尔多次 | 否 | 自己造成伤害且目标**已有中毒**时，再施加中毒**小幅**层数 | **中庸** | （待挂） | 异常·中毒·放大器 |
+| `deal_damage_bonus_from_poison_stacks` | 毒厚加创 | 出手 · 高频 | 否 | 自己造成伤害且目标中毒层 **> 0** 时，再造成与**当前层数相关**的技能伤害；**不耗层**；该段不连锁上毒 / 再读层 | **中庸～偏强** | （待挂） | 异常·中毒·受益者；管线 To-Be |
 
 \*「以身作则」「甲胄遗赠」不标小队触发，但效果惠队友。
 
