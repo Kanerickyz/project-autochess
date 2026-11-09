@@ -3434,6 +3434,7 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 				var focus_item: Variant = ordered[focus_idx]
 				ordered.remove_at(focus_idx)
 				ordered.append(focus_item)
+	var badge_jobs: Array[Dictionary] = []
 	for item in ordered:
 		if item is not Dictionary:
 			continue
@@ -3459,17 +3460,24 @@ func _draw_enchant_forge(px: float, off: Vector2) -> void:
 				true,
 				entry.get_unit_id(),
 			)
-			_draw_stat_badges(
-				tile_to_local(center_tile) + off,
-				DeckUpgradeService.get_display_attack(entry),
-				DeckUpgradeService.get_display_max_hp(entry),
-				0.95,
-				px,
-				entry.get_armor_block(),
-			)
+			badge_jobs.append({
+				"center": tile_to_local(center_tile) + off,
+				"atk": DeckUpgradeService.get_display_attack(entry),
+				"hp": DeckUpgradeService.get_display_max_hp(entry),
+				"armor": entry.get_armor_block(),
+			})
 		if not label.is_empty():
 			var pos := cell_rect.position + Vector2(px * 0.05, px * 0.12)
 			draw_string(font, pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.85))
+	for job in badge_jobs:
+		_draw_stat_badges(
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			0.95,
+			px,
+			int(job["armor"]),
+		)
 
 
 func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -3704,6 +3712,8 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		return ca.x < cb.x
 	)
 	_bring_inspect_slot_to_front(occupied_indices, recruit_team_slots, off)
+	## 两遍：先立绘后攻血，避免邻座剪影盖数字。
+	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
 		if entry == null:
@@ -3730,16 +3740,25 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
 		)
 		var display := _entry_display_atk_hp(entry)
+		badge_jobs.append({
+			"center": tile_to_local(center_tile) + off,
+			"atk": display.x,
+			"hp": display.y,
+			"alpha": alpha,
+			"armor": entry.get_armor_block(),
+			"scale": _entry_badge_scale(entry.entry_id),
+		})
+	for job in badge_jobs:
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off,
-			display.x,
-			display.y,
-			alpha,
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			float(job["alpha"]),
 			px,
-			entry.get_armor_block(),
+			int(job["armor"]),
 			-1,
 			true,
-			_entry_badge_scale(entry.entry_id),
+			float(job["scale"]),
 		)
 	if _merge_active:
 		_draw_merge_fx(px, off)
@@ -3766,7 +3785,8 @@ func _draw_catalog_units(px: float) -> void:
 				if at >= 0:
 					ordered.remove_at(at)
 					ordered.append(focus_entry)
-	## 身体与攻血标同序绘制：后画的整组在上；勿先画完全员身体再叠标，否则邻格数值会盖住置顶剪影。
+	## 两遍绘制：全员立绘 → 全员攻血（立绘不再盖住邻座数字）。
+	var badge_jobs: Array[Dictionary] = []
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -3809,7 +3829,21 @@ func _draw_catalog_units(px: float) -> void:
 			var preview_mult := UnitInfoText.catalog_preview_stat_mult(catalog_preview_level)
 			atk = (stats.attack if stats != null else 0) * preview_mult
 			hp = (stats.max_hp if stats != null else 0) * preview_mult
-		_draw_stat_badges(tile_to_local(center_tile), atk, hp, 0.95, px, armor)
+		badge_jobs.append({
+			"center": tile_to_local(center_tile),
+			"atk": atk,
+			"hp": hp,
+			"armor": armor,
+		})
+	for job in badge_jobs:
+		_draw_stat_badges(
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			0.95,
+			px,
+			int(job["armor"]),
+		)
 
 
 func _draw_merge_fx(px: float, off: Vector2) -> void:
@@ -3887,6 +3921,7 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			var moved: Variant = ordered[focus_at]
 			ordered.remove_at(focus_at)
 			ordered.append(moved)
+	var badge_jobs: Array[Dictionary] = []
 	for info in ordered:
 		if not (info is Dictionary):
 			continue
@@ -3913,12 +3948,30 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 		var hp := stats.max_hp if stats != null else 0
 		var cost := int(info.get("cost", 0))
 		var affordable := bool(info.get("affordable", true))
+		badge_jobs.append({
+			"center": tile_to_local(center_tile) + off,
+			"atk": atk,
+			"hp": hp,
+			"alpha": alpha,
+			"cost": cost,
+			"affordable": affordable,
+			"locked": locked,
+		})
+	for job in badge_jobs:
+		var center: Vector2 = job["center"] as Vector2
 		## 攻/血缩进单格；价签第二行（见 _draw_stat_badges）。
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off, atk, hp, alpha, px, 0, cost, affordable
+			center,
+			int(job["atk"]),
+			int(job["hp"]),
+			float(job["alpha"]),
+			px,
+			0,
+			int(job["cost"]),
+			bool(job["affordable"]),
 		)
-		if locked:
-			_draw_recruit_lock_tag(tile_to_local(center_tile) + off, px)
+		if bool(job["locked"]):
+			_draw_recruit_lock_tag(center, px)
 
 
 func _draw_recruit_cost_tag(center: Vector2, cost: int, affordable: bool, px: float) -> void:
@@ -4067,6 +4120,8 @@ func _draw_prepare_slots(px: float) -> void:
 		return ca.x < cb.x
 	)
 	_bring_inspect_slot_to_front(occupied_indices, prepare_slots, off)
+	## 两遍：先全员立绘，再攻血（立绘不再挡住邻座数字）。
+	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = prepare_slots.get_entry(i)
 		if entry == null:
@@ -4085,16 +4140,25 @@ func _draw_prepare_slots(px: float) -> void:
 			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var display := _entry_display_atk_hp(entry)
+		badge_jobs.append({
+			"center": tile_to_local(center_tile) + off,
+			"atk": display.x,
+			"hp": display.y,
+			"alpha": alpha,
+			"armor": entry.get_armor_block(),
+			"scale": _entry_badge_scale(entry.entry_id),
+		})
+	for job in badge_jobs:
 		_draw_stat_badges(
-			tile_to_local(center_tile) + off,
-			display.x,
-			display.y,
-			alpha,
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			float(job["alpha"]),
 			px,
-			entry.get_armor_block(),
+			int(job["armor"]),
 			-1,
 			true,
-			_entry_badge_scale(entry.entry_id),
+			float(job["scale"]),
 		)
 
 
@@ -4125,6 +4189,7 @@ func _draw_bench_row(px: float) -> void:
 		var cell_rect := Rect2(center - Vector2(px, px) * 0.5, Vector2(px, px))
 		draw_rect(cell_rect, Color(PLAYER_COLOR, 0.10))
 		draw_rect(cell_rect, Color(0.85, 0.90, 1.0, 0.22), false, 1.0)
+	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var center := bench_slot_center_local(i)
 		var entry: DeckEntry = bench_slots.get_entry(i)
@@ -4160,9 +4225,22 @@ func _draw_bench_row(px: float) -> void:
 			1.0,
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
-		var atk := DeckUpgradeService.get_display_attack(entry)
-		var hp := DeckUpgradeService.get_display_max_hp(entry)
-		_draw_stat_badges(center, atk, hp, alpha, px, entry.get_armor_block())
+		badge_jobs.append({
+			"center": center,
+			"atk": DeckUpgradeService.get_display_attack(entry),
+			"hp": DeckUpgradeService.get_display_max_hp(entry),
+			"alpha": alpha,
+			"armor": entry.get_armor_block(),
+		})
+	for job in badge_jobs:
+		_draw_stat_badges(
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			float(job["alpha"]),
+			px,
+			int(job["armor"]),
+		)
 	## 小标签：备战
 	var label_pos := bench_slot_center_local(0) + Vector2(-px * 0.45, -px * 0.62)
 	draw_string(font, label_pos, "备战", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.75))
@@ -4183,8 +4261,8 @@ func _draw_units(px: float) -> void:
 	var started := sim.has_started()
 	## COMBAT_FEEDBACK：当前行动者高亮；其余略降对比，不做出手条。
 	var actor: RtUnit = sim.get_current_actor() if started else null
-	## 按 y 轴排序绘制：靠下（更大 y）后画压上。攻血标与纸片同序同体绘制，
-	## 避免后排数值浮在全局顶层挡住前排剪影（准备/招募路径同口径）。
+	## 按 y 轴排序：靠下后画压上。两遍绘制——先全员立绘，再全员攻血，
+	## 避免立绘盖住邻座/前排脚底数字（与 PAPER_CUTOUT_ART_BRIEF §12 一致）。
 	var ordered := sim.get_units().duplicate()
 	ordered.sort_custom(func(a: RtUnit, b: RtUnit) -> bool:
 		if a.position.y == b.position.y:
@@ -4192,6 +4270,7 @@ func _draw_units(px: float) -> void:
 		return a.position.y < b.position.y
 	)
 	_bring_inspect_rt_to_front(ordered)
+	var badge_jobs: Array[Dictionary] = []
 	for item in ordered:
 		var rt := item as RtUnit
 		var base := PLAYER_COLOR if rt.is_player() else ENEMY_COLOR
@@ -4229,13 +4308,21 @@ func _draw_units(px: float) -> void:
 		if started and rt.is_deploying():
 			var ratio := rt.get_deploy_ratio()
 			draw_arc(center, silhouette_r_px + 3.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, Color(1, 1, 1, 0.9), 2.0)
+		badge_jobs.append({
+			"center": center,
+			"atk": rt.get_effective_attack(),
+			"hp": rt.get_current_hp(),
+			"alpha": alpha,
+			"armor": rt.unit.get_armor_block() if rt.unit != null else 0,
+		})
+	for job in badge_jobs:
 		_draw_stat_badges(
-			center,
-			rt.get_effective_attack(),
-			rt.get_current_hp(),
-			alpha,
+			job["center"] as Vector2,
+			int(job["atk"]),
+			int(job["hp"]),
+			float(job["alpha"]),
 			px,
-			rt.unit.get_armor_block() if rt.unit != null else 0,
+			int(job["armor"]),
 		)
 	_draw_corpses(px)
 
