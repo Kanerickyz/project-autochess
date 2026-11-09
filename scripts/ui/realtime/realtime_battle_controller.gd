@@ -176,7 +176,7 @@ var _boss_final_trial_offer: bool = false
 @onready var _final_trial_button: Button = %FinalTrialButton
 @onready var _dock: Control = $Layout/Dock
 @onready var _hud: Control = $Layout/Hud
-@onready var _solid_bg: CanvasItem = $Background
+@onready var _solid_bg: PhaseGridBackground = $Background as PhaseGridBackground
 
 ## 地图罩在关卡世界上：藏 HUD/底栏，只留竞技场底图，避免黑屏跳转。
 var _world_backdrop_mode: bool = false
@@ -342,8 +342,10 @@ func _on_deck_triple_merged(product: DeckEntry, consumed_seats: Array) -> void:
 func set_world_backdrop_mode(enabled: bool) -> void:
 	_world_backdrop_mode = enabled
 	if _solid_bg != null:
-		## 地图自带同款背景；关掉纯色底以免发灰。
+		## 地图自带同款动态格底；关掉战斗底以免叠色发灰。
 		_solid_bg.visible = not enabled
+		if not enabled:
+			_apply_phase_grid_theme(_phase, false)
 	if _hud != null:
 		_hud.visible = not enabled
 	if _dock != null:
@@ -1704,9 +1706,30 @@ func _spawn_combat_sim_from_lock(silent: bool) -> void:
 
 func _set_phase(phase: Phase) -> void:
 	_phase = phase
+	if not _world_backdrop_mode:
+		_apply_phase_grid_theme(phase, true)
 	_refresh_hud()
 	_refresh_cards()
 	phase_changed.emit(phase)
+
+
+func _apply_phase_grid_theme(phase: Phase, animate: bool) -> void:
+	if _solid_bg == null:
+		return
+	var theme_id := PhaseGridPalettes.ThemeId.PREPARE
+	match phase:
+		Phase.IDLE, Phase.PREPARE:
+			theme_id = PhaseGridPalettes.ThemeId.PREPARE
+		Phase.COMBAT, Phase.RESULT:
+			## 胜负结算仍偏战斗氛围，避免跳回准备青灰。
+			theme_id = PhaseGridPalettes.ThemeId.COMBAT
+		Phase.RECRUIT:
+			theme_id = PhaseGridPalettes.ThemeId.RECRUIT
+		Phase.MAP_SHOP:
+			theme_id = PhaseGridPalettes.ThemeId.MAP_SHOP
+		Phase.ENCHANT:
+			theme_id = PhaseGridPalettes.ThemeId.ENCHANT
+	_solid_bg.set_theme_id(theme_id, animate)
 
 
 func _roll_enemy_spawns(rng: RandomNumberGenerator) -> Array:
