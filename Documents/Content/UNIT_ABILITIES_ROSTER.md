@@ -51,9 +51,9 @@
 | `kill_damage_all_except_self_2` | 爆震余波 | 出手 · 条件稀有 | 否 | 自己**普攻击杀**时，对**除自己外所有存活角色**各造成 **2** 伤害（三合一后 **6**；`merge_value_mult=3`；**含友方**） | **中庸～偏强** | 爆爆 | `OnKill` + `KILL_FROM_ATTACK` + `ALL_UNITS` + `exclude_owner` |
 | `hurt_heal_self_2` | 伤势回春 | 挨打 · 高频 | 否 | 自己受伤时，自身恢复 **1** 当前生命（三合一后 **4**；`merge_value_mult=4`；软顶；受击疗≤本次伤；本场技能受疗预算 100） | **偏弱** | 标枪 | 回血·自愈 |
 | `deal_heal_lowest_ally_small` | 血贯补给 | 出手 · 高频 | 否* | 自己造成伤害时，当前生命最低的其他友方恢复**小幅**当前生命（软顶） | **偏弱～中庸** | （未挂载） | 回血·输出转疗；原标枪槽，资源仍保留 |
-| `death_buff_nearby_allies_mid` | 以身作则（退场版） | 退场 · 偶尔多次 | 否* | 自己死亡时，**周围一格**友方本场临时攻击 **+4**（`merge_value_mult=3`） | **中庸～偏强** | （未挂载） | 资源保留；旗手已改用开战版；附近=1 格 |
+| `death_buff_nearby_allies_mid` | 以身作则（退场版） | 退场 · 偶尔多次 | 否* | 自己死亡时，**周围一格**友方本场临时攻击 **+4**（`merge_value_mult=3`） | **中庸～偏强** | （未挂载） | 资源保留；旗手已改用上场版；附近=1 格 |
 | `death_buff_nearby_def_mid` | 甲胄遗赠 | 退场 · 偶尔多次 | 否* | 自己死亡时，**周围一格**友方本场临时**中幅**提高承伤感 | **中庸～偏强** | 圣骸 | 退场·惠防；附近=1 格 |
-| `combat_start_buff_nearby_allies_mid` | 以身作则 | 开场 · 一场一次 | 否* | 开战时，**周围一格**友方本场临时攻击 **+4**（三合一后 **+12**；`merge_value_mult=3`） | **中庸～偏强** | 旗手 | *效果惠队友；附近=1 格 |
+| `combat_start_buff_nearby_allies_mid` | 以身作则 | 上场 · 一场一次 | 否* | 上场时，**周围一格**友方本场临时攻击 **+4**（三合一后 **+12**；`merge_value_mult=3`） | **中庸～偏强** | 旗手 | *效果惠队友；附近=1 格；`OnSummoned` + `OnFriendSummoned`（邻座镜像） |
 | `enemy_death_self_atk_hp_small` | 踏血扬鞭 | 出手侧 · 偶尔多次 | **是**（敌方阵亡） | 敌方死亡时，自己本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **中庸～偏强** | 狼骑兵 | 收割·叠层；`OnEnemyDeath` |
 | `combat_start_self_max_hp_mid` | 铁心蓄势 | 开场 · 一场一次 | 否 | 开战时，自身本场临时**中幅**提高生命上限（**+12**；三合一后 **+36**；`merge_value_mult=3`） | **中庸** | 铁心 | 生命·开场 |
 | `hurt_gain_max_hp` | 浴血凝脉 | 挨打 · 高频 | 否 | 自己受伤时，**恢复 4** 生命（三合一后 **8**；`merge_value_mult=2`；不改生命上限；受击疗≤本次伤；本场技能受疗预算 100） | **中庸** | （遗留挂载如熊） | 生命·成长 |
@@ -65,8 +65,8 @@
 | `enemy_death_nearby_allies_atk_hp_small` | 敛刃鼓舞 | 出手侧 · 偶尔多次 | **是**（敌方阵亡） | 敌方死亡时，**持有者周围一格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；可含自己） | **中庸～偏强** | 疗刃（**T3**） | 收割·惠队；`OnEnemyDeath` + `NEARBY_ALLIES`（中心=持有者） |
 | `survive_turn_end_bank_turn_refresh` | 余命再动 | 回合 · 偶尔多次 | 否 | **自己一动结束且仍存活**时 +1 **续动充能**（1★ 上限 **1** / 2★+ 上限 **3**）；**下次轮到自己**时先耗 **1** 充能，本动正常段结束后**完整再动**（不触发自己回合开始技能） | **偏强** | 命卫 | 生命·节奏；`OnActorTurnEnd` + `OnRoundStart` |
 | `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己**攻击**击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`）。不含本技能伤害造成的击杀 | **偏弱** | 余震 | 收割·点残；`OnKill` + `KILL_FROM_ATTACK` + `RANDOM_ENEMY` |
-| `combat_start_nearby_ally_atk_1` | 咒刃点锋 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 咒刃 | 开场·惠攻；`OnCombatStart`；附近=1 格；`exclude_owner` |
-| `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 开场 · 一场一次 | 否* | 开战时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 开场·加厚；`OnCombatStart`；附近=1 格；`exclude_owner` |
+| `combat_start_nearby_ally_atk_1` | 咒刃点锋 | 上场 · 一场一次 | 否* | 上场时，**周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 咒刃 | 上场·惠攻；`OnSummoned` + 邻座友方生成镜像；附近=1 格；`exclude_owner` |
+| `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 上场 · 一场一次 | 否* | 上场时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 上场·加厚；`OnSummoned` + 邻座友方生成镜像；附近=1 格；`exclude_owner` |
 | `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | （未挂载） | 资源保留 |
 | `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | （池内；鼓手已不挂载） | 节奏 |

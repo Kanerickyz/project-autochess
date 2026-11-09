@@ -61,6 +61,8 @@ enum Condition {
 	OWNER_HAS_BANKED_TURN_REFRESH_CHARGE,
 	## 事件目标指定战斗状态层数 > 0（状态 id 见 condition_stat_name；空则 false）。
 	EVENT_TARGET_HAS_COMBAT_STATUS,
+	## 事件目标与持有者同队、非同一实例，且切比雪夫格距 ≤ NEARBY_ALLY_RADIUS；须追加在枚举末尾。
+	EVENT_TARGET_ADJACENT_TO_OWNER,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).

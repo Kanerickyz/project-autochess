@@ -443,6 +443,8 @@ func start_encounter(
 	_map_shop_ui.hide_hud()
 	_enchant_ui.hide_hud()
 	_restore_combat_chrome_after_recruit()
+	_sync_arena_bench()
+	_refresh_lineup_aura_preview()
 	_rebuild_cards()
 	_set_phase(Phase.PREPARE)
 	_maybe_show_tier_unlock_toast()
@@ -1171,6 +1173,7 @@ func _prepare_final_trial_wave() -> void:
 		_arena.reset_half_slide()
 	_load_persistent_seats_into_prepare()
 	_set_phase(Phase.PREPARE)
+	_refresh_lineup_aura_preview()
 	_refresh_hud()
 
 
@@ -1445,6 +1448,7 @@ func _sync_enchant_expanded_seat_indices() -> void:
 
 func _sync_enchant_arena() -> void:
 	_enchant_ui.sync_arena(_arena, _deck_state, _enchant_slots)
+	_refresh_lineup_aura_preview()
 
 
 func _on_enchant_session_finished(did_fuse: bool) -> void:
@@ -1480,12 +1484,14 @@ func enter_map_shop(service: MapShopService, enter_seconds: float = -1.0) -> voi
 		var travel := _half_slide_travel()
 		_arena.set_half_slide_offscreen(travel)
 	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	_refresh_lineup_aura_preview()
 	if _arena != null:
 		_arena.queue_redraw()
 	_map_shop_ui.set_animating(true)
 	await _play_half_field_enter_animation(seconds)
 	_map_shop_ui.set_animating(false)
 	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	_refresh_lineup_aura_preview()
 	_refresh_hud()
 
 
@@ -1512,6 +1518,7 @@ func on_map_shop_changed() -> void:
 	if _phase != Phase.MAP_SHOP:
 		return
 	_map_shop_ui.sync_arena(_arena, _deck_state, _board_size)
+	_refresh_lineup_aura_preview()
 	_refresh_hud()
 
 
@@ -1979,7 +1986,22 @@ func _sync_slot_visuals() -> void:
 		_arena.prepare_slots = _slots
 		_arena.enemy_slots = _enemy_slots
 		_sync_arena_bench()
+		_refresh_lineup_aura_preview()
 		_arena.queue_redraw()
+
+
+## 准备/招募/地图商店入座邻接 aura 预览；备战不计入。
+func _refresh_lineup_aura_preview() -> void:
+	if _arena == null:
+		return
+	var board: PrepareSlotBoard = null
+	if _arena.recruit_active or _arena.map_shop_active:
+		board = _arena.recruit_team_slots
+	elif _arena.enchant_active:
+		board = _arena.prepare_slots
+	else:
+		board = _arena.prepare_slots
+	_arena.set_lineup_aura_bonuses(LineupAuraPreview.compute_from_board(board))
 
 
 func _ensure_refresh_button() -> void:
@@ -2714,6 +2736,7 @@ func _sync_recruit_arena() -> void:
 	_arena.sim = null
 	_arena.placement_active = false
 	_sync_arena_bench()
+	_refresh_lineup_aura_preview()
 	_arena.queue_redraw()
 
 

@@ -14,7 +14,7 @@ const TRIGGER_LABELS := {
 	CombatEvents.ON_COMBAT_START: "开战时",
 	CombatEvents.ON_COMBAT_END: "战斗结束且自身存活时",
 	CombatEvents.ON_FRIEND_SUMMONED: "友方召唤时",
-	CombatEvents.ON_SUMMONED: "被召唤时",
+	CombatEvents.ON_SUMMONED: "上场时",
 	CombatEvents.ON_FRIEND_DEATH: "友方死亡时",
 	CombatEvents.ON_ENEMY_DEATH: "敌方死亡时",
 	CombatEvents.ON_FRIEND_DAMAGE_TAKEN: "友方受伤时",
@@ -471,6 +471,14 @@ static func get_ability_description(
 		return "自己回合开始时，瞬移至当前生命最低敌人邻格，造成 %d 点技能伤害" % dmg
 	var parts: PackedStringArray = []
 	for spec in ability.effect_specs:
+		if spec == null:
+			continue
+		## 上场邻座 aura 的 OnFriendSummoned 镜像不进介绍卡，避免与 OnSummoned 主句重复。
+		if (
+			spec.trigger == CombatEvents.ON_FRIEND_SUMMONED
+			and spec.condition == EffectSpec.Condition.EVENT_TARGET_ADJACENT_TO_OWNER
+		):
+			continue
 		var line := format_effect_spec(spec, value_scale, with_stat_icons, ability, unit_level)
 		if not line.is_empty():
 			parts.append(line)
@@ -515,6 +523,12 @@ static func format_effect_spec(
 		and spec.condition == EffectSpec.Condition.EVENT_TARGET_IS_COMBAT_SUMMON
 	):
 		trigger = "友方随从被召唤时"
+	elif (
+		spec.trigger == CombatEvents.ON_FRIEND_SUMMONED
+		and spec.condition == EffectSpec.Condition.EVENT_TARGET_ADJACENT_TO_OWNER
+	):
+		## 上场邻座镜像 spec：介绍卡通常跳过；若单条展示则读作邻座上场。
+		trigger = "邻座友方上场时"
 	elif (
 		spec.trigger == CombatEvents.ON_FRIEND_DAMAGE_TAKEN
 		and spec.condition == EffectSpec.Condition.EVENT_TARGET_NOT_AT_MAX_HP

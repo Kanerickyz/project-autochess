@@ -656,8 +656,19 @@ func _spec_condition_met(
 			if not CombatStatusStack.is_valid_id(spec.condition_stat_name):
 				return false
 			return payload.target.combat_statuses.get_stacks(spec.condition_stat_name) > 0
+		EffectSpec.Condition.EVENT_TARGET_ADJACENT_TO_OWNER:
+			if owner == null or payload == null or payload.target == null:
+				return false
+			if owner.instance_id == payload.target.instance_id:
+				return false
+			if owner.team != payload.target.team:
+				return false
+			return (
+				BoardGrid._chebyshev(owner.grid_pos, payload.target.grid_pos)
+				<= EffectSpec.NEARBY_ALLY_RADIUS
+			)
 		_:
-			return true
+			return false
 
 
 static func _unit_below_max_hp(unit: UnitInstance) -> bool:
