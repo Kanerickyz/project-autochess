@@ -9,6 +9,7 @@
 |------|------|
 | [Features/UNITS.md](../Features/UNITS.md) | 友方 / 敌方 / 生成的代理角色；属性大类；攻击方式；索敌与生命周期 |
 | [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、自带技能/白板、事件联动与强度维度（规则） |
+| [Features/ARCHETYPE.md](../Features/ARCHETYPE.md) | 内部六主轴、异常流·中毒簇规则 |
 | **本目录** | 角色库、**独立技能内容池**与 **1:1** 主技能挂载表 |
 | [Reference/](../Reference/) | 外部游戏摘录；非正式名单 |
 
@@ -22,6 +23,7 @@
 
 | [BOSS_ROSTER.md](./BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；枯骨壳小兵；数值旋钮待填） |
 | [UNIT_ABILITIES_ROSTER.md](./UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含吞噬左右吞纳；挂载见角色库 §6） |
+| [POISON_ARCHETYPE.md](./POISON_ARCHETYPE.md) | **中毒流内容**（药师种子 + 命中施加 / 放大器 / 受益者草案） |
 | [PAPER_CUTOUT_ART_BRIEF.md](./PAPER_CUTOUT_ART_BRIEF.md) | **旧纸剪贴**美术规范（后续制作/验收标准；As-Is 映射与场景见 §11–§12） |
 | [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) | **角色落地流程**（合同字段、文档先于实现、占位 DEV 与资源清单） |
 | [UNIT_PARTY_BARKS_ROSTER.md](./UNIT_PARTY_BARKS_ROSTER.md) | **队伍羁绊台词库**（招募进队组合短句；规则见 Features） |

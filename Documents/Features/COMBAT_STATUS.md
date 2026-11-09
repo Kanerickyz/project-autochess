@@ -1,7 +1,7 @@
 # 战斗状态（Combat Status）
 
 > 功能规格 · 仅**本场遭遇**内生效的可叠层词条 · 2026-10-27  
-> 相关：[战斗](./COMBAT.md) · [角色技能](./UNIT_ABILITIES.md) · [战斗观战反馈](./COMBAT_FEEDBACK.md) · [增益卡](../BUFF_SYSTEM.md)（Run 持久，**不是**战斗状态）
+> 相关：[战斗](./COMBAT.md) · [角色技能](./UNIT_ABILITIES.md) · [流派](./ARCHETYPE.md) · [战斗观战反馈](./COMBAT_FEEDBACK.md) · [增益卡](../BUFF_SYSTEM.md)（Run 持久，**不是**战斗状态）
 
 ## 1. 这是什么
 
@@ -66,7 +66,12 @@
 | `StatModifierStack` | 本场临时攻/血等 | `MODIFY_STAT` |
 | `CombatStatusStack` | 本场临时词条 | `APPLY_COMBAT_STATUS` |
 
-## 6. 验收口径（玩家可观察）
+## 6. 与中毒流构筑
+
+中毒是异常流本切片的主交付状态；**施加 / 放大 / 读层加伤**等构筑职能见 [流派](./ARCHETYPE.md) §3，内容条目见 [Content/POISON_ARCHETYPE.md](../Content/POISON_ARCHETYPE.md)。  
+本篇只定状态结算；不写流派标签、不写燃烧。
+
+## 7. 验收口径（玩家可观察）
 
 - 叠层至 15 不再增加；遭遇结束后状态不再显示。  
 - 狂暴只改变普攻扣血，不改变技能伤害数字。  
