@@ -68,7 +68,7 @@
 | **防连环** | 该额外伤害**不再**触发「出手上毒」或「再读层数打一段」等连锁；上毒与吃毒分属不同职能技能 |
 | **观战** | 走行动内技能 / 结果短标可读；状态层数仍可在长按信息卡查看（见 [战斗观战反馈](./COMBAT_FEEDBACK.md)） |
 
-**【实现 To-Be】** 效果管线需支持「伤害量读取目标战斗状态层数」的模式（As-Is `EffectAction.DamageMode` 仅有固定值 / 持有者攻击百分比）。功能以本篇为准；资源化前由实现切片补模式，**不**在本篇写字段名定稿。
+**【实现 As-Is】** `EffectAction.DamageMode.TARGET_STATUS_STACKS`：额外伤害 = 目标当前状态层数 × `value`（经升星倍率）；条件 `EVENT_TARGET_HAS_COMBAT_STATUS` + `condition_stat_name`。额外 `DEAL_DAMAGE` 仍 suppress「造成伤害」连锁。
 
 ### 3.5 站位与节奏
 

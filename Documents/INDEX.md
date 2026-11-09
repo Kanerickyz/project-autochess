@@ -21,7 +21,7 @@
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Features/ARCHETYPE.md](./Features/ARCHETYPE.md) | **流派**（内部六主轴；异常流·中毒簇职能与毒向受益者规则） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
-| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（二十四人 · 中世纪魔幻简名；与技能 1:1；realtime 资源已写） |
+| [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（五十二人 · 含中毒三角；与技能 1:1；realtime 资源已写） |
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
 | [Content/UNIT_ABILITIES_ROSTER.md](./Content/UNIT_ABILITIES_ROSTER.md) | **角色技能库**（含回血三条；挂载见角色库 §6） |
 | [Content/POISON_ARCHETYPE.md](./Content/POISON_ARCHETYPE.md) | **中毒流内容**（邻格/命中施加、放大器、毒向受益者草案） |

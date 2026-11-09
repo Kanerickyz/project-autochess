@@ -525,6 +525,14 @@ static func format_effect_spec(
 		and spec.condition == EffectSpec.Condition.KILL_FROM_ATTACK
 	):
 		trigger = "攻击击杀时"
+	elif (
+		spec.trigger == CombatEvents.ON_DEAL_DAMAGE
+		and spec.condition == EffectSpec.Condition.EVENT_TARGET_HAS_COMBAT_STATUS
+	):
+		var status_label := CombatStatusStack.get_display_name(spec.condition_stat_name)
+		if status_label.is_empty():
+			status_label = String(spec.condition_stat_name)
+		trigger = "对已有%s的目标造成伤害时" % status_label
 	var target_text := _format_target(spec)
 	var actions: PackedStringArray = []
 	var has_spawn_or_split := false
@@ -703,6 +711,13 @@ static func format_action(
 		EffectAction.Type.DEAL_DAMAGE:
 			if action.damage_mode == EffectAction.DamageMode.OWNER_ATTACK_PERCENT:
 				return "造成 %d%% 攻击力伤害" % action.percent
+			if action.damage_mode == EffectAction.DamageMode.TARGET_STATUS_STACKS:
+				var status_name := CombatStatusStack.get_display_name(action.stat_name)
+				if status_name.is_empty():
+					status_name = String(action.stat_name)
+				if scaled_value == 1:
+					return "造成约等于目标%s层数的伤害" % status_name
+				return "造成目标%s层数×%d 点伤害" % [status_name, scaled_value]
 			return "造成 %d 点伤害" % scaled_value
 		EffectAction.Type.SET_HP_FROM_ALLY_PERCENT:
 			return "复制 %d%% 生命" % scaled_value
