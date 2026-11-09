@@ -116,14 +116,14 @@ func _test_battle_controller_rules() -> void:
 	)
 
 	## 清空全部座位后不可开战；再入一座可开战（绕过手牌宽度，直接清槽）。
-	var first_cleared: DeckEntry = null
+	var cleared_entries: Array[DeckEntry] = []
 	for i in range(slots.slot_count - 1, -1, -1):
 		var e := slots.try_recall(i)
 		if e == null:
 			continue
 		deck.clear_seat(e.entry_id)
-		if first_cleared == null:
-			first_cleared = e
+		cleared_entries.append(e)
+	var first_cleared: DeckEntry = cleared_entries[0] if not cleared_entries.is_empty() else null
 	_expect(slots.occupied_count() == 0, "controller: all seats cleared")
 	_expect(not battle.try_start_combat(), "controller: cannot start with empty seats")
 	_expect(first_cleared != null, "controller: had seated units before clear")
@@ -133,6 +133,14 @@ func _test_battle_controller_rules() -> void:
 		_expect(battle.try_assign_to_slot(first_cleared.entry_id, slot0).is_empty(), "controller: re-seat from hand")
 		_expect(slots.get_entry(0) != null and slots.get_entry(0).entry_id == first_cleared.entry_id, "controller: seat occupied after re-seat")
 		_expect(slots.get_seat_assign_seq(0) > 0, "controller: seat assign seq recorded")
+	## 再入后排一座，供开战半格行距断言。
+	if cleared_entries.size() >= 2:
+		var back_entry := cleared_entries[1]
+		_expect(battle._card_flow.try_return_to_hand(back_entry), "controller: park back-row unit in hand")
+		_expect(
+			battle.try_assign_to_slot(back_entry.entry_id, slots.get_cell(5)).is_empty(),
+			"controller: seat back-row unit"
+		)
 
 	## 准备刷新手牌已取消
 	_expect(not battle.try_refresh_hand(), "controller: refresh disabled in prepare")
@@ -157,6 +165,7 @@ func _test_battle_controller_rules() -> void:
 
 	# 开战
 	battle.recruit_enter_seconds = 0.0
+	battle.combat_lineup_enter_seconds = 0.0
 	_expect(battle.try_start_combat(), "controller: start combat with >=1 seated")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.COMBAT, "controller: phase COMBAT after start")
 	var arena_combat := battle.get_arena()
@@ -167,6 +176,33 @@ func _test_battle_controller_rules() -> void:
 	_expect(sim.count_alive(UnitInstance.Team.ENEMY) > 0, "controller: enemies spawned on combat start")
 	_expect(sim.count_alive(UnitInstance.Team.PLAYER) >= 1, "controller: allies spawned from seats")
 	_expect(battle.get_hand().is_empty(), "controller: unseated hand returned / cleared on combat")
+	## 开战锁阵后友方前后排表现 Y 间距保持半格（与 PrepareSlotBoard.get_display_center 一致）。
+	var front_rt: RtUnit = null
+	var back_rt: RtUnit = null
+	for rt in sim.get_units():
+		if rt == null or not rt.is_player() or not rt.is_alive():
+			continue
+		if rt.cell.y == slots.get_cell(0).y:
+			front_rt = rt
+		elif rt.cell.y == slots.get_cell(5).y:
+			back_rt = rt
+	_expect(front_rt != null and back_rt != null, "controller: combat has front+back allies for row gap")
+	if front_rt != null and back_rt != null:
+		_expect(
+			is_equal_approx(
+				back_rt.position.y - front_rt.position.y,
+				1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
+			),
+			"controller: combat ally standing y spaced half cell"
+		)
+		_expect(
+			is_equal_approx(front_rt.position.y, slots.get_display_center(0).y),
+			"controller: combat front ally matches prepare display center"
+		)
+		_expect(
+			is_equal_approx(back_rt.position.y, slots.get_display_center(5).y),
+			"controller: combat back ally matches prepare display center"
+		)
 	## 开战敌攻血与准备模板一致（回归：曾只读底模导致无尽层向加压丢失）。
 	var combat_stats_match := true
 	for spawn in battle._enemy_spawns:
