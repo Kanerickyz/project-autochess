@@ -5,15 +5,16 @@ extends RefCounted
 
 static func run_all() -> bool:
 	var ok := true
-	ok = _check("floor_gold_amount", _test_floor_gold_amount()) and ok
-	ok = _check("grant_floor_gold", _test_grant_floor_gold()) and ok
+	ok = _check("floor_gold_amount_legacy", _test_floor_gold_amount()) and ok
+	ok = _check("grant_floor_gold_legacy", _test_grant_floor_gold()) and ok
 	ok = _check("node_completion_gold_types", _test_node_completion_gold_types()) and ok
 	ok = _check("kill_gold_noop", _test_kill_gold_noop()) and ok
-	ok = _check("seat_cap_banner", _test_seat_cap_banner()) and ok
-	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
+	ok = _check("seat_cap_api_legacy", _test_seat_cap_banner()) and ok
+	ok = _check("banner_disabled_on_shop", _test_banner_disabled_on_shop()) and ok
 	ok = _check("recruit_shop_potion", _test_recruit_shop_potion()) and ok
-	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
+	ok = _check("banner_excluded_from_offers", _test_banner_excluded_from_offers()) and ok
 	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
+	ok = _check("victory_choice_constants", _test_victory_choice_constants()) and ok
 	if ok:
 		print("RecruitShopFloorGoldTest: all passed")
 	else:
@@ -162,12 +163,13 @@ static func _test_recruit_shop_potion() -> bool:
 	return entry.bonus_max_hp == hp_before + 1 and entry.bonus_attack == atk_before + 1
 
 
-static func _test_banner_excluded_at_cap10() -> bool:
+static func _test_banner_excluded_from_offers() -> bool:
 	var deck := _make_deck(10)
-	## 强制 override 到 10
-	while not deck.is_seat_cap_maxed():
-		deck.try_increase_seat_cap(1)
 	var cfg := RecruitShopConfig.make_code_defaults()
+	## 即便配置里硬塞旗帜，货架也应排除。
+	cfg.item_pool.append(
+		RecruitShopConfig._make_item("banner", "旗帜", PrepareItemData.ItemType.BANNER, 2)
+	)
 	var econ := _make_economy(20)
 	var shop := RecruitShopService.new()
 	shop.configure(cfg, econ)
@@ -178,41 +180,24 @@ static func _test_banner_excluded_at_cap10() -> bool:
 	return true
 
 
-## 同一招募阶段可多次买旗帜，直到席位满 10。
-static func _test_banner_repeatable_until_cap() -> bool:
+## 主路径禁用旗帜购买。
+static func _test_banner_disabled_on_shop() -> bool:
 	var deck := _make_deck(5)
 	var cfg := RecruitShopConfig.make_code_defaults()
 	var econ := _make_economy(40)
 	var shop := RecruitShopService.new()
 	shop.configure(cfg, econ)
 	shop.open_shop(deck)
-	var banner_slot := -1
-	var items := shop.get_item_offers()
-	for i in items.size():
-		var it: PrepareItemData = items[i]
-		if it != null and it.item_type == PrepareItemData.ItemType.BANNER:
-			banner_slot = i
-			break
-	if banner_slot < 0:
-		return false
-	var buys := 0
-	while not deck.is_seat_cap_maxed() and buys < 10:
-		var r := shop.try_buy_banner(banner_slot, deck)
-		if int(r.get("result", -1)) != RecruitShopService.BuyResult.OK:
-			return false
-		buys += 1
-		## 未满时旗帜槽应仍在，可继续买
-		if not deck.is_seat_cap_maxed():
-			var still := shop.get_item_offer(banner_slot)
-			if still == null or still.item_type != PrepareItemData.ItemType.BANNER:
-				return false
-	if buys < 2:
-		return false
-	if not deck.is_seat_cap_maxed():
-		return false
-	## 满席后该槽应被清空
-	var after := shop.get_item_offer(banner_slot)
-	return after == null
+	var r := shop.try_buy_banner(0, deck)
+	return int(r.get("result", -1)) == RecruitShopService.BuyResult.FAILED
+
+
+static func _test_victory_choice_constants() -> bool:
+	return (
+		RosterBudget.VICTORY_CHOICE_HP == 5
+		and RosterBudget.VICTORY_CHOICE_ATK == 2
+		and RosterBudget.VICTORY_CHOICE_GOLD == 8
+	)
 
 
 static func _test_recruit_candidate_count_default_5() -> bool:
