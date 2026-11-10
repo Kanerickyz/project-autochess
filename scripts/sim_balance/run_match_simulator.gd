@@ -216,9 +216,7 @@ func _resolve_combat_encounter(
 
 	if encounter.bonus_gold > 0:
 		economy.grant(encounter.bonus_gold)
-	## 取代层金：模拟器默认拿 +8 金（三选一之一）；攻/血预算成长留给策略 AI 另接。
-	if _recruit_session.should_offer_recruit(node.get_effective_type(), true):
-		economy.grant(RosterBudget.VICTORY_CHOICE_GOLD)
+	economy.grant_floor_gold(floor)
 
 	if direct_pick and _recruit_session.should_offer_recruit(node.get_effective_type(), true):
 		_direct_recruiter.run_phase(

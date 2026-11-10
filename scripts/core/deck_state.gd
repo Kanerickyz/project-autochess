@@ -5,12 +5,10 @@ signal deck_changed
 ## 自动三合一完成：product 为合成体；consumed_seats 为被合三人的座位（可含 -1）。
 signal triple_merged(product: DeckEntry, consumed_seats: Array)
 
-## 队伍席位上限硬顶（与座位网格容量对齐，默认 2×5=10）。本版无旗帜扩容主路径。
+## 队伍席位上限硬顶（旗帜扩容上限；与座位网格容量对齐，默认 2×5=10）。
 const SEAT_CAP_HARD_MAX := 10
 ## 跨遭遇持久备战区格数（不算上场；旗帜不扩）。
 const BENCH_CAPACITY := 5
-## 主路径关闭自动三合一；函数保留供测试/遗留调用显式打开。
-const AUTO_MERGE_ENABLED_DEFAULT := false
 
 var _config: DeckConfig
 var _level_config: LevelConfig
@@ -18,19 +16,11 @@ var _entries: Array[DeckEntry] = []
 var _next_entry_id: int = 0
 ## 全局落座时间计数；每次成功 assign/swap 递增。
 var _next_seat_seq: int = 0
-## 运行时席位上限；-1 表示沿用 DeckConfig.max_size（遗留旗帜写入此字段）。
+## 运行时席位上限；-1 表示沿用 DeckConfig.max_size（旗帜写入此字段，避免污染共享 .tres）。
 var _seat_cap_override: int = -1
 ## 三合一装备冲突等随机；可注入以便测试。
 var _rng: RandomNumberGenerator
 var _run_stat_ledger: RunStatLedger
-## 攻/血入座预算。
-var budget: RosterBudget = RosterBudget.new()
-## 胜负结算后待退回招募池的 unit id（RecruitSession.begin 时冲刷）。
-var pending_pool_returns: Array[String] = []
-## 入座是否检查/占用预算；开局赠队装载期间临时关闭。
-var _budget_gate_enabled: bool = true
-## 自动三合一总开关（主路径默认关）。
-var auto_merge_enabled: bool = AUTO_MERGE_ENABLED_DEFAULT
 
 
 func set_run_stat_ledger(ledger: RunStatLedger) -> void:
@@ -78,85 +68,19 @@ func reset_from_config() -> void:
 	_next_entry_id = 0
 	_next_seat_seq = 0
 	_seat_cap_override = -1
-	pending_pool_returns.clear()
-	if budget != null:
-		budget.reset()
 	if _config == null:
 		deck_changed.emit()
 		return
-	## 开局赠队：先入座不扣开局 2/2，再 seed 占用以便撤座/离队退预算。
-	_budget_gate_enabled = false
 	if not _config.starting_units.is_empty():
 		for unit_data in _config.starting_units:
 			if unit_data != null:
 				add_entry(unit_data)
-		_budget_gate_enabled = true
-		_seed_opening_gift_occupations()
 		return
 	if _config.starting_unit == null:
-		_budget_gate_enabled = true
 		deck_changed.emit()
 		return
 	for _i in _config.starting_count:
 		add_entry(_config.starting_unit)
-	_budget_gate_enabled = true
-	_seed_opening_gift_occupations()
-
-
-func get_budget() -> RosterBudget:
-	return budget
-
-
-func queue_pool_return(unit_id: String) -> void:
-	if unit_id.is_empty():
-		return
-	pending_pool_returns.append(unit_id)
-
-
-func take_pending_pool_returns() -> Array[String]:
-	var out: Array[String] = []
-	out.assign(pending_pool_returns)
-	pending_pool_returns.clear()
-	return out
-
-
-func get_panel_atk(entry: DeckEntry) -> int:
-	return DeckUpgradeService.get_display_attack(entry)
-
-
-func get_panel_hp(entry: DeckEntry) -> int:
-	return DeckUpgradeService.get_display_max_hp(entry)
-
-
-func can_afford_seat_for(entry: DeckEntry) -> bool:
-	if entry == null or budget == null or not _budget_gate_enabled:
-		return true
-	if budget.is_occupying(entry.entry_id):
-		return true
-	return budget.can_afford(get_panel_atk(entry), get_panel_hp(entry))
-
-
-func _seed_opening_gift_occupations() -> void:
-	if budget == null:
-		return
-	for entry in _entries:
-		if entry == null or entry.seat_index < 0:
-			continue
-		budget.seed_occupy_without_cost(entry.entry_id, get_panel_atk(entry), get_panel_hp(entry))
-
-
-func _try_occupy_entry(entry: DeckEntry) -> bool:
-	if entry == null or budget == null or not _budget_gate_enabled:
-		return true
-	if budget.is_occupying(entry.entry_id):
-		return true
-	return budget.try_occupy(entry.entry_id, get_panel_atk(entry), get_panel_hp(entry))
-
-
-func _release_entry_budget(entry: DeckEntry) -> void:
-	if entry == null or budget == null:
-		return
-	budget.release(entry.entry_id)
 
 
 func get_entries() -> Array[DeckEntry]:
@@ -341,10 +265,7 @@ func try_merge_from_shop(unit_data: UnitData, shop_bonus_max_hp: int = 0) -> Dic
 
 
 ## 再买一只 level 星同 id 是否会凑满 3 只并触发三合一（满员溢出购买用）。
-## 主路径 auto_merge 关闭时恒为 false。
 func would_complete_triple_on_add(unit_data: UnitData, level: int = 1) -> bool:
-	if not auto_merge_enabled:
-		return false
 	if unit_data == null or level < 1 or level >= 3:
 		return false
 	var count := 0
@@ -441,18 +362,11 @@ func replace_entry(
 		return null
 	var old := _entries[index]
 	var inherit_seat := old.seat_index if old != null else -1
-	var inherit_bench := old.bench_slot_index if old != null else -1
-	_release_entry_budget(old)
 	var entry := _create_entry(unit_data)
 	add_bonus_max_hp(entry, shop_bonus_max_hp)
-	## 满员替换：新人继承被替者座位，并刷新落座时间；须付得起预算，否则进备战。
+	## 满员替换：新人继承被替者座位，并刷新落座时间。
 	if inherit_seat >= 0:
-		if can_afford_seat_for(entry) and _try_occupy_entry(entry):
-			_set_seat(entry, inherit_seat, true)
-		else:
-			entry.seat_index = -1
-			entry.bench_slot_index = inherit_bench if inherit_bench >= 0 else -1
-			_claim_first_empty_bench_slot(entry)
+		_set_seat(entry, inherit_seat, true)
 	_entries[index] = entry
 	var survivor := _resolve_after_auto_merge(entry)
 	deck_changed.emit()
@@ -460,10 +374,8 @@ func replace_entry(
 
 
 ## 队伍自动三合一：同 unit.id + 同 level 满 3 且 level < 3 立刻合成。
-## 主路径默认关闭（auto_merge_enabled=false）；测试可显式打开。
+## 可在外部改队伍后手动调用；add/replace 末尾已统一触发。
 func try_auto_merge() -> bool:
-	if not auto_merge_enabled:
-		return false
 	var changed := _run_auto_merges()
 	if changed:
 		deck_changed.emit()
@@ -486,8 +398,6 @@ func remove_entry(entry_id: int) -> bool:
 	var index := _find_index(entry_id)
 	if index < 0:
 		return false
-	var entry := _entries[index]
-	_release_entry_budget(entry)
 	## 出售 / 移除：腾座（条目离开即可）。
 	_entries.remove_at(index)
 	deck_changed.emit()
@@ -520,7 +430,7 @@ func is_seat_free(seat_index: int) -> bool:
 
 
 ## 将成员放到指定空座（或保持原座）；成功刷新落座时间。目标被他人占用时失败。
-## 备战→座位：须未达上场席位上限且预算够。座位→备战请用 try_move_seat_to_bench。
+## 备战→座位：须未达上场席位上限。座位→备战请用 try_move_seat_to_bench。
 func assign_seat(entry_id: int, seat_index: int) -> bool:
 	var entry := get_entry(entry_id)
 	if entry == null:
@@ -534,12 +444,8 @@ func assign_seat(entry_id: int, seat_index: int) -> bool:
 	var from_bench := entry.seat_index < 0
 	if from_bench and not can_seat_more():
 		return false
-	if from_bench and not can_afford_seat_for(entry):
-		return false
 	var occupant := get_entry_at_seat(seat_index)
 	if occupant != null and occupant.entry_id != entry_id:
-		return false
-	if from_bench and not _try_occupy_entry(entry):
 		return false
 	_set_seat(entry, seat_index, true)
 	deck_changed.emit()
@@ -565,10 +471,6 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 		if other != null:
 			return false
 		if not can_seat_more():
-			return false
-		if not can_afford_seat_for(entry):
-			return false
-		if not _try_occupy_entry(entry):
 			return false
 		_set_seat(entry, target_seat, true)
 		deck_changed.emit()
@@ -601,22 +503,14 @@ func try_place_on_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 		if occupant == null:
 			if not can_bench_more():
 				return false
-			_release_entry_budget(entry)
+			var seat := entry.seat_index
 			entry.seat_index = -1
 			entry.seat_assign_seq = 0
 			entry.bench_slot_index = target_bench_slot
 		else:
 			if occupant.entry_id == entry_id:
 				return true
-			## 互换：已入座退预算，备战者须付得起入座预算。
-			if not can_afford_seat_for(occupant):
-				return false
 			var seat := entry.seat_index
-			_release_entry_budget(entry)
-			if not _try_occupy_entry(occupant):
-				## 回滚：原入座者重新占用。
-				_try_occupy_entry(entry)
-				return false
 			_set_seat(occupant, seat, true)
 			entry.seat_index = -1
 			entry.seat_assign_seq = 0
@@ -750,8 +644,6 @@ func _find_index(entry_id: int) -> int:
 func _resolve_after_auto_merge(seed: DeckEntry) -> DeckEntry:
 	if seed == null:
 		return null
-	if not auto_merge_enabled:
-		return seed
 	var track_id := seed.entry_id
 	var track_unit := seed.get_unit_id()
 	_run_auto_merges()
@@ -770,8 +662,6 @@ func _resolve_after_auto_merge(seed: DeckEntry) -> DeckEntry:
 
 
 func _run_auto_merges() -> bool:
-	if not auto_merge_enabled:
-		return false
 	var changed := false
 	while true:
 		var group := _find_mergeable_triple()
@@ -857,9 +747,6 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
 	_entries.append(product)
-	if product.seat_index >= 0:
-		## 合成体重新占用面板预算（已释放三只旧占用）。
-		_try_occupy_entry(product)
 	triple_merged.emit(product, consumed_seats)
 	return product
 
@@ -936,16 +823,12 @@ func _remove_entries_by_ids(ids: Array) -> void:
 		remove_set[int(entry_id)] = true
 	var kept: Array[DeckEntry] = []
 	for entry in _entries:
-		if entry == null:
-			continue
-		if remove_set.has(entry.entry_id):
-			_release_entry_budget(entry)
-			continue
-		kept.append(entry)
+		if entry != null and not remove_set.has(entry.entry_id):
+			kept.append(entry)
 	_entries = kept
 
 
-## 招募进门快照：深拷贝条目（含 entry_id / 等级 / 增益 / 持久占位 / 席位上限 / 预算）。
+## 招募进门快照：深拷贝条目（含 entry_id / 等级 / 增益 / 持久占位 / 席位上限）。
 func capture_roster() -> Dictionary:
 	var copies: Array[DeckEntry] = []
 	for entry in _entries:
@@ -956,8 +839,6 @@ func capture_roster() -> Dictionary:
 		"next_entry_id": _next_entry_id,
 		"next_seat_seq": _next_seat_seq,
 		"seat_cap_override": _seat_cap_override,
-		"budget": budget.capture() if budget != null else {},
-		"pending_pool_returns": pending_pool_returns.duplicate(),
 	}
 
 
@@ -970,28 +851,11 @@ func restore_roster(snapshot: Dictionary) -> void:
 	_next_entry_id = int(snapshot.get("next_entry_id", _next_entry_id))
 	_next_seat_seq = int(snapshot.get("next_seat_seq", 0))
 	_seat_cap_override = int(snapshot.get("seat_cap_override", -1))
-	if snapshot.has("budget") and budget != null:
-		budget.restore(snapshot.get("budget", {}))
-	else:
-		_rebuild_budget_from_seated()
-	pending_pool_returns.clear()
-	var pending: Array = snapshot.get("pending_pool_returns", [])
-	for unit_id in pending:
-		pending_pool_returns.append(str(unit_id))
 	if _next_seat_seq <= 0:
 		for entry in _entries:
 			if entry != null:
 				_next_seat_seq = maxi(_next_seat_seq, entry.seat_assign_seq)
 	deck_changed.emit()
-
-
-func _rebuild_budget_from_seated() -> void:
-	if budget == null:
-		return
-	budget.reset()
-	for entry in _entries:
-		if entry != null and entry.seat_index >= 0:
-			budget.seed_occupy_without_cost(entry.entry_id, get_panel_atk(entry), get_panel_hp(entry))
 
 
 func _clone_entry(source: DeckEntry) -> DeckEntry:
@@ -1018,14 +882,14 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 
 
 ## prefer_bench=true：优先备战；备战满且上场未满 → 首空座。
-## prefer_bench=false（招募点买默认）：优先首空座（预算够）；上场满/预算不足 → 备战。
+## prefer_bench=false（招募点买默认）：优先首空座；上场满 → 备战。指定 preferred_seat 则落该空座。
 ## 注意：调用时 entry 可能已在 _entries 且 seat_index=-1，备战计数含自身。
 func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool = false) -> void:
 	if entry == null:
 		return
 	## 显式空座（拖到上区）：优先落指定座。
 	if preferred_seat >= 0 and preferred_seat < get_slot_count() and is_seat_free(preferred_seat):
-		if can_seat_more() and can_afford_seat_for(entry) and _try_occupy_entry(entry):
+		if can_seat_more():
 			_set_seat(entry, preferred_seat, true)
 			return
 	if prefer_bench:
@@ -1033,19 +897,19 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 		if get_bench_count() <= BENCH_CAPACITY:
 			## seat_index 保持 -1 = 备战。
 			return
-		if can_seat_more() and can_afford_seat_for(entry):
+		if can_seat_more():
 			var empty := find_first_empty_seat()
-			if empty >= 0 and _try_occupy_entry(entry):
+			if empty >= 0:
 				_set_seat(entry, empty, true)
 		return
-	## 开局 / 非备战路径：尽量入座，席位满或预算不足再进备战。
+	## 开局 / 非备战路径：尽量入座，席位满再进备战。
 	var seat := preferred_seat
 	if seat < 0 or seat >= get_slot_count() or not is_seat_free(seat):
 		seat = find_first_empty_seat()
-	if seat >= 0 and can_seat_more() and can_afford_seat_for(entry) and _try_occupy_entry(entry):
+	if seat >= 0 and can_seat_more():
 		_set_seat(entry, seat, true)
 		return
-	## 上场已满或预算不足：落在首个空备战格。
+	## 上场已满：落在首个空备战格。
 	_claim_first_empty_bench_slot(entry)
 
 

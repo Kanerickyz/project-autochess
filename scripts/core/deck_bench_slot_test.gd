@@ -25,8 +25,6 @@ static func _deck() -> DeckState:
 	cfg.seat_cols = 5
 	cfg.max_board_units = 5
 	deck.configure(cfg)
-	deck.budget.grant_atk(50)
-	deck.budget.grant_hp(50)
 	return deck
 
 

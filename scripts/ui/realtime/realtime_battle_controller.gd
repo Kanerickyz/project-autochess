@@ -94,13 +94,7 @@ var _sim: RealtimeCombatSim
 var _bus: CombatEventBus
 var _won: bool = false
 var _last_encounter_elapsed_seconds: float = 0.0
-## 【遗留】层金；主路径已改胜后三选一，恒为 0。
 var _floor_gold: int = 0
-## 开战锁阵瞬间的友方基准面板（entry_id → {atk,hp,unit_id}）；胜负结算离队用。
-var _combat_roster_baselines: Dictionary = {}
-## 普通/精英胜后三选一是否已选；未选则挡住「继续」。
-var _budget_choice_pending: bool = false
-var _budget_choice_row: HBoxContainer
 var _hint_text: String = ""
 var _hint_remaining: float = 0.0
 ## 本 Run 已提示过的最高解锁品阶；部署阶段新档出现时播 toast。
@@ -316,12 +310,10 @@ func is_combat_sandbox_mode() -> bool:
 func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void:
 	_disconnect_economy()
 	_disconnect_deck_merge()
-	_disconnect_roster_budget()
 	_deck_state = deck_state
 	_economy = economy
 	_level = level
 	_connect_deck_merge()
-	_connect_roster_budget()
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
 	_refresh_hud()
@@ -339,24 +331,6 @@ func _disconnect_deck_merge() -> void:
 		return
 	if _deck_state.triple_merged.is_connected(_on_deck_triple_merged):
 		_deck_state.triple_merged.disconnect(_on_deck_triple_merged)
-
-
-func _connect_roster_budget() -> void:
-	if _deck_state == null or _deck_state.budget == null:
-		return
-	if not _deck_state.budget.budget_changed.is_connected(_on_roster_budget_changed):
-		_deck_state.budget.budget_changed.connect(_on_roster_budget_changed)
-
-
-func _disconnect_roster_budget() -> void:
-	if _deck_state == null or _deck_state.budget == null:
-		return
-	if _deck_state.budget.budget_changed.is_connected(_on_roster_budget_changed):
-		_deck_state.budget.budget_changed.disconnect(_on_roster_budget_changed)
-
-
-func _on_roster_budget_changed() -> void:
-	_refresh_hud()
 
 
 func _on_deck_triple_merged(product: DeckEntry, consumed_seats: Array) -> void:
@@ -430,9 +404,6 @@ func start_encounter(
 	_node_type = _resolve_node_type(encounter, node_type)
 	_won = false
 	_floor_gold = 0
-	_combat_roster_baselines.clear()
-	_budget_choice_pending = false
-	_hide_budget_victory_choice()
 	_selected_entry_id = -1
 	_lock_phase_active = false
 	_result_overlay.visible = false
@@ -1141,8 +1112,6 @@ func restart_sandbox_prepare() -> void:
 func continue_after_result() -> void:
 	if _phase != Phase.RESULT:
 		return
-	if _budget_choice_pending:
-		return
 	if _boss_final_trial_offer:
 		_boss_final_trial_offer = false
 		_update_result_action_buttons()
@@ -1764,8 +1733,6 @@ func _spawn_combat_sim_from_lock(silent: bool) -> Array:
 	_arena.placement_active = false
 	_arena.clear_fx()
 
-	if not silent:
-		_combat_roster_baselines.clear()
 	for slot_i in _slots.get_occupied_indices_by_seat_order():
 		var entry := _slots.get_entry(slot_i)
 		if entry == null:
@@ -1780,11 +1747,6 @@ func _spawn_combat_sim_from_lock(silent: bool) -> Array:
 		var from_pos := _slots.get_display_center(slot_i)
 		var rt := _sim.add_unit(unit, from_pos)
 		if rt != null and not silent:
-			_combat_roster_baselines[entry.entry_id] = {
-				"atk": DeckUpgradeService.get_display_attack(entry),
-				"hp": DeckUpgradeService.get_display_max_hp(entry),
-				"unit_id": entry.get_unit_id(),
-			}
 			lineup_moves.append({
 				"rt": rt,
 				"from": from_pos,
@@ -3012,8 +2974,7 @@ func _build_recruit_candidate_previews() -> Array:
 	for i in list.size():
 		var unit: UnitData = list[i]
 		var cell := cells[i] if i < cells.size() else NO_CELL
-		## 入手不花金；UI 标价 0。
-		var cost := 0
+		var cost := _recruit_session.get_recruit_cost(unit) if unit != null else 0
 		result.append({
 			"index": i,
 			"unit": unit,
@@ -3161,16 +3122,15 @@ func _refresh_recruit_hud() -> void:
 		_recruit_seat.text = "入座 %d/%d 备战 %d/%d" % [
 			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
-	var budget_txt := _format_budget_hud(deck)
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
 		elif _recruit_session.require_nonempty_roster and roster_n < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
-			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（退预算与池份）"
+			_recruit_hint.text = "拥有已满：先出售腾位，或拖候选人到上区替换（旧人不退金）；可三合一时可点买"
 		else:
-			_recruit_hint.text = "点买不花金，优先入座（预算不够进备战）；出售退预算"
+			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
@@ -3185,12 +3145,8 @@ func _refresh_recruit_hud() -> void:
 	if _phase_label != null:
 		_phase_label.text = "招募"
 	if _pop_label != null:
-		_pop_label.text = "入座 %d/%d 备战 %d/%d  %s" % [
-			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY, budget_txt,
-		]
-	if _recruit_seat != null and not budget_txt.is_empty():
-		_recruit_seat.text = "入座 %d/%d 备战 %d/%d  %s" % [
-			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY, budget_txt,
+		_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
+			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
 	if _encounter_label != null:
 		_encounter_label.text = "招募"
@@ -3308,8 +3264,21 @@ func _on_recruit_item_pressed(item_slot: int) -> void:
 	if item == null:
 		return
 	if item.item_type == PrepareItemData.ItemType.BANNER:
-		## 主路径已移除旗帜扩容。
-		_show_recruit_item_hint("本版无旗帜")
+		var result := _recruit_shop.try_buy_banner(item_slot, _deck_state)
+		if int(result.get("result", RecruitShopService.BuyResult.FAILED)) != RecruitShopService.BuyResult.OK:
+			var reason := String(result.get("reason", ""))
+			match reason:
+				"cant_afford":
+					_show_recruit_item_hint("金币不足")
+				"cap_maxed":
+					_show_recruit_item_hint("席位已达上限")
+				_:
+					_show_recruit_item_hint("无法购买旗帜")
+			return
+		_recruit_pending_item_slot = -1
+		_show_recruit_item_hint("席位上限 +1（当前 %d）" % _deck_state.get_max_size())
+		_sync_recruit_arena()
+		_refresh_recruit_hud()
 		return
 	## 药水：进入选目标；也可拖到上区角色。
 	_recruit_pending_item_slot = item_slot
@@ -3937,16 +3906,14 @@ func _on_combat_finished(won: bool) -> void:
 	_won = won
 	_last_encounter_elapsed_seconds = _sim.elapsed_seconds if _sim != null else 0.0
 	_floor_gold = 0
-	_budget_choice_pending = false
-	_hide_budget_victory_choice()
-	var fallen_n := 0
 	if (
 		won
+		and _economy != null
 		and not _combat_sandbox_mode
 		and not _final_trial_active
 	):
-		## 胜负结算：倒下的已入座友方永久离队，退开战前基准预算与池份。
-		fallen_n = _settle_fallen_seated_allies()
+		## 层结算金取代波次金；仅胜利发放（与原 grant_wave_gold 时机对齐）。
+		_floor_gold = _economy.grant_floor_gold(_floor_index)
 	_boss_final_trial_offer = _should_offer_final_trial_after_boss()
 	_result_label.text = "胜利" if won else "失败"
 	if _final_trial_active:
@@ -3969,26 +3936,15 @@ func _on_combat_finished(won: bool) -> void:
 		if _continue_button != null:
 			_continue_button.text = "再来一局"
 	else:
-		var detail := "用时 %s" % _format_time(_sim.elapsed_seconds)
-		if won:
-			if fallen_n > 0:
-				detail += "  损队 %d" % fallen_n
-			if _should_offer_budget_victory_choice():
-				detail += "\n选择一项成长后继续"
-			_result_detail.text = detail
-			if _boss_final_trial_offer:
-				_result_detail.text += "\n可继续通关，或挑战最终试炼"
-			if _should_offer_budget_victory_choice():
-				_show_budget_victory_choice()
-			else:
-				if _continue_button != null:
-					_continue_button.text = "继续"
-				_update_result_action_buttons()
-		else:
-			_result_detail.text = "%s  我方全灭" % detail
-			if _continue_button != null:
-				_continue_button.text = "继续"
-			_update_result_action_buttons()
+		_result_detail.text = (
+			"用时 %s  层金 +%d" % [_format_time(_sim.elapsed_seconds), _floor_gold]
+			if won else "用时 %s  我方全灭" % _format_time(_sim.elapsed_seconds)
+		)
+		if _boss_final_trial_offer:
+			_result_detail.text += "\n可继续通关，或挑战最终试炼"
+		if _continue_button != null:
+			_continue_button.text = "继续"
+		_update_result_action_buttons()
 	_result_overlay.visible = true
 	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
 	_set_phase(Phase.RESULT)
@@ -3996,160 +3952,8 @@ func _on_combat_finished(won: bool) -> void:
 	combat_resolved.emit(won)
 
 
-## 收集本场倒下的已入座友方：移出队伍、退开战前基准预算、池份入 pending。
-func _settle_fallen_seated_allies() -> int:
-	if _deck_state == null or _combat_roster_baselines.is_empty():
-		return 0
-	var fallen_ids: Array[int] = []
-	for entry_id in _combat_roster_baselines.keys():
-		var eid := int(entry_id)
-		var entry := _deck_state.get_entry(eid)
-		if entry == null:
-			continue
-		## 召唤物不在 baselines；只处理开战锁阵的编制单位。
-		var alive := false
-		if _sim != null:
-			alive = _sim.find_unit_by_deck_entry(eid) != null
-		if alive:
-			continue
-		fallen_ids.append(eid)
-	var removed := 0
-	for eid in fallen_ids:
-		var entry := _deck_state.get_entry(eid)
-		if entry == null:
-			continue
-		var baseline: Dictionary = _combat_roster_baselines.get(eid, {})
-		var unit_id := str(baseline.get("unit_id", entry.get_unit_id()))
-		var atk := int(baseline.get("atk", DeckUpgradeService.get_display_attack(entry)))
-		var hp := int(baseline.get("hp", DeckUpgradeService.get_display_max_hp(entry)))
-		## 优先按占用账释放；若占用与开战前不一致，用开战前基准补差额。
-		var occ_atk := 0
-		var occ_hp := 0
-		if _deck_state.budget != null and _deck_state.budget.is_occupying(eid):
-			var occ := _deck_state.budget.get_occupation(eid)
-			occ_atk = int(occ.get("atk", 0))
-			occ_hp = int(occ.get("hp", 0))
-		if not _deck_state.remove_entry(eid):
-			continue
-		if _deck_state.budget != null:
-			var extra_atk := maxi(0, atk - occ_atk)
-			var extra_hp := maxi(0, hp - occ_hp)
-			if extra_atk > 0:
-				_deck_state.budget.grant_atk(extra_atk)
-			if extra_hp > 0:
-				_deck_state.budget.grant_hp(extra_hp)
-		_deck_state.queue_pool_return(unit_id)
-		removed += 1
-	_combat_roster_baselines.clear()
-	return removed
-
-
-func _should_offer_budget_victory_choice() -> bool:
-	if not _won or _combat_sandbox_mode or _final_trial_active:
-		return false
-	if _boss_final_trial_offer:
-		return false
-	if _node_type == MapNodeType.Type.BOSS:
-		return false
-	if _encounter != null and _encounter.is_boss:
-		return false
-	return (
-		_node_type == MapNodeType.Type.COMBAT
-		or _node_type == MapNodeType.Type.ELITE
-	)
-
-
-func _ensure_budget_choice_row() -> void:
-	if _budget_choice_row != null or _result_overlay == null:
-		return
-	_budget_choice_row = HBoxContainer.new()
-	_budget_choice_row.name = "BudgetVictoryChoiceRow"
-	_budget_choice_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_budget_choice_row.add_theme_constant_override("separation", 12)
-	_budget_choice_row.visible = false
-	var parent := _continue_button.get_parent() if _continue_button != null else _result_overlay
-	parent.add_child(_budget_choice_row)
-	if _continue_button != null:
-		parent.move_child(_budget_choice_row, _continue_button.get_index())
-	var specs := [
-		{"id": "hp", "text": "+%d 血预算" % RosterBudget.VICTORY_CHOICE_HP},
-		{"id": "atk", "text": "+%d 攻预算" % RosterBudget.VICTORY_CHOICE_ATK},
-		{"id": "gold", "text": "+%d 金" % RosterBudget.VICTORY_CHOICE_GOLD},
-	]
-	for spec in specs:
-		var btn := Button.new()
-		btn.text = str(spec["text"])
-		btn.custom_minimum_size = Vector2(140, 40)
-		btn.pressed.connect(_on_budget_victory_choice_pressed.bind(str(spec["id"])))
-		_budget_choice_row.add_child(btn)
-
-
-func _show_budget_victory_choice() -> void:
-	_ensure_budget_choice_row()
-	_budget_choice_pending = true
-	if _budget_choice_row != null:
-		_budget_choice_row.visible = true
-	if _continue_button != null:
-		_continue_button.visible = false
-	if _final_trial_button != null:
-		_final_trial_button.visible = false
-
-
-func _hide_budget_victory_choice() -> void:
-	_budget_choice_pending = false
-	if _budget_choice_row != null:
-		_budget_choice_row.visible = false
-	if _continue_button != null:
-		_continue_button.visible = true
-
-
-func is_budget_victory_choice_pending() -> bool:
-	return _budget_choice_pending
-
-
-## 胜后三选一：hp / atk / gold。供 UI 与测试。
-func apply_budget_victory_choice(choice_id: String) -> bool:
-	if _phase != Phase.RESULT or not _budget_choice_pending:
-		return false
-	match choice_id:
-		"hp":
-			if _deck_state != null and _deck_state.budget != null:
-				_deck_state.budget.grant_hp(RosterBudget.VICTORY_CHOICE_HP)
-		"atk":
-			if _deck_state != null and _deck_state.budget != null:
-				_deck_state.budget.grant_atk(RosterBudget.VICTORY_CHOICE_ATK)
-		"gold":
-			if _economy != null:
-				_economy.grant(RosterBudget.VICTORY_CHOICE_GOLD)
-		_:
-			return false
-	_hide_budget_victory_choice()
-	if _result_detail != null:
-		_result_detail.text = "成长已入账 · 用时 %s" % _format_time(
-			_last_encounter_elapsed_seconds
-		)
-	if _continue_button != null:
-		_continue_button.text = "继续"
-		_continue_button.visible = true
-	_update_result_action_buttons()
-	return true
-
-
-func _on_budget_victory_choice_pressed(choice_id: String) -> void:
-	apply_budget_victory_choice(choice_id)
-
-
 func _on_gold_changed(_amount: int) -> void:
 	_refresh_hud()
-
-
-func _format_budget_hud(deck: DeckState) -> String:
-	if deck == null or deck.budget == null:
-		return ""
-	return "预算 攻%d 血%d" % [
-		deck.budget.get_remaining_atk(),
-		deck.budget.get_remaining_hp(),
-	]
 
 
 func _find_player_unit_at(tile_pos: Vector2) -> RtUnit:
@@ -4420,15 +4224,12 @@ func _refresh_hud() -> void:
 	var discard_n := _card_flow.get_discard_count()
 	var seated_n := _slots.occupied_count()
 	var bench_n := _deck_state.get_bench_count() if _deck_state != null else 0
-	var budget_txt := _format_budget_hud(_deck_state)
 	_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
 		seated_n,
 		_deploy_cap,
 		bench_n,
 		DeckState.BENCH_CAPACITY,
 	]
-	if not budget_txt.is_empty():
-		_pop_label.text += "  %s" % budget_txt
 	if hand_n + draw_n + discard_n > 0:
 		_pop_label.text += "  手 %d 库 %d 弃 %d" % [hand_n, draw_n, discard_n]
 	var elapsed := _sim.elapsed_seconds if _sim != null else 0.0
