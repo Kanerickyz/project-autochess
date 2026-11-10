@@ -6,7 +6,7 @@ const DEFAULT_PATH := "res://resources/recruit_shop/default_recruit_shop.tres"
 const DEFAULT_POTION_COST := 1
 const DEFAULT_BANNER_COST := 2
 
-## 道具池（生命药水 / 力量药水 / 旗帜）；空则用代码默认三件。
+## 道具池（生命药水 / 力量药水；本版主路径无旗帜）。空则用代码默认药水。
 @export var item_pool: Array[PrepareItemData] = []
 @export_range(0, 99, 1) var default_potion_cost: int = DEFAULT_POTION_COST
 @export_range(0, 99, 1) var default_banner_cost: int = DEFAULT_BANNER_COST
@@ -28,7 +28,6 @@ static func make_code_defaults() -> RecruitShopConfig:
 	config.item_pool = [
 		_make_item("hp_potion", "生命药水", PrepareItemData.ItemType.HP_POTION, DEFAULT_POTION_COST),
 		_make_item("atk_potion", "力量药水", PrepareItemData.ItemType.ATK_POTION, DEFAULT_POTION_COST),
-		_make_item("banner", "旗帜", PrepareItemData.ItemType.BANNER, DEFAULT_BANNER_COST),
 	]
 	return config
 
@@ -48,7 +47,8 @@ static func _make_item(
 	return item
 
 
-func get_item_pool(exclude_banner: bool = false) -> Array[PrepareItemData]:
+func get_item_pool(exclude_banner: bool = true) -> Array[PrepareItemData]:
+	## 主路径默认排除旗帜；遗留资源若仍含旗帜也不会上架。
 	var source: Array[PrepareItemData] = item_pool
 	if source.is_empty():
 		source = make_code_defaults().item_pool

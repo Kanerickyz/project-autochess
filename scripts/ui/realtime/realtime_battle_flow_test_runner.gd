@@ -78,7 +78,8 @@ func _test_battle_controller_rules() -> void:
 	var deploy_cap := battle.get_deploy_cap()
 	_expect(deploy_cap == mini(deck.get_max_size(), deck.get_slot_count()), "controller: deploy_cap from max_size ∩ seats")
 	_expect(deploy_cap == battle.get_max_board_units(), "controller: get_max_board_units == deploy_cap")
-	_expect(deploy_cap < slots.slot_count, "controller: deploy_cap < seat total (empty seats normal)")
+	## 本版席位硬顶 10 = 2×5 网格；deploy_cap 可等于座位数（席位内全体上场）。
+	_expect(deploy_cap <= slots.slot_count, "controller: deploy_cap <= seat total")
 	_expect(slots.occupied_count() >= 1, "controller: persistent seats auto-filled from deck")
 	_expect(slots.occupied_count() <= deploy_cap, "controller: occupied within deploy_cap")
 	_expect(battle.get_sim() == null, "controller: sim not started in PREPARE")
@@ -267,13 +268,20 @@ func _test_battle_controller_rules() -> void:
 	_expect(not battle.try_assign_to_slot(0, slots.get_cell(0)).is_empty(), "controller: assign rejected in COMBAT")
 
 	var gold_before := economy.gold
+	var atk_before := deck.budget.get_remaining_atk() if deck.budget != null else 0
 	for rt in sim.get_units():
 		if not rt.is_player():
 			rt.unit.current_hp = 0
 	sim.advance_fixed_step()
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RESULT, "controller: RESULT after enemies wiped")
 	_expect(sim.did_player_win(), "controller: player won")
-	_expect(economy.gold > gold_before, "controller: wave gold granted on win")
+	_expect(battle.is_budget_victory_choice_pending(), "controller: budget choice replaces floor gold")
+	_expect(economy.gold == gold_before, "controller: no floor gold before choice")
+	_expect(battle.apply_budget_victory_choice("atk"), "controller: pick +2 atk budget")
+	_expect(
+		deck.budget.get_remaining_atk() == atk_before + RosterBudget.VICTORY_CHOICE_ATK,
+		"controller: atk budget granted by choice"
+	)
 
 	var completed: Array = []
 	battle.encounter_completed.connect(func(won: bool) -> void: completed.append(won))

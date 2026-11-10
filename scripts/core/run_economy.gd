@@ -60,7 +60,7 @@ func grant_kill_gold(_unit_data: UnitData) -> void:
 	return
 
 
-## 层结算金：第 n 层胜利发 n+3 金（原 n+1，再多给 2）。
+## 【遗留】层结算金：主路径已改胜后三选一；保留签名供事件/商店节点与旧测。
 ## floor_index：地图层号（1=第1层）；若传入 0-based 下标 0，按第 1 层发 4 金。
 func grant_floor_gold(floor_index: int) -> int:
 	var amount := resolve_floor_gold_amount(floor_index)

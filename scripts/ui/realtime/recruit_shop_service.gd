@@ -1,6 +1,6 @@
 class_name RecruitShopService
 extends RefCounted
-## 招募半场道具行：生命/力量药水与旗帜；即时扣金；买走槽空。
+## 招募半场道具行：生命/力量药水（主路径无旗帜）；即时扣金；买走槽空。
 ## 角色候选仍由 RecruitSession 负责。
 
 signal shop_changed
@@ -49,8 +49,9 @@ func roll_offers(deck: DeckState) -> void:
 	if _config == null:
 		shop_changed.emit()
 		return
-	var exclude_banner := deck != null and deck.is_seat_cap_maxed()
-	var items := _config.get_item_pool(exclude_banner)
+	## 主路径始终排除旗帜（席位硬顶 10，无扩容道具）。
+	var _unused_deck := deck
+	var items := _config.get_item_pool(true)
 	for item in items:
 		_item_offers.append(item)
 	shop_changed.emit()
@@ -93,9 +94,9 @@ func can_afford_item(index: int) -> bool:
 	return _economy.can_afford(get_item_cost(item))
 
 
-## 买旗帜：无目标，席位 +1（≤10）；成功清空该槽。
+## 【遗留】买旗帜：主路径道具行不再出旗帜；保留供旧测/调试，默认失败。
 func try_buy_banner(slot_index: int, deck: DeckState) -> Dictionary:
-	var failed := {"result": BuyResult.FAILED, "reason": "failed"}
+	var failed := {"result": BuyResult.FAILED, "reason": "banner_disabled"}
 	if not _open or deck == null or _economy == null:
 		failed["reason"] = "shop_closed"
 		return failed
@@ -103,23 +104,8 @@ func try_buy_banner(slot_index: int, deck: DeckState) -> Dictionary:
 	if item == null or item.item_type != PrepareItemData.ItemType.BANNER:
 		failed["reason"] = "not_banner"
 		return failed
-	if deck.is_seat_cap_maxed():
-		failed["reason"] = "cap_maxed"
-		return failed
-	var cost := get_item_cost(item)
-	if not _economy.spend(cost):
-		failed["reason"] = "cant_afford"
-		return failed
-	if not deck.try_increase_seat_cap(1):
-		_economy.grant(cost)
-		failed["reason"] = "cap_failed"
-		return failed
-	_economy.note_banner_purchased()
-	## 未满席时可反复购买同一旗帜槽；满 10 后清空该槽。
-	if deck.is_seat_cap_maxed():
-		_item_offers[slot_index] = null
-	shop_changed.emit()
-	return {"result": BuyResult.OK, "reason": ""}
+	## 主路径禁用旗帜扩容。
+	return failed
 
 
 ## 买药水并对目标成员施加永久加成。
