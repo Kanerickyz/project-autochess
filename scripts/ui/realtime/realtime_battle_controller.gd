@@ -2992,12 +2992,18 @@ func _build_recruit_item_previews() -> Array:
 	return result
 
 
+## 高大盘可保留 mid / cand / 空行 / action；矮盘放不下时走紧凑布局。
+func _recruit_uses_compact_layout() -> bool:
+	var mid := BoardHalf.midline_row(_board_size.y)
+	return _board_size.y < mid + 1 + 2 + 1
+
+
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
 	## 招募半场第 1 行：候选人一行占满宽度（gap=0）；mid 行留给备战中缝。
-	## 下方留空一行 + 道具/锁/卖行，故上限 y-3。
+	## 禁止钳回 mid（5×4 会与备战同格）；可落到 board_size.y 作虚拟行。
 	var mid := BoardHalf.midline_row(_board_size.y)
-	var y := clampi(mid + 1, mid, maxi(mid, _board_size.y - 3))
+	var y := mid + 1
 	var gap := 0
 	var block_w := n
 	if block_w > _board_size.x:
@@ -3011,17 +3017,19 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
-## 招募半场第 2 行 y：候选人下再空一行（cand_y+2）；道具/锁定/出售共用，禁止落到 +3。
+## 招募半场第 2 行 y：高大盘 cand_y+2（中间空一行）；矮盘 cand_y+1（可贴虚拟行）。
 func _recruit_action_row_y() -> int:
 	var mid := BoardHalf.midline_row(_board_size.y)
 	var cand_count := RecruitSession.CANDIDATE_COUNT
 	if _recruit_session != null:
 		cand_count = _recruit_session.get_candidate_slot_count()
 	var cand := _build_recruit_candidate_cells(cand_count)
-	var y := mid + 3
+	var cand_y := mid + 1
 	if not cand.is_empty():
-		y = cand[0].y + 2
-	return clampi(y, mid, maxi(mid, _board_size.y - 1))
+		cand_y = cand[0].y
+	if _recruit_uses_compact_layout():
+		return cand_y + 1
+	return cand_y + 2
 
 
 func _build_recruit_item_cells(count: int) -> Array[Vector2i]:

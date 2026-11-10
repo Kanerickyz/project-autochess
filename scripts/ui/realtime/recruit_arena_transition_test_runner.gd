@@ -125,27 +125,32 @@ func _test_recruit_arena_transition() -> void:
 			absf(arena.size.y - prepare_arena_h) <= 2.0,
 			"arena height matches prepare (no dock collapse)"
 		)
-	## 招募半场两行：候选 mid+1；道具/锁/卖 cand_y+2（中间空一行）；备战中缝。
-	var mid_y := BoardHalf.midline_row(battle.get_board_size().y)
-	var expected_cand_y := clampi(mid_y + 1, mid_y, maxi(mid_y, battle.get_board_size().y - 3))
-	var expected_action_y := expected_cand_y + 2
+	## 招募半场两行：候选 mid+1；高大盘动作 cand_y+2，矮盘紧凑 cand_y+1；备战中缝。
+	var board_h := battle.get_board_size().y
+	var mid_y := BoardHalf.midline_row(board_h)
+	var compact := board_h < mid_y + 1 + 2 + 1
+	var expected_cand_y := mid_y + 1
+	var expected_action_y := expected_cand_y + (1 if compact else 2)
 	var cand0: Dictionary = arena.recruit_candidates[0] if arena.recruit_candidates.size() > 0 else {}
 	var cand_cell: Vector2i = cand0.get("cell", Vector2i(-1, -1))
 	_expect(cand_cell.y == expected_cand_y, "candidate row in recruit half row 1 (mid+1)")
 	if not arena.recruit_items.is_empty():
 		var item_cell: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item_cell.y == expected_action_y, "item row y == cand_y+2")
+		_expect(item_cell.y == expected_action_y, "item row y matches compact/tall layout")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell on action row")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock on action row")
 	_expect(arena.bench_slots != null and arena.bench_slots.get_cell(0).y == mid_y, "recruit bench on midline")
+	_expect(mid_y != expected_cand_y, "bench.y != candidate.y")
 	if arena.bench_slots != null and arena.recruit_team_slots != null and not arena.recruit_candidates.is_empty():
 		var team_max_y := -1
 		for si in arena.recruit_team_slots.slot_count:
 			team_max_y = maxi(team_max_y, arena.recruit_team_slots.get_cell(si).y)
 		var bench_cy := arena.bench_slot_center_local(0).y
 		var team_by := arena.tile_to_local(Vector2(2.5, float(team_max_y) + 0.5)).y
-		var cand_cy := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5)).y
+		var cand_center := arena.tile_to_local(Vector2(cand_cell) + Vector2(0.5, 0.5))
+		var cand_cy := cand_center.y
 		_expect(bench_cy > team_by and bench_cy < cand_cy, "recruit bench between team and candidates")
+		_expect(arena.find_bench_slot_at_local(cand_center) < 0, "candidate center does not hit bench")
 
 	## 规则：刷新仍可用；进门快照仍由 session.reset() 供跳过/测试
 	var gold_before := economy.gold
