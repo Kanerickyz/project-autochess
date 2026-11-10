@@ -4,12 +4,19 @@ extends Node
 ## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别蓄力、出手、受击，
 ## 死亡由控制器生成残影：侧倒淡出结束后移除，不再绘制。
 
-## 一格步进：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
+## 行走（格步 / 连续滑移共用语汇）：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
 const WALK_TILT := 0.16
 const WALK_HOP_TILES := 0.1
 const WALK_LEAN := 0.12
 const WALK_SQUASH := Vector2(1.08, 0.92)
 const WALK_SHADOW_MUL := 1.55
+## 连续滑移：位移累计超过此阈值才算在走；每走这么多「格」完成一跳周期。
+const WALK_SLIDE_SPEED_MIN := 0.12
+const WALK_SLIDE_CYCLE_TILES := 0.55
+## 起步瞬间短 tween：微抬 + 朝向倾，接到周期采样。
+const WALK_START_SEC := 0.08
+const WALK_START_LIFT := 0.06
+const WALK_START_TILT := 0.14
 ## 非行动者 / 准备席待机：轻呼吸起伏（战斗用 idle_tween；准备/招募用 sample_idle）。
 const IDLE_BOB_TILES := 0.045
 const IDLE_SQUASH := Vector2(1.04, 0.96)
@@ -95,6 +102,14 @@ class Tracked:
 	var last_hit := RtUnit.NEVER
 	## 近战蓄力时给目标迎击的 partner（instance_id）；取消蓄力时一并 soft_home。
 	var windup_partner_id: int = 0
+	## 连续滑移行走采样：上一帧逻辑坐标、路程相位、朝向、是否在走。
+	var last_logic_pos := Vector2.ZERO
+	var has_logic_pos := false
+	var slide_phase := 0.0
+	var slide_dir := Vector2.ZERO
+	var sliding := false
+	## 停步累计秒：防软碰撞微抖反复触发起步 tween。
+	var slide_quiet_sec := 0.0
 
 
 class Corpse:
@@ -253,9 +268,10 @@ static func sample_drag_hold(elapsed: float, velocity_tiles: Vector2) -> Diction
 
 
 ## 每帧由战场视图调用：同步场上单位，识别蓄力 / 出手 / 受击，并更新行走摆动。
-## current_actor：当前行动者不播待机；其余存活单位在未出手/未步进时进入呼吸待机。
+## current_actor：若有则该单位不播待机；并行主路径通常为 null。
 func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	var seen: Dictionary = {}
+	var dt := get_process_delta_time()
 	for item in units:
 		var rt := item as RtUnit
 		if rt == null:
@@ -266,6 +282,8 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 			var fresh := Tracked.new()
 			fresh.last_attack = rt.last_attack_time
 			fresh.last_hit = rt.last_hit_time
+			fresh.last_logic_pos = rt.position
+			fresh.has_logic_pos = true
 			_tracked[key] = fresh
 	for key in _tracked.keys():
 		if not seen.has(key):
@@ -276,6 +294,7 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 		if rt == null:
 			continue
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
+		_update_slide_walk(rt, tracked, dt)
 		## 出手后 state 仍停在 ATTACKING（计时器 ≤ 0），只把计时中的前摇视为蓄力。
 		var was_winding := tracked.winding
 		var winding := (
@@ -316,37 +335,104 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	_prune_corpses()
 
 
+## 用逻辑位移推进滑移相位；起步时短 tween 微抬倾。
+func _update_slide_walk(rt: RtUnit, tracked: Tracked, dt: float) -> void:
+	if rt == null or tracked == null:
+		return
+	if not rt.is_alive() or rt.is_deploying() or rt.is_stepping():
+		tracked.sliding = false
+		tracked.has_logic_pos = true
+		tracked.last_logic_pos = rt.position
+		return
+	if not tracked.has_logic_pos:
+		tracked.last_logic_pos = rt.position
+		tracked.has_logic_pos = true
+		tracked.sliding = false
+		return
+	var delta := rt.position - tracked.last_logic_pos
+	tracked.last_logic_pos = rt.position
+	var dist := delta.length()
+	var speed := dist / maxf(dt, 0.000001)
+	var was_sliding := tracked.sliding
+	if speed >= WALK_SLIDE_SPEED_MIN and dist > 0.00001:
+		tracked.slide_dir = delta / dist
+		tracked.slide_phase += dist
+		tracked.sliding = true
+		## 停够一截再起步 tween，避免互挤微抖连打。
+		if (
+			not was_sliding
+			and tracked.slide_quiet_sec >= 0.12
+			and not tracked.winding
+			and not _is_busy(tracked.pose)
+		):
+			_play_walk_start(tracked.pose, tracked.slide_dir)
+		tracked.slide_quiet_sec = 0.0
+	else:
+		tracked.slide_quiet_sec += dt
+		if tracked.slide_quiet_sec >= 0.08:
+			tracked.sliding = false
+
+
+func _play_walk_start(pose: Pose, dir: Vector2) -> void:
+	if pose == null or _is_busy(pose):
+		return
+	var tilt := _tilt_for_dir(dir) * WALK_START_TILT
+	var tween := _new_tween(pose)
+	tween.tween_property(pose, "offset", Vector2(dir.x * 0.02, -WALK_START_LIFT), WALK_START_SEC) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "rotation", tilt, WALK_START_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "scale", WALK_SQUASH, WALK_START_SEC) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pose, "shadow_mul", 1.0 + (WALK_SHADOW_MUL - 1.0) * 0.45, WALK_START_SEC)
+	_tween_home(tween, pose)
+
+
 ## 伤害 → 震屏像素；amount≤0 时仍给可读下限。
 static func shake_px_for_damage(amount: int) -> float:
 	var raw := SHAKE_BASE_PX + float(maxi(0, amount)) * SHAKE_PER_DAMAGE_PX
 	return clampf(raw, SHAKE_MIN_PX, SHAKE_MAX_PX)
 
 
-## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深；与步进插值同步。
-## 返回 { offset, rotation, scale, shadow_mul }（格单位 / 弧度）。
+## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深。
+## 格步：与 step_t 同步；连续滑移：与路程相位同步。返回 { offset, rotation, scale, shadow_mul }。
 func walk_pose(rt: RtUnit) -> Dictionary:
-	if rt == null or not rt.is_stepping():
-		return {
-			"offset": Vector2.ZERO,
-			"rotation": 0.0,
-			"scale": Vector2.ONE,
-			"shadow_mul": 1.0,
-		}
-	var t := rt.step_t
-	var hop := absf(sin(t * PI))
+	var rest := {
+		"offset": Vector2.ZERO,
+		"rotation": 0.0,
+		"scale": Vector2.ONE,
+		"shadow_mul": 1.0,
+	}
+	if rt == null:
+		return rest
+	if rt.is_stepping():
+		var t := rt.step_t
+		var move := rt.step_to - rt.step_from
+		var dir := move.normalized() if move.length_squared() > 0.0001 else Vector2.ZERO
+		return sample_walk_cycle(t, dir)
+	var tracked: Tracked = _tracked.get(rt.get_instance_id())
+	if tracked == null or not tracked.sliding:
+		return rest
+	var cycle := maxf(0.05, WALK_SLIDE_CYCLE_TILES)
+	var t_slide := fposmod(tracked.slide_phase / cycle, 1.0)
+	return sample_walk_cycle(t_slide, tracked.slide_dir)
+
+
+## 单跳周期采样（t∈[0,1]）：格步与连续滑移共用。
+static func sample_walk_cycle(t: float, dir: Vector2) -> Dictionary:
+	var hop := absf(sin(clampf(t, 0.0, 1.0) * PI))
 	## 与拖影相同的过冲峰值：中段略弹高。
 	var overshoot := 1.0 + 0.45 * hop * (1.0 - hop)
 	var lift := hop * overshoot
-	var move := rt.step_to - rt.step_from
-	var dir := move.normalized() if move.length_squared() > 0.0001 else Vector2.ZERO
-	## 左右摆在 1/4、3/4 步峰值；朝向 lean 在腾空中段峰值，避免只采到中点时 tilt=0。
-	var sway := sin(t * TAU) * WALK_TILT
-	var lean := dir.x * WALK_LEAN * hop
+	var move_dir := dir.normalized() if dir.length_squared() > 0.0001 else Vector2.ZERO
+	## 左右摆在 1/4、3/4 步峰值；朝向 lean 在腾空中段峰值。
+	var sway := sin(clampf(t, 0.0, 1.0) * TAU) * WALK_TILT
+	var lean := move_dir.x * WALK_LEAN * hop
 	var yaw := sway + lean
 	if absf(yaw) < 0.04:
-		yaw = signf(dir.x if not is_zero_approx(dir.x) else 1.0) * WALK_TILT * hop
+		yaw = signf(move_dir.x if not is_zero_approx(move_dir.x) else 1.0) * WALK_TILT * hop
 	return {
-		"offset": Vector2(dir.x * 0.03 * hop, -WALK_HOP_TILES * lift),
+		"offset": Vector2(move_dir.x * 0.03 * hop, -WALK_HOP_TILES * lift),
 		"rotation": yaw,
 		"scale": Vector2.ONE.lerp(WALK_SQUASH, hop),
 		"shadow_mul": 1.0 + (WALK_SHADOW_MUL - 1.0) * lift,
@@ -577,6 +663,8 @@ func _should_idle(rt: RtUnit, tracked: Tracked, current_actor: RtUnit) -> bool:
 	if current_actor != null and rt == current_actor:
 		return false
 	if rt.is_stepping():
+		return false
+	if tracked.sliding:
 		return false
 	if tracked.winding:
 		return false
