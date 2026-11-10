@@ -181,6 +181,20 @@ func has_active_action_tween() -> bool:
 	return false
 
 
+## 胜负遮罩门控：出击/回位 tween 或死亡残影仍在播。
+func has_active_presentation() -> bool:
+	if has_active_action_tween():
+		return true
+	for corpse in _corpses:
+		if corpse == null or corpse.done:
+			continue
+		if _is_busy(corpse.pose):
+			return true
+		if corpse.pose.alpha > 0.02:
+			return true
+	return false
+
+
 func get_corpses() -> Array[Corpse]:
 	return _corpses
 

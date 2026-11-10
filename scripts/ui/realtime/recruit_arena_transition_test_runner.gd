@@ -80,10 +80,20 @@ func _test_recruit_arena_transition() -> void:
 	_expect(battle.try_start_combat(), "start combat")
 	var sim := battle.get_sim()
 	_expect(sim != null, "sim started")
+	battle.result_overlay_delay_sec = 0.0
+	if battle._arena != null:
+		battle._arena.finish_combat_action_tweens()
 	for rt in sim.get_units():
 		if not rt.is_player():
 			rt.unit.current_hp = 0
 	sim.advance_fixed_step()
+	var result_guard := 0
+	while (
+		battle.get_phase() != RealtimeBattleController.Phase.RESULT
+		and result_guard < 120
+	):
+		await process_frame
+		result_guard += 1
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RESULT, "RESULT after wipe")
 
 	var completed: Array = []

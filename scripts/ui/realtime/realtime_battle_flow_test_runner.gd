@@ -267,10 +267,22 @@ func _test_battle_controller_rules() -> void:
 	_expect(not battle.try_assign_to_slot(0, slots.get_cell(0)).is_empty(), "controller: assign rejected in COMBAT")
 
 	var gold_before := economy.gold
+	## 测试跳过胜负遮罩延迟与死亡残影等待。
+	battle.result_overlay_delay_sec = 0.0
+	if battle._arena != null:
+		battle._arena.finish_combat_action_tweens()
 	for rt in sim.get_units():
 		if not rt.is_player():
 			rt.unit.current_hp = 0
 	sim.advance_fixed_step()
+	## 异步：等动作落定协程回到 RESULT（delay=0）。
+	var result_guard := 0
+	while (
+		battle.get_phase() != RealtimeBattleController.Phase.RESULT
+		and result_guard < 120
+	):
+		await process_frame
+		result_guard += 1
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RESULT, "controller: RESULT after enemies wiped")
 	_expect(sim.did_player_win(), "controller: player won")
 	_expect(economy.gold > gold_before, "controller: wave gold granted on win")

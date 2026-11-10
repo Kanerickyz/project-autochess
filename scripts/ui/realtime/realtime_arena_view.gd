@@ -1102,6 +1102,11 @@ func has_active_combat_action_tween() -> bool:
 	return _motion != null and _motion.has_active_action_tween()
 
 
+## 胜负遮罩门控：出击/回位或死亡残影仍在播。
+func has_busy_combat_presentation() -> bool:
+	return _motion != null and _motion.has_active_presentation()
+
+
 ## 「下一动」解卡：打断出击/回位 tween 并归零姿态，避免演出门闩永久挡住模拟。
 func finish_combat_action_tweens() -> void:
 	if _motion != null:
