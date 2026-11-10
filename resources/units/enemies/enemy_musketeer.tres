@@ -27,6 +27,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_musketeer"
 display_name = "敌·火枪手"
+occupation = "远程"
 cost = 3
 tier = 2
 command_cost = 4

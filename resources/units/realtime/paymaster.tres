@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "paymaster"
 display_name = "饷吏"
+occupation = "工匠"
 cost = 2
 tier = 1
 command_cost = 2

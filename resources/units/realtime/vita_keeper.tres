@@ -23,6 +23,7 @@ deploy_time = 0.85
 script = ExtResource("1_unit")
 id = "vita_keeper"
 display_name = "命卫"
+occupation = "战士"
 cost = 3
 tier = 2
 command_cost = 3

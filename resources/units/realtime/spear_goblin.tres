@@ -27,6 +27,7 @@ deploy_time = 0.8
 script = ExtResource("1_unit")
 id = "spear_goblin"
 display_name = "标枪"
+occupation = "远程"
 cost = 2
 tier = 1
 command_cost = 2

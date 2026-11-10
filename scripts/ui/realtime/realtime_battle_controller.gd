@@ -108,6 +108,7 @@ var _lock_phase_active: bool = false
 var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
 var _combo_tracker: CombatComboTracker = CombatComboTracker.new()
 var _combo_hud: ComboCounterHud
+var _synergy_tag_hud: SynergyTagHud
 ## 一动已结束但技能尾巴未播完：等待结算队列排空后再清零连击。
 var _combo_reset_after_skill_tail: bool = false
 ## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
@@ -253,6 +254,7 @@ func _ready() -> void:
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
+	_ensure_synergy_tag_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -356,6 +358,12 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 		_hud.visible = not enabled
 	if _dock != null:
 		_dock.visible = not enabled
+	if _synergy_tag_hud != null:
+		## 地图阶段隐藏战斗 HUD 时一并隐藏职业 Tag 条。
+		if enabled:
+			_synergy_tag_hud.visible = false
+		else:
+			_refresh_synergy_tag_hud()
 	if _result_overlay != null and enabled:
 		_result_overlay.visible = false
 	if _arena != null:
@@ -543,6 +551,46 @@ func _ensure_combo_hud() -> void:
 	_arena.add_child(_combo_hud)
 
 
+func _ensure_synergy_tag_hud() -> void:
+	if _synergy_tag_hud != null:
+		return
+	## 全屏 IGNORE 浮层挂在战斗根上（相对本控件坐标），避免 Arena clip，也不吃 VBox 排版。
+	var overlay := get_node_or_null("SynergyTagOverlay") as Control
+	if overlay == null:
+		overlay = Control.new()
+		overlay.name = "SynergyTagOverlay"
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		overlay.grow_vertical = Control.GROW_DIRECTION_BOTH
+		overlay.z_index = 60
+		add_child(overlay)
+	_synergy_tag_hud = SynergyTagHud.new()
+	_synergy_tag_hud.name = "SynergyTagHud"
+	overlay.add_child(_synergy_tag_hud)
+
+
+func _refresh_synergy_tag_hud() -> void:
+	if _synergy_tag_hud == null:
+		return
+	if _world_backdrop_mode:
+		_synergy_tag_hud.visible = false
+		return
+	## 准备 / 招募 / 战斗（含结算）展示已入座职业计数；地图商店 / 附魔 / 地图隐藏。
+	match _phase:
+		Phase.PREPARE, Phase.RECRUIT, Phase.COMBAT, Phase.RESULT:
+			pass
+		_:
+			_synergy_tag_hud.visible = false
+			return
+	## 招募阶段座位在 _recruit_team_slots；准备/战斗用 _slots。
+	var board := _slots
+	if _phase == Phase.RECRUIT and _recruit_team_slots != null:
+		board = _recruit_team_slots
+	var counts := SynergyOccupations.count_from_seated_entries(board)
+	_synergy_tag_hud.set_occupation_rows(counts)
+
+
 func _reset_combo_display() -> void:
 	_combo_tracker.reset()
 	if _combo_hud != null:
@@ -680,6 +728,7 @@ func try_swap_prepare_seats(from_slot: int, to_slot: int) -> bool:
 	_set_selected(-1)
 	_sync_slot_visuals()
 	_rebuild_cards()
+	_refresh_hud()
 	return true
 
 
@@ -2110,6 +2159,7 @@ func _load_persistent_seats_into_prepare() -> void:
 		if _slots.try_assign_with_seq(entry.seat_index, entry, entry.seat_assign_seq):
 			placed += 1
 	_refresh_bench_row()
+	_refresh_synergy_tag_hud()
 
 
 func _sync_slot_visuals() -> void:
@@ -4113,6 +4163,7 @@ func _combat_phase_status_text() -> String:
 func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
+	_refresh_synergy_tag_hud()
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return

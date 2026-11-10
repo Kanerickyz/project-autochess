@@ -22,7 +22,7 @@
 | **修改角色** | 改显示名、身体数值、攻击方式、主技能挂载、入池范围 |
 | **不适用** | 熔印者（附魔产物，见 [Features/ENCHANT.md](../Features/ENCHANT.md)）；Boss 高威胁位（见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)） |
 
-第一版不做种族/职业羁绊；**不对玩家挂流派标签**（内部轴备注仅策划用，见 UNIT_ABILITIES §2.5）。
+须挂**主职业**（坦克 / 战士 / 远程 / 工匠 / 军乐队 / 秘术，见 [SYNERGY.md](../Features/SYNERGY.md)）；种族标签待词表拍板。**不对玩家挂内部六主轴流派名**（见 UNIT_ABILITIES §2.5）。
 
 ## 2. 开工前信息（合同）
 
@@ -34,6 +34,8 @@
 | **资源 id** | 是 | 英文 `snake_case`；友方 `resources/units/realtime/{id}.tres` |
 | **阵营** | 是 | 友方默认 `PLAYER`；遭遇敌用 `resources/units/enemies/enemy_{id}.tres`，`id` 带 `enemy_` 前缀 |
 | **角色定位** | 是 | 一句话（坦/远/生成/退场等） |
+| **主职业** | 是 | 六类之一：坦克 / 战士 / 远程 / 工匠 / 军乐队 / 秘术；写入 UNITS_ROSTER §2 |
+| **种族** | 待词表 | 愿景有种族羁绊；词表未定时可空 |
 | **攻击方式** | 是 | 近战单体 / 远程投射物 / 近战溅射（由 `projectile_speed`、`splash_radius` 组合决定，见 UNITS §4.2） |
 | **生命 / 攻击** | 是 | 友方单维常用 **1–10 整数**；其它战斗字段可对表同定位角色 |
 | **主技能** | 视情况 | 自带技能单位：绑定已有 `AbilityData` 或新建条目；白板可留空 |
@@ -102,7 +104,7 @@ DEV 阶段友方用蓝、敌方用红，便于半场辨认；终稿仍走纸剪�
 ## 6. 硬约束（与 AGENTS 一致）
 
 - 战斗增益只经 `EffectSpec` + `EffectResolver`；触发经 `CombatEventBus`  
-- v1 不做羁绊；商店养成对象是**队伍**，不是遭遇内抽牌  
+- 种族/职业羁绊走统一效果管线（见 SYNERGY）；商店养成对象是**队伍**，不是遭遇内抽牌  
 - 当前不做的能力不写进 Content 规格（见 [DEVELOPMENT_WORKFLOW.md](../DEVELOPMENT_WORKFLOW.md) 养成规范）
 
 ## 7. 交付说明模板

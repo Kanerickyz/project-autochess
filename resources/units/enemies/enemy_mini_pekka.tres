@@ -25,6 +25,7 @@ deploy_time = 1.2
 script = ExtResource("1_unit")
 id = "enemy_mini_pekka"
 display_name = "敌·双手剑士"
+occupation = "战士"
 cost = 4
 tier = 3
 command_cost = 5

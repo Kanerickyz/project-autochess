@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_spike_shield"
 display_name = "敌·刺盾"
+occupation = "坦克"
 cost = 2
 tier = 1
 team_default = 1

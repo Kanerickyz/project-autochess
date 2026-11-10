@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "coffer_ward"
 display_name = "帑卫"
+occupation = "工匠"
 cost = 4
 tier = 3
 command_cost = 4

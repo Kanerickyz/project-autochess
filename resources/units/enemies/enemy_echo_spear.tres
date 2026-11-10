@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_echo_spear"
 display_name = "敌·残影"
+occupation = "秘术"
 cost = 2
 tier = 1
 team_default = 1

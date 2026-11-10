@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_blight_blade"
 display_name = "敌·蚀刃"
+occupation = "战士"
 cost = 3
 tier = 2
 team_default = 1

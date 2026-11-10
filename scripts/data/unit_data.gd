@@ -16,6 +16,11 @@ extends Resource
 @export var ability: AbilityData
 @export var passives: Array[AbilityData] = []
 
+@export_group("Synergy")
+## 主职业标签（玩家可见）；空 = 无职业，不计入羁绊人数。
+## 词表见 SynergyOccupations（坦克/战士/远程/工匠/军乐队/秘术）。不用 @export_enum("")：Godot 禁止空枚举项。
+@export var occupation: String = ""
+
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、对砍例外、足迹策略机。
 @export var is_boss_leader: bool = false

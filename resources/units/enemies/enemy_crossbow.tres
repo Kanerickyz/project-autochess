@@ -25,6 +25,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_crossbow"
 display_name = "敌·弩手"
+occupation = "远程"
 cost = 2
 tier = 1
 team_default = 1

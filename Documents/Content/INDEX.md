@@ -10,6 +10,7 @@
 | [Features/UNITS.md](../Features/UNITS.md) | 友方 / 敌方 / 生成的代理角色；属性大类；攻击方式；索敌与生命周期 |
 | [Features/UNIT_ABILITIES.md](../Features/UNIT_ABILITIES.md) | 技能槽、自带技能/白板、事件联动与强度维度（规则） |
 | [Features/ARCHETYPE.md](../Features/ARCHETYPE.md) | 内部六主轴、异常流·中毒簇规则 |
+| [Features/SYNERGY.md](../Features/SYNERGY.md) | 种族 / 职业羁绊（职业词表；凑人规则骨架） |
 | **本目录** | 角色库、**独立技能内容池**与 **1:1** 主技能挂载表 |
 | [Reference/](../Reference/) | 外部游戏摘录；非正式名单 |
 

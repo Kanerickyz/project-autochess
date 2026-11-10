@@ -26,6 +26,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "archer"
 display_name = "游侠"
+occupation = "远程"
 cost = 2
 tier = 1
 command_cost = 3
