@@ -16,16 +16,18 @@ enum MovementPattern {
 @export var attack: int = 3
 @export var attack_range: int = 1
 @export var movement_pattern: MovementPattern = MovementPattern.ORTHOGONAL
-## 一回合（一动）最多可走的八向格数；0 = 本动不挪步。主路径与旧网格工具环共用。
+## 一回合（一动）最多可走的八向格数；0 = 本动不挪步。旧网格工具环 / 兼容字段；主路径移速见 move_speed。
 @export_range(0, 8, 1) var steps_per_turn: int = 1
 
-## 主路径战斗（格坐标）。长度单位为逻辑格（tile），时间单位为秒。
+## 主路径战斗（连续坐标，单位仍为逻辑格）。长度单位为逻辑格（tile），时间单位为秒。
 @export_group("Combat")
-## 两次攻击之间的间隔（秒）；回合制一动内最多出手一次，本字段主要给旧并行/工具路径用。
+## 连续平面移速（格/秒）。≤0 时按 steps_per_turn 推导：max(0.5, steps)；steps=0 → 不移动。
+@export_range(0.0, 10.0, 0.05) var move_speed: float = 0.0
+## 两次攻击之间的间隔（秒）；并行下按此连打。
 @export_range(0.1, 10.0, 0.05) var attack_interval: float = 1.2
 ## 首次攻击前摇（秒），进入射程后到第一次出手
 @export_range(0.0, 5.0, 0.05) var attack_windup: float = 0.3
-## 攻击距离（格，切比雪夫）
+## 攻击距离（格；主路径按碰撞圆边缘欧氏距）
 @export_range(0.0, 12.0, 0.05) var attack_reach: float = 0.8
 ## 索敌半径（格）；范围内无敌人时向全场最近敌人前进
 @export_range(0.0, 32.0, 0.1) var sight_range: float = 5.5
@@ -45,6 +47,15 @@ enum MovementPattern {
 @export_range(0.0, 5.0, 0.05) var deploy_time: float = 0.0
 
 
+## 主路径解析移速：显式 move_speed 优先；否则由 steps_per_turn 推导。
+func get_move_speed() -> float:
+	if move_speed > 0.0:
+		return move_speed
+	if steps_per_turn <= 0:
+		return 0.0
+	return maxf(0.5, float(steps_per_turn))
+
+
 func duplicate_stats() -> UnitStats:
 	var copy := UnitStats.new()
 	copy.max_hp = max_hp
@@ -52,6 +63,7 @@ func duplicate_stats() -> UnitStats:
 	copy.attack_range = attack_range
 	copy.movement_pattern = movement_pattern
 	copy.steps_per_turn = steps_per_turn
+	copy.move_speed = move_speed
 	copy.attack_interval = attack_interval
 	copy.attack_windup = attack_windup
 	copy.attack_reach = attack_reach

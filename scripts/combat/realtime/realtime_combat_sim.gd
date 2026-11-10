@@ -1,8 +1,8 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 回合制自动战纯逻辑模拟：先友后敌行动队列 + 一动靠近并出手 + 落格顿步。
-## 固定步长只服务当前行动者一动内的格步/出手演出；结果与调用方帧率无关。
-## 坐标单位为格；时间单位为秒（表现节拍，不改变行动序与已结算数值）。
+## 即时并行滑移战纯逻辑模拟：全员同时索敌 → 连续滑移 → 进距按攻击间隔出手。
+## 软碰撞互挤；固定步长推进，结果与调用方帧率无关。
+## 坐标单位为格（连续）；时间单位为秒。
 
 signal unit_added(unit: RtUnit)
 signal unit_attacked(attacker: RtUnit, target: RtUnit)
@@ -11,13 +11,15 @@ signal unit_died(unit: RtUnit)
 signal projectile_spawned(projectile: RtProjectile)
 signal splash_triggered(center: Vector2, radius: float)
 signal combat_finished(won: bool)
-## 当前行动者变更（含回合推进跳过阵亡后落到下一位）；UI 高亮用。
+## 兼容旧 UI：并行下恒为 null。
 signal current_actor_changed(actor: RtUnit)
-## 行动队列上一动完整结束（含该动技能尾巴已在固定步内排空后的交权瞬间）；观战录音机用。
+## 约每 1s 战斗时钟脉冲一次（观战录音机 / 倒带游标兼容）。
 signal actor_turn_ended(completed_turns: int)
 
 const FIXED_STEPS_PER_SECOND := 30
 const FIXED_DT := 1.0 / FIXED_STEPS_PER_SECOND
+const SEPARATION_ITERATIONS := 4
+const UNIT_PULSE_SECONDS := 1.0
 const STEP_EPSILON := 0.000001
 const EFFECT_DRAIN_GUARD := 64
 
@@ -34,23 +36,23 @@ var _effect_pipeline: DamagePipeline
 var _effect_resolver: EffectResolver
 var _units: Array[RtUnit] = []
 var _projectiles: Array[RtProjectile] = []
-## 逻辑占格：一格一体（存活单位）
+## 生成落点分散用；主路径移动不再硬阻挡。
 var _occupancy: Dictionary = {}
 var _input_seconds: float = 0.0
 var _started: bool = false
 var _finished: bool = false
 var _player_won: bool = false
 var _adding_effect_spawn: bool = false
-## 表现层时停钩子：为 true 时 step 不再推进固定步（技能展示步期间）。
+## 表现层时停钩子：为 true 时 step 不再推进固定步。
 var presentation_hold: bool = false
-## 为 true 时：效果只入队不立刻排空，留给控制器「先卡再结算」（COMBAT_FEEDBACK §5.2）。
+## 为 true 时：效果只入队不立刻排空（锁阵短串行；战斗中控制器应关掉）。
 var defer_effect_resolve: bool = false
 ## 为 true 时：场上暂无友方也不判负（玩家仍有牌可出时由战斗控制器置位）。
 var suppress_player_wipe_loss: bool = false
 
-## 开战锁阵生成序（按 add_unit 先后）；排行动队列时按座位扫描序重排友/敌子序（§7.1）。
+## 开战锁阵生成序（按 add_unit 先后）。
 var _lock_spawn_order: Array[RtUnit] = []
-## 先友后敌固定行动队列（开战排一次；阵亡跳过；中途召唤插队见 add_unit）。
+## 兼容旧 API：并行下不再驱动主循环。
 var _action_queue: Array[RtUnit] = []
 var _queue_cursor: int = 0
 var _round_index: int = 0
@@ -60,11 +62,12 @@ var _actor_has_attacked: bool = false
 var _actor_turn_active: bool = false
 ## 本场出现过 Boss 首领 → 启用斩首胜负（非清波）。
 var _had_boss_leader: bool = false
-## 本动内刚通过技能续动（见 ON_ACTOR_TURN_REFRESH）；在普攻后消费以免立刻结束回合。
+## 兼容续动武装（并行下普攻不交权；技能副作用仍可读）。
 var _turn_refresh_armed_instance_id: int = -1
-## 自开战起已完整结束的「一动」次数（录音机倒带游标）。
+## 自开战起累计的 1s 脉冲次数（录音机倒带游标）。
 var _completed_actor_turns: int = 0
-## begin_combat 后：开战技能排空且行动队列已排出。
+var _tape_pulse_accum: float = 0.0
+## begin_combat 后：开战技能排空且并行时钟已就绪。
 var _combat_queue_seeded: bool = false
 
 
@@ -105,6 +108,7 @@ func dispose() -> void:
 	_action_queue.clear()
 	_current_actor = null
 	_actor_turn_active = false
+	_tape_pulse_accum = 0.0
 	_had_boss_leader = false
 	_teardown_effect_resolver()
 	if _bus != null and is_instance_valid(_bus):
@@ -188,12 +192,11 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	_register_on_effect_grid(unit, rt.get_cell())
 	if unit.is_boss_leader():
 		_had_boss_leader = true
-	## 开战前：记录锁阵生成序。开战中：默认插到当前行动者之后（COMBAT §7.1 建议默认）。
+	## 开战前：记录锁阵生成序。开战中：立刻参与并行更新。
 	if not _started:
 		_lock_spawn_order.append(rt)
 	else:
-		## 触发当回合立即落子入队；仅行动轮推迟（见 _begin_next_actor_turn）。
-		rt.action_eligible_from_round = _round_index + 1
+		rt.action_eligible_from_round = 0
 		if unit.is_combat_summon:
 			rt.skip_deploy()
 		_insert_mid_combat_into_queue(rt)
@@ -274,13 +277,14 @@ func try_boss_teleport_for_test(rt: RtUnit, origin: Vector2i) -> bool:
 	return _boss_try_teleport(rt, origin)
 
 
-## 标记开战：广播游戏开始 →（可选）排空开战技能 → 排出先友后敌行动队列。
-## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵/时停播报后再结算并排队列。
+## 标记开战：广播游戏开始 →（可选）排空开战技能 → 就绪并行时钟。
+## defer_effect_resolve=true 时只入队开战技能，由控制器锁阵播报后再结算。
 func begin_combat() -> void:
 	if _started or _finished:
 		return
 	_started = true
 	_completed_actor_turns = 0
+	_tape_pulse_accum = 0.0
 	_combat_queue_seeded = false
 	_bus_emit(CombatEvents.ON_COMBAT_START, CombatEventPayload.new())
 	if defer_effect_resolve:
@@ -290,7 +294,7 @@ func begin_combat() -> void:
 	_flush_combat_start_lock()
 
 
-## 测试/倒带：无视 defer，立刻排空开战技能并排行动队列。
+## 测试/倒带：无视 defer，立刻排空开战技能并就绪并行时钟。
 func flush_combat_start_lock() -> void:
 	_flush_combat_start_lock()
 
@@ -342,33 +346,33 @@ func did_player_win() -> bool:
 	return _finished and _player_won
 
 
-## 当前正在执行一动的单位；无人行动时为 null。
+## 并行下无「当前行动者」；恒为 null。
 func get_current_actor() -> RtUnit:
-	if not _actor_turn_active:
-		return null
-	return _current_actor
+	return null
 
 
-## 是否仍有行动者在执行一动（蓄力中为 true；出手交权后为 false）。
+## 并行下无一动交权；恒为 false（出击 tween 不应挡全场步进）。
 func is_actor_turn_active() -> bool:
-	return _actor_turn_active
+	return false
 
 
-## 当前回合序号（从 1 起；开战排队列后尚未行动前亦为 1）。
+## 战斗时钟约秒序号（从 1 起）。
 func get_round_index() -> int:
-	return _round_index
+	return maxi(1, _round_index)
 
 
-## 行动队列只读快照（含已阵亡占位，推进时跳过）。
+## 兼容旧 API：返回锁阵生成序快照（非行动队列）。
 func get_action_queue() -> Array:
-	return _action_queue.duplicate()
+	if not _action_queue.is_empty():
+		return _action_queue.duplicate()
+	return _lock_spawn_order.duplicate()
 
 
 func get_queue_cursor() -> int:
 	return _queue_cursor
 
 
-## 已完整结束的一动次数（开战锁阵后为 0）。
+## 已累计的 1s 脉冲次数（开战锁阵后为 0）。
 func get_completed_actor_turns() -> int:
 	return _completed_actor_turns
 
@@ -439,20 +443,16 @@ func advance_fixed_step() -> void:
 		if not _combat_queue_seeded:
 			return
 
-	## 部署剩余用全局时钟推进（可被其他行动者在其回合攻击）；不占用行动队列并行移动。
-	_tick_all_deploying()
-
-	## 待结算技能（含回合开始吞噬等）未排空前：不开启下一动、不迈步出手。
-	## 否则 defer 时同一步会「先攻再吃两边」。
-	if not _actor_turn_active:
-		if has_pending_effects():
-			return
-		_begin_next_actor_turn()
-	if has_pending_effects():
+	## defer 时待结算技能未排空则不推进并行（锁阵/兼容测例）。
+	if has_pending_effects() and defer_effect_resolve:
 		return
 
-	if _actor_turn_active and _current_actor != null:
-		_advance_current_actor()
+	_tick_all_deploying()
+	_tick_boss_cooldowns()
+	_tick_unit_status_pulses()
+	_advance_all_units_parallel()
+	_resolve_separation()
+	_sync_cells_from_positions()
 
 	## 投射物仅观战演出；伤害已在出手时结算。
 	_advance_projectiles()
@@ -464,7 +464,12 @@ func advance_fixed_step() -> void:
 
 	fixed_step_count += 1
 	elapsed_seconds = fixed_step_count * FIXED_DT
-	## 胜负在每一动结束后检查；若本步刚结束一动则此处已查过，再查一次无害。
+	_round_index = maxi(1, floori(elapsed_seconds) + 1)
+	_tape_pulse_accum += FIXED_DT
+	while _tape_pulse_accum + STEP_EPSILON >= UNIT_PULSE_SECONDS:
+		_tape_pulse_accum -= UNIT_PULSE_SECONDS
+		_completed_actor_turns += 1
+		actor_turn_ended.emit(_completed_actor_turns)
 	_check_finished()
 
 
@@ -484,54 +489,18 @@ func _seed_action_queue_if_ready() -> void:
 	_round_index = 1
 	_current_actor = null
 	_actor_turn_active = false
+	current_actor_changed.emit(null)
 
 
-## COMBAT §7.1：普通遭遇先友后敌；Boss 遭遇见 BOSS §4.5（友→Boss 交错，小兵队尾）。
+## 兼容旧 API：仍按锁阵序填 _action_queue 快照；不驱动主循环。
 func _build_action_queue_from_lock_order() -> void:
-	var friends: Array[RtUnit] = []
-	var enemies: Array[RtUnit] = []
-	for rt in _lock_spawn_order:
-		if rt == null:
-			continue
-		if rt.is_player():
-			friends.append(rt)
-		else:
-			enemies.append(rt)
-	var board_h := int(_arena_size.y)
-	friends.sort_custom(
-		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
-	)
-	enemies.sort_custom(
-		func(a: RtUnit, b: RtUnit) -> bool:
-			return SeatLayout.compare_rt_units_for_action_queue(a, b, board_h)
-	)
 	_action_queue.clear()
-	var boss: RtUnit = null
-	for e in enemies:
-		if e != null and e.is_boss_leader():
-			boss = e
-			break
-	if boss != null:
-		for f in friends:
-			if f != null:
-				_action_queue.append(f)
-				_action_queue.append(boss)
-		for e2 in enemies:
-			if e2 != null and e2 != boss:
-				_action_queue.append(e2)
-		if friends.is_empty():
-			_action_queue.append(boss)
-		return
-	for f in friends:
-		if f != null:
-			_action_queue.append(f)
-	for e in enemies:
-		if e != null:
-			_action_queue.append(e)
+	for rt in _lock_spawn_order:
+		if rt != null:
+			_action_queue.append(rt)
 
 
-## 中途召唤：入队尾；本回合不行动（见 action_eligible_from_round）。
+## 中途召唤：记入快照；立刻可动。
 func _insert_mid_combat_into_queue(rt: RtUnit) -> void:
 	if rt == null:
 		return
@@ -550,7 +519,39 @@ func _tick_all_deploying() -> void:
 			rt.state = RtUnit.State.MOVING
 
 
-## 中毒在 ON_ROUND_START 之前；致死则本动不进入回合开始技能。
+func _tick_boss_cooldowns() -> void:
+	for rt in _units:
+		if rt == null or not rt.is_alive() or not rt.is_boss_leader():
+			continue
+		if rt.boss_summon_cooldown_left > 0.0:
+			rt.boss_summon_cooldown_left = maxf(0.0, rt.boss_summon_cooldown_left - FIXED_DT)
+		if rt.boss_teleport_cooldown_left > 0.0:
+			rt.boss_teleport_cooldown_left = maxf(0.0, rt.boss_teleport_cooldown_left - FIXED_DT)
+
+
+## 每单位 1.0s：中毒 tick →（仍存活）ON_ROUND_START 周期技能。
+func _tick_unit_status_pulses() -> void:
+	for rt in _units:
+		if rt == null or not rt.is_alive() or rt.unit == null:
+			continue
+		if rt.state == RtUnit.State.DEPLOYING:
+			continue
+		rt.status_pulse_accum += FIXED_DT
+		while rt.is_alive() and rt.status_pulse_accum + STEP_EPSILON >= UNIT_PULSE_SECONDS:
+			rt.status_pulse_accum -= UNIT_PULSE_SECONDS
+			if not _apply_poison_tick_before_round_start(rt):
+				break
+			_sync_effect_grid_from_rt_positions()
+			var payload := CombatEventPayload.new()
+			payload.source = rt.unit
+			payload.target = rt.unit
+			_bus_emit(CombatEvents.ON_ROUND_START, payload)
+			_drain_effects()
+			if has_pending_effects() and defer_effect_resolve:
+				return
+
+
+## 中毒在 ON_ROUND_START 之前；致死则本拍不进入回合开始技能。
 func _apply_poison_tick_before_round_start(actor: RtUnit) -> bool:
 	if actor == null or actor.unit == null or not actor.is_alive():
 		return false
@@ -564,201 +565,78 @@ func _apply_poison_tick_before_round_start(actor: RtUnit) -> bool:
 	return actor.is_alive()
 
 
-func _begin_next_actor_turn() -> void:
-	_current_actor = null
-	_actor_turn_active = false
-	_actor_has_attacked = false
-	_actor_steps_left = 0
-	if _action_queue.is_empty() or _finished:
-		current_actor_changed.emit(null)
-		return
-
-	var scanned := 0
-	while scanned < _action_queue.size():
-		if _queue_cursor >= _action_queue.size():
-			_queue_cursor = 0
-			_round_index += 1
-		var candidate := _action_queue[_queue_cursor]
-		if candidate != null and candidate.is_alive() and _units.has(candidate):
-			if candidate.action_eligible_from_round > _round_index:
-				_queue_cursor += 1
-				scanned += 1
-				continue
-			_current_actor = candidate
-			_actor_turn_active = true
-			_actor_has_attacked = false
-			_actor_steps_left = RtUnitBrain.turn_step_budget(candidate)
-			## 首领召唤冷却按「自己的行动次数」递减。
-			if candidate.is_boss_leader() and candidate.boss_summon_cooldown_left > 0:
-				candidate.boss_summon_cooldown_left -= 1
-			_sync_effect_grid_from_rt_positions()
-			if not _apply_poison_tick_before_round_start(candidate):
-				_queue_cursor += 1
-				scanned += 1
-				continue
-			## 自己回合开始（UNIT_ABILITIES §5.3）：payload.source = 行动者。
-			var payload := CombatEventPayload.new()
-			payload.source = candidate.unit
-			payload.target = candidate.unit
-			_bus_emit(CombatEvents.ON_ROUND_START, payload)
-			_drain_effects()
-			current_actor_changed.emit(candidate)
-			return
-		_queue_cursor += 1
-		scanned += 1
-
-	current_actor_changed.emit(null)
-
-
-func _end_current_actor_turn() -> void:
-	if not _actor_turn_active:
-		return
-	var ending := _current_actor
-	if (
-		ending != null
-		and ending.is_alive()
-		and ending.unit != null
-		and ending.unit.banked_turn_refresh_bonus_pending
-	):
-		ending.unit.banked_turn_refresh_bonus_pending = false
-		_actor_has_attacked = false
-		_actor_steps_left = RtUnitBrain.turn_step_budget(ending)
-		if ending.state == RtUnit.State.ATTACKING:
-			ending.state = RtUnit.State.MOVING
-			ending.attack_timer = 0.0
-		current_actor_changed.emit(ending)
-		return
-	_actor_turn_active = false
-	_current_actor = null
-	_actor_has_attacked = false
-	_actor_steps_left = 0
-	if ending != null and ending.is_alive() and ending.state == RtUnit.State.ATTACKING:
-		ending.state = RtUnit.State.MOVING
-		ending.attack_timer = 0.0
-	if ending != null and ending.is_alive() and ending.unit != null:
-		_sync_effect_grid_from_rt_positions()
-		var turn_end_payload := CombatEventPayload.new()
-		turn_end_payload.source = ending.unit
-		turn_end_payload.target = ending.unit
-		_bus_emit(CombatEvents.ON_ACTOR_TURN_END, turn_end_payload)
-		_drain_effects()
-	_queue_cursor += 1
-	_completed_actor_turns += 1
-	current_actor_changed.emit(null)
-	actor_turn_ended.emit(_completed_actor_turns)
-	_check_finished()
-
-
-func _advance_current_actor() -> void:
-	var rt := _current_actor
-	if rt == null or not rt.is_alive():
-		_end_current_actor_turn()
-		return
-
-	## 落格顿步：先推进当前行动者步进插值；本拍落稳则停，下拍再判攻/再迈。
-	if rt.is_stepping():
-		rt.advance_step_visual(FIXED_DT)
-		return
-
-	var free_fn := func(cell: Vector2i) -> bool:
-		return _is_cell_free_for(rt, cell)
+func _advance_all_units_parallel() -> void:
 	var can_summon_fn := func(actor: RtUnit) -> bool:
 		return _boss_can_summon(actor)
 	var can_boss_teleport_fn := func(actor: RtUnit, origin: Vector2i) -> bool:
 		return _boss_can_teleport_to(actor, origin)
-	var decision := RtUnitBrain.decide_turn(
-		rt,
-		_units,
-		FIXED_DT,
-		free_fn,
-		_actor_steps_left,
-		_actor_has_attacked,
-		can_summon_fn,
-		can_boss_teleport_fn,
-	)
+	var decisions: Array = []
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			decisions.append(null)
+			continue
+		decisions.append(
+			RtUnitBrain.decide(rt, _units, FIXED_DT, can_summon_fn, can_boss_teleport_fn)
+		)
 
-	if decision.fire:
-		if _try_complete_current_actor_attack():
-			return
+	for i in _units.size():
+		var rt := _units[i]
+		var decision: RtUnitBrain.Decision = decisions[i]
+		if rt == null or not rt.is_alive() or decision == null:
+			continue
+		if decision.move != Vector2.ZERO:
+			rt.position = _clamp_to_arena(rt.position + decision.move, rt.get_radius())
 
-	if decision.summon:
-		rt.state = RtUnit.State.SUMMONING
-		_boss_perform_summon(rt)
-		_actor_has_attacked = true
-		_end_current_actor_turn()
-		return
-
-	if (
-		rt.is_boss_leader()
-		and decision.teleport_cell != Vector2i(-1, -1)
-		and _actor_steps_left > 0
-	):
-		rt.state = RtUnit.State.MOVING
-		if _boss_try_teleport(rt, decision.teleport_cell):
-			_actor_steps_left -= 1
-			return
-
-
-	if decision.step != Vector2i.ZERO and _actor_steps_left > 0 and not rt.is_boss_leader():
-		var dest: Vector2i = rt.cell + decision.step
-		if _is_cell_free_for(rt, dest) and _actor_steps_left > 0:
-			_move_unit_to_cell(rt, dest)
-			_actor_steps_left -= 1
-			return
-
-	if decision.turn_done:
-		_end_current_actor_turn()
-		return
-
-	## 前摇中：继续耗时，不交权。
-	if rt.state == RtUnit.State.ATTACKING and not _actor_has_attacked:
-		return
-
-	_end_current_actor_turn()
+	for i in _units.size():
+		var rt2 := _units[i]
+		var decision2: RtUnitBrain.Decision = decisions[i]
+		if rt2 == null or not rt2.is_alive() or decision2 == null:
+			continue
+		if decision2.summon:
+			rt2.state = RtUnit.State.SUMMONING
+			_boss_perform_summon(rt2)
+			continue
+		if decision2.teleport_cell != Vector2i(-1, -1) and rt2.is_boss_leader():
+			if _boss_try_teleport(rt2, decision2.teleport_cell):
+				rt2.boss_teleport_cooldown_left = RtUnitBrain.BOSS_TELEPORT_COOLDOWN_SECONDS
+			continue
+		if decision2.fire and rt2.target != null and rt2.target.is_alive():
+			_fire(rt2)
+			_consume_turn_refresh_armed(rt2)
 
 
-## 观战时停（技能卡 / 出手 tween）会 hold 固定步；前摇计时仍须推进，避免弩手等远程卡在蓄力姿。
+## 观战 hold 时仍推进全员攻击前摇/间隔，避免卡在蓄力姿。
 func advance_attack_windup_under_hold(dt: float) -> void:
-	if dt <= 0.0 or not presentation_hold or not _actor_turn_active or _actor_has_attacked:
+	if dt <= 0.0 or not presentation_hold:
 		return
-	var rt := _current_actor
-	if rt == null or not rt.is_alive() or rt.is_stepping():
-		return
-	if rt.state != RtUnit.State.ATTACKING:
-		return
-	if rt.attack_timer > RtUnitBrain.TIME_EPSILON:
-		rt.attack_timer -= dt
-	if rt.attack_timer <= RtUnitBrain.TIME_EPSILON:
-		_try_complete_current_actor_attack()
-
-
-func _try_complete_current_actor_attack() -> bool:
-	var rt := _current_actor
-	if _actor_has_attacked or rt == null:
-		return false
-	if rt.is_stepping() or not rt.is_alive():
-		return false
-	if rt.target == null or not rt.target.is_alive():
-		return false
-	_fire(rt)
-	if _consume_turn_refresh_armed(rt):
-		return true
-	_actor_has_attacked = true
-	_end_current_actor_turn()
-	return true
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		if rt.state != RtUnit.State.ATTACKING:
+			continue
+		if rt.target == null or not rt.target.is_alive():
+			continue
+		if rt.attack_timer > RtUnitBrain.TIME_EPSILON:
+			rt.attack_timer -= dt
+		if rt.attack_timer <= RtUnitBrain.TIME_EPSILON:
+			_fire(rt)
+			rt.attack_timer += maxf(0.05, rt.get_stats().attack_interval)
 
 
 func _fire(rt: RtUnit) -> void:
+	if rt == null or not rt.is_alive():
+		return
 	var stats := rt.get_stats()
 	var damage := rt.unit.get_effective_attack()
 	var target := rt.target
+	if target == null or not target.is_alive():
+		return
 	rt.last_attack_time = elapsed_seconds
 	unit_attacked.emit(rt, target)
-	## 回合制：出手瞬间结算伤害/对砍；投射物只是观战包装，不参与命中判定。
+	## 出手瞬间结算伤害/对砍；投射物只是观战包装。
 	_resolve_hit(rt, target, damage, stats.splash_radius)
 	if stats.projectile_speed <= 0.0 or target == null:
 		return
-	## 结算可能已斩杀/清引用；演出仍朝出手时的目标位置飞。
 	var aim := target.position
 	var dir := rt.position.direction_to(aim)
 	if dir == Vector2.ZERO:
@@ -794,17 +672,75 @@ func _resolve_hit(source: RtUnit, target: RtUnit, damage: int, splash_radius: fl
 
 
 func _move_unit_to_cell(rt: RtUnit, dest: Vector2i) -> void:
-	var from_cell := rt.cell
 	_clear_occupancy_of(rt)
-	rt.begin_step(from_cell, dest)
-	## 迈步即预占足迹、释放旧格；站立锚待落稳后由 advance_step_visual 提交
+	rt.snap_to_cell(dest)
 	_occupy_footprint(rt, dest)
+
+
+func _sync_cells_from_positions() -> void:
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		var prev := rt.cell
+		rt.sync_cell_from_position()
+		if rt.cell != prev:
+			_clear_occupancy_of(rt)
+			_occupy_footprint(rt, rt.cell)
 
 
 func _sync_unit_grid_pos() -> void:
 	for rt in _units:
 		if rt.is_alive():
 			rt.unit.grid_pos = rt.get_cell()
+
+
+func _resolve_separation() -> void:
+	var count := _units.size()
+	for _iter in SEPARATION_ITERATIONS:
+		var moved := false
+		for i in count:
+			var a := _units[i]
+			if a == null or not a.is_alive():
+				continue
+			for j in range(i + 1, count):
+				var b := _units[j]
+				if b == null or not b.is_alive():
+					continue
+				var delta := b.position - a.position
+				var min_dist := a.get_radius() + b.get_radius()
+				var dist_sq := delta.length_squared()
+				if dist_sq >= min_dist * min_dist:
+					continue
+				var dist := sqrt(dist_sq)
+				var normal: Vector2
+				if dist > 0.00001:
+					normal = delta / dist
+				else:
+					normal = Vector2.RIGHT.rotated(_rng.randf() * TAU)
+				var overlap := min_dist - dist
+				var a_share := b.get_mass() / (a.get_mass() + b.get_mass())
+				if a.is_deploying() and b.is_deploying():
+					continue
+				elif a.is_deploying():
+					a_share = 0.0
+				elif b.is_deploying():
+					a_share = 1.0
+				a.position -= normal * overlap * a_share
+				b.position += normal * overlap * (1.0 - a_share)
+				moved = true
+		for rt in _units:
+			if rt != null and rt.is_alive():
+				rt.position = _clamp_to_arena(rt.position, rt.get_radius())
+		if not moved:
+			break
+
+
+func _clamp_to_arena(pos: Vector2, radius: float) -> Vector2:
+	var r := minf(radius, minf(_arena_size.x, _arena_size.y) * 0.5)
+	return Vector2(
+		clampf(pos.x, r, _arena_size.x - r),
+		clampf(pos.y, r, _arena_size.y - r),
+	)
 
 
 func _is_cell_free(cell: Vector2i) -> bool:
@@ -1165,7 +1101,8 @@ func _boss_perform_summon(actor: RtUnit) -> void:
 		spawned += 1
 		actor.boss_summons_spawned_total += 1
 	if spawned > 0:
-		actor.boss_summon_cooldown_left = maxi(0, data.summon_cooldown_actions)
+		## 并行下按秒解释 summon_cooldown_actions。
+		actor.boss_summon_cooldown_left = float(maxi(0, data.summon_cooldown_actions))
 
 
 ## 足迹邻格空位优先 → 再敌半场空格。
@@ -1389,18 +1326,11 @@ func _apply_actor_turn_refresh(unit: UnitInstance) -> void:
 	var rt := _find_rt_for_unit(unit)
 	if rt == null or not rt.is_alive():
 		return
+	## 并行：武装下一次出手立刻可打（清空攻击间隔）。
 	_turn_refresh_armed_instance_id = unit.instance_id
-	if _actor_turn_active and _current_actor == rt:
-		_actor_has_attacked = false
-		_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
-		return
-	if _queue_cursor > 0:
-		_queue_cursor -= 1
-	_current_actor = rt
-	_actor_turn_active = true
-	_actor_has_attacked = false
-	_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
-	current_actor_changed.emit(rt)
+	rt.attack_timer = 0.0
+	if rt.state != RtUnit.State.ATTACKING and rt.target != null:
+		rt.state = RtUnit.State.ATTACKING
 
 
 func _consume_turn_refresh_armed(rt: RtUnit) -> bool:
@@ -1409,8 +1339,7 @@ func _consume_turn_refresh_armed(rt: RtUnit) -> bool:
 	if _turn_refresh_armed_instance_id != rt.unit.instance_id:
 		return false
 	_turn_refresh_armed_instance_id = -1
-	_actor_has_attacked = false
-	_actor_steps_left = RtUnitBrain.turn_step_budget(rt)
+	## 已出手；下一击仍按 attack_interval（decide 内 refill）。
 	return true
 
 

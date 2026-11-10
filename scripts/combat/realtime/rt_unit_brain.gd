@@ -1,7 +1,7 @@
 class_name RtUnitBrain
 extends RefCounted
-## 八方向格步决策：索敌/出手用切比雪夫格距；移动选邻格；不修改其他单位。
-## 主路径为一动决策（decide_turn）；decide 保留给旧并行测例兼容。
+## 即时并行决策：索敌 → 连续滑移意图 → 进距按攻击间隔出手。
+## 攻距 / 索敌用碰撞圆边缘欧氏距；不修改其他单位。
 
 ## 进入攻击判定的距离容差（格）
 const REACH_EPSILON := 0.02
@@ -10,9 +10,11 @@ const REACH_HYSTERESIS := 0.25
 const TIME_EPSILON := 0.000001
 ## Boss 低血阈值：≤ 此比例时优先瞬移拉开威胁
 const BOSS_LOW_HP_RATIO := 0.4
+## Boss 瞬移默认冷却（秒）；召唤冷却取 UnitData.summon_cooldown_actions（按秒）。
+const BOSS_TELEPORT_COOLDOWN_SECONDS := 2.0
 
 
-## 八方向：先正四向再对角（平局稳定次序）
+## 八方向：兼容旧测例 / Boss 足迹扫描
 const DIR8: Array[Vector2i] = [
 	Vector2i(1, 0),
 	Vector2i(-1, 0),
@@ -26,18 +28,20 @@ const DIR8: Array[Vector2i] = [
 
 
 class Decision:
-	## 本步要踏入的邻格相对偏移；ZERO = 不移动（攻击中 / 等待占格）
+	## 本步连续位移意图（格）；ZERO = 不移动。
+	var move: Vector2 = Vector2.ZERO
+	## 兼容旧格步偏移；并行主路径保持 ZERO。
 	var step: Vector2i = Vector2i.ZERO
 	var fire: bool = false
-	## Boss 首领：本动选择召唤（与出手/移动/瞬移互斥）
+	## Boss 首领：本拍选择召唤（与瞬移/出手互斥）
 	var summon: bool = false
 	## Boss 首领：瞬移到足迹锚点（-1,-1 = 不瞬移）
 	var teleport_cell: Vector2i = Vector2i(-1, -1)
-	## 一动决策：true = 本动已无事可做（交给 sim 结束当前行动者）
+	## 兼容旧一动语义（并行下恒 false）
 	var turn_done: bool = false
 
 
-## 一动最多走几格：含临时 steps_per_turn 修正（0 = 本动不挪步）。
+## 兼容旧测例：一动步数预算。
 static func turn_step_budget(unit_or_stats: Variant) -> int:
 	if unit_or_stats is RtUnit:
 		var rt := unit_or_stats as RtUnit
@@ -55,105 +59,79 @@ static func turn_step_budget(unit_or_stats: Variant) -> int:
 	return maxi(0, stats.steps_per_turn)
 
 
-## 回合制一动：选目标 → 预算内靠近 → 能打则出手一次（不按 attack_interval 连打）。
-## Boss 首领走三选一策略机（出手 / 召唤 / 瞬移），不套普通「靠近并出手」。
-## can_summon / can_boss_teleport 由 sim 注入；空 Callable 时首领跳过对应分支。
-static func decide_turn(
+## 主路径并行决策（普通单位 + Boss 冷却态机）。
+static func decide(
 	unit: RtUnit,
 	units: Array,
 	dt: float,
-	is_cell_free: Callable,
-	steps_left: int,
-	has_attacked: bool,
 	can_summon: Callable = Callable(),
 	can_boss_teleport: Callable = Callable(),
 ) -> Decision:
 	if unit != null and unit.is_boss_leader():
-		return decide_boss_leader_turn(
-			unit, units, dt, steps_left, has_attacked, can_summon, can_boss_teleport
+		return decide_boss_leader(
+			unit, units, dt, can_summon, can_boss_teleport
 		)
 	var decision := Decision.new()
 	if not unit.is_alive():
-		decision.turn_done = true
 		return decision
+	## 部署剩余由 sim._tick_all_deploying 推进；此处仅等待。
 	if unit.state == RtUnit.State.DEPLOYING:
-		## 部署由 sim 用全局时钟推进；轮到仍在部署则让出行动权。
-		decision.turn_done = true
-		return decision
-	if has_attacked:
-		decision.turn_done = true
 		return decision
 
 	_refresh_target(unit, units)
 	if unit.target == null:
 		unit.state = RtUnit.State.MOVING
-		decision.turn_done = true
-		return decision
-
-	## 落格顿步：未落稳不判攻、不新开步
-	if unit.is_stepping():
 		return decision
 
 	var stats := unit.get_stats()
-	var dist := float(unit.cell_distance_to(unit.target))
-	var reach := grid_reach(stats.attack_reach)
-	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
+	var edge := unit.edge_distance_to(unit.target)
+	if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
 		if unit.state != RtUnit.State.ATTACKING:
 			unit.state = RtUnit.State.ATTACKING
 			unit.attack_timer = maxf(0.0, stats.attack_windup)
 		unit.attack_timer -= dt
 		if unit.attack_timer <= TIME_EPSILON:
 			decision.fire = true
-			## 一动最多出手一次；不 refill interval
+			unit.attack_timer += maxf(0.05, stats.attack_interval)
+		## 进距后允许微移贴脸（软碰撞会分开），但不主动冲穿。
 		return decision
 
 	unit.state = RtUnit.State.MOVING
-	if steps_left <= 0:
-		decision.turn_done = true
+	var speed := unit.get_move_speed()
+	if speed <= 0.0:
 		return decision
-	## 规则锁死不可移动时本动结束（Boss 召唤体会强制 cannot_move=false）
-	if unit.unit != null and unit.unit.cannot_move:
-		decision.turn_done = true
+	var to_target := unit.target.position - unit.position
+	var dist := to_target.length()
+	if dist <= 0.0:
 		return decision
-	decision.step = pick_step(unit, unit.target, is_cell_free)
-	if decision.step == Vector2i.ZERO:
-		## 被挡或无法靠近：本动结束（不空挥）
-		decision.turn_done = true
+	var travel := minf(speed * dt, maxf(0.0, edge - stats.attack_reach))
+	decision.move = to_target / dist * travel
 	return decision
 
 
-## 召唤统领一动三态互斥：移动(瞬移) / 攻击 / 召唤。
-## 低血且受威胁时优先瞬移拉开；否则已在攻距→出手；可召则召；否则瞬移靠近（低血则拉远）。
-static func decide_boss_leader_turn(
+## Boss：冷却到了才招/瞬移/打；重动作互斥；否则连续滑移靠近。
+static func decide_boss_leader(
 	unit: RtUnit,
 	units: Array,
 	dt: float,
-	steps_left: int,
-	has_attacked: bool,
 	can_summon: Callable,
 	can_boss_teleport: Callable,
 ) -> Decision:
 	var decision := Decision.new()
 	if not unit.is_alive():
-		decision.turn_done = true
 		return decision
+	## 部署剩余由 sim 推进。
 	if unit.state == RtUnit.State.DEPLOYING:
-		decision.turn_done = true
-		return decision
-	if has_attacked:
-		decision.turn_done = true
-		return decision
-	## 本动已瞬移过：不再出手/再召（三选一互斥）
-	var budget := turn_step_budget(unit)
-	if budget > 0 and steps_left < budget:
-		decision.turn_done = true
-		return decision
-	if unit.is_stepping():
 		return decision
 
 	_refresh_target(unit, units)
 	var low_hp := is_boss_low_hp(unit)
-	if low_hp and steps_left > 0 and is_boss_threatened(unit, units):
+	var teleport_ready := unit.boss_teleport_cooldown_left <= TIME_EPSILON
+	if (
+		low_hp
+		and teleport_ready
+		and is_boss_threatened(unit, units)
+	):
 		var flee := pick_boss_flee_teleport(unit, units, can_boss_teleport)
 		if flee != Vector2i(-1, -1):
 			unit.state = RtUnit.State.MOVING
@@ -162,15 +140,15 @@ static func decide_boss_leader_turn(
 
 	var stats := unit.get_stats()
 	if unit.target != null:
-		var dist := float(unit.cell_distance_to(unit.target))
-		var reach := grid_reach(stats.attack_reach)
-		if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
+		var edge := unit.edge_distance_to(unit.target)
+		if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
 			if unit.state != RtUnit.State.ATTACKING:
 				unit.state = RtUnit.State.ATTACKING
 				unit.attack_timer = maxf(0.0, stats.attack_windup)
 			unit.attack_timer -= dt
 			if unit.attack_timer <= TIME_EPSILON:
 				decision.fire = true
+				unit.attack_timer += maxf(0.05, stats.attack_interval)
 			return decision
 
 	if can_summon.is_valid() and bool(can_summon.call(unit)):
@@ -178,17 +156,56 @@ static func decide_boss_leader_turn(
 		decision.summon = true
 		return decision
 
+	if teleport_ready:
+		unit.state = RtUnit.State.MOVING
+		if low_hp:
+			decision.teleport_cell = pick_boss_flee_teleport(unit, units, can_boss_teleport)
+		elif unit.target != null:
+			decision.teleport_cell = pick_boss_teleport(unit, unit.target, can_boss_teleport)
+		if decision.teleport_cell != Vector2i(-1, -1):
+			return decision
+
+	## 冷却未到：连续滑移靠近（Boss 也可走）。
 	unit.state = RtUnit.State.MOVING
-	if steps_left <= 0:
-		decision.turn_done = true
+	if unit.target == null:
 		return decision
-	if low_hp:
-		decision.teleport_cell = pick_boss_flee_teleport(unit, units, can_boss_teleport)
-	elif unit.target != null:
-		decision.teleport_cell = pick_boss_teleport(unit, unit.target, can_boss_teleport)
-	if decision.teleport_cell == Vector2i(-1, -1):
-		decision.turn_done = true
+	var speed := unit.get_move_speed()
+	if speed <= 0.0:
+		return decision
+	var to_target := unit.target.position - unit.position
+	var dist := to_target.length()
+	if dist <= 0.0:
+		return decision
+	var edge2 := unit.edge_distance_to(unit.target)
+	var travel := minf(speed * dt, maxf(0.0, edge2 - stats.attack_reach))
+	decision.move = to_target / dist * travel
 	return decision
+
+
+## 兼容旧一动 API：转调并行 decide（忽略 steps / has_attacked）。
+static func decide_turn(
+	unit: RtUnit,
+	units: Array,
+	dt: float,
+	_is_cell_free: Callable,
+	_steps_left: int,
+	_has_attacked: bool,
+	can_summon: Callable = Callable(),
+	can_boss_teleport: Callable = Callable(),
+) -> Decision:
+	return decide(unit, units, dt, can_summon, can_boss_teleport)
+
+
+static func decide_boss_leader_turn(
+	unit: RtUnit,
+	units: Array,
+	dt: float,
+	_steps_left: int,
+	_has_attacked: bool,
+	can_summon: Callable,
+	can_boss_teleport: Callable,
+) -> Decision:
+	return decide_boss_leader(unit, units, dt, can_summon, can_boss_teleport)
 
 
 static func is_boss_low_hp(unit: RtUnit) -> bool:
@@ -200,7 +217,7 @@ static func is_boss_low_hp(unit: RtUnit) -> bool:
 	return float(unit.unit.current_hp) / float(max_hp) <= BOSS_LOW_HP_RATIO
 
 
-## 任意存活敌对单位已进入其攻距，或切比雪夫格距 ≤ 其 reach。
+## 任意存活敌对单位已进入其攻距（欧氏边缘）。
 static func is_boss_threatened(unit: RtUnit, units: Array) -> bool:
 	if unit == null or not unit.is_alive():
 		return false
@@ -208,9 +225,9 @@ static func is_boss_threatened(unit: RtUnit, units: Array) -> bool:
 		var other := item as RtUnit
 		if other == null or not other.is_alive() or other.get_team() == unit.get_team():
 			continue
-		var reach := grid_reach(other.get_stats().attack_reach)
-		var dist := float(unit.cell_distance_to(other))
-		if dist <= reach + REACH_EPSILON:
+		var reach := other.get_stats().attack_reach
+		var edge := unit.edge_distance_to(other)
+		if edge <= reach + REACH_EPSILON:
 			return true
 	return false
 
@@ -223,7 +240,6 @@ static func pick_boss_teleport(unit: RtUnit, target: RtUnit, can_boss_teleport: 
 	var best_origin := Vector2i(-1, -1)
 	var best_d := cur_d
 	var best_man := _footprint_manhattan_at(unit, target, unit.cell)
-	var found := false
 	var arena := _boss_teleport_scan_bounds(unit)
 	for y in range(arena.position.y, arena.end.y):
 		for x in range(arena.position.x, arena.end.x):
@@ -234,21 +250,17 @@ static func pick_boss_teleport(unit: RtUnit, target: RtUnit, can_boss_teleport: 
 				continue
 			var d := _footprint_chebyshev_at(unit, target, origin)
 			var man := _footprint_manhattan_at(unit, target, origin)
-			if not found or d < best_d or (d == best_d and man < best_man):
-				found = true
+			if d < best_d or (d == best_d and man < best_man):
 				best_d = d
 				best_man = man
 				best_origin = origin
-	if not found:
-		return Vector2i(-1, -1)
-	if best_d > cur_d:
+	if best_origin == Vector2i(-1, -1):
 		return Vector2i(-1, -1)
 	if best_d == cur_d and best_man >= _footprint_manhattan_at(unit, target, unit.cell):
 		return Vector2i(-1, -1)
 	return best_origin
 
 
-## 低血躲避：选使「距最近敌对」最大化的空足迹锚点；须严格优于当前位置。
 static func pick_boss_flee_teleport(
 	unit: RtUnit,
 	units: Array,
@@ -268,7 +280,6 @@ static func pick_boss_flee_teleport(
 	var best_origin := Vector2i(-1, -1)
 	var best_min := cur_min
 	var best_sum := _sum_threat_chebyshev_at(unit, threats, unit.cell)
-	var found := false
 	var arena := _boss_teleport_scan_bounds(unit)
 	for y in range(arena.position.y, arena.end.y):
 		for x in range(arena.position.x, arena.end.x):
@@ -279,16 +290,11 @@ static func pick_boss_flee_teleport(
 				continue
 			var d_min := _min_threat_chebyshev_at(unit, threats, origin)
 			var d_sum := _sum_threat_chebyshev_at(unit, threats, origin)
-			if (
-				not found
-				or d_min > best_min
-				or (d_min == best_min and d_sum > best_sum)
-			):
-				found = true
+			if d_min > best_min or (d_min == best_min and d_sum > best_sum):
 				best_min = d_min
 				best_sum = d_sum
 				best_origin = origin
-	if not found or best_min <= cur_min:
+	if best_origin == Vector2i(-1, -1) or best_min <= cur_min:
 		return Vector2i(-1, -1)
 	return best_origin
 
@@ -307,16 +313,11 @@ static func _sum_threat_chebyshev_at(unit: RtUnit, threats: Array[RtUnit], origi
 	return total
 
 
-
-## 扫描足迹锚点的可行矩形（调用方需保证 unit 有有效 arena；无则退回宽松范围）。
 static func _boss_teleport_scan_bounds(unit: RtUnit) -> Rect2i:
-	var fw := 1
-	var fh := 1
-	if unit != null and unit.unit != null and unit.unit.unit_data != null:
-		fw = maxi(1, unit.unit.unit_data.footprint_w)
-		fh = maxi(1, unit.unit.unit_data.footprint_h)
-	## 宽松扫描窗；合法锚点由 sim 的 can_boss_teleport 过滤。
-	return Rect2i(0, 0, maxi(1, 24 - fw + 1), maxi(1, 24 - fh + 1))
+	var w := maxi(1, unit.arena_size.x)
+	var h := maxi(1, unit.arena_size.y)
+	var fp := unit.get_footprint_size()
+	return Rect2i(0, 0, maxi(1, w - fp.x + 1), maxi(1, h - fp.y + 1))
 
 
 static func _footprint_chebyshev_at(unit: RtUnit, target: RtUnit, origin: Vector2i) -> int:
@@ -350,80 +351,31 @@ static func _footprint_manhattan(unit: RtUnit, target: RtUnit, dir: Vector2i) ->
 	return best
 
 
-## 旧并行推进路径（测例/兼容）；新主路径用 decide_turn。
-static func decide(unit: RtUnit, units: Array, dt: float, is_cell_free: Callable) -> Decision:
-	var decision := Decision.new()
-	if not unit.is_alive():
-		return decision
-	if unit.state == RtUnit.State.DEPLOYING:
-		unit.deploy_remaining -= dt
-		if unit.deploy_remaining > TIME_EPSILON:
-			return decision
-		unit.deploy_remaining = 0.0
-		unit.state = RtUnit.State.MOVING
-
-	var stats := unit.get_stats()
-	_refresh_target(unit, units)
-	if unit.target == null:
-		unit.state = RtUnit.State.MOVING
-		return decision
-
-	## 落格顿步：未落稳不判攻、不新开步；攻击计时仅落稳后推进
-	if unit.is_stepping():
-		return decision
-
-	var dist := float(unit.cell_distance_to(unit.target))
-	var reach := grid_reach(stats.attack_reach)
-	if unit.state == RtUnit.State.ATTACKING or dist <= reach + REACH_EPSILON:
-		if unit.state != RtUnit.State.ATTACKING:
-			unit.state = RtUnit.State.ATTACKING
-			unit.attack_timer = maxf(0.0, stats.attack_windup)
-		unit.attack_timer -= dt
-		if unit.attack_timer <= TIME_EPSILON:
-			decision.fire = true
-			unit.attack_timer += maxf(0.05, stats.attack_interval)
-		## 落稳后站立攻击；不在出手帧同时开步
-		return decision
-
-	unit.state = RtUnit.State.MOVING
-	if turn_step_budget(unit) <= 0:
-		return decision
-	decision.step = pick_step(unit, unit.target, is_cell_free)
-	return decision
-
-
 static func _refresh_target(unit: RtUnit, units: Array) -> void:
 	var stats := unit.get_stats()
 	if unit.target != null and not unit.target.is_alive():
 		_drop_target(unit)
 	if unit.state == RtUnit.State.ATTACKING and unit.target != null:
-		var lock_dist := float(unit.cell_distance_to(unit.target))
-		if lock_dist > grid_reach(stats.attack_reach) + REACH_HYSTERESIS:
+		var lock_edge := unit.edge_distance_to(unit.target)
+		if lock_edge > stats.attack_reach + REACH_HYSTERESIS:
 			_drop_target(unit)
 	if unit.state != RtUnit.State.ATTACKING:
 		unit.target = acquire_target(unit, units)
 
 
-## 旧欧氏近战 reach 常 < 1；一格一体下邻格切比雪夫为 1，正 reach 至少按邻格处理。
+## 兼容旧名：欧氏 reach 不再抬到邻格。
 static func grid_reach(reach: float) -> float:
-	if reach <= 0.0:
-		return 0.0
-	if reach < 1.0:
-		return 1.0
-	return reach
+	return maxf(0.0, reach)
 
 
-## sight_range 内格距最近敌人；没有则全场最近。
-## 平局：先比曼哈顿（避免同切比雪夫时全体锁左侧先生成单位），再比 instance_id。
+## sight_range 内边缘距最近敌人；没有则全场最近。平局取较小 instance_id。
 static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 	var sight := unit.get_stats().sight_range
 	var best_in_sight: RtUnit = null
-	var best_in_sight_dist := 999999
-	var best_in_sight_man := 999999
+	var best_in_sight_dist := INF
 	var best_in_sight_id := 0x7fffffff
 	var best_any: RtUnit = null
-	var best_any_dist := 999999
-	var best_any_man := 999999
+	var best_any_dist := INF
 	var best_any_id := 0x7fffffff
 	for item in units:
 		var other := item as RtUnit
@@ -431,46 +383,23 @@ static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 			continue
 		if other.get_team() == unit.get_team():
 			continue
-		var d := unit.cell_distance_to(other)
-		var man := _footprint_manhattan(unit, other, Vector2i.ZERO)
+		var edge := unit.edge_distance_to(other)
 		var oid := other.get_id()
-		if _is_better_target(d, man, oid, best_any_dist, best_any_man, best_any_id):
-			best_any_dist = d
-			best_any_man = man
+		if edge < best_any_dist or (is_equal_approx(edge, best_any_dist) and oid < best_any_id):
+			best_any_dist = edge
 			best_any_id = oid
 			best_any = other
-		if float(d) <= sight and _is_better_target(
-			d, man, oid, best_in_sight_dist, best_in_sight_man, best_in_sight_id
+		if edge <= sight and (
+			edge < best_in_sight_dist
+			or (is_equal_approx(edge, best_in_sight_dist) and oid < best_in_sight_id)
 		):
-			best_in_sight_dist = d
-			best_in_sight_man = man
+			best_in_sight_dist = edge
 			best_in_sight_id = oid
 			best_in_sight = other
 	return best_in_sight if best_in_sight != null else best_any
 
 
-## 切比雪夫更近优先；同距再比曼哈顿；再平局取较小 instance_id。
-static func _is_better_target(
-	d: int,
-	man: int,
-	oid: int,
-	best_d: int,
-	best_man: int,
-	best_id: int,
-) -> bool:
-	if d < best_d:
-		return true
-	if d > best_d:
-		return false
-	if man < best_man:
-		return true
-	if man > best_man:
-		return false
-	return oid < best_id
-
-
-## 八向贪心：优先减小切比雪夫；同距再减曼哈顿；目标格被占则改道或返回 ZERO（短等）。
-## 目标若为足迹单位，以「当前格 → 目标足迹最近格」为靠近目标（勿只认锚点）。
+## 兼容旧格步贪心（测例 / 工具）；并行主路径不用。
 static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> Vector2i:
 	if unit == null or target == null:
 		return Vector2i.ZERO
@@ -496,7 +425,6 @@ static func pick_step(unit: RtUnit, target: RtUnit, is_cell_free: Callable) -> V
 			best_dir = dir
 	if not found:
 		return Vector2i.ZERO
-	## 不恶化格距；同距时须更靠近（曼哈顿下降）才挪步
 	if best_d > cur_d:
 		return Vector2i.ZERO
 	if best_d == cur_d and best_man >= cur_man:

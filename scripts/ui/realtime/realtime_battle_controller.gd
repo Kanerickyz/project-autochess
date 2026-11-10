@@ -1719,7 +1719,7 @@ func _begin_combat_from_prepare() -> void:
 	_rebuild_cards()
 
 	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
-	## 开战技能先入队，由时停「先卡再结算」排空后再排行动队列（COMBAT_FEEDBACK §5）。
+	## 锁阵开战技能可短串行入队；排空后并行战斗不再 defer / 不播介绍卡。
 	_sim.defer_effect_resolve = true
 	_sim.begin_combat()
 	_lock_phase_active = false
@@ -3580,7 +3580,7 @@ func _on_combat_event(event_type: StringName, payload: CombatEventPayload) -> vo
 	if event_type != CombatEvents.ON_DEATH:
 		return
 
-## 锁阵：立刻播动画/UI。战斗内：由「先卡再结算」拍捕获；其它路径入结果拍。
+## 锁阵：立刻播动画/UI。战斗内：不播介绍卡，只结果数字/短标（热闹优先）。
 func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 	if payload == null:
 		return
@@ -3590,26 +3590,21 @@ func _on_effect_resolved_feedback(payload: CombatEventPayload) -> void:
 	if _lock_phase_active or _phase != Phase.COMBAT:
 		_present_effect_feedback(payload, true)
 		return
-	## 非门控路径（兼容）：已结算则只播结果拍。
+	## 并行战斗：不 hold、不入介绍卡队列。
 	if _timestop_queue.is_blocking():
 		return
-	if _sim != null:
-		_sim.hold_for_presentation()
-	if _timestop_queue.enqueue_resolved(payload, time_scale):
-		_present_effect_result(payload, true)
+	_present_effect_result(payload, true)
 
 
-## 出手瞬间：卡住固定步，等冲撞/回位 tween 播完（倒带 silent 路径不 hold，避免重演卡住）。
+## 出手瞬间：只同步出击 tween；并行战斗不 hold 固定步（热闹优先）。
 func _on_unit_attacked_presentation(_attacker: RtUnit, _target: RtUnit) -> void:
 	if _sim == null or _tape_rewinding:
 		return
-	_sim.hold_for_presentation()
-	## 同帧立刻 sync，避免等 arena._process 才开 tween 时被提前 release。
 	if _arena != null:
 		_arena.sync_combat_motion_now()
 
 
-## 战斗推进：有待结算技能则插入展示步；否则推进行动队列。
+## 战斗推进：锁阵待结算可短串行；开战就绪后静默结算技能、全员并行步进。
 func _tick_combat_presentation(delta: float) -> void:
 	if _sim == null:
 		return
@@ -3626,16 +3621,9 @@ func _tick_combat_presentation(delta: float) -> void:
 		and not _sim.has_pending_effects()
 	):
 		_sim.try_seed_action_queue()
-	## 用户已点「下一动」：优先拆掉时停/出击门闩，否则 step_once 永远进不了步进循环（假死）。
-	if _tape_step_once and (
-		(_timestop_queue != null and _timestop_queue.is_blocking())
-		or _sim.has_pending_effects()
-		or (_arena != null and _arena.has_active_combat_action_tween() and not _sim.is_actor_turn_active())
-	):
-		_unstick_combat_presentation()
+	## 锁阵开战技能：仍可短串行介绍卡；就绪后关掉 defer。
 	if _timestop_queue.is_blocking():
 		_sim.hold_for_presentation()
-		## 跨帧仍停在 AWAITING_RESOLVE：上一拍 card_done 处理中断，强制收拍以免假死。
 		if _timestop_queue.is_awaiting_resolve():
 			_resolve_skill_card_safe()
 			_presentation_block_elapsed = 0.0
@@ -3653,22 +3641,24 @@ func _tick_combat_presentation(delta: float) -> void:
 			_presentation_block_elapsed = 0.0
 		return
 	if _sim.has_pending_effects():
-		_sim.hold_for_presentation()
-		_presentation_block_elapsed = 0.0
-		_start_next_skill_card()
-		return
-	## 一动已交权且出击/回位仍在播：保持 hold，勿在 windup（turn 仍 active）时因 tween 卡住。
-	var action_busy := _arena != null and _arena.has_active_combat_action_tween()
-	if action_busy and not _sim.is_actor_turn_active():
-		_sim.hold_for_presentation()
-		_presentation_block_elapsed += delta
-		if _presentation_block_elapsed >= PRESENTATION_STUCK_SECONDS:
-			_arena.finish_combat_action_tweens()
-			_presentation_block_elapsed = 0.0
+		## 并行主路径：战斗中不播技能介绍卡，立即静默结算。
+		if _sim.is_action_queue_seeded():
+			_sim.defer_effect_resolve = false
+			_drain_pending_effects_silent()
+			_timestop_queue.clear()
 			_sim.release_presentation()
-		return
+		else:
+			_sim.hold_for_presentation()
+			_presentation_block_elapsed = 0.0
+			_start_next_skill_card()
+			return
+	elif _sim.is_action_queue_seeded() and _sim.defer_effect_resolve:
+		_sim.defer_effect_resolve = false
+	## 出击 tween 不再挡全场时钟。
+	if _arena != null and _arena.has_active_combat_action_tween():
+		pass
 	_presentation_block_elapsed = 0.0
-	## 一动逻辑已结束且演出排空：兑现暂停 / 下一动停住。
+	## 约 1s 脉冲边界：兑现暂停 / 下一拍停住（兼容录音机）。
 	if _tape_boundary_pending:
 		_tape_boundary_pending = false
 		_tape_step_once = false
@@ -3681,34 +3671,20 @@ func _tick_combat_presentation(delta: float) -> void:
 		_sim.release_presentation()
 		return
 	_sim.release_presentation()
-	## 下一动 / 请求暂停：按固定步推进，避免倍速一帧连跳多动。
+	## 「下一拍」/请求暂停：按固定步推进约 1s 脉冲边界。
 	if _tape_step_once or _tape_pause_requested:
 		var guard := 0
 		while guard < 360 and not _sim.is_finished():
 			if _sim.has_pending_effects():
-				_sim.hold_for_presentation()
-				_start_next_skill_card()
-				return
+				_sim.defer_effect_resolve = false
+				_drain_pending_effects_silent()
 			if _tape_boundary_pending:
 				break
-			## 上一动出手后的回位尚未结束：先等演出，再继续步进/兑现边界。
-			if (
-				_arena != null
-				and _arena.has_active_combat_action_tween()
-				and not _sim.is_actor_turn_active()
-			):
-				_sim.hold_for_presentation()
-				return
 			_sim.advance_fixed_step()
 			guard += 1
-			## unit_attacked 已 hold：同循环内勿再开下一动。
-			if _sim.presentation_hold:
-				return
-		## 本动尾巴技能仍须演完再停。
 		if _sim.has_pending_effects():
-			_sim.hold_for_presentation()
-			_start_next_skill_card()
-			return
+			_sim.defer_effect_resolve = false
+			_drain_pending_effects_silent()
 		if _tape_boundary_pending:
 			_tape_boundary_pending = false
 			_tape_step_once = false
@@ -4382,14 +4358,9 @@ func _refresh_cards() -> void:
 func _combat_phase_status_text() -> String:
 	if _sim == null:
 		return "战斗中·观战"
-	var round_i := _sim.get_round_index()
-	var actor := _sim.get_current_actor()
 	var scale_txt := " ×%.0f" % time_scale
-	if actor == null:
-		return "战斗中·第%d回合%s" % [round_i, scale_txt]
-	var name := actor.get_display_name()
-	var side := "友" if actor.is_player() else "敌"
-	return "第%d回合·%s[%s]%s" % [round_i, side, name, scale_txt]
+	var t := _sim.elapsed_seconds
+	return "战斗中·观战 %.0fs%s" % [t, scale_txt]
 
 
 func _refresh_hud() -> void:
