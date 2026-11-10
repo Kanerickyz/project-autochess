@@ -156,7 +156,7 @@ var ghost_unit_id: String = ""
 var prepare_slots: PrepareSlotBoard
 ## 敌方角色座位几何；空座淡示意，已占由 enemy_previews 画单位
 var enemy_slots: PrepareSlotBoard
-## 备战区：准备/战斗在棋盘底边下方；招募时在 midline 中缝（队伍与招募半场之间）。
+## 备战区：准备/战斗在棋盘底边下方；招募时在队伍与招募区之间（两侧各空一档逻辑行）。
 var bench_slots: PrepareSlotBoard
 ## 准备/战斗/招募显示备战行；附魔/商店/目录关闭。
 var bench_visible: bool = false
@@ -496,13 +496,13 @@ func get_board_rect() -> Rect2:
 	return Rect2(origin, board_px)
 
 
-## 备战格中心本地坐标。招募：逻辑格中心（midline）；准备/战斗：棋盘外虚拟行。
+## 备战格中心本地坐标。招募：逻辑格中心（队伍↔招募空档之间）；准备/战斗：棋盘外虚拟行。
 func bench_slot_center_local(slot_index: int) -> Vector2:
 	if bench_slots == null or slot_index < 0 or slot_index >= bench_slots.cells.size():
 		return Vector2.ZERO
 	var cell := bench_slots.cells[slot_index]
 	var px := get_cell_px()
-	## 棋盘内备战（招募中缝）：与座位同口径的格心。
+	## 棋盘内备战（招募栈）：与座位同口径的格心。
 	if cell.y < board_size.y:
 		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)) + Vector2(0.0, bench_slide_y)
 	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
@@ -2867,8 +2867,8 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 		queue_redraw()
 		return
 	var release_pos := release_local if release_local != Vector2.ZERO else get_local_mouse_position()
-	## 精确命中座位（换座 / 备战上阵）；中缝备战须优先于「最近空座」吸附，
-	## 否则松手在 midline 备战会被上区后排空座抢走。
+	## 精确命中座位（换座 / 备战上阵）；备战须优先于「最近空座」吸附，
+	## 否则松手在备战行会被上区后排空座抢走。
 	var seat_i := _find_recruit_team_seat_at(cell)
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
@@ -3612,7 +3612,13 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var font := get_theme_default_font()
 	var font_size := clampi(int(px * 0.55), 11, 18)
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
-	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
+	## 标签贴候选人行（可虚拟）；无候选人时回退 mid。
+	var shop_y := float(mid)
+	if not recruit_candidates.is_empty():
+		var c0: Vector2i = recruit_candidates[0].get("cell", Vector2i(-1, -1))
+		if c0.y >= 0:
+			shop_y = float(c0.y)
+	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, shop_y * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
 	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
