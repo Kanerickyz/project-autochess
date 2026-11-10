@@ -1,21 +1,24 @@
 class_name RtUnit
 extends RefCounted
-## 战斗单位运行态：逻辑格坐标 + 一动内落格顿步表现插值。属性只读自 UnitInstance。
+## 战斗单位运行态：连续平面坐标为主；cell 由 position 同步给 EffectResolver。
+## 属性只读自 UnitInstance。
 
-## Boss 一动三态可读：MOVING（含瞬移）、ATTACKING、SUMMONING。
+## Boss 重动作可读：MOVING（含瞬移/滑移）、ATTACKING、SUMMONING。
 enum State { DEPLOYING, MOVING, ATTACKING, SUMMONING, DEAD }
 
 
 const NEVER := -1000.0
+## 兼容旧测例名；并行主路径不再用落格顿步。
+const CELL_STEP_SECONDS := 0.2
 
 var unit: UnitInstance
-## 站立格（规则位置；出手/索敌只认此格）。步进未落稳前仍为 from。
+## 兼容映射格（floor(position)；效果格网 / 足迹锚点）。
 var cell: Vector2i = Vector2i.ZERO
-## 步进目标格；未在步进时与 cell 相同。占格预占此格。
+## 步进目标格（兼容旧落格 API；并行主路径保持与 cell 相同）。
 var step_dest: Vector2i = Vector2i.ZERO
-## 表现位置（格心或格间插值；不参与出手判定）
+## 连续平面位置（格为单位；出手/索敌/软碰撞主轴）。
 var position: Vector2 = Vector2.ZERO
-## 站立表现相对 footprint_center 的偏移（缓存；以当前/目标格座位行为准，寻路换行须刷新）。
+## 站立表现相对 footprint_center 的偏移（开战落点用；滑移后不再每帧强制）。
 var visual_bias: Vector2 = Vector2.ZERO
 ## 棋盘逻辑尺寸；供按座位行计算半格 bias（add_unit 写入）。
 var arena_size: Vector2i = Vector2i(5, 4)
@@ -30,16 +33,20 @@ var last_hit_time: float = NEVER
 ## 最近一次实际扣血量（护甲减免后）；供震屏幅度等表现使用。
 var last_hit_amount: int = 0
 var spawn_time: float = 0.0
-## 0 = 开战即参与行动队列；>0 表示至少等到该回合序号才可在队列中被选为当前行动者。
+## 兼容旧字段；并行下中途召唤立刻可动（不再推迟）。
 var action_eligible_from_round: int = 0
-## 格步插值：0..1，>=1 表示静止在格心
+## 格步插值（兼容 API；并行主路径恒为 1 = 未在步进）。
 var step_t: float = 1.0
 var step_from: Vector2 = Vector2.ZERO
 var step_to: Vector2 = Vector2.ZERO
-## 首领召唤冷却：剩余几次自己的行动后才可再召（见 UnitData.summon_cooldown_actions）。
-var boss_summon_cooldown_left: int = 0
+## 首领召唤冷却剩余秒（UnitData.summon_cooldown_actions 按秒解释）。
+var boss_summon_cooldown_left: float = 0.0
+## 首领瞬移冷却剩余秒。
+var boss_teleport_cooldown_left: float = 0.0
 ## 本场战斗已成功召唤的衍生小兵次数（见 UnitData.summon_max_total）。
 var boss_summons_spawned_total: int = 0
+## 自身周期脉冲累计（中毒 tick + ON_ROUND_START；默认每 1.0s）。
+var status_pulse_accum: float = 0.0
 
 
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:
@@ -88,6 +95,14 @@ func get_stats() -> UnitStats:
 	if unit.stats == null:
 		unit.stats = UnitStats.new()
 	return unit.stats
+
+
+func get_move_speed() -> float:
+	if unit != null and unit.cannot_move:
+		return 0.0
+	if unit != null:
+		return unit.get_move_speed()
+	return get_stats().get_move_speed()
 
 
 func get_radius() -> float:
@@ -184,7 +199,7 @@ func refresh_visual_bias(p_cell: Vector2i = Vector2i(-99999, -99999)) -> void:
 	visual_bias = bias_for_cell(use_cell)
 
 
-## 站立时的表现坐标：足迹几何中心 + **该格**座位行半格偏移（勿用过期 spawn bias）。
+## 站立时的表现坐标：足迹几何中心 + **该格**座位行半格偏移（开战落点用）。
 func standing_visual_at(p_cell: Vector2i) -> Vector2:
 	return footprint_center(p_cell) + bias_for_cell(p_cell)
 
@@ -193,7 +208,7 @@ static func chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-## 切比雪夫格距（整数格；足迹单位取双方占格之最近格）。
+## 切比雪夫格距（兼容；足迹单位取双方占格之最近格）。主路径出手用 edge_distance_to。
 func cell_distance_to(other: RtUnit) -> int:
 	if other == null:
 		return 999999
@@ -206,8 +221,10 @@ func cell_distance_to(other: RtUnit) -> int:
 	return best
 
 
-## 兼容旧调用：表现坐标间距（非出手主轴）。
+## 碰撞圆边缘间距（主路径攻距 / 索敌）。
 func edge_distance_to(other: RtUnit) -> float:
+	if other == null:
+		return INF
 	return position.distance_to(other.position) - get_radius() - other.get_radius()
 
 
@@ -218,6 +235,18 @@ func get_cell() -> Vector2i:
 ## 占格查询用：步进中为预占的 dest，否则为站立格。
 func get_occupied_cell() -> Vector2i:
 	return step_dest if is_stepping() else cell
+
+
+## 由连续 position 同步兼容格（效果格网 / 足迹锚）。
+func sync_cell_from_position() -> void:
+	var next := Vector2i(floori(position.x), floori(position.y))
+	if next == cell:
+		step_dest = cell
+		step_t = 1.0
+		return
+	cell = next
+	step_dest = cell
+	step_t = 1.0
 
 
 ## 将逻辑格设到 p_cell（足迹锚点）并立刻对齐表现（无插值；按该格座位行刷新 bias）。
@@ -231,29 +260,24 @@ func snap_to_cell(p_cell: Vector2i) -> void:
 	step_to = position
 
 
-## 开始一格步进：站立锚留在 from，直到 step_t>=1 才提交到 dest；
-## step_to 用 **目标格** 座位行半格，避免带着出发行 bias 压扁前后排间距。
+## 兼容旧落格 API：并行主路径立即落到目标格。
 func begin_step(from_cell: Vector2i, dest_cell: Vector2i) -> void:
-	step_from = position
-	step_to = standing_visual_at(dest_cell)
 	cell = from_cell
 	step_dest = dest_cell
-	step_t = 0.0
-	position = step_from
+	step_t = 1.0
+	refresh_visual_bias(dest_cell)
+	position = standing_visual_at(dest_cell)
+	cell = dest_cell
+	step_from = position
+	step_to = position
 
 
-## 一格步进表现时长（秒）；与一动可走几格解耦，避免再用移速绑演出。
-const CELL_STEP_SECONDS := 0.2
-
-## 按固定短时长插值一格；一动步数预算见 UnitStats.steps_per_turn。
-## 本帧若足以走完则落稳提交（容忍浮点误差）；不在此衔接下一步。
+## 兼容旧落格插值；并行主路径无事可做。
 func advance_step_visual(dt: float) -> void:
 	if not is_stepping():
-		position = standing_visual_at(cell)
 		return
 	var duration := maxf(0.05, CELL_STEP_SECONDS)
 	var delta_t := dt / duration
-	## 本帧将达/过格心即提交，避免浮点欠一丝导致晚一帧落格
 	if step_t + delta_t >= 1.0 - 0.000001:
 		_commit_step()
 		return

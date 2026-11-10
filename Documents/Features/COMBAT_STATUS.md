@@ -17,7 +17,7 @@
 |---------|--------|------|------------------------------|
 | `weak` | 虚弱 | 负 | 受到**普攻或技能伤害**时，在**护甲计算前**将该次伤害数字 **+1**（不含中毒 tick）。**当次伤害已击杀目标**时不叠加（`ON_DEAL_DAMAGE` 不入场）。 |
 | `berserk` | 狂暴 | 正 | **仅普攻** outgoing 伤害，在护甲前 **+1**。 |
-| `poison` | 中毒 | 负 | **自己回合开始时**（先于 `ON_ROUND_START` 技能）失去生命 **层数** 点；不走护甲、不吃虚弱。 |
+| `poison` | 中毒 | 负 | **自身周期 tick**（默认每 **1.0s**，先于同拍 `ON_ROUND_START` 周期技能）失去生命 **层数** 点；不走护甲、不吃虚弱。【As-Is】可能仍绑「自己回合开始」。 |
 
 - 叠层：`stacks = clamp(stacks + delta, 0, 15)`。  
 - 施加 / 驱散：技能 `EffectSpec` → `EffectAction` `APPLY_COMBAT_STATUS` / `REMOVE_COMBAT_STATUS`（`stat_name` = 状态 id，`value` = 层数，受技能升星倍率）。  
@@ -47,10 +47,10 @@
 **自己行动轮开始**（`RealtimeCombatSim`）：
 
 ```text
-中毒 tick（直扣 HP，层数合计）→ 若仍存活 → ON_ROUND_START 技能链
+中毒周期 tick（直扣 HP，层数合计）→ 若仍存活 → 同拍 ON_ROUND_START 周期技能链
 ```
 
-若中毒致死：本动**不**触发 `ON_ROUND_START`；行动者从队列跳过，与死亡规则一致。
+若中毒致死：本拍**不**触发该单位的 `ON_ROUND_START` 周期技能。
 
 ## 4. UI
 

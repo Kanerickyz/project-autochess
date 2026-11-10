@@ -601,11 +601,11 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 	if victim.unit.is_alive():
 		push_error("berserker refresh: victim should die")
 		return false
-	var actor := sim.get_current_actor()
-	if actor == null or actor.unit.id != "berserker":
+	## 并行：击杀续动武装下一次出手（attack_timer 清零），无「当前行动者」概念。
+	if killer_rt.attack_timer > RtUnitBrain.TIME_EPSILON and sim._turn_refresh_armed_instance_id != killer_rt.unit.instance_id:
 		push_error(
-			"berserker refresh: expected killer still acting, got %s"
-			% (actor.unit.id if actor != null and actor.unit != null else "null")
+			"berserker refresh: expected turn-refresh arm or ready attack_timer (timer=%.3f armed=%d)"
+			% [killer_rt.attack_timer, sim._turn_refresh_armed_instance_id]
 		)
 		return false
 	return true
@@ -1936,10 +1936,11 @@ static func _test_ally_death_spawn_weak() -> bool:
 		if token_rt.is_deploying():
 			push_error("ally_death_spawn: token must be on field same round (not deploying)")
 			return false
-		if token_rt.action_eligible_from_round <= sim.get_round_index():
+		## 并行：战中召唤立刻可动（不再推迟行动轮）。
+		if token_rt.action_eligible_from_round != 0:
 			push_error(
-				"ally_death_spawn: token must wait until next round to act (eligible=%d round=%d)"
-				% [token_rt.action_eligible_from_round, sim.get_round_index()]
+				"ally_death_spawn: parallel summon should be immediately eligible (eligible=%d)"
+				% token_rt.action_eligible_from_round
 			)
 			return false
 	if caller.unit.combat_summons_spawned != 2:
