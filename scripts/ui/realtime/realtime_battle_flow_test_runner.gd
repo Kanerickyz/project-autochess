@@ -65,7 +65,7 @@ func _test_battle_controller_rules() -> void:
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: start_encounter enters PREPARE")
-	_expect(battle.get_board_size() == Vector2i(5, 8), "controller: board is 5x8")
+	_expect(battle.get_board_size() == Vector2i(5, 4), "controller: board is 5x4")
 	_expect(battle.get_command_current() == 0.0, "controller: command resource disabled")
 	## 本版准备无手牌抽选：清牌区后按 DeckState 持久占位入座。
 	_expect(battle.get_hand().is_empty(), "controller: prepare hand empty (no encounter draw)")
@@ -101,12 +101,12 @@ func _test_battle_controller_rules() -> void:
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
 	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
-	## 5×8 / 2×5：逻辑相邻贴中线；显示格心再隔半格（距 1.5）。
-	_expect(slots.get_cell(0) == Vector2i(0, 4), "controller: ally front-left packed to mid")
-	_expect(slots.get_cell(1) == Vector2i(1, 4), "controller: ally adjacent columns")
-	_expect(slots.get_cell(5) == Vector2i(0, 5), "controller: ally back row first col")
-	_expect(enemy_slots.get_cell(0) == Vector2i(0, 2), "controller: enemy front-left near mid")
-	_expect(enemy_slots.get_cell(5) == Vector2i(0, 1), "controller: enemy back-left packed")
+	## 5×4 / 2×5：四行贴满 y=0..3；显示格心再隔半格（距 1.5）。
+	_expect(slots.get_cell(0) == Vector2i(0, 2), "controller: ally front-left packed to mid")
+	_expect(slots.get_cell(1) == Vector2i(1, 2), "controller: ally adjacent columns")
+	_expect(slots.get_cell(5) == Vector2i(0, 3), "controller: ally back row first col")
+	_expect(enemy_slots.get_cell(0) == Vector2i(0, 1), "controller: enemy front-left near mid")
+	_expect(enemy_slots.get_cell(5) == Vector2i(0, 0), "controller: enemy back-left packed")
 	_expect(
 		is_equal_approx(
 			slots.get_display_center(5).y - slots.get_display_center(0).y,
