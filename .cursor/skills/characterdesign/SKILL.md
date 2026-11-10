@@ -141,7 +141,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 
 **写入白名单（典型）**：`resources/units/**`、`resources/abilities/**`、池子与关卡 `.tres`、对应 `Documents/Content/*`、玩家可见时 bump `project.godot` 版本。
 
-**禁止**：另写 Buff/羁绊；主路径读 `command_cost`；合同外入池。
+**禁止**：另写第二套 Buff（羁绊须走 EffectSpec）；主路径读 `command_cost`；合同外入池。
 
 #### 3. 验证
 
@@ -181,7 +181,7 @@ description: End-to-end workflow for creating or revising playable units—desig
 ## 硬约束
 
 - 战斗增益：`EffectSpec` + `EffectResolver`；触发：`CombatEventBus`
-- v1 无羁绊；内部「流派」不进玩家 UI
+- 主职业必填（六类见 SYNERGY）；内部六主轴名不进玩家 UI
 - 共享 Resource 注意 `duplicate()`；保留 `.uid` 与 import 侧车
 - 子代理不提交/不推；主代理集成后按云流程提交
 

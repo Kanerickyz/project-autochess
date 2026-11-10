@@ -74,7 +74,7 @@ description: Implements an already-agreed design in code, resources, or editor p
 
 ## 硬约束
 
-- 玩法以 GAME_VISION 为准；战斗增益走 `EffectSpec` / `EffectResolver`；战斗触发走 `CombatEventBus`；v1 不做羁绊。
+- 玩法以 GAME_VISION 为准；战斗增益与羁绊团队效果走 `EffectSpec` / `EffectResolver`；战斗触发走 `CombatEventBus`；羁绊细则见 Features/SYNERGY。
 - 数值优先改 `resources/` 下 `.tres`；改共享 Resource 前判断 `duplicate()`。
 - 编辑器插件改动须保持 Dock 可用，不破坏现有 `.tres` 读写约定。
 - 不提交 `.godot/`、`.artifacts/`、日志与缓存；保留 `.uid` 与导入侧车。

@@ -20,6 +20,7 @@
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Features/ARCHETYPE.md](./Features/ARCHETYPE.md) | **流派**（内部六主轴；异常流·中毒簇职能与毒向受益者规则） |
+| [Features/SYNERGY.md](./Features/SYNERGY.md) | **种族 / 职业羁绊**（两套轴；职业六类词表；效果管线边界） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
 | [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（五十二人 · 含中毒三角；与技能 1:1；realtime 资源已写） |
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |

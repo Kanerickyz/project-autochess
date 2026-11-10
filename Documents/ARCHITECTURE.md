@@ -19,7 +19,7 @@
 - **已实现（招募主路径）**：角色候选槽锁定（刷新保留）；观战手动倍速 1×/2×/3×（`RealtimeBattleController.time_scale`）
 - **已实现 Autoload**：仅 `GameSettings`（主音量、全屏，持久化 `user://settings.cfg`）；主菜单入口 `scenes/main/main_menu.tscn`
 - **表现 As-Is**：逻辑网格与像素/世界坐标分离；棋盘主路径为 **3D `BoardWorld` / `BoardScene3D`**（非 Node2D + YSort）
-- **未创建** `resources/traits/`（v1 不含羁绊）
+- **未创建** `resources/traits/`（羁绊文档 To-Be，见 Features/SYNERGY；实现 As-Is 未接入）
 - 版本控制忽略 `.godot/`、`android/`、本地 `.artifacts/`、编辑器 `*.tscn*.tmp`
 
 可在编辑器中 F5 验证棋盘。文档中的 **To-Be** 若与 As-Is 冲突，以代码与本节为准。
@@ -75,8 +75,8 @@ flowchart TB
 
 设计原则：
 
-1. **数据驱动**：单位、联动技能用 `Resource`，便于策划迭代与 mod 扩展（**v1 不含 Trait/羁绊**）。
-2. **效果描述统一**：所有战斗增益经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。远期若加羁绊，须复用同一管线，禁止另写一套 Buff。
+1. **数据驱动**：单位、联动技能、（To-Be）羁绊用 `Resource`，便于策划迭代与 mod 扩展。
+2. **效果描述统一**：所有战斗增益与羁绊团队效果经 `EffectSpec` + `EffectResolver`；`AbilityData` 引用 `Array[EffectSpec]`。禁止另写一套 Buff。
 3. **战斗事件单一入口**：触发类逻辑只经 `CombatEventBus`；`DamagePipeline` / `UnitBrain` 只 emit，不直接修改其他单位属性。
 4. **模拟与表现分离**：战斗结果可先由纯逻辑算出，再由场景播放动画（避免帧率影响平衡）。
 5. **信号 / 事件总线**：流程与 UI 用**控制器显式信号**（`BoardController` / `RunGameController`）连接，**不**采用全局 `EventBus` Autoload；**战斗内触发不走全局 Bus**，避免跨局泄漏。
@@ -281,7 +281,7 @@ OnLineAttack, OnMove, OnEffectResolved, OnEffectFizzled
 
 #### EffectResolver
 
-1. 接收 `CombatEvent` + 场上单位的 listener 列表（来自 `unit.ability` / `passives`；增益触发型如亡者遗金可走专用钩子；v1 不含 Trait）。
+1. 接收 `CombatEvent` + 场上单位的 listener 列表（来自 `unit.ability` / `passives`；增益触发型如亡者遗金可走专用钩子；羁绊 listener To-Be）。
 2. 匹配 `EffectSpec.trigger` → 检查 `ConditionSpec` → 解析 `TargetSelector` → 执行 `EffectAction` 队列。
 3. **防循环**：`max_chain_depth`（建议 8–16）；同 tick 去重；内层伤害可标 `silent` 避免再次触发 `OnDamageTaken`。
 
