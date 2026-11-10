@@ -552,12 +552,16 @@ func _ensure_combo_hud() -> void:
 
 
 func _ensure_synergy_tag_hud() -> void:
-	if _synergy_tag_hud != null or _arena == null:
+	if _synergy_tag_hud != null:
+		return
+	var hud_rows := get_node_or_null("Layout/Hud/HudRows") as VBoxContainer
+	if hud_rows == null:
 		return
 	_synergy_tag_hud = SynergyTagHud.new()
 	_synergy_tag_hud.name = "SynergyTagHud"
-	_synergy_tag_hud.z_index = 23
-	_arena.add_child(_synergy_tag_hud)
+	## 顶栏内第一行：不挡 Arena 棋盘。
+	hud_rows.add_child(_synergy_tag_hud)
+	hud_rows.move_child(_synergy_tag_hud, 0)
 
 
 func _refresh_synergy_tag_hud() -> void:
@@ -566,14 +570,18 @@ func _refresh_synergy_tag_hud() -> void:
 	if _world_backdrop_mode:
 		_synergy_tag_hud.visible = false
 		return
-	## 仅准备 / 战斗（含结算观战）展示已入座职业计数；地图商店 / 招募 / 附魔隐藏。
+	## 准备 / 招募 / 战斗（含结算）展示已入座职业计数；地图商店 / 附魔 / 地图隐藏。
 	match _phase:
-		Phase.PREPARE, Phase.COMBAT, Phase.RESULT:
+		Phase.PREPARE, Phase.RECRUIT, Phase.COMBAT, Phase.RESULT:
 			pass
 		_:
 			_synergy_tag_hud.visible = false
 			return
-	var counts := SynergyOccupations.count_from_seated_entries(_slots)
+	## 招募阶段座位在 _recruit_team_slots；准备/战斗用 _slots。
+	var board := _slots
+	if _phase == Phase.RECRUIT and _recruit_team_slots != null:
+		board = _recruit_team_slots
+	var counts := SynergyOccupations.count_from_seated_entries(board)
 	_synergy_tag_hud.set_occupation_rows(counts)
 
 
@@ -714,6 +722,7 @@ func try_swap_prepare_seats(from_slot: int, to_slot: int) -> bool:
 	_set_selected(-1)
 	_sync_slot_visuals()
 	_rebuild_cards()
+	_refresh_hud()
 	return true
 
 
@@ -2144,6 +2153,7 @@ func _load_persistent_seats_into_prepare() -> void:
 		if _slots.try_assign_with_seq(entry.seat_index, entry, entry.seat_assign_seq):
 			placed += 1
 	_refresh_bench_row()
+	_refresh_synergy_tag_hud()
 
 
 func _sync_slot_visuals() -> void:
