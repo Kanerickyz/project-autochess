@@ -1063,24 +1063,25 @@ static func _musketeer_extra_damage(level: int) -> int:
 
 static func _test_deal_damage_extra_2() -> bool:
 	var dealt := _musketeer_extra_damage(1)
-	if dealt != 9:
-		push_error("musketeer: dealt %d, expected attack 7 + extra 2" % dealt)
+	## 远程职业统一面板 4 攻；技能额外 +2。
+	if dealt != 6:
+		push_error("musketeer: dealt %d, expected attack 4 + extra 2" % dealt)
 		return false
 	return true
 
 
 static func _test_deal_damage_extra_2_star2() -> bool:
 	var dealt := _musketeer_extra_damage(2)
-	if dealt != 19:
-		push_error("musketeer star2: dealt %d, expected attack 7 + 2 shots x6" % dealt)
+	if dealt != 16:
+		push_error("musketeer star2: dealt %d, expected attack 4 + 2 shots x6" % dealt)
 		return false
 	return true
 
 
 static func _test_deal_damage_extra_2_star3() -> bool:
 	var dealt := _musketeer_extra_damage(3)
-	if dealt != 61:
-		push_error("musketeer star3: dealt %d, expected attack 7 + 3 shots x18" % dealt)
+	if dealt != 58:
+		push_error("musketeer star3: dealt %d, expected attack 4 + 3 shots x18" % dealt)
 		return false
 	return true
 
@@ -2267,7 +2268,7 @@ static func _test_mirror_warden_kill_convert() -> bool:
 	sim.configure(ARENA, 901)
 	var warden := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(4.5, 20.5))
 	var foe := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 4, {"id": "fodder", "attack": 0}),
+		_dummy(UnitInstance.Team.ENEMY, 2, {"id": "fodder", "attack": 0}),
 		Vector2(4.5, 8.5),
 	)
 	if warden == null or foe == null:
@@ -2276,7 +2277,7 @@ static func _test_mirror_warden_kill_convert() -> bool:
 	sim.begin_combat()
 	sim.flush_combat_start_lock()
 	var atk := warden.get_effective_attack()
-	if atk < 4:
+	if atk < 2:
 		push_error("mirror_warden: atk too low %d" % atk)
 		return false
 	sim._pipeline.resolve_hit(warden, foe, atk, 0.0, sim.get_units())
@@ -2539,7 +2540,7 @@ static func _test_turn_start_strike_weakest_mount() -> bool:
 	if data.ability.id != "turn_start_strike_weakest":
 		push_error("shinobi: wrong ability id %s" % data.ability.id)
 		return false
-	if data.tier != 2 or data.stats.max_hp != 15 or data.stats.attack != 4:
+	if data.tier != 2 or data.stats.max_hp != 8 or data.stats.attack != 2:
 		push_error("shinobi: body stats mismatch")
 		return false
 	return true
@@ -2774,10 +2775,10 @@ static func _test_devour_rt_defer_kills_left_right() -> bool:
 	if not up.is_alive():
 		push_error("devour_rt: up neighbor must survive")
 		return false
-	## 吞噬基础攻 6（T3 偏厚 10/6）+ 左右友方攻 2+3。
-	if devourer.unit.get_effective_attack() != 6 + 2 + 3:
+	## 吞噬战士统一面板 2 攻 + 左右友方攻 2+3。
+	if devourer.unit.get_effective_attack() != 2 + 2 + 3:
 		push_error(
-			"devour_rt: atk=%d expected 11"
+			"devour_rt: atk=%d expected 7"
 			% devourer.unit.get_effective_attack()
 		)
 		return false

@@ -7,8 +7,8 @@
 
 [sub_resource type="Resource" id="UnitStats_bloodwage"]
 script = ExtResource("2_stats")
-max_hp = 15
-attack = 4
+max_hp = 10
+attack = 1
 steps_per_turn = 1
 attack_interval = 1.2
 attack_windup = 0.4
