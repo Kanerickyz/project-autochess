@@ -14,18 +14,25 @@ var _row: HBoxContainer
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
-	offset_left = 10.0
-	offset_top = 96.0
-	offset_right = 10.0
-	offset_bottom = 96.0
+	## 落在战斗 HUD / 沙盒「返回」下方，靠左不挡棋盘中心。
+	offset_left = 12.0
+	offset_top = 108.0
+	offset_right = 12.0
+	offset_bottom = 108.0
 	grow_horizontal = Control.GROW_DIRECTION_END
 	grow_vertical = Control.GROW_DIRECTION_END
+	_ensure_children()
+	visible = false
 
+
+func _ensure_children() -> void:
+	if _panel != null and _row != null:
+		return
 	_panel = PanelContainer.new()
 	_panel.name = "Panel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.08, 0.12, 0.78)
+	style.bg_color = Color(0.05, 0.08, 0.12, 0.82)
 	style.content_margin_left = PANEL_PAD
 	style.content_margin_right = PANEL_PAD
 	style.content_margin_top = PANEL_PAD * 0.65
@@ -36,17 +43,18 @@ func _ready() -> void:
 	style.corner_radius_bottom_left = 6
 	_panel.add_theme_stylebox_override("panel", style)
 	add_child(_panel)
-
 	_row = HBoxContainer.new()
 	_row.name = "TagRow"
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row.add_theme_constant_override("separation", CHIP_SEP)
 	_panel.add_child(_row)
-	visible = false
 
 
 ## rows: Array of {name, count} 或 Dictionary 职业→人数。
 func set_occupation_rows(rows) -> void:
+	if _row == null or _panel == null:
+		## 偶发：refresh 早于 _ready 时先建好子节点。
+		_ensure_children()
 	var display: Array[Dictionary] = []
 	if rows is Dictionary:
 		display = SynergyOccupations.to_display_rows(rows)

@@ -554,16 +554,20 @@ func _ensure_combo_hud() -> void:
 func _ensure_synergy_tag_hud() -> void:
 	if _synergy_tag_hud != null:
 		return
-	## CanvasLayer：避免被 Arena clip / 沙盒顶栏「返回」盖住；仍靠左上、不挡棋盘中心。
-	var layer := get_node_or_null("SynergyTagLayer") as CanvasLayer
-	if layer == null:
-		layer = CanvasLayer.new()
-		layer.name = "SynergyTagLayer"
-		layer.layer = 40
-		add_child(layer)
+	## 全屏 IGNORE 浮层挂在战斗根上（相对本控件坐标），避免 Arena clip，也不吃 VBox 排版。
+	var overlay := get_node_or_null("SynergyTagOverlay") as Control
+	if overlay == null:
+		overlay = Control.new()
+		overlay.name = "SynergyTagOverlay"
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		overlay.grow_vertical = Control.GROW_DIRECTION_BOTH
+		overlay.z_index = 60
+		add_child(overlay)
 	_synergy_tag_hud = SynergyTagHud.new()
 	_synergy_tag_hud.name = "SynergyTagHud"
-	layer.add_child(_synergy_tag_hud)
+	overlay.add_child(_synergy_tag_hud)
 
 
 func _refresh_synergy_tag_hud() -> void:
