@@ -7,8 +7,8 @@
 [sub_resource type="Resource" id="UnitStats_skeleton"]
 
 script = ExtResource("2_stats")
-max_hp = 5
-attack = 1
+max_hp = 8
+attack = 2
 steps_per_turn = 1
 attack_interval = 0.85
 attack_windup = 0.25
