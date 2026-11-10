@@ -1,6 +1,6 @@
 class_name PhaseGridPalettes
 extends RefCounted
-## 各阶段动态棋盘格双色（小丑牌式深色主题；战斗参考橙褐岩浆格）。
+## 各阶段动态棋盘格双色（小丑牌式深色主题；战斗用冷铁灰抬高与暖色纸片对比）。
 
 enum ThemeId {
 	MENU,
@@ -35,10 +35,10 @@ static func colors_for(theme_id: ThemeId) -> Dictionary:
 				"b": Color(0.09, 0.16, 0.18),
 			}
 		ThemeId.COMBAT:
-			## 战斗：焦橙 / 炭褐（用户参考图）。
+			## 战斗：冷铁灰（压低饱和与格间反差，避免焦橙吃掉暖色纸片/脚下血量）。
 			return {
-				"a": Color(0.08, 0.04, 0.03),
-				"b": Color(0.52, 0.20, 0.07),
+				"a": Color(0.04, 0.05, 0.08),
+				"b": Color(0.10, 0.12, 0.17),
 			}
 		ThemeId.RECRUIT:
 			## 招募：墨绿店面感。
