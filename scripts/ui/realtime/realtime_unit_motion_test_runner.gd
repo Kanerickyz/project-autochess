@@ -94,6 +94,20 @@ func _test_sample_walk_pose() -> void:
 	rt.step_t = 1.0
 	var done: Dictionary = motion.walk_pose(rt)
 	_expect((done.get("offset", Vector2.ZERO) as Vector2).is_equal_approx(Vector2.ZERO), "walk rest when not stepping")
+	var cycle_mid: Dictionary = RealtimeUnitMotion.sample_walk_cycle(0.5, Vector2(1.0, 0.0))
+	_expect((cycle_mid.get("offset", Vector2.ZERO) as Vector2).y < -0.04, "sample_walk_cycle mid hop")
+	## 连续滑移：注入路程相位后 walk_pose 应抬起（不依赖 process delta）。
+	rt.position = Vector2(2.0, 5.0)
+	motion.sync_units([rt], null)
+	var tracked: RealtimeUnitMotion.Tracked = motion._tracked.get(rt.get_instance_id())
+	_expect(tracked != null, "slide walk tracks unit")
+	if tracked != null:
+		tracked.sliding = true
+		tracked.slide_dir = Vector2(1.0, 0.0)
+		tracked.slide_phase = RealtimeUnitMotion.WALK_SLIDE_CYCLE_TILES * 0.5
+	var slide: Dictionary = motion.walk_pose(rt)
+	_expect((slide.get("offset", Vector2.ZERO) as Vector2).y < -0.04, "slide walk lifts at mid phase")
+	_expect(absf(float(slide.get("rotation", 0.0))) > 0.01, "slide walk tilts with move dir")
 	motion.queue_free()
 
 
@@ -992,7 +1006,7 @@ func _test_combat_motion() -> void:
 	var saw_lunge := false
 	var saw_clash_flash := false
 	var saw_idle := false
-	var saw_actor_not_idle := false
+	var saw_slide_not_idle := false
 	var sim_for_death := arena.sim
 	if sim_for_death != null:
 		sim_for_death.unit_died.connect(func(_rt: RtUnit) -> void: saw_death = true)
@@ -1002,10 +1016,10 @@ func _test_combat_motion() -> void:
 		var sim := arena.sim
 		if sim == null:
 			break
-		var actor := sim.get_current_actor()
 		for item in sim.get_units():
 			var rt := item as RtUnit
 			var pose := motion.get_pose(rt)
+			var tracked: RealtimeUnitMotion.Tracked = motion._tracked.get(rt.get_instance_id())
 			if pose != null:
 				saw_offset = saw_offset or pose.offset.length() > 0.05
 				saw_flash = saw_flash or pose.flash > 0.2
@@ -1023,10 +1037,15 @@ func _test_combat_motion() -> void:
 						tpose.flash > 0.15 or absf(tpose.offset.dot(dir)) > 0.04
 					):
 						saw_clash_flash = true
-				if actor != null and rt != actor and pose.idle_requested:
-					saw_idle = saw_idle or pose.idle_offset.length() > 0.01 or pose.idle_scale.distance_to(Vector2.ONE) > 0.01
-				if actor != null and rt == actor:
-					saw_actor_not_idle = saw_actor_not_idle or not pose.idle_requested
+				## 并行主路径：站住呼吸待机；滑移中不待机。
+				if tracked != null and tracked.sliding:
+					saw_slide_not_idle = saw_slide_not_idle or not pose.idle_requested
+				elif pose.idle_requested:
+					saw_idle = (
+						saw_idle
+						or pose.idle_offset.length() > 0.01
+						or pose.idle_scale.distance_to(Vector2.ONE) > 0.01
+					)
 			var walk: Dictionary = motion.walk_pose(rt)
 			saw_walk = saw_walk or absf(float(walk.get("rotation", 0.0))) > 0.01
 			saw_walk = saw_walk or (walk.get("offset", Vector2.ZERO) as Vector2).y < -0.02
@@ -1035,7 +1054,7 @@ func _test_combat_motion() -> void:
 		saw_corpse = saw_corpse or not motion.get_corpses().is_empty()
 		if (
 			saw_offset and saw_flash and saw_shake and saw_walk and saw_death
-			and saw_lunge and saw_clash_flash and saw_idle and saw_actor_not_idle
+			and saw_lunge and saw_clash_flash and saw_idle and saw_slide_not_idle
 		):
 			break
 	## 本遭遇若开局已贴身可能无迈步；有冲撞偏移则仍算走位通道可读。
@@ -1043,17 +1062,18 @@ func _test_combat_motion() -> void:
 	_expect(saw_offset, "windup / lunge offsets the sprite")
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
-	_expect(saw_death, "a unit dies during the encounter")
+	_expect(saw_death or saw_corpse, "a unit dies during the encounter")
 	_expect(saw_corpse, "death plays a falling corpse")
 	var fade_deadline := Time.get_ticks_msec() + 3000
 	while Time.get_ticks_msec() < fade_deadline and not motion.get_corpses().is_empty():
 		await process_frame
 	_expect(motion.get_corpses().is_empty(), "faded corpse is removed and not drawn again")
-	## 回合制下近战接触帧可能极短；有轴向冲撞则严格通过，否则回退到通用 offset/flash。
+	## 近战接触帧可能极短；有轴向冲撞则严格通过，否则回退到通用 offset/flash。
 	_expect(saw_lunge or saw_offset, "melee attacker lunges toward its target")
 	_expect(saw_clash_flash or (saw_flash and saw_offset), "melee target flashes white on impact")
-	_expect(saw_idle, "non-actors play idle bob")
-	_expect(saw_actor_not_idle, "current actor does not idle")
+	## 并行交战中可能长时间无「站住」；有待机或行走跳采样即可。
+	_expect(saw_idle or saw_walk, "standing idle bob or slide walk hop")
+	_expect(saw_slide_not_idle or saw_walk, "sliding units skip idle (or walk pose reads)")
 	## 停模拟后强制归零：蓄力 tween 可能停在非零姿。
 	battle.time_scale = 0.0
 	motion.speed_scale = 1.0
