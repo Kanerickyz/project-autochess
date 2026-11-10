@@ -554,14 +554,16 @@ func _ensure_combo_hud() -> void:
 func _ensure_synergy_tag_hud() -> void:
 	if _synergy_tag_hud != null:
 		return
-	var hud_rows := get_node_or_null("Layout/Hud/HudRows") as VBoxContainer
-	if hud_rows == null:
-		return
+	## CanvasLayer：避免被 Arena clip / 沙盒顶栏「返回」盖住；仍靠左上、不挡棋盘中心。
+	var layer := get_node_or_null("SynergyTagLayer") as CanvasLayer
+	if layer == null:
+		layer = CanvasLayer.new()
+		layer.name = "SynergyTagLayer"
+		layer.layer = 40
+		add_child(layer)
 	_synergy_tag_hud = SynergyTagHud.new()
 	_synergy_tag_hud.name = "SynergyTagHud"
-	## 顶栏内第一行：不挡 Arena 棋盘。
-	hud_rows.add_child(_synergy_tag_hud)
-	hud_rows.move_child(_synergy_tag_hud, 0)
+	layer.add_child(_synergy_tag_hud)
 
 
 func _refresh_synergy_tag_hud() -> void:
