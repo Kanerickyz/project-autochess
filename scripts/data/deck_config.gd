@@ -2,7 +2,8 @@ class_name DeckConfig
 extends Resource
 
 const DEFAULT_HAND_WIDTH := 4
-const DEFAULT_DEPLOY_CAP := 4
+## 开局上场席位上限（与 PLAYER / starter deck 定稿一致）。
+const DEFAULT_DEPLOY_CAP := 5
 ## 战斗半场座位行数（8 高棋盘 → 双方各 2 行贴中线，共四行）。
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5

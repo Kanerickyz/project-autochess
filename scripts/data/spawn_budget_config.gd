@@ -76,6 +76,8 @@ enum FormationTag {
 @export_range(0.0, 1.0, 0.01) var combat_plus_one_chance: float = 0.0
 ## 精英：以该概率选 N＋2，否则＝N。
 @export_range(0.0, 1.0, 0.01) var elite_plus_two_chance: float = 0.5
+## 敌方上场人数硬顶（普通/精英掷点后裁切；0＝不额外封顶，仍受座位上限）。Boss 不走人数规则。
+@export_range(0, 20, 1) var enemy_roster_cap: int = 6
 
 @export_group("Panel Match")
 ## 名单锁死后按队均展示攻/血缩放本场敌方面板（主加压）；Boss 节点跳过。
@@ -149,7 +151,7 @@ static func combat_enemy_count_bounds(floor_index: int) -> Vector2i:
 	return Vector2i(floor_f, floor_f + 1)
 
 
-## 按节点类型掷敌方目标人数（不含座位硬顶裁切）。
+## 按节点类型掷敌方目标人数（不含座位硬顶裁切；含 enemy_roster_cap）。
 ## Boss 返回 -1（调用方应跳过人数规则）。
 ## 普通：层绑定 [F, F＋1]；精英：＝N 或 N＋2（第一关精英强制 ≤N）；空队时 N 按 1 保底。
 func roll_enemy_count(
@@ -161,18 +163,30 @@ func roll_enemy_count(
 	if node_type == MapNodeType.Type.BOSS:
 		return -1
 	var n := maxi(1, player_roster_n)
+	var rolled := n
 	if node_type == MapNodeType.Type.ELITE:
 		## 第一关：精英不得超过玩家人数。
 		if is_first_floor(floor_index):
-			return n
-		if rng != null and rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
-			return n + 2
-		return n
-	## 普通战斗：与层号绑定，在 [F, F＋1] 内掷点。
-	var bounds := combat_enemy_count_bounds(floor_index)
-	if rng != null:
-		return rng.randi_range(bounds.x, bounds.y)
-	return bounds.x
+			rolled = n
+		elif rng != null and rng.randf() < clampf(elite_plus_two_chance, 0.0, 1.0):
+			rolled = n + 2
+		else:
+			rolled = n
+	else:
+		## 普通战斗：与层号绑定，在 [F, F＋1] 内掷点。
+		var bounds := combat_enemy_count_bounds(floor_index)
+		if rng != null:
+			rolled = rng.randi_range(bounds.x, bounds.y)
+		else:
+			rolled = bounds.x
+	return _clamp_enemy_roster_cap(rolled)
+
+
+## 敌方人数硬顶；cap≤0 表示不额外封顶。
+func _clamp_enemy_roster_cap(count: int) -> int:
+	if enemy_roster_cap <= 0:
+		return maxi(0, count)
+	return clampi(count, 0, enemy_roster_cap)
 
 
 ## 地图第 1 层（及测试传入的 0）视为第一关。
