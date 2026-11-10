@@ -91,7 +91,7 @@ static func _make_session(
 
 
 static func _test_seat_cap_uses_min_of_max_size_and_seat_grid() -> bool:
-	## 本版主路径 max_size=5 → cap=5；仍尊重更小 max_size。
+	## 本版主路径 max_size=10 → cap=10；仍尊重更小 max_size。
 	var deck := _make_deck([ARCHER], 5)
 	var economy := _make_economy(5)
 	var session := _make_session(deck, economy, 3, 0.0)

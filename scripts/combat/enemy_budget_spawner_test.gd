@@ -1049,16 +1049,19 @@ static func _test_roll_enemy_count_config() -> bool:
 
 static func _test_enemy_roster_cap_hard_max() -> bool:
 	var cfg := SpawnBudgetConfig.make_code_defaults()
-	cfg.enemy_roster_cap = 6
+	if cfg.enemy_roster_cap != 10:
+		return false
+	## 用更低硬顶验证裁切（默认 10 时多数掷点不会触顶）。
+	cfg.enemy_roster_cap = 4
 	cfg.elite_plus_two_chance = 1.0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	## 深层普通 [F,F+1] 会被硬顶裁到 6。
+	## 深层普通 [F,F+1] 会被硬顶裁到 4。
 	var combat7 := cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 5, rng, 7)
-	if combat7 != 6:
+	if combat7 != 4:
 		return false
-	## 精英 N=5 → N+2=7 → 裁到 6。
-	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 5, rng, 3) != 6:
+	## 精英 N=5 → N+2=7 → 裁到 4。
+	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 5, rng, 3) != 4:
 		return false
 	cfg.enemy_roster_cap = 0
 	## 关闭硬顶后精英可到 7。

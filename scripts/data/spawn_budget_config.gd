@@ -77,7 +77,7 @@ enum FormationTag {
 ## 精英：以该概率选 N＋2，否则＝N。
 @export_range(0.0, 1.0, 0.01) var elite_plus_two_chance: float = 0.5
 ## 敌方上场人数硬顶（普通/精英掷点后裁切；0＝不额外封顶，仍受座位上限）。Boss 不走人数规则。
-@export_range(0, 20, 1) var enemy_roster_cap: int = 6
+@export_range(0, 20, 1) var enemy_roster_cap: int = 10
 
 @export_group("Panel Match")
 ## 名单锁死后按队均展示攻/血缩放本场敌方面板（主加压）；Boss 节点跳过。

@@ -97,4 +97,4 @@ n_min = 1
 same_id_soft_dedup_weight = 0.05
 combat_plus_one_chance = 0.0
 elite_plus_two_chance = 0.4
-enemy_roster_cap = 6
+enemy_roster_cap = 10
