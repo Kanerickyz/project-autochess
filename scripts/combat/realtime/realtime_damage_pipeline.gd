@@ -154,8 +154,8 @@ static func can_counterattack(defender: RtUnit, attacker: RtUnit) -> bool:
 		return false
 	if defender.is_boss_leader():
 		return false
-	var reach := RtUnitBrain.grid_reach(defender.get_stats().attack_reach)
-	var dist := float(defender.cell_distance_to(attacker))
+	var reach := defender.get_stats().attack_reach
+	var dist := defender.edge_distance_to(attacker)
 	return dist <= reach + RtUnitBrain.REACH_EPSILON
 
 
@@ -165,7 +165,7 @@ static func collect_splash_victims(
 	units: Array,
 ) -> Array[RtUnit]:
 	var result: Array[RtUnit] = []
-	var reach := RtUnitBrain.grid_reach(splash_radius)
+	var reach := maxf(0.0, splash_radius)
 	for item in units:
 		var other := item as RtUnit
 		if other == null or not other.is_alive():
@@ -175,8 +175,8 @@ static func collect_splash_victims(
 		if other == primary:
 			result.append(other)
 			continue
-		var dist := float(primary.cell_distance_to(other))
-		if dist <= reach:
+		var dist := primary.position.distance_to(other.position)
+		if dist <= reach + RtUnitBrain.REACH_EPSILON:
 			result.append(other)
 	return result
 

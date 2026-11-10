@@ -166,6 +166,18 @@ func get_steps_per_turn() -> int:
 	return maxi(0, stats.steps_per_turn + bonus)
 
 
+## 主路径连续移速（格/秒）；显式 stats.move_speed 优先，否则由 steps_per_turn 推导。
+func get_move_speed() -> float:
+	if stats == null:
+		return 1.5
+	if stats.move_speed > 0.0:
+		return stats.move_speed
+	var steps := get_steps_per_turn()
+	if steps <= 0:
+		return 0.0
+	return maxf(0.5, float(steps))
+
+
 func uses_sliding_move_presentation() -> bool:
 	var pattern := get_movement_pattern()
 	return (
