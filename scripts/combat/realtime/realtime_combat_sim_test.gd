@@ -198,31 +198,46 @@ static func _test_action_queue_player_then_enemy() -> bool:
 	return true
 
 
-## 子序按落点格前→后、左→右，与 add_unit 先后无关。
+## 子序列优先：友方左→右、列内上→下；敌方左→右、列内下→上。与 add_unit 先后无关。
 static func _test_action_queue_spatial_sort() -> bool:
 	var sim := _new_sim()
 	sim.configure(Vector2i(5, 8), 1)
 	var mid := 4
-	## 后排右先 add、前排左后 add；队列仍应前排左友方优先。
-	var f_back_right := sim.add_unit(
-		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_r"}),
-		Vector2(4.5, float(mid + 3) + 0.5),
+	## 友：后排左列先 add、前排右列后 add → 列优先仍是左列整列先于右列。
+	var f_back_left := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_back_l"}),
+		Vector2(0.5, float(mid + 3) + 0.5),
 	)
+	var f_front_right := sim.add_unit(
+		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_front_r"}),
+		Vector2(2.5, float(mid) + 0.5),
+	)
+	## 敌：后排右列先 add、前排左列后 add → 左列（前排）先于右列（后排）。
+	var e_back_right := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back_r"}),
+		Vector2(2.5, float(mid - 3) + 0.5),
+	)
+	var e_front_left := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_front_l"}),
+		Vector2(0.5, float(mid - 1) + 0.5),
+	)
+	## 同列内：友方上（前）先于下（后）；敌方下（前/近中线）先于上（后）。
 	var f_front_left := sim.add_unit(
 		make_dummy(UnitInstance.Team.PLAYER, 100, {"id": "f_front_l"}),
 		Vector2(0.5, float(mid) + 0.5),
 	)
-	var e_back := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back"}),
-		Vector2(2.5, float(mid - 3) + 0.5),
-	)
-	var e_front := sim.add_unit(
-		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_front"}),
-		Vector2(1.5, float(mid - 1) + 0.5),
+	var e_back_left := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100, {"id": "e_back_l"}),
+		Vector2(0.5, float(mid - 3) + 0.5),
 	)
 	sim.begin_combat()
 	var q: Array = sim.get_action_queue()
-	var expected: Array[RtUnit] = [f_front_left, f_back_right, e_front, e_back]
+	## 友：x0 上→下 = front_l → back_l，再 x2 front_r
+	## 敌：x0 下→上 = front_l → back_l，再 x2 back_r
+	var expected: Array[RtUnit] = [
+		f_front_left, f_back_left, f_front_right,
+		e_front_left, e_back_left, e_back_right,
+	]
 	if q.size() != expected.size():
 		push_error("spatial queue: size %d expected %d" % [q.size(), expected.size()])
 		return false

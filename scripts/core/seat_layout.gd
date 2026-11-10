@@ -52,21 +52,27 @@ static func iter_seats_center_out(rows: int, cols: int) -> Array[int]:
 	return out
 
 
-## 行动队列排序：前排更近中线优先，同行列 x 升序（屏幕左→右）。board_height 为逻辑格网高。
-static func compare_cells_for_action_queue(ca: Vector2i, cb: Vector2i, board_height: int) -> bool:
+## 行动队列子序：列优先（先完成一列再右移）。
+## 友方：左→右，列内上→下（屏坐标 y 升序；半场内更靠中线的前排先）。
+## 敌方：左→右，列内下→上（屏坐标 y 降序；半场内更靠中线的前排先，与友方镜像）。
+## board_height 保留供调用方签名兼容，排序不再依赖中线距离。
+static func compare_cells_for_action_queue(
+	ca: Vector2i,
+	cb: Vector2i,
+	_board_height: int,
+	enemy_side: bool = false,
+) -> bool:
 	if ca == cb:
 		return false
-	var mid := BoardHalf.midline_row(board_height)
-	var da := absi(ca.y - mid)
-	var db := absi(cb.y - mid)
-	if da != db:
-		return da < db
 	if ca.x != cb.x:
 		return ca.x < cb.x
-	return false
+	if enemy_side:
+		return ca.y > cb.y
+	return ca.y < cb.y
 
 
 static func compare_rt_units_for_action_queue(a: RtUnit, b: RtUnit, board_height: int) -> bool:
 	if a == null or b == null:
 		return a != null
-	return compare_cells_for_action_queue(a.get_cell(), b.get_cell(), board_height)
+	var enemy_side := not a.is_player()
+	return compare_cells_for_action_queue(a.get_cell(), b.get_cell(), board_height, enemy_side)
