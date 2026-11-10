@@ -19,7 +19,7 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
-const DEFAULT_BOARD_SIZE := Vector2i(5, 8)
+const DEFAULT_BOARD_SIZE := Vector2i(5, 4)
 const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn")
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0

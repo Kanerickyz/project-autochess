@@ -38,7 +38,7 @@
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
 | [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备＋半场换座；本切片不含买人） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、5×8、一动内八向落格顿步越线） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、5×4、一动内八向落格顿步越线） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |
@@ -105,7 +105,7 @@ Project Autochess/
 | `resources/economy/` | `EconomyConfig` | **M3 已实现** |
 | `resources/shop/` | `ShopPoolConfig` | **M3 已实现** |
 | `resources/levels/wfc_demo_8x8.tres` | 旧网格工具环 WFC 演示关（`main.tscn` 可选）；**非** Run 主路径 | **M1 已实现** |
-| `resources/levels/board_act1.tres` | Act1 实时战场 **As-Is 18×32** + 敌池（无波次表；To-Be 5×8 + 座位见 COMBATLEVEL） | **Run 已实现** |
+| `resources/levels/board_act1.tres` | Act1 实时战场 **5×4** + 敌池（无波次表；座位见 COMBATLEVEL） | **Run 已实现** |
 | `resources/levels/board_legacy_4x8.tres` | 旧 4×8 格子棋盘（线性开发关工具） | **Legacy** |
 | `scenes/combat/realtime/realtime_battle.tscn` | Run 战斗关卡：2D 俯视实时战斗（色块/圆形占位） | **已实现** |
 | `scenes/combat/realtime/realtime_battle_demo.tscn` | 实时战斗演示（`-- --autoplay --once`） | **已实现** |

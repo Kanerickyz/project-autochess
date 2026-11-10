@@ -18,7 +18,7 @@ var position: Vector2 = Vector2.ZERO
 ## 站立表现相对 footprint_center 的偏移（缓存；以当前/目标格座位行为准，寻路换行须刷新）。
 var visual_bias: Vector2 = Vector2.ZERO
 ## 棋盘逻辑尺寸；供按座位行计算半格 bias（add_unit 写入）。
-var arena_size: Vector2i = Vector2i(5, 8)
+var arena_size: Vector2i = Vector2i(5, 4)
 var state: State = State.DEPLOYING
 var target: RtUnit
 var deploy_remaining: float = 0.0

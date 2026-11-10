@@ -1,6 +1,6 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
+## 准备阶段角色座位：双方各 2×5（与 5×4 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
@@ -20,6 +20,8 @@ var slot_count: int = 0
 var is_enemy_side: bool = false
 ## 与 configure_grid 的 match_ally_row_order 一致；影响 get_display_center 前后排偏移方向。
 var match_ally_row_order: bool = false
+## configure_grid 时的棋盘尺寸；供 get_display_center 判断贴满/外推。
+var board_size: Vector2i = Vector2i.ZERO
 var cells: Array[Vector2i] = []
 ## 与 cells 等长；null 表示空座。友方存 DeckEntry；敌方座位表可仅用几何。
 var occupants: Array = []
@@ -38,6 +40,7 @@ func clear() -> void:
 	seat_cols = 0
 	is_enemy_side = false
 	match_ally_row_order = false
+	board_size = Vector2i.ZERO
 
 
 func configure_custom_cells(custom_cells: Array[Vector2i]) -> void:
@@ -58,7 +61,7 @@ func configure_custom_cells(custom_cells: Array[Vector2i]) -> void:
 func configure_grid(
 	rows: int,
 	cols: int,
-	board_size: Vector2i,
+	p_board_size: Vector2i,
 	enemy_side: bool = false,
 	p_match_ally_row_order: bool = false,
 ) -> void:
@@ -68,6 +71,7 @@ func configure_grid(
 	slot_count = seat_rows * seat_cols
 	is_enemy_side = enemy_side
 	match_ally_row_order = p_match_ally_row_order
+	board_size = p_board_size
 	cells = build_grid_cells(
 		board_size, seat_rows, seat_cols, enemy_side, match_ally_row_order
 	)
@@ -79,24 +83,25 @@ func configure_grid(
 
 
 ## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
-func configure(_p_slot_count: int, board_size: Vector2i) -> void:
-	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, board_size, false)
+func configure(_p_slot_count: int, p_board_size: Vector2i) -> void:
+	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, p_board_size, false)
 
 
 ## 备战区一行：默认棋盘底边下方（y = board_size.y）；招募可传 midline 夹在队伍与招募半场之间。
-func configure_bench_row(board_size: Vector2i, capacity: int = 5, row_y: int = -1) -> void:
-	configure_custom_cells(build_bench_cells(board_size, capacity, row_y))
+func configure_bench_row(p_board_size: Vector2i, capacity: int = 5, row_y: int = -1) -> void:
+	configure_custom_cells(build_bench_cells(p_board_size, capacity, row_y))
+	board_size = p_board_size
 
 
 ## row_y < 0：棋盘外虚拟行（y = board_size.y）；否则落在指定逻辑行（如招募中缝 midline）。
 static func build_bench_cells(
-	board_size: Vector2i, capacity: int = 5, row_y: int = -1
+	p_board_size: Vector2i, capacity: int = 5, row_y: int = -1
 ) -> Array[Vector2i]:
 	var n := maxi(1, capacity)
-	var cols := maxi(1, board_size.x)
+	var cols := maxi(1, p_board_size.x)
 	var start_x := (cols - n) / 2
 	start_x = clampi(start_x, 0, maxi(0, cols - 1))
-	var y := row_y if row_y >= 0 else maxi(0, board_size.y)
+	var y := row_y if row_y >= 0 else maxi(0, p_board_size.y)
 	var result: Array[Vector2i] = []
 	for i in n:
 		var x := start_x + i
@@ -106,7 +111,7 @@ static func build_bench_cells(
 
 
 static func build_grid_cells(
-	board_size: Vector2i,
+	p_board_size: Vector2i,
 	rows: int,
 	cols: int,
 	enemy_side: bool,
@@ -116,12 +121,12 @@ static func build_grid_cells(
 	var n_cols := maxi(1, cols)
 	var row_gap := maxi(0, SEAT_ROW_GAP_CELLS)
 	var col_gap := maxi(0, SEAT_COL_GAP_CELLS)
-	var mid := BoardHalf.midline_row(board_size.y)
-	var half_h := mid if enemy_side else maxi(0, board_size.y - mid)
+	var mid := BoardHalf.midline_row(p_board_size.y)
+	var half_h := mid if enemy_side else maxi(0, p_board_size.y - mid)
 	## 块放不下半场/棋盘宽时分别收拢对应轴向间距。
 	var block_w := n_cols + (n_cols - 1) * col_gap
 	var block_h := n_rows + (n_rows - 1) * row_gap
-	if block_w > board_size.x:
+	if block_w > p_board_size.x:
 		col_gap = 0
 		block_w = n_cols
 	if block_h > half_h:
@@ -129,24 +134,48 @@ static func build_grid_cells(
 		block_h = n_rows
 	var col_stride := 1 + col_gap
 	var row_stride := 1 + row_gap
-	var start_x := (board_size.x - block_w) / 2
-	start_x = clampi(start_x, 0, maxi(0, board_size.x - 1))
+	var start_x := (p_board_size.x - block_w) / 2
+	start_x = clampi(start_x, 0, maxi(0, p_board_size.x - 1))
 	var row_ys := _centered_row_ys(
-		board_size.y, n_rows, row_stride, block_h, enemy_side, match_ally_row_order
+		p_board_size.y, n_rows, row_stride, block_h, enemy_side, match_ally_row_order
 	)
 	var result: Array[Vector2i] = []
 	for row_i in row_ys.size():
 		var y: int = row_ys[row_i]
 		for c in n_cols:
 			var x := start_x + c * col_stride
-			x = clampi(x, 0, maxi(0, board_size.x - 1))
+			x = clampi(x, 0, maxi(0, p_board_size.x - 1))
 			result.append(Vector2i(x, y))
 	return result
 
 
 ## 旧单排落点（仅兼容）；主路径请用 build_grid_cells。
-static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vector2i]:
-	return build_grid_cells(board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
+static func build_default_cells(p_board_size: Vector2i, _count: int) -> Array[Vector2i]:
+	return build_grid_cells(p_board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
+
+
+## 理想跨中线逻辑空档：配合 ±EXTRA/2 使敌前↔我前显示距 = 1+EXTRA。
+static func _desired_mid_sep_cells() -> int:
+	return maxi(1, int(round(1.0 + 2.0 * SEAT_ROW_EXTRA_GAP)))
+
+
+## 半场放不下理想空档时收拢（5×4：mid_sep=1，四行占满 y=0..3，不叠格）。
+static func _effective_mid_sep_cells(height: int, rows: int, stride: int) -> int:
+	var mid := BoardHalf.midline_row(height)
+	var half_h := mid
+	var max_sep := maxi(1, half_h - (maxi(1, rows) - 1) * maxi(1, stride))
+	return mini(_desired_mid_sep_cells(), max_sep)
+
+
+## 贴满盘（mid_sep 相对理想值收拢）：禁止再加逻辑空行，改用显示外推。
+static func uses_packed_row_visual(p_board_size: Vector2i) -> bool:
+	if p_board_size.y <= 0:
+		return false
+	var stride := 1 + maxi(0, SEAT_ROW_GAP_CELLS)
+	return (
+		_effective_mid_sep_cells(p_board_size.y, DEFAULT_SEAT_ROWS, stride)
+		< _desired_mid_sep_cells()
+	)
 
 
 ## 战斗座位贴中线排布，使敌我共 4 行之间观感行距一致（隔半格）。
@@ -154,6 +183,7 @@ static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vect
 ## match_ally_row_order：招募上区把友方画在敌半场时用——索引 0 仍为前排，
 ## 但行序与我半场一致（屏幕上前排在上、后排在下），半场内仍垂直居中以免与敌前排撞格。
 ## 配合 SEAT_ROW_EXTRA_GAP=0.5：战斗四行显示格心距均为 1.5。
+## 5×4 贴满时 mid_sep 收拢为 1（逻辑相邻跨中线），显示侧改累积半格外推。
 static func _centered_row_ys(
 	height: int,
 	rows: int,
@@ -164,9 +194,8 @@ static func _centered_row_ys(
 ) -> Array[int]:
 	var mid := BoardHalf.midline_row(height)
 	var half_h := mid if enemy_side else maxi(0, height - mid)
-	## 跨中线逻辑空档：使「敌前排↔我前排」显示距 = 1 + SEAT_ROW_EXTRA_GAP。
-	## mid - y_enemy_front = 1 + 2 * EXTRA_GAP（见 combat_row_visual_bias ±EXTRA/2）。
-	var mid_sep_cells := maxi(1, int(round(1.0 + 2.0 * SEAT_ROW_EXTRA_GAP)))
+	## 跨中线逻辑空档：高大盘用 mid_sep=2 空一行；贴满盘收拢为 1，不叠格。
+	var mid_sep_cells := _effective_mid_sep_cells(height, rows, stride)
 	var ys: Array[int] = []
 	for i in rows:
 		var y: int
@@ -196,6 +225,22 @@ func get_cell(slot_index: int) -> Vector2i:
 	return cells[slot_index]
 
 
+## row_i 相对前排的显示 Y 偏移。combat_order：敌战斗序（前排 y 更大）或友方战斗序。
+## packed：自中线向外累积半格，使逻辑相邻四行显示距均为 1+EXTRA。
+static func _row_visual_y_offset(row_i: int, enemy_combat_order: bool, packed: bool) -> float:
+	if SEAT_ROW_EXTRA_GAP <= 0.0:
+		return 0.0
+	var spread := SEAT_ROW_EXTRA_GAP * 0.5
+	var ri := maxi(0, row_i)
+	if packed:
+		if enemy_combat_order:
+			return -spread - float(ri) * SEAT_ROW_EXTRA_GAP
+		return spread + float(ri) * SEAT_ROW_EXTRA_GAP
+	if enemy_combat_order:
+		return spread if ri == 0 else -spread
+	return -spread if ri == 0 else spread
+
+
 ## 绘制/开战落点用的格心（可含半格行距）；逻辑占座仍用 get_cell 整格。
 func get_display_center(slot_index: int) -> Vector2:
 	var cell := get_cell(slot_index)
@@ -205,13 +250,14 @@ func get_display_center(slot_index: int) -> Vector2:
 	if seat_rows < 2 or seat_cols <= 0 or SEAT_ROW_EXTRA_GAP <= 0.0:
 		return center
 	var row_i := slot_index / seat_cols
-	var spread := SEAT_ROW_EXTRA_GAP * 0.5
-	## 敌方战斗半场：前排（row 0）y 更大；友方/招募同序：前排 y 更小。
 	var enemy_combat_order := is_enemy_side and not match_ally_row_order
-	if enemy_combat_order:
-		center.y += spread if row_i == 0 else -spread
-	else:
-		center.y += -spread if row_i == 0 else spread
+	## 招募同序半场只做块内 ±EXTRA/2；战斗座位在贴满盘上改累积外推。
+	var packed := (
+		(enemy_combat_order or not is_enemy_side)
+		and board_size.y > 0
+		and uses_packed_row_visual(board_size)
+	)
+	center.y += _row_visual_y_offset(row_i, enemy_combat_order, packed)
 	return center
 
 
@@ -219,26 +265,24 @@ func get_display_center(slot_index: int) -> Vector2:
 ## 按「当前格所属座位行」计算，避免开局 bias 随单位换行把前后排间距压扁/颠倒。
 static func combat_row_visual_bias(
 	cell: Vector2i,
-	board_size: Vector2i,
+	p_board_size: Vector2i,
 	enemy_side: bool,
 ) -> Vector2:
-	if SEAT_ROW_EXTRA_GAP <= 0.0 or board_size.x <= 0 or board_size.y <= 0:
+	if SEAT_ROW_EXTRA_GAP <= 0.0 or p_board_size.x <= 0 or p_board_size.y <= 0:
 		return Vector2.ZERO
 	var grid := build_grid_cells(
-		board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, enemy_side, false
+		p_board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, enemy_side, false
 	)
 	if grid.is_empty() or DEFAULT_SEAT_COLS <= 0:
 		return Vector2.ZERO
-	var spread := SEAT_ROW_EXTRA_GAP * 0.5
+	var packed := uses_packed_row_visual(p_board_size)
 	for row_i in DEFAULT_SEAT_ROWS:
 		var idx := row_i * DEFAULT_SEAT_COLS
 		if idx >= grid.size():
 			break
 		if grid[idx].y != cell.y:
 			continue
-		if enemy_side:
-			return Vector2(0.0, spread if row_i == 0 else -spread)
-		return Vector2(0.0, -spread if row_i == 0 else spread)
+		return Vector2(0.0, _row_visual_y_offset(row_i, enemy_side, packed))
 	return Vector2.ZERO
 
 

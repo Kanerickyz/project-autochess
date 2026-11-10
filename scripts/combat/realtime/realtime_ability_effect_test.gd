@@ -584,14 +584,14 @@ static func _test_berserker_kill_turn_refresh() -> bool:
 	if int(specs[0].max_triggers_per_combat) > 0:
 		push_error("berserker: max_triggers_per_combat must be unlimited (<=0)")
 		return false
-	const BOARD := Vector2i(5, 8)
+	const BOARD := Vector2i(5, 4)
 	var sim := _new_sim()
 	sim.configure(BOARD, 803)
-	var killer_rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var killer_rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 3.5))
 	killer_rt.unit.stats.steps_per_turn = 1
 	var victim := sim.add_unit(
 		_dummy(UnitInstance.Team.ENEMY, 1, {"steps_per_turn": 0, "sight_range": 0.0}),
-		Vector2(3.5, 5.5),
+		Vector2(3.5, 2.5),
 	)
 	sim.begin_combat()
 	var guard := 0
@@ -1875,10 +1875,10 @@ static func _test_ally_death_spawn_weak() -> bool:
 		push_error("ally_death_spawn: must require non-summon friend death")
 		return false
 	## 用正式棋盘规格，避免大沙盘掩盖半场落点问题。
-	const BOARD := Vector2i(5, 8)
+	const BOARD := Vector2i(5, 4)
 	var sim := _new_sim()
 	sim.configure(BOARD, 11)
-	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(0.5, 7.5))
+	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(0.5, 3.5))
 	var fodder_a := sim.add_unit(
 		RealtimeCombatSimTest.make_unit(
 			UnitInstance.Team.PLAYER,
@@ -1891,7 +1891,7 @@ static func _test_ally_death_spawn_weak() -> bool:
 				"attack_reach": 0.0,
 			},
 		),
-		Vector2(4.5, 5.5),
+		Vector2(4.5, 2.5),
 	)
 	var fodder_b := sim.add_unit(
 		RealtimeCombatSimTest.make_unit(
@@ -1905,7 +1905,7 @@ static func _test_ally_death_spawn_weak() -> bool:
 				"attack_reach": 0.0,
 			},
 		),
-		Vector2(3.5, 5.5),
+		Vector2(3.5, 2.5),
 	)
 	## 木桩敌人：避免清场；不用近身杀手误伤召魂。
 	sim.add_unit(
@@ -1987,10 +1987,10 @@ static func _test_ally_death_spawn_merged_triple() -> bool:
 	if data == null:
 		push_error("merged_spawn: missing soulcaller")
 		return false
-	const BOARD := Vector2i(5, 8)
+	const BOARD := Vector2i(5, 4)
 	var sim := _new_sim()
 	sim.configure(BOARD, 12)
-	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 7.5))
+	var caller := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 3.5))
 	if caller == null or caller.unit == null:
 		push_error("merged_spawn: caller null")
 		return false
@@ -2007,7 +2007,7 @@ static func _test_ally_death_spawn_merged_triple() -> bool:
 				"attack_reach": 0.0,
 			},
 		),
-		Vector2(1.5, 5.5),
+		Vector2(1.5, 2.5),
 	)
 	sim.add_unit(
 		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
