@@ -106,18 +106,17 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	## 招募半场两行：候选 mid+1；高大盘动作 cand_y+2，矮盘紧凑 cand_y+1（可虚拟行）。
-	var board_h := battle.get_board_size().y
-	var mid_y := BoardHalf.midline_row(board_h)
-	var compact := board_h < mid_y + 1 + 2 + 1
-	var expected_cand_y := mid_y + 1
-	var expected_action_y := expected_cand_y + (1 if compact else 2)
-	var expected_delta := 1 if compact else 2
+	## 招募三段栈：team → gap → bench → gap → cand → action（招募区内紧凑，可虚拟行）。
+	var seat_rows := 2
+	var expected_team_max_y := seat_rows - 1
+	var expected_bench_y := seat_rows + 1
+	var expected_cand_y := seat_rows + 3
+	var expected_action_y := seat_rows + 4
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
 	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
-		_expect(cell.y == expected_cand_y, "candidate y == recruit half row 1 (mid+1)")
+		_expect(cell.y == expected_cand_y, "candidate y == seat_rows+3")
 		## 一行五格：x 互不重叠（5 宽棋盘 gap=0 → x=0..4）。
 		var xs: Dictionary = {}
 		var same_y := true
@@ -132,15 +131,15 @@ func _test_opening_enter_recruit_ui() -> void:
 	_expect(not arena.recruit_items.is_empty(), "item row present")
 	if not arena.recruit_items.is_empty():
 		var item0: Vector2i = arena.recruit_items[0].get("cell", Vector2i(-1, -1))
-		_expect(item0.y == expected_action_y, "item row y == compact cand+1 / tall cand+2")
-		_expect(item0.y - expected_cand_y == expected_delta, "candidate/item row delta matches layout")
+		_expect(item0.y == expected_action_y, "item row y == cand+1")
+		_expect(item0.y - expected_cand_y == 1, "candidate/item row delta == 1")
 		for info in arena.recruit_items:
 			var ic: Vector2i = info.get("cell", Vector2i(-1, -1))
 			_expect(ic.y == expected_action_y, "all items share action row")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell same row as items")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock same row as items")
 	_expect(arena.recruit_sell_cell != arena.recruit_lock_cell, "sell/lock not overlapping")
-	_expect(arena.recruit_sell_cell.y == expected_cand_y + expected_delta, "sell on action row")
+	_expect(arena.recruit_sell_cell.y == expected_cand_y + 1, "sell on action row")
 
 	## 道具 / 锁定 / 卖出均可长按 inspect（同 is_item 信息卡路径）。
 	if not arena.recruit_items.is_empty():
@@ -181,23 +180,28 @@ func _test_opening_enter_recruit_ui() -> void:
 			"recruit sell inspectable",
 		)
 
-	## 上半场队伍块：敌半场区域；行序与我半场一致（前排在上）。
+	## 上区队伍块：占满前 seat_rows 行；行序与我半场一致（前排在上）。
 	_expect(arena.recruit_team_slots != null, "team slots board exists")
 	var team_max_y := -1
 	if arena.recruit_team_slots != null and arena.recruit_team_slots.slot_count >= 1:
 		var team_front := arena.recruit_team_slots.get_cell(0)
 		var team_back := arena.recruit_team_slots.get_cell(5)
-		var mid := BoardHalf.midline_row(battle.get_board_size().y)
-		_expect(team_front.y < mid, "team block on enemy half")
+		_expect(team_front.y == 0, "team front on first row")
 		_expect(team_front.y < team_back.y, "recruit front row above back (ally row order)")
 		for si in arena.recruit_team_slots.slot_count:
 			team_max_y = maxi(team_max_y, arena.recruit_team_slots.get_cell(si).y)
+		_expect(team_max_y == expected_team_max_y, "team_max_y == seat_rows-1")
 
-	## 招募备战：逻辑 y = midline，不得与候选人同格；中心介于队伍区与候选区之间。
+	## 招募备战：bench.y == team_max+2；两侧空档；中心介于队伍与候选之间。
 	_expect(arena.bench_visible and arena.bench_slots != null, "recruit bench visible")
 	if arena.bench_slots != null and arena.bench_slots.slot_count > 0:
-		_expect(arena.bench_slots.get_cell(0).y == mid_y, "recruit bench cells on midline")
-		_expect(mid_y != expected_cand_y, "bench.y != candidate.y")
+		var bench_y := arena.bench_slots.get_cell(0).y
+		_expect(bench_y == expected_bench_y, "recruit bench y == seat_rows+1")
+		_expect(team_max_y + 1 == expected_bench_y - 1, "gap1 between team and bench")
+		_expect(bench_y == team_max_y + 2, "bench.y == team_max_y + 2")
+		_expect(expected_cand_y == bench_y + 2, "cand.y == bench.y + 2")
+		_expect(expected_action_y == expected_cand_y + 1, "action.y == cand.y + 1")
+		_expect(bench_y != expected_cand_y, "bench.y != candidate.y")
 		var bench_center := arena.bench_slot_center_local(0)
 		var hit_i := arena.find_bench_slot_at_local(bench_center)
 		_expect(hit_i == 0, "recruit bench hit-test maps center to slot 0")

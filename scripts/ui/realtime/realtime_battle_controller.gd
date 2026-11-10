@@ -2922,15 +2922,32 @@ func _sync_recruit_arena() -> void:
 
 
 func _rebuild_recruit_team_slots() -> void:
-	var seat_rows := DeckConfig.DEFAULT_SEAT_ROWS
+	var seat_rows := _recruit_layout_seat_rows()
 	var seat_cols := DeckConfig.DEFAULT_SEAT_COLS
 	if _deck_state != null:
 		var config := _deck_state.get_config()
 		if config != null:
-			seat_rows = config.get_seat_rows()
 			seat_cols = config.get_seat_cols()
-	## 上半场落点用敌半场区域，行序与我半场一致（前排在上），seat_index 与准备共用。
+	## 友方半场画在上区前 seat_rows 行（5×4 + enemy_side/match_ally → y=0..1），
+	## 与备战之间空出 gap1（y = seat_rows）；不占满则改自定义格保证前两行。
 	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
+	var team_max := -1
+	for si in _recruit_team_slots.slot_count:
+		team_max = maxi(team_max, _recruit_team_slots.get_cell(si).y)
+	if team_max != _recruit_layout_team_max_y():
+		var cells: Array[Vector2i] = []
+		var start_x := (_board_size.x - seat_cols) / 2
+		start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
+		for row_i in seat_rows:
+			for c in seat_cols:
+				var x := clampi(start_x + c, 0, maxi(0, _board_size.x - 1))
+				cells.append(Vector2i(x, row_i))
+		_recruit_team_slots.configure_custom_cells(cells)
+		_recruit_team_slots.board_size = _board_size
+		_recruit_team_slots.seat_rows = seat_rows
+		_recruit_team_slots.seat_cols = seat_cols
+		_recruit_team_slots.is_enemy_side = true
+		_recruit_team_slots.match_ally_row_order = true
 	if _recruit_session == null or _recruit_session.deck == null:
 		return
 	var deck := _recruit_session.deck
@@ -2992,18 +3009,39 @@ func _build_recruit_item_previews() -> Array:
 	return result
 
 
-## 高大盘可保留 mid / cand / 空行 / action；矮盘放不下时走紧凑布局。
-func _recruit_uses_compact_layout() -> bool:
-	var mid := BoardHalf.midline_row(_board_size.y)
-	return _board_size.y < mid + 1 + 2 + 1
+## 招募纵向布局源（逻辑 y；可超出 board_size.y 作虚拟行，不加战斗逻辑行）。
+## 自上而下：team 0..seat_rows-1 → gap1 → bench → gap2 → candidates → actions。
+## seat_rows=2 时：team 0–1，gap@2，bench@3，gap@4，cand@5，action@6。
+func _recruit_layout_seat_rows() -> int:
+	if _deck_state != null:
+		var config := _deck_state.get_config()
+		if config != null:
+			return maxi(1, config.get_seat_rows())
+	return DeckConfig.DEFAULT_SEAT_ROWS
+
+
+func _recruit_layout_team_max_y() -> int:
+	return _recruit_layout_seat_rows() - 1
+
+
+func _recruit_layout_bench_y() -> int:
+	## team_max + 2：中间空一档（gap1 = seat_rows）。
+	return _recruit_layout_seat_rows() + 1
+
+
+func _recruit_layout_candidate_y() -> int:
+	## bench + 2：中间空一档（gap2）；招募区内部不再另加空行。
+	return _recruit_layout_seat_rows() + 3
+
+
+func _recruit_layout_action_y() -> int:
+	return _recruit_layout_seat_rows() + 4
 
 
 func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(1, count)
-	## 招募半场第 1 行：候选人一行占满宽度（gap=0）；mid 行留给备战中缝。
-	## 禁止钳回 mid（5×4 会与备战同格）；可落到 board_size.y 作虚拟行。
-	var mid := BoardHalf.midline_row(_board_size.y)
-	var y := mid + 1
+	## 招募区第 1 行：候选人一行占满宽度（gap=0）；可落到虚拟行。
+	var y := _recruit_layout_candidate_y()
 	var gap := 0
 	var block_w := n
 	if block_w > _board_size.x:
@@ -3017,19 +3055,9 @@ func _build_recruit_candidate_cells(count: int) -> Array[Vector2i]:
 	return cells
 
 
-## 招募半场第 2 行 y：高大盘 cand_y+2（中间空一行）；矮盘 cand_y+1（可贴虚拟行）。
+## 招募区第 2 行：道具 + 锁 + 卖；紧贴候选人下一行（不再另加空档）。
 func _recruit_action_row_y() -> int:
-	var mid := BoardHalf.midline_row(_board_size.y)
-	var cand_count := RecruitSession.CANDIDATE_COUNT
-	if _recruit_session != null:
-		cand_count = _recruit_session.get_candidate_slot_count()
-	var cand := _build_recruit_candidate_cells(cand_count)
-	var cand_y := mid + 1
-	if not cand.is_empty():
-		cand_y = cand[0].y
-	if _recruit_uses_compact_layout():
-		return cand_y + 1
-	return cand_y + 2
+	return _recruit_layout_action_y()
 
 
 func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
@@ -4071,10 +4099,10 @@ func _ensure_bench_row() -> void:
 
 
 func _rebuild_bench_slots() -> void:
-	## 招募：备战夹在队伍半场与招募半场之间（midline）；准备/战斗仍在友方半场下方。
+	## 招募：备战在队伍与招募区之间（team_max+2，两侧各空一档）；准备/战斗仍在友方半场下方。
 	var row_y := -1
 	if _phase == Phase.RECRUIT:
-		row_y = BoardHalf.midline_row(_board_size.y)
+		row_y = _recruit_layout_bench_y()
 	_bench_slots.configure_bench_row(_board_size, DeckState.BENCH_CAPACITY, row_y)
 	if _deck_state == null:
 		return
