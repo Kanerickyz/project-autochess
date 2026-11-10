@@ -102,6 +102,7 @@ static func run_all() -> bool:
 	_check("devour_rt_pending_before_attack", _test_devour_rt_pending_before_attack())
 	_check("tier_unlock_t2_from_floor_4", _test_tier_unlock_t2_from_floor_4())
 	_check("combat_start_iron_heart", _test_combat_start_iron_heart())
+	_check("enemy_skills_do_not_trigger", _test_enemy_skills_do_not_trigger())
 	_check("deploy_edge_hex", _test_deploy_edge_hex())
 	_check("deploy_shield_boon", _test_deploy_shield_boon())
 	_check("deploy_banner_nearby", _test_deploy_banner_nearby())
@@ -2917,6 +2918,34 @@ static func _test_combat_start_iron_heart() -> bool:
 		push_error(
 			"iron_heart 2★: max_hp %d -> %d expected +36"
 			% [base2, rt2.unit.get_effective_max_hp()]
+		)
+		return false
+	return true
+
+
+## 临时门控：敌方挂同一开战技能不触发；友方仍触发。
+static func _test_enemy_skills_do_not_trigger() -> bool:
+	var data := _load_unit("res://resources/units/realtime/iron_heart.tres")
+	if data == null or data.ability == null:
+		push_error("enemy_skills: missing iron_heart")
+		return false
+	var sim := _new_sim()
+	sim.configure(ARENA, 502)
+	var enemy := sim.add_unit(_make_from_data(data, UnitInstance.Team.ENEMY), Vector2(2.5, 1.5))
+	var ally := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
+	var enemy_base := enemy.unit.get_effective_max_hp()
+	var ally_base := ally.unit.get_effective_max_hp()
+	sim.begin_combat()
+	if enemy.unit.get_effective_max_hp() != enemy_base:
+		push_error(
+			"enemy_skills: enemy iron_heart triggered (%d -> %d)"
+			% [enemy_base, enemy.unit.get_effective_max_hp()]
+		)
+		return false
+	if ally.unit.get_effective_max_hp() != ally_base + 12:
+		push_error(
+			"enemy_skills: ally iron_heart should still fire (%d -> %d)"
+			% [ally_base, ally.unit.get_effective_max_hp()]
 		)
 		return false
 	return true

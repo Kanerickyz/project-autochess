@@ -2,6 +2,9 @@ class_name EffectResolver
 extends RefCounted
 
 const MAX_CHAIN_DEPTH := 12
+## 临时：敌方单位不触发 AbilityData / 被动 EffectSpec（普攻与硬编码 Boss 召唤仍可用）。
+## 策反后 team 变为 PLAYER 则恢复触发。
+const ENEMY_ABILITY_TRIGGERS_DISABLED := true
 
 var _grid: BoardGrid
 var _bus: CombatEventBus
@@ -277,6 +280,8 @@ static func _sort_listeners(a: UnitInstance, b: UnitInstance) -> bool:
 
 func _get_effect_specs(unit: UnitInstance) -> Array[EffectSpec]:
 	if unit == null:
+		return []
+	if ENEMY_ABILITY_TRIGGERS_DISABLED and unit.team == UnitInstance.Team.ENEMY:
 		return []
 	return unit.get_all_effect_specs()
 
