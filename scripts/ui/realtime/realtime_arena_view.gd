@@ -401,12 +401,57 @@ func _notification(what: int) -> void:
 
 
 func _bench_layout_tiles() -> float:
+	## 招募 / 地图商店：棋盘外虚拟货架行需要额外高度，否则格子被裁切。
+	if recruit_active:
+		return _overflow_layout_tiles_for_cells(_recruit_layout_max_y())
+	if map_shop_active:
+		return _overflow_layout_tiles_for_cells(_map_shop_layout_max_y())
 	if not bench_visible:
 		return 0.0
-	## 招募备战在棋盘内中缝，不另占棋盘外高度。
-	if recruit_active:
-		return 0.0
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
+
+
+func _overflow_layout_tiles_for_cells(max_cell_y: int) -> float:
+	if max_cell_y < board_size.y:
+		return 0.0
+	return float(max_cell_y - board_size.y + 1)
+
+
+func _recruit_layout_max_y() -> int:
+	var max_y := -1
+	for info in recruit_candidates:
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = (info as Dictionary).get("cell", Vector2i(-1, -1))
+		max_y = maxi(max_y, c.y)
+	for info in recruit_items:
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = (info as Dictionary).get("cell", Vector2i(-1, -1))
+		max_y = maxi(max_y, c.y)
+	if recruit_sell_cell != NO_CELL:
+		max_y = maxi(max_y, recruit_sell_cell.y)
+	if recruit_lock_cell != NO_CELL:
+		max_y = maxi(max_y, recruit_lock_cell.y)
+	return max_y
+
+
+func _map_shop_layout_max_y() -> int:
+	var max_y := -1
+	for info in map_shop_offers:
+		if not (info is Dictionary):
+			continue
+		var c: Vector2i = (info as Dictionary).get("cell", Vector2i(-1, -1))
+		max_y = maxi(max_y, c.y)
+	return max_y
+
+
+## 招募/地图商店货架可用棋盘外虚拟行；x 仍须落在盘宽内。
+func _tile_to_shelf_cell(tile_pos: Vector2) -> Vector2i:
+	var cell := Vector2i(floori(tile_pos.x), floori(tile_pos.y))
+	if cell.x < 0 or cell.x >= board_size.x or cell.y < 0:
+		return NO_CELL
+	return cell
 
 
 func get_cell_px() -> float:
@@ -1217,7 +1262,8 @@ func _gui_input(event: InputEvent) -> void:
 func _gui_input_recruit(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		## 虚拟动作行：hover 勿钳死在 board_size.y-1。
+		_hover_cell = _tile_to_shelf_cell(local_to_tile(motion.position))
 		_track_press_motion(motion.position)
 		if _recruit_drag_index >= 0 or _recruit_item_drag_index >= 0 or _recruit_team_drag_id >= 0:
 			_set_drag_pointer(motion.position)
@@ -1247,13 +1293,14 @@ func _gui_input_recruit(event: InputEvent) -> void:
 			return
 		var tile := local_to_tile(mb.position)
 		## 招募候选/出售/锁定可用棋盘外虚拟格；勿用 tile_to_cell 钳死。
-		var cell := Vector2i(floori(tile.x), floori(tile.y))
+		var cell := _tile_to_shelf_cell(tile)
 		var board_cell := tile_to_cell(tile)
 		if mb.pressed:
 			_bench_press_id = -1
 			_bench_empty_press = -1
 			var bench_entry := find_bench_entry_at_local(mb.position) if bench_visible else -1
 			var bench_slot := find_bench_slot_at_local(mb.position) if bench_visible else -1
+			## 有人的备战纸片仍可先命中；空备战格不得吞掉候选人/道具/锁卖。
 			if bench_entry >= 0:
 				_bench_press_id = bench_entry if bench_interactive else -1
 				_recruit_team_press_id = -1
@@ -1266,6 +1313,33 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
 				accept_event()
 				return
+			var cand := _find_recruit_candidate_at(cell)
+			if cand >= 0:
+				_recruit_press_index = cand
+				_recruit_item_press_index = -1
+				_recruit_team_press_id = -1
+				_bench_empty_press = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+				return
+			var item_i := _find_recruit_item_at(cell)
+			if item_i >= 0:
+				_recruit_item_press_index = item_i
+				_recruit_press_index = -1
+				_recruit_team_press_id = -1
+				_bench_empty_press = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+				return
+			## 锁定 / 卖出：长按看介绍；短按无操作（拖入才生效）。
+			if _is_recruit_lock_cell(cell) or _is_recruit_sell_cell(cell):
+				_recruit_item_press_index = -1
+				_recruit_press_index = -1
+				_recruit_team_press_id = -1
+				_bench_empty_press = -1
+				_begin_press(mb.position, inspect_at(mb.position), Callable())
+				accept_event()
+				return
 			if (
 				bench_interactive
 				and bench_slot >= 0
@@ -1276,30 +1350,6 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_recruit_team_press_id = -1
 				_recruit_press_index = -1
 				_recruit_item_press_index = -1
-				accept_event()
-				return
-			var cand := _find_recruit_candidate_at(cell)
-			if cand >= 0:
-				_recruit_press_index = cand
-				_recruit_item_press_index = -1
-				_recruit_team_press_id = -1
-				_begin_press(mb.position, inspect_at(mb.position), Callable())
-				accept_event()
-				return
-			var item_i := _find_recruit_item_at(cell)
-			if item_i >= 0:
-				_recruit_item_press_index = item_i
-				_recruit_press_index = -1
-				_recruit_team_press_id = -1
-				_begin_press(mb.position, inspect_at(mb.position), Callable())
-				accept_event()
-				return
-			## 锁定 / 卖出：长按看介绍；短按无操作（拖入才生效）。
-			if _is_recruit_lock_cell(cell) or _is_recruit_sell_cell(cell):
-				_recruit_item_press_index = -1
-				_recruit_press_index = -1
-				_recruit_team_press_id = -1
-				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
 			var entry_id := _find_recruit_team_entry_at(board_cell)
@@ -1377,7 +1427,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 func _gui_input_map_shop(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		_hover_cell = tile_to_cell(local_to_tile(motion.position))
+		_hover_cell = _tile_to_shelf_cell(local_to_tile(motion.position))
 		_track_press_motion(motion.position)
 		if _map_shop_offer_drag_index >= 0 or _map_shop_team_drag_id >= 0:
 			_set_drag_pointer(motion.position)
@@ -1395,16 +1445,19 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if mb.button_index != MOUSE_BUTTON_LEFT:
 			return
-		var cell := tile_to_cell(local_to_tile(mb.position))
+		var tile := local_to_tile(mb.position)
+		## 矮盘货架可落虚拟行；队伍命中仍用盘内钳格。
+		var shelf_cell := _tile_to_shelf_cell(tile)
+		var board_cell := tile_to_cell(tile)
 		if mb.pressed:
-			var offer_i := _find_map_shop_offer_at(cell)
+			var offer_i := _find_map_shop_offer_at(shelf_cell)
 			if offer_i >= 0:
 				_map_shop_offer_press_index = offer_i
 				_map_shop_team_press_id = -1
 				_begin_press(mb.position, inspect_at(mb.position), Callable())
 				accept_event()
 				return
-			var entry_id := _find_recruit_team_entry_at(cell)
+			var entry_id := _find_recruit_team_entry_at(board_cell)
 			if entry_id >= 0:
 				_map_shop_team_press_id = entry_id
 				_map_shop_offer_press_index = -1
@@ -1420,11 +1473,11 @@ func _gui_input_map_shop(event: InputEvent) -> void:
 		if _end_press():
 			accept_event()
 		if _map_shop_team_drag_id >= 0:
-			_finish_map_shop_team_drag(cell)
+			_finish_map_shop_team_drag(board_cell)
 			accept_event()
 			return
 		if _map_shop_offer_drag_index >= 0:
-			_finish_map_shop_offer_drag(cell)
+			_finish_map_shop_offer_drag(board_cell)
 			accept_event()
 			return
 		_map_shop_offer_press_index = -1

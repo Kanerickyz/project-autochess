@@ -159,7 +159,12 @@ func _build_shelf_row_cells(count: int, board_size: Vector2i, row_offset: int) -
 	if n <= 0:
 		return cells
 	var mid := BoardHalf.midline_row(board_size.y)
-	var y := clampi(mid + row_offset, mid, maxi(mid, board_size.y - 1))
+	## 与招募同一紧凑条件：放不下 mid/row1/gap/row2 时去掉空行（offset 3→2），可落虚拟行。
+	var compact := board_size.y < mid + 1 + 2 + 1
+	var offset := row_offset
+	if compact and row_offset >= 3:
+		offset = 2
+	var y := mid + offset
 	var gap := 1
 	var block_w := n + (n - 1) * gap
 	if block_w > board_size.x:
