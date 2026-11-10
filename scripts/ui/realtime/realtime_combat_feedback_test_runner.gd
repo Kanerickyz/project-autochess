@@ -309,14 +309,18 @@ func _test_basic_attack_does_not_float() -> void:
 	_expect(_seat_first_hand(battle), "atk: seat one unit")
 	_expect(battle.try_start_combat(), "atk: start combat")
 	var arena := battle.get_arena()
+	## 先跑一帧登记 last_hit，避免「首次见到」吞掉受击徽章 punch。
+	await process_frame
 	## 清掉开战技能可能留下的反馈，再测纯普攻事件。
 	arena.clear_fx()
 	var before := arena.get_feedback_count()
 	var target: UnitInstance = null
+	var target_rt: RtUnit = null
 	for item in battle.get_sim().get_units():
 		var rt := item as RtUnit
 		if rt.is_player():
 			target = rt.unit
+			target_rt = rt
 			break
 	_expect(target != null, "atk: have player unit")
 	if target != null and battle._bus != null:
@@ -336,6 +340,12 @@ func _test_basic_attack_does_not_float() -> void:
 	await process_frame
 	_expect(arena.get_feedback_count() == before, "atk: basic-attack events do not add float text")
 	_expect(not battle.is_timestop_blocking(), "atk: basic-attack does not enter timestop queue")
+	if target_rt != null:
+		var rid := target_rt.get_instance_id()
+		_expect(
+			arena._combat_badge_tweens.has(rid) or arena._combat_badge_scale.has(rid),
+			"atk: damage punches underfoot HP badge scale"
+		)
 
 	battle.queue_free()
 	await process_frame

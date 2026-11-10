@@ -220,6 +220,11 @@ var lineup_aura_bonuses: Dictionary = {}
 ## 小丑牌风徽章缩放：entry_id → float（1=常态）。
 var _lineup_aura_badge_scale: Dictionary = {}
 var _lineup_aura_tweens: Dictionary = {}
+## 战斗受击：脚下攻血徽章缩放（RtUnit instance_id → float）。
+var _combat_badge_scale: Dictionary = {}
+var _combat_badge_tweens: Dictionary = {}
+## 上一帧已处理的 last_hit_time（instance_id → float），用于侦测新受击。
+var _combat_badge_last_hit: Dictionary = {}
 
 
 var _hover_cell: Vector2i = NO_CELL
@@ -335,6 +340,9 @@ func _process(delta: float) -> void:
 	if sim != null and sim.has_started():
 		_motion.speed_scale = presentation_time_scale
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
+		_sync_combat_hp_badge_punches(sim.get_units())
+	elif not _combat_badge_last_hit.is_empty() or not _combat_badge_scale.is_empty():
+		_clear_combat_badge_punches()
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
 	if _combat_skill_info_pin <= 0 and _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
@@ -689,22 +697,13 @@ func _punch_lineup_aura_badge(entry_id: int, d_atk: int, d_hp: int) -> void:
 	var peak := 1.22 if (d_atk + d_hp) > 0 else 0.86
 	var tw := create_tween()
 	_lineup_aura_tweens[entry_id] = tw
-	tw.tween_method(
-		func(v: float) -> void:
-			_lineup_aura_badge_scale[entry_id] = v
-			queue_redraw(),
-		1.0,
-		peak,
-		0.09,
-	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_method(
+	_tween_badge_scale_punch(
+		tw,
 		func(v: float) -> void:
 			_lineup_aura_badge_scale[entry_id] = v
 			queue_redraw(),
 		peak,
-		1.0,
-		0.12,
-	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	)
 	tw.finished.connect(func() -> void:
 		_lineup_aura_badge_scale.erase(entry_id)
 		_lineup_aura_tweens.erase(entry_id)
@@ -735,6 +734,81 @@ func _punch_lineup_aura_badge(entry_id: int, d_atk: int, d_hp: int) -> void:
 		"lineup_aura:%d" % entry_id,
 		tip,
 	)
+
+
+## 与上场邻座 aura 同一套快速放大缩小；战斗受击强化脚下生命标签可读性。
+func _tween_badge_scale_punch(tw: Tween, apply: Callable, peak: float) -> void:
+	tw.tween_method(apply, 1.0, peak, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_method(apply, peak, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _sync_combat_hp_badge_punches(units: Array) -> void:
+	var seen: Dictionary = {}
+	for item in units:
+		var rt := item as RtUnit
+		if rt == null:
+			continue
+		var key := rt.get_instance_id()
+		seen[key] = true
+		## 首次入表只记时间，避免 NEVER==NEVER 时永远不登记、把第一击当成「初见」吞掉。
+		if not _combat_badge_last_hit.has(key):
+			_combat_badge_last_hit[key] = rt.last_hit_time
+			continue
+		var prev_hit := float(_combat_badge_last_hit[key])
+		if is_equal_approx(rt.last_hit_time, prev_hit):
+			continue
+		_combat_badge_last_hit[key] = rt.last_hit_time
+		if rt.last_hit_amount <= 0:
+			continue
+		_punch_combat_hp_badge(key)
+	for key in _combat_badge_last_hit.keys():
+		if not seen.has(key):
+			_combat_badge_last_hit.erase(key)
+			_kill_combat_badge_punch(key)
+
+
+func _punch_combat_hp_badge(rt_id: int) -> void:
+	_kill_combat_badge_punch(rt_id)
+	_combat_badge_scale[rt_id] = 1.0
+	var tw := create_tween()
+	_combat_badge_tweens[rt_id] = tw
+	## 参照上场增加反馈：放大再回弹（非受伤缩小），让扣血数字更抢眼。
+	_tween_badge_scale_punch(
+		tw,
+		func(v: float) -> void:
+			_combat_badge_scale[rt_id] = v
+			queue_redraw(),
+		1.22,
+	)
+	tw.finished.connect(func() -> void:
+		_combat_badge_scale.erase(rt_id)
+		_combat_badge_tweens.erase(rt_id)
+		queue_redraw()
+	, CONNECT_ONE_SHOT)
+
+
+func _kill_combat_badge_punch(rt_id: int) -> void:
+	var old_tw: Tween = _combat_badge_tweens.get(rt_id) as Tween
+	if old_tw != null and old_tw.is_valid():
+		old_tw.kill()
+	_combat_badge_tweens.erase(rt_id)
+	_combat_badge_scale.erase(rt_id)
+
+
+func _clear_combat_badge_punches() -> void:
+	for key in _combat_badge_tweens.keys():
+		var tw: Tween = _combat_badge_tweens[key] as Tween
+		if tw != null and tw.is_valid():
+			tw.kill()
+	_combat_badge_tweens.clear()
+	_combat_badge_scale.clear()
+	_combat_badge_last_hit.clear()
+
+
+func _combat_badge_scale_for(rt: RtUnit) -> float:
+	if rt == null:
+		return 1.0
+	return float(_combat_badge_scale.get(rt.get_instance_id(), 1.0))
 
 
 func _find_lineup_entry_tile(entry_id: int) -> Vector2:
@@ -4314,6 +4388,7 @@ func _draw_units(px: float) -> void:
 			"hp": rt.get_current_hp(),
 			"alpha": alpha,
 			"armor": rt.unit.get_armor_block() if rt.unit != null else 0,
+			"scale": _combat_badge_scale_for(rt),
 		})
 	for job in badge_jobs:
 		_draw_stat_badges(
@@ -4323,6 +4398,9 @@ func _draw_units(px: float) -> void:
 			float(job["alpha"]),
 			px,
 			int(job["armor"]),
+			-1,
+			true,
+			float(job["scale"]),
 		)
 	_draw_corpses(px)
 
