@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_wood_drum"
 display_name = "敌·木鼓"
+occupation = "军乐队"
 cost = 2
 tier = 1
 team_default = 1

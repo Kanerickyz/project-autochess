@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "hunter"
 display_name = "猎手"
+occupation = "战士"
 cost = 3
 tier = 2
 command_cost = 4

@@ -108,6 +108,7 @@ var _lock_phase_active: bool = false
 var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
 var _combo_tracker: CombatComboTracker = CombatComboTracker.new()
 var _combo_hud: ComboCounterHud
+var _synergy_tag_hud: SynergyTagHud
 ## 一动已结束但技能尾巴未播完：等待结算队列排空后再清零连击。
 var _combo_reset_after_skill_tail: bool = false
 ## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
@@ -253,6 +254,7 @@ func _ready() -> void:
 	_ensure_bench_row()
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
+	_ensure_synergy_tag_hud()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -356,6 +358,12 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 		_hud.visible = not enabled
 	if _dock != null:
 		_dock.visible = not enabled
+	if _synergy_tag_hud != null:
+		## 地图阶段隐藏战斗 HUD 时一并隐藏职业 Tag 条。
+		if enabled:
+			_synergy_tag_hud.visible = false
+		else:
+			_refresh_synergy_tag_hud()
 	if _result_overlay != null and enabled:
 		_result_overlay.visible = false
 	if _arena != null:
@@ -541,6 +549,32 @@ func _ensure_combo_hud() -> void:
 	_combo_hud.name = "ComboCounterHud"
 	_combo_hud.z_index = 24
 	_arena.add_child(_combo_hud)
+
+
+func _ensure_synergy_tag_hud() -> void:
+	if _synergy_tag_hud != null or _arena == null:
+		return
+	_synergy_tag_hud = SynergyTagHud.new()
+	_synergy_tag_hud.name = "SynergyTagHud"
+	_synergy_tag_hud.z_index = 23
+	_arena.add_child(_synergy_tag_hud)
+
+
+func _refresh_synergy_tag_hud() -> void:
+	if _synergy_tag_hud == null:
+		return
+	if _world_backdrop_mode:
+		_synergy_tag_hud.visible = false
+		return
+	## 仅准备 / 战斗（含结算观战）展示已入座职业计数；地图商店 / 招募 / 附魔隐藏。
+	match _phase:
+		Phase.PREPARE, Phase.COMBAT, Phase.RESULT:
+			pass
+		_:
+			_synergy_tag_hud.visible = false
+			return
+	var counts := SynergyOccupations.count_from_seated_entries(_slots)
+	_synergy_tag_hud.set_occupation_rows(counts)
 
 
 func _reset_combo_display() -> void:
@@ -4113,6 +4147,7 @@ func _combat_phase_status_text() -> String:
 func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
+	_refresh_synergy_tag_hud()
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return

@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "soulcaller"
 display_name = "召魂"
+occupation = "秘术"
 cost = 3
 tier = 2
 command_cost = 3

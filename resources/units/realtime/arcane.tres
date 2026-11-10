@@ -26,6 +26,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "arcane"
 display_name = "奥术"
+occupation = "秘术"
 cost = 3
 tier = 2
 command_cost = 4

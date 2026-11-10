@@ -23,6 +23,7 @@ deploy_time = 0.9
 script = ExtResource("1_unit")
 id = "mend_friar"
 display_name = "愈修"
+occupation = "秘术"
 cost = 3
 tier = 2
 command_cost = 3

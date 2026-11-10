@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "aftershock"
 display_name = "余震"
+occupation = "战士"
 cost = 2
 tier = 1
 command_cost = 3

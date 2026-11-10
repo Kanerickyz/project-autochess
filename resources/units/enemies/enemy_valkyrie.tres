@@ -25,6 +25,7 @@ deploy_time = 1.2
 script = ExtResource("1_unit")
 id = "enemy_valkyrie"
 display_name = "敌·链枷兵"
+occupation = "战士"
 cost = 3
 tier = 3
 command_cost = 5

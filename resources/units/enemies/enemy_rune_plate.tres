@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_rune_plate"
 display_name = "敌·石甲"
+occupation = "坦克"
 cost = 2
 tier = 1
 team_default = 1

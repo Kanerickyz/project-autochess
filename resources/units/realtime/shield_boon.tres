@@ -24,6 +24,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "shield_boon"
 display_name = "盾祷"
+occupation = "坦克"
 cost = 2
 tier = 1
 command_cost = 4

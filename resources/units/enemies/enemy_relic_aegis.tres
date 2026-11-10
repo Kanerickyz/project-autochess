@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "enemy_relic_aegis"
 display_name = "敌·圣骸"
+occupation = "坦克"
 cost = 3
 tier = 2
 team_default = 1

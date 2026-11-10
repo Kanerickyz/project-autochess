@@ -23,6 +23,7 @@ deploy_time = 1.0
 script = ExtResource("1_unit")
 id = "echo_spear"
 display_name = "残影"
+occupation = "秘术"
 cost = 2
 tier = 1
 command_cost = 3

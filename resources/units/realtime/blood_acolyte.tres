@@ -23,6 +23,7 @@ deploy_time = 0.9
 script = ExtResource("1_unit")
 id = "blood_acolyte"
 display_name = "血僧"
+occupation = "战士"
 cost = 3
 tier = 2
 command_cost = 3
