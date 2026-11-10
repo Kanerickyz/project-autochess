@@ -95,24 +95,31 @@ func _test_battle_controller_rules() -> void:
 			break
 	_expect(enemies_on_seats, "controller: enemy spawns land on enemy seats")
 
-	## 前排更近中线、后排更靠己方底（2×5 居中：末行索引 5）
+	## 前排更近中线、后排更靠己方底（2×5 贴中线：末行索引 5）
 	var mid := BoardHalf.midline_row(battle.get_board_size().y)
 	_expect(slots.get_cell(0).y < slots.get_cell(5).y, "controller: ally front row nearer mid than back")
 	_expect(slots.get_cell(0).y >= mid, "controller: ally seats on player half")
 	_expect(enemy_slots.get_cell(0).y > enemy_slots.get_cell(5).y, "controller: enemy front row nearer mid than back")
 	_expect(enemy_slots.get_cell(0).y < mid, "controller: enemy seats on enemy half")
-	## 5×8 / 2×5：逻辑相邻居中；显示格心再隔半格（距 1.5）。
-	_expect(slots.get_cell(0) == Vector2i(0, 5), "controller: ally front-left centered in half")
-	_expect(slots.get_cell(1) == Vector2i(1, 5), "controller: ally adjacent columns")
-	_expect(slots.get_cell(5) == Vector2i(0, 6), "controller: ally back row first col")
+	## 5×8 / 2×5：逻辑相邻贴中线；显示格心再隔半格（距 1.5）。
+	_expect(slots.get_cell(0) == Vector2i(0, 4), "controller: ally front-left packed to mid")
+	_expect(slots.get_cell(1) == Vector2i(1, 4), "controller: ally adjacent columns")
+	_expect(slots.get_cell(5) == Vector2i(0, 5), "controller: ally back row first col")
 	_expect(enemy_slots.get_cell(0) == Vector2i(0, 2), "controller: enemy front-left near mid")
-	_expect(enemy_slots.get_cell(5) == Vector2i(0, 1), "controller: enemy back-left centered")
+	_expect(enemy_slots.get_cell(5) == Vector2i(0, 1), "controller: enemy back-left packed")
 	_expect(
 		is_equal_approx(
 			slots.get_display_center(5).y - slots.get_display_center(0).y,
 			1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
 		),
 		"controller: ally display centers spaced half cell"
+	)
+	_expect(
+		is_equal_approx(
+			slots.get_display_center(0).y - enemy_slots.get_display_center(0).y,
+			1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
+		),
+		"controller: cross-mid display centers spaced half cell"
 	)
 
 	## 清空全部座位后不可开战；再入一座可开战（绕过手牌宽度，直接清槽）。

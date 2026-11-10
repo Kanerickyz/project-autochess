@@ -1,6 +1,6 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，半场内垂直居中）；满座 ≠ 上场人数上限。
+## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
@@ -149,11 +149,11 @@ static func build_default_cells(board_size: Vector2i, _count: int) -> Array[Vect
 	return build_grid_cells(board_size, DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, false)
 
 
-## 在各自半场可放置区内垂直居中；行距 = stride。
+## 战斗座位贴中线排布，使敌我共 4 行之间观感行距一致（隔半格）。
 ## 战斗半场：索引 0 为前排（更近中线）。
 ## match_ally_row_order：招募上区把友方画在敌半场时用——索引 0 仍为前排，
-## 但行序与我半场一致（屏幕上前排在上、后排在下），避免与准备/战斗前后排颠倒。
-## 半场内边距用 round，避免 (half-block)/2 整除把角色行偏到半场一侧。
+## 但行序与我半场一致（屏幕上前排在上、后排在下），半场内仍垂直居中以免与敌前排撞格。
+## 配合 SEAT_ROW_EXTRA_GAP=0.5：战斗四行显示格心距均为 1.5。
 static func _centered_row_ys(
 	height: int,
 	rows: int,
@@ -164,23 +164,27 @@ static func _centered_row_ys(
 ) -> Array[int]:
 	var mid := BoardHalf.midline_row(height)
 	var half_h := mid if enemy_side else maxi(0, height - mid)
-	var start_in_half := int(round((float(half_h) - float(block_h)) * 0.5))
-	start_in_half = clampi(start_in_half, 0, maxi(0, half_h - block_h))
+	## 跨中线逻辑空档：使「敌前排↔我前排」显示距 = 1 + SEAT_ROW_EXTRA_GAP。
+	## mid - y_enemy_front = 1 + 2 * EXTRA_GAP（见 combat_row_visual_bias ±EXTRA/2）。
+	var mid_sep_cells := maxi(1, int(round(1.0 + 2.0 * SEAT_ROW_EXTRA_GAP)))
 	var ys: Array[int] = []
 	for i in rows:
 		var y: int
 		if enemy_side:
 			if match_ally_row_order:
-				## 招募友方上区：与我半场同序（i=0 更靠屏顶 = 前排）。
+				## 招募友方上区：半场内垂直居中 + 同序（i=0 更靠屏顶 = 前排）。
+				var start_in_half := int(round((float(half_h) - float(block_h)) * 0.5))
+				start_in_half = clampi(start_in_half, 0, maxi(0, half_h - block_h))
 				y = start_in_half + i * stride
 			else:
-				## 敌半场：块从顶侧居中；前排靠近中线（更大 y）。
-				var back_y := start_in_half
+				## 敌战斗半场：前排贴在 mid - mid_sep_cells，后排再往顶。
+				var front_y := mid - mid_sep_cells
+				var back_y := front_y - (rows - 1) * stride
 				y = back_y + (rows - 1 - i) * stride
 			y = clampi(y, 0, maxi(0, mid - 1))
 		else:
-			## 我半场：块从中线起居中；前排靠近中线（更小 y）。
-			y = mid + start_in_half + i * stride
+			## 我半场：前排贴中线 mid，后排往底。
+			y = mid + i * stride
 			y = clampi(y, mid, maxi(mid, height - 1))
 		ys.append(y)
 	return ys

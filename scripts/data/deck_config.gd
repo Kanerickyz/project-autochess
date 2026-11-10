@@ -3,7 +3,7 @@ extends Resource
 
 const DEFAULT_HAND_WIDTH := 4
 const DEFAULT_DEPLOY_CAP := 4
-## 半场内垂直居中的座位行数（8 高棋盘半场 4 行 → 默认 2 行，空行留白）。
+## 战斗半场座位行数（8 高棋盘 → 双方各 2 行贴中线，共四行）。
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
 
@@ -19,7 +19,7 @@ const DEFAULT_SEAT_COLS := 5
 @export_range(1, 20, 1) var draw_count: int = DEFAULT_HAND_WIDTH
 ## 遭遇准备阶段手牌宽度（默认与上场人数上限同值；不要求大于座位数）。
 @export_range(1, 20, 1) var hand_width: int = DEFAULT_HAND_WIDTH
-## 友方/敌方角色座位行数（默认 2，半场内垂直居中；前排近中线、后排靠己方底）。
+## 友方/敌方角色座位行数（默认 2，战斗贴中线；前排近中线、后排靠己方底）。
 @export_range(1, 8, 1) var seat_rows: int = DEFAULT_SEAT_ROWS
 ## 友方/敌方角色座位列数（默认 5，与棋盘宽对齐）。
 @export_range(1, 10, 1) var seat_cols: int = DEFAULT_SEAT_COLS
