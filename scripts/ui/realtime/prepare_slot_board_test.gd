@@ -1,6 +1,6 @@
 class_name PrepareSlotBoardTest
 extends RefCounted
-## 座位几何：战斗半场前排近中线；招募上区与我半场同行序；2×5 半场内垂直居中。
+## 座位几何：战斗半场前排贴中线；招募上区与我半场同行序；2×5 + 半格行距。
 
 
 static func run_all() -> bool:
@@ -72,7 +72,7 @@ static func _test_recruit_front_not_enemy_front() -> bool:
 
 
 static func _test_fills_half_field() -> bool:
-	## 2×5 居中落在半场内（共 10 格）；半场仍 4 行高，不要求填满 20 格。
+	## 2×5 贴中线落在半场内（共 10 格）；半场仍 4 行高，不要求填满 20 格。
 	var ally := PrepareSlotBoard.new()
 	ally.configure_grid(2, 5, Vector2i(5, 8), false)
 	var mid := BoardHalf.midline_row(8)
@@ -88,26 +88,40 @@ static func _test_fills_half_field() -> bool:
 		max_y = maxi(max_y, cell.y)
 	if seen.size() != 10 or ally.slot_count != 10:
 		return false
-	## 逻辑相邻行居中：y = mid+1 / mid+2；半格观感由 get_display_center 额外拉开。
-	if not (min_y == mid + 1 and max_y == mid + 2 and max_y - min_y == 1):
+	## 逻辑相邻行贴中线：y = mid / mid+1；半格观感由 get_display_center 额外拉开。
+	if not (min_y == mid and max_y == mid + 1 and max_y - min_y == 1):
 		return false
 	var front_c := ally.get_display_center(0)
 	var back_c := ally.get_display_center(5)
-	return is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP)
+	if not is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP):
+		return false
+	## 敌我四行显示格心距一致（隔半格）。
+	var enemy := PrepareSlotBoard.new()
+	enemy.configure_grid(2, 5, Vector2i(5, 8), true)
+	var gap := 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
+	var e_back := enemy.get_display_center(5).y
+	var e_front := enemy.get_display_center(0).y
+	var a_front := ally.get_display_center(0).y
+	var a_back := ally.get_display_center(5).y
+	return (
+		is_equal_approx(e_front - e_back, gap)
+		and is_equal_approx(a_front - e_front, gap)
+		and is_equal_approx(a_back - a_front, gap)
+	)
 
 
 static func _test_combat_row_bias_follows_cell() -> bool:
 	var board := Vector2i(5, 8)
-	var front_y := 5
-	var back_y := 6
+	var front_y := 4
+	var back_y := 5
 	var front_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, front_y), board, false)
 	var back_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, back_y), board, false)
-	var mid_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 4), board, false)
+	var empty_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 6), board, false)
 	if not is_equal_approx(front_b.y, -PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5):
 		return false
 	if not is_equal_approx(back_b.y, PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5):
 		return false
-	if mid_b != Vector2.ZERO:
+	if empty_b != Vector2.ZERO:
 		return false
 	var enemy_front := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 2), board, true)
 	var enemy_back := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 1), board, true)
