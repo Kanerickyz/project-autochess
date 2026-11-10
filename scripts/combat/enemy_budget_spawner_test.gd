@@ -38,6 +38,7 @@ static func run_all() -> bool:
 	ok = _check("elite_count_n_or_n_plus_2", _test_elite_count_n_or_n_plus_2()) and ok
 	ok = _check("boss_ignores_roster_count", _test_boss_ignores_roster_count()) and ok
 	ok = _check("roll_enemy_count_config", _test_roll_enemy_count_config()) and ok
+	ok = _check("enemy_roster_cap_hard_max", _test_enemy_roster_cap_hard_max()) and ok
 	ok = _check("first_floor_elite_count_cap", _test_first_floor_elite_count_cap()) and ok
 	ok = _check("first_floor_max_one_ranged", _test_first_floor_max_one_ranged()) and ok
 	ok = _check("resolve_max_ranged_caps", _test_resolve_max_ranged_caps()) and ok
@@ -1044,6 +1045,24 @@ static func _test_roll_enemy_count_config() -> bool:
 	## floor_index≤0 按第 1 层。
 	var bounds0 := SpawnBudgetConfig.combat_enemy_count_bounds(0)
 	return bounds0 == Vector2i(1, 1)
+
+
+static func _test_enemy_roster_cap_hard_max() -> bool:
+	var cfg := SpawnBudgetConfig.make_code_defaults()
+	cfg.enemy_roster_cap = 6
+	cfg.elite_plus_two_chance = 1.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	## 深层普通 [F,F+1] 会被硬顶裁到 6。
+	var combat7 := cfg.roll_enemy_count(MapNodeType.Type.COMBAT, 5, rng, 7)
+	if combat7 != 6:
+		return false
+	## 精英 N=5 → N+2=7 → 裁到 6。
+	if cfg.roll_enemy_count(MapNodeType.Type.ELITE, 5, rng, 3) != 6:
+		return false
+	cfg.enemy_roster_cap = 0
+	## 关闭硬顶后精英可到 7。
+	return cfg.roll_enemy_count(MapNodeType.Type.ELITE, 5, rng, 3) == 7
 
 
 static func _test_overflow_melee_to_back() -> bool:
