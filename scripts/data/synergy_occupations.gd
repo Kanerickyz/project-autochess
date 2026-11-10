@@ -1,6 +1,7 @@
 class_name SynergyOccupations
 extends RefCounted
 ## 职业羁绊词表与已入座计数聚合（仅展示，无阈值/团队数值）。
+## 计数按**不同角色 id**：同 id 多份入座只算 1。
 
 const TANK := "坦克"
 const WARRIOR := "战士"
@@ -24,15 +25,22 @@ static func is_known(occupation: String) -> bool:
 	return not occupation.is_empty() and ORDER.has(occupation)
 
 
-## 从 UnitData 列表聚合职业人数；空职业与未知串跳过。
+## 从 UnitData 列表聚合：按 unit.id 去重后再计职业；空 id / 空职业 / 未知串跳过。
 static func count_from_unit_datas(units: Array) -> Dictionary:
 	var counts := {}
 	for occ in ORDER:
 		counts[occ] = 0
+	var seen_ids: Dictionary = {}
 	for item in units:
 		var data := item as UnitData
 		if data == null:
 			continue
+		var uid := str(data.id).strip_edges()
+		if uid.is_empty():
+			continue
+		if seen_ids.has(uid):
+			continue
+		seen_ids[uid] = true
 		var occ := str(data.occupation).strip_edges()
 		if not is_known(occ):
 			continue
