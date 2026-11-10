@@ -17,20 +17,20 @@ static func run_all() -> bool:
 	passed = _test_refresh_keeps_recruited() and passed
 	passed = _test_refresh_keeps_locked_candidate() and passed
 	passed = _test_lock_persists_across_sessions() and passed
-	passed = _test_replace_no_gold_refunds_budget_and_copy() and passed
+	passed = _test_replace_no_refund() and passed
 	passed = _test_skip_discards_finish_keeps() and passed
 	passed = _test_opening_require_nonempty_roster() and passed
-	passed = _test_auto_merge_disabled_allows_duplicates() and passed
-	passed = _test_auto_merge_legacy_when_enabled() and passed
-	passed = _test_sell_refunds_budget_and_reset_rolls_back() and passed
+	passed = _test_auto_merge_three_same_level() and passed
+	passed = _test_auto_merge_skips_max_star() and passed
+	passed = _test_sell_refunds_and_reset_rolls_back() and passed
 	passed = _test_sell_price_unit_cost_and_triple() and passed
 	passed = _test_fused_enchant_survives_recruit_reset() and passed
-	passed = _test_persistent_seats_recruit_replace_sell_swap() and passed
+	passed = _test_persistent_seats_recruit_replace_sell_swap_merge() and passed
 	passed = _test_unlocked_tier_merges_into_pool() and passed
-	passed = _test_full_roster_blocks_without_merge() and passed
+	passed = _test_full_roster_buy_completes_triple() and passed
 	passed = _test_seat_prefer_then_bench() and passed
 	passed = _test_seat_to_bench_and_full_fails() and passed
-	passed = _test_three_copies_return_on_sell() and passed
+	passed = _test_nine_copies_leave_the_pool() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -54,7 +54,7 @@ static func _make_config() -> RecruitConfig:
 	return config
 
 
-static func _make_deck(units: Array, max_size: int = 10) -> DeckState:
+static func _make_deck(units: Array, max_size: int = 5) -> DeckState:
 	var deck := DeckState.new()
 	var deck_config := DeckConfig.new()
 	deck_config.max_size = max_size
@@ -62,9 +62,6 @@ static func _make_deck(units: Array, max_size: int = 10) -> DeckState:
 	deck_config.seat_cols = 5
 	deck_config.max_board_units = max_size
 	deck.configure(deck_config)
-	## 单测默认放开预算，避免入座门闩干扰非预算断言。
-	deck.budget.grant_atk(200)
-	deck.budget.grant_hp(200)
 	for unit in units:
 		if unit is UnitData:
 			deck.add_entry(unit as UnitData)
@@ -94,12 +91,12 @@ static func _make_session(
 
 
 static func _test_seat_cap_uses_min_of_max_size_and_seat_grid() -> bool:
-	## 本版主路径 max_size=10 → cap=10；仍尊重更小 max_size。
-	var deck := _make_deck([ARCHER], 10)
+	## 本版主路径 max_size=5 → cap=5；仍尊重更小 max_size。
+	var deck := _make_deck([ARCHER], 5)
 	var economy := _make_economy(5)
 	var session := _make_session(deck, economy, 3, 0.0)
-	if session.get_seat_cap() != 10:
-		push_error("RecruitSessionTest: seat cap should be min(10, 2x5)=10, got %d" % session.get_seat_cap())
+	if session.get_seat_cap() != 5:
+		push_error("RecruitSessionTest: seat cap should be min(5, 2x5)=5, got %d" % session.get_seat_cap())
 		return false
 	var large := _make_deck([ARCHER], 20)
 	var session_large := _make_session(large, _make_economy(5), 5, 0.0)
@@ -305,26 +302,27 @@ static func _test_lock_persists_across_sessions() -> bool:
 	return true
 
 
-static func _test_replace_no_gold_refunds_budget_and_copy() -> bool:
+static func _test_replace_no_refund() -> bool:
 	var deck := _make_deck([ARCHER, KNIGHT], 2)
 	var economy := _make_economy(20)
 	var gold_before := economy.gold
 	var session := _make_session(deck, economy, 11, 0.5)
-	var old_entry := deck.get_entries()[0]
-	var replace_id := old_entry.entry_id
-	var old_unit_id := old_entry.get_unit_id()
+	var replace_id := deck.get_entries()[0].entry_id
 	var candidate := session.get_candidate(0)
 	if candidate == null:
 		push_error("RecruitSessionTest: missing candidate for replace")
 		return false
+	var cost := session.get_recruit_cost(candidate)
 	var new_unit_id := candidate.id
-	var copies_before_new := session.get_copies_remaining(new_unit_id)
 	var buy := session.try_recruit(0, replace_id)
 	if not buy.get("ok", false):
 		push_error("RecruitSessionTest: replace recruit failed: %s" % buy.get("reason"))
 		return false
-	if economy.gold != gold_before:
-		push_error("RecruitSessionTest: replace must not spend gold; gold=%d" % economy.gold)
+	if economy.gold != gold_before - cost:
+		push_error(
+			"RecruitSessionTest: replace should only deduct recruit cost (no refund); gold=%d expected=%d"
+			% [economy.gold, gold_before - cost]
+		)
 		return false
 	if deck.size() != 2:
 		push_error("RecruitSessionTest: replace should keep team size")
@@ -332,11 +330,6 @@ static func _test_replace_no_gold_refunds_budget_and_copy() -> bool:
 	if deck.get_entry(replace_id) != null:
 		push_error("RecruitSessionTest: old entry_id should be gone after replace")
 		return false
-	## 新人扣 1 份；旧人份数回库（若旧人曾被计入 taken——开局 _make_deck 未走招募则 taken 不变）。
-	if session.get_copies_remaining(new_unit_id) != copies_before_new - 1:
-		push_error("RecruitSessionTest: replace should consume one new copy")
-		return false
-	var _ignore_old := old_unit_id
 	var has_new := false
 	for entry in deck.get_entries():
 		if entry.get_unit_id() == new_unit_id:
@@ -413,24 +406,8 @@ static func _test_opening_require_nonempty_roster() -> bool:
 	return true
 
 
-static func _test_auto_merge_disabled_allows_duplicates() -> bool:
+static func _test_auto_merge_three_same_level() -> bool:
 	var deck := _make_deck([])
-	var a := deck.add_entry(ARCHER)
-	var b := deck.add_entry(ARCHER)
-	var c := deck.add_entry(ARCHER)
-	if a == null or b == null or c == null or deck.size() != 3:
-		push_error("RecruitSessionTest: three same units should coexist when merge off")
-		return false
-	if deck.try_auto_merge():
-		push_error("RecruitSessionTest: default auto_merge must be disabled")
-		return false
-	return deck.size() == 3
-
-
-static func _test_auto_merge_legacy_when_enabled() -> bool:
-	## 遗留三合一：显式打开 auto_merge_enabled 仍可合成。
-	var deck := _make_deck([])
-	deck.auto_merge_enabled = true
 	var a := deck.add_entry(ARCHER)
 	var b := deck.add_entry(ARCHER)
 	if a == null or b == null or deck.size() != 2:
@@ -444,6 +421,7 @@ static func _test_auto_merge_legacy_when_enabled() -> bool:
 	var base_hp := ARCHER.stats.max_hp
 	var expected_atk := (base_atk + 1) + (base_atk + 3) + base_atk
 	var expected_hp := (base_hp + 2) + (base_hp + 4) + base_hp
+	## 用字典承接信号副作用（lambda 对局部 int 的捕获不可靠）。
 	var merge_probe := {"count": 0, "level": 0, "seats": 0}
 	deck.triple_merged.connect(func(product: DeckEntry, seats: Array) -> void:
 		merge_probe["count"] = int(merge_probe["count"]) + 1
@@ -460,6 +438,18 @@ static func _test_auto_merge_legacy_when_enabled() -> bool:
 			"RecruitSessionTest: triple_merged should fire once, got %d" % int(merge_probe["count"])
 		)
 		return false
+	if int(merge_probe["level"]) != 2:
+		push_error(
+			"RecruitSessionTest: triple_merged product level should be 2, got %d"
+			% int(merge_probe["level"])
+		)
+		return false
+	if int(merge_probe["seats"]) != 3:
+		push_error(
+			"RecruitSessionTest: triple_merged should pass 3 seats, got %d"
+			% int(merge_probe["seats"])
+		)
+		return false
 	if deck.size() != 1:
 		push_error("RecruitSessionTest: 3 same id/level should merge to 1, size=%d" % deck.size())
 		return false
@@ -467,40 +457,92 @@ static func _test_auto_merge_legacy_when_enabled() -> bool:
 	if product.level != 2:
 		push_error("RecruitSessionTest: merge product level should be 2, got %d" % product.level)
 		return false
+	if product.get_unit_id() != ARCHER.id:
+		push_error("RecruitSessionTest: merge product unit id mismatch")
+		return false
 	var got_atk := DeckUpgradeService.get_display_attack(product)
 	var got_hp := DeckUpgradeService.get_display_max_hp(product)
-	if got_atk != expected_atk or got_hp != expected_hp:
-		push_error("RecruitSessionTest: merge panel sum mismatch")
+	if got_atk != expected_atk:
+		push_error("RecruitSessionTest: merge atk sum expected %d got %d" % [expected_atk, got_atk])
+		return false
+	if got_hp != expected_hp:
+		push_error("RecruitSessionTest: merge hp sum expected %d got %d" % [expected_hp, got_hp])
+		return false
+	## 招募招入第 3 个也应合并
+	var economy := _make_economy(30)
+	var session := _make_session(_make_deck([KNIGHT, KNIGHT]), economy, 21, 0.0)
+	## 强制候选人为骑士以便招入触发三合一
+	session.candidates = [KNIGHT, ARCHER, ARCHER]
+	var before := session.deck.size()
+	var buy := session.try_recruit(0)
+	if not buy.get("ok", false):
+		push_error("RecruitSessionTest: recruit for merge failed: %s" % buy.get("reason"))
+		return false
+	if session.deck.size() != before - 1:
+		push_error(
+			"RecruitSessionTest: recruit merge should shrink by 1 (3→1), size=%d before=%d"
+			% [session.deck.size(), before]
+		)
+		return false
+	var merged := false
+	for entry in session.deck.get_entries():
+		if entry.get_unit_id() == KNIGHT.id and entry.level == 2:
+			merged = true
+	if not merged:
+		push_error("RecruitSessionTest: recruit should produce level-2 knight")
 		return false
 	return true
 
 
-static func _test_sell_refunds_budget_and_reset_rolls_back() -> bool:
+static func _test_auto_merge_skips_max_star() -> bool:
+	## restore_roster 不触发三合一；三只 3 星保持并存且 try_auto_merge 无操作。
+	var deck := _make_deck([])
+	var e1 := DeckEntry.new()
+	e1.entry_id = 0
+	e1.unit = ARCHER
+	e1.level = 3
+	var e2 := DeckEntry.new()
+	e2.entry_id = 1
+	e2.unit = ARCHER
+	e2.level = 3
+	var e3 := DeckEntry.new()
+	e3.entry_id = 2
+	e3.unit = ARCHER
+	e3.level = 3
+	deck.restore_roster({"entries": [e1, e2, e3], "next_entry_id": 3})
+	if deck.size() != 3:
+		push_error("RecruitSessionTest: max-star fixture size should be 3")
+		return false
+	if deck.try_auto_merge():
+		push_error("RecruitSessionTest: three 3-star units must not merge")
+		return false
+	if deck.size() != 3:
+		push_error("RecruitSessionTest: max-star roster size changed unexpectedly")
+		return false
+	return true
+
+
+static func _test_sell_refunds_and_reset_rolls_back() -> bool:
 	var deck := _make_deck([ARCHER, KNIGHT])
 	var economy := _make_economy(10)
 	var session := _make_session(deck, economy, 33, 0.0)
 	var sell_target := deck.get_entries()[0]
 	var sell_id := sell_target.entry_id
+	var price := DeckUpgradeService.get_sell_price(sell_target)
 	var gold_before := economy.gold
-	var atk_before := deck.budget.get_remaining_atk()
-	var hp_before := deck.budget.get_remaining_hp()
-	var occ := deck.budget.get_occupation(sell_id)
 	var size_before := deck.size()
 	var sold := session.try_sell(sell_id)
 	if not sold.get("ok", false):
 		push_error("RecruitSessionTest: try_sell failed: %s" % sold.get("reason"))
 		return false
-	if int(sold.get("gold", -1)) != 0:
-		push_error("RecruitSessionTest: sell must not grant gold")
+	if int(sold.get("gold", 0)) != price:
+		push_error("RecruitSessionTest: sell gold mismatch")
 		return false
-	if economy.gold != gold_before:
-		push_error("RecruitSessionTest: sell must leave gold unchanged")
-		return false
-	if deck.budget.get_remaining_atk() != atk_before + int(occ.get("atk", 0)):
-		push_error("RecruitSessionTest: sell should refund attack budget")
-		return false
-	if deck.budget.get_remaining_hp() != hp_before + int(occ.get("hp", 0)):
-		push_error("RecruitSessionTest: sell should refund hp budget")
+	if economy.gold != gold_before + price:
+		push_error(
+			"RecruitSessionTest: sell should grant %d gold; gold=%d"
+			% [price, economy.gold]
+		)
 		return false
 	if deck.size() != size_before - 1:
 		push_error("RecruitSessionTest: sell should free a seat")
@@ -561,8 +603,8 @@ static func _test_sell_price_unit_cost_and_triple() -> bool:
 	return true
 
 
-static func _test_persistent_seats_recruit_replace_sell_swap() -> bool:
-	## cap=5；招入占座；替换继承；出售腾座；招募换座持久（无三合一）。
+static func _test_persistent_seats_recruit_replace_sell_swap_merge() -> bool:
+	## cap=5；招入占座；替换继承；出售腾座；招募换座持久；三合一占最早座。
 	var deck := _make_deck([], 5)
 	var economy := _make_economy(40)
 	var session := _make_session(deck, economy, 61, 0.0)
@@ -660,16 +702,27 @@ static func _test_persistent_seats_recruit_replace_sell_swap() -> bool:
 		)
 		return false
 
-	## 同名三只可并存（无三合一）
-	var multi := _make_deck([], 5)
-	if multi.add_entry(ARCHER, 0, 4) == null:
+	## 三合一占最早落座时间座位
+	var merge_deck := _make_deck([], 5)
+	var a := merge_deck.add_entry(ARCHER, 0, 4)
+	var b := merge_deck.add_entry(ARCHER, 0, 1)
+	var c := merge_deck.add_entry(ARCHER, 0, 7)
+	if a == null or b == null or c == null:
+		push_error("RecruitSessionTest: merge seat fixture add failed")
 		return false
-	if multi.add_entry(ARCHER, 0, 1) == null:
+	## add 第三个应已合并；产物占 a（最早 seq）的座位 4
+	if merge_deck.size() != 1:
+		push_error("RecruitSessionTest: merge seat size should be 1, got %d" % merge_deck.size())
 		return false
-	if multi.add_entry(ARCHER, 0, 7) == null:
+	var product := merge_deck.get_entries()[0]
+	if product.seat_index != 4:
+		push_error(
+			"RecruitSessionTest: merge product should keep earliest seat 4, got %d"
+			% product.seat_index
+		)
 		return false
-	if multi.size() != 3:
-		push_error("RecruitSessionTest: duplicate units should coexist, size=%d" % multi.size())
+	if merge_deck.get_entry_at_seat(1) != null or merge_deck.get_entry_at_seat(7) != null:
+		push_error("RecruitSessionTest: merge should free the other two seats")
 		return false
 
 	## 快照含占位：换座后 reset 恢复
@@ -928,38 +981,46 @@ static func _test_seat_to_bench_and_full_fails() -> bool:
 	return true
 
 
-static func _test_full_roster_blocks_without_merge() -> bool:
-	## 上场满（备战空）：点买进备战，不三合一；总拥有满则点买失败。
+static func _test_full_roster_buy_completes_triple() -> bool:
+	## 上场满（备战空）且已有同名 1 星×2：点买入备战后立刻三合一。
 	var deck := _make_deck([ARCHER, ARCHER, KNIGHT, BARBARIAN, MUSKETEER], 5)
 	if deck.size() != 5:
 		push_error("RecruitSessionTest: full roster fixture size should be 5")
 		return false
-	if deck.would_complete_triple_on_add(ARCHER, 1):
-		push_error("RecruitSessionTest: merge overflow hint must stay off")
+	if not deck.would_complete_triple_on_add(ARCHER, 1):
+		push_error("RecruitSessionTest: two 1★ archers should complete triple on add")
 		return false
 	var economy := _make_economy(20)
-	var gold_before := economy.gold
 	var session := _make_session(deck, economy, 13, 0.0)
+	## 上场满但备战空：不视为总拥有满。
 	if session.needs_replace():
 		push_error("RecruitSessionTest: seat-full with empty bench should not need replace")
 		return false
 	session.candidates = [ARCHER, KNIGHT, VALKYRIE]
+	if session.needs_replace_for_candidate(0):
+		push_error("RecruitSessionTest: mergeable candidate should not need replace")
+		return false
+	if session.needs_replace_for_candidate(1):
+		push_error("RecruitSessionTest: non-mergeable with empty bench should not need replace")
+		return false
+	var gold_before := economy.gold
 	var buy := session.try_recruit(0)
 	if not buy.get("ok", false):
-		push_error("RecruitSessionTest: seat-full bench buy failed: %s" % buy.get("reason"))
+		push_error("RecruitSessionTest: seat-full bench buy merge failed: %s" % buy.get("reason"))
 		return false
-	if economy.gold != gold_before:
-		push_error("RecruitSessionTest: recruit must not spend gold")
+	## 点买入备战后三合一；非「满拥有溢出」路径，reason=added（合并在 add 末尾完成）。
+	if deck.size() != 4:
+		push_error("RecruitSessionTest: after bench merge size should be 4, got %d" % deck.size())
 		return false
-	if deck.size() != 6:
-		push_error("RecruitSessionTest: after bench buy size should be 6, got %d" % deck.size())
+	var product := buy["entry"] as DeckEntry
+	if product == null or product.get_unit_id() != ARCHER.id or product.level != 2:
+		push_error("RecruitSessionTest: merge product should be 2★ archer")
 		return false
-	var entry := buy["entry"] as DeckEntry
-	if entry == null or entry.seat_index >= 0:
-		push_error("RecruitSessionTest: overflow buy should land on bench")
+	if economy.gold >= gold_before:
+		push_error("RecruitSessionTest: merge buy should spend gold")
 		return false
 
-	## 总拥有满（5 入座 + 5 备战）点买失败。
+	## 总拥有满（5 入座 + 5 备战）且不可三合一时点买失败。
 	var full_own := _make_deck([ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE], 5)
 	for unit in [ARCHER, KNIGHT, BARBARIAN, MUSKETEER, VALKYRIE]:
 		if full_own.add_entry(unit, 0, -1, true) == null:
@@ -993,19 +1054,13 @@ static func _test_fused_enchant_survives_recruit_reset() -> bool:
 	var deck_cfg := DeckConfig.new()
 	deck_cfg.max_size = 5
 	deck.configure(deck_cfg)
-	deck.budget.grant_atk(50)
-	deck.budget.grant_hp(50)
 	var u1 := UnitData.new()
 	u1.id = "mat_a"
 	u1.stats = UnitStats.new()
-	u1.stats.attack = 1
-	u1.stats.max_hp = 1
 	u1.ability = HURT
 	var u2 := UnitData.new()
 	u2.id = "mat_b"
 	u2.stats = UnitStats.new()
-	u2.stats.attack = 1
-	u2.stats.max_hp = 1
 	u2.ability = CRIT
 	var e1 := deck.add_entry(u1)
 	var e2 := deck.add_entry(u2)
@@ -1103,24 +1158,21 @@ static func _buy_unit(session: RecruitSession, deck: DeckState, unit_id: String,
 	return true
 
 
-static func _test_three_copies_return_on_sell() -> bool:
+static func _test_nine_copies_leave_the_pool() -> bool:
 	var archer_only: Array[UnitData] = []
 	archer_only.append(ARCHER)
-	var deck := _make_deck([], 10)
-	var session := _make_custom_session(deck, _make_economy(80), archer_only, 3, 3)
-	if session.get_copies_remaining(ARCHER.id) != RecruitSession.COPIES_PER_CHARACTER:
-		push_error("RecruitSessionTest: fresh pool should have 3 archer copies")
+	var deck := _make_deck([], 5)
+	var session := _make_custom_session(deck, _make_economy(80), archer_only, 5, 3)
+	if session.get_copies_remaining(ARCHER.id) != 9:
+		push_error("RecruitSessionTest: fresh pool should have 9 archer copies")
 		return false
-	if _count_candidate(session, ARCHER.id) != 3:
-		push_error("RecruitSessionTest: 3 copies should fill 3 slots")
+	if _count_candidate(session, ARCHER.id) != 5:
+		push_error("RecruitSessionTest: 9 copies should fill 5 slots with the same character")
 		return false
 	if not session.try_refresh():
 		push_error("RecruitSessionTest: refresh without a buy failed")
 		return false
-	if (
-		session.get_copies_remaining(ARCHER.id) != 3
-		or _count_candidate(session, ARCHER.id) != 3
-	):
+	if session.get_copies_remaining(ARCHER.id) != 9 or _count_candidate(session, ARCHER.id) != 5:
 		push_error("RecruitSessionTest: unbought refresh must not consume copies")
 		return false
 
@@ -1128,7 +1180,7 @@ static func _test_three_copies_return_on_sell() -> bool:
 	if not bool(buy.get("ok", false)):
 		push_error("RecruitSessionTest: copy-stock buy failed")
 		return false
-	if session.get_copies_remaining(ARCHER.id) != 2:
+	if session.get_copies_remaining(ARCHER.id) != 8:
 		push_error("RecruitSessionTest: a recruit should take one copy")
 		return false
 	var bought_entry := buy["entry"] as DeckEntry
@@ -1136,18 +1188,18 @@ static func _test_three_copies_return_on_sell() -> bool:
 	if not bool(sold.get("ok", false)):
 		push_error("RecruitSessionTest: sell after recruit failed")
 		return false
-	if session.get_copies_remaining(ARCHER.id) != 3:
-		push_error("RecruitSessionTest: selling must return a copy to the pool")
+	if session.get_copies_remaining(ARCHER.id) != 8:
+		push_error("RecruitSessionTest: selling must not return a copy to the pool")
 		return false
 	session.reset()
-	if session.get_copies_remaining(ARCHER.id) != 3 or deck.size() != 0:
-		push_error("RecruitSessionTest: reset should restore copies snapshot")
+	if session.get_copies_remaining(ARCHER.id) != 9 or deck.size() != 0:
+		push_error("RecruitSessionTest: reset should return copies taken this visit")
 		return false
 
-	if not _buy_unit(session, deck, ARCHER.id, 2):
+	if not _buy_unit(session, deck, ARCHER.id, 8):
 		return false
 	if session.get_copies_remaining(ARCHER.id) != 1:
-		push_error("RecruitSessionTest: two recruits should leave 1 copy")
+		push_error("RecruitSessionTest: eight recruits should leave 1 copy")
 		return false
 	if not session.try_refresh():
 		push_error("RecruitSessionTest: refresh with 1 copy left failed")
@@ -1158,11 +1210,32 @@ static func _test_three_copies_return_on_sell() -> bool:
 			% _count_candidate(session, ARCHER.id)
 		)
 		return false
+	var lock_index := -1
+	for i in session.get_candidate_slot_count():
+		var shown := session.get_candidate(i)
+		if shown != null and shown.id == ARCHER.id:
+			lock_index = i
+			break
+	if lock_index < 0 or not session.toggle_candidate_lock(lock_index):
+		push_error("RecruitSessionTest: could not lock the last copy")
+		return false
+	if not session.try_refresh():
+		push_error("RecruitSessionTest: refresh with locked last copy failed")
+		return false
+	var locked := session.get_candidate(lock_index)
+	if (
+		_count_candidate(session, ARCHER.id) != 1
+		or locked == null
+		or locked.id != ARCHER.id
+		or not session.is_candidate_locked(lock_index)
+	):
+		push_error("RecruitSessionTest: locked last copy must stay the only one shown")
+		return false
 
 	if not _buy_unit(session, deck, ARCHER.id, 1):
 		return false
 	if session.get_copies_remaining(ARCHER.id) != 0:
-		push_error("RecruitSessionTest: third recruit should empty the character")
+		push_error("RecruitSessionTest: ninth recruit should empty the character")
 		return false
 	if not session.try_refresh():
 		push_error("RecruitSessionTest: refresh after the pool is empty failed")
@@ -1177,23 +1250,23 @@ static func _test_three_copies_return_on_sell() -> bool:
 		return false
 	session.clear_taken_copies()
 	session.begin(0.0)
-	if session.get_copies_remaining(ARCHER.id) != 3 or _count_candidate(session, ARCHER.id) != 3:
-		push_error("RecruitSessionTest: a new run should refill 3 copies")
+	if session.get_copies_remaining(ARCHER.id) != 9 or _count_candidate(session, ARCHER.id) != 5:
+		push_error("RecruitSessionTest: a new run should refill 9 copies")
 		return false
 
 	var both: Array[UnitData] = []
 	both.append(ARCHER)
 	both.append(KNIGHT)
-	var deck_both := _make_deck([], 10)
-	var session_both := _make_custom_session(deck_both, _make_economy(120), both, 3, 11)
-	if not _buy_unit(session_both, deck_both, ARCHER.id, 3):
+	var deck_both := _make_deck([], 5)
+	var session_both := _make_custom_session(deck_both, _make_economy(120), both, 5, 11)
+	if not _buy_unit(session_both, deck_both, ARCHER.id, 9):
 		return false
 	session_both.finish()
 	session_both.begin(0.0)
-	if session_both.get_copies_remaining(KNIGHT.id) != 3:
-		push_error("RecruitSessionTest: another character should keep its own 3 copies")
+	if session_both.get_copies_remaining(KNIGHT.id) != 9:
+		push_error("RecruitSessionTest: another character should keep its own 9 copies")
 		return false
-	if _count_candidate(session_both, ARCHER.id) != 0 or _count_candidate(session_both, KNIGHT.id) != 3:
+	if _count_candidate(session_both, ARCHER.id) != 0 or _count_candidate(session_both, KNIGHT.id) != 5:
 		push_error("RecruitSessionTest: only the exhausted character should disappear")
 		return false
 
@@ -1206,18 +1279,18 @@ static func _test_three_copies_return_on_sell() -> bool:
 	if not bool(replaced.get("ok", false)):
 		push_error("RecruitSessionTest: replace should take a copy, got %s" % replaced.get("reason", ""))
 		return false
-	if session_replace.get_copies_remaining(ARCHER.id) != 2:
+	if session_replace.get_copies_remaining(ARCHER.id) != 8:
 		push_error("RecruitSessionTest: replace must consume one copy")
 		return false
 
-	var deck_skip := _make_deck([], 10)
+	var deck_skip := _make_deck([], 5)
 	var session_skip := _make_custom_session(deck_skip, _make_economy(20), archer_only, 1, 2)
 	var skipped_buy: Dictionary = session_skip.try_recruit(0)
-	if not bool(skipped_buy.get("ok", false) ) or session_skip.get_copies_remaining(ARCHER.id) != 2:
+	if not bool(skipped_buy.get("ok", false)) or session_skip.get_copies_remaining(ARCHER.id) != 8:
 		push_error("RecruitSessionTest: skip fixture should take one copy")
 		return false
 	session_skip.skip()
-	if session_skip.get_copies_remaining(ARCHER.id) != 3 or deck_skip.size() != 0:
+	if session_skip.get_copies_remaining(ARCHER.id) != 9 or deck_skip.size() != 0:
 		push_error("RecruitSessionTest: skip should return the copy taken this visit")
 		return false
 	return true

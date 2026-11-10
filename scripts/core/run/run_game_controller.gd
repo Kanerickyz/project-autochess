@@ -97,17 +97,11 @@ func _start_new_run() -> void:
 	_battle.reset_tier_unlock_announcements()
 	_hide_encounter_ui()
 	_suppress_map_show = true
+	_opening_recruit_pending = true
 	run_controller.start_run()
 	run_controller.run_state.mark_run_started()
-	## 已有开局赠队（如 6 骷髅）时跳过强制开局招募，直接进地图；否则仍走开局招募。
-	if deck_state != null and deck_state.size() >= 1:
-		_opening_recruit_pending = false
-		_suppress_map_show = false
-		_show_map()
-	else:
-		_opening_recruit_pending = true
-		## 见地图之前先开局招募；完成且队伍 ≥1 后由 _on_recruit_finished → _show_map。
-		await _open_opening_recruit()
+	## 见地图之前先开局招募；完成且队伍 ≥1 后由 _on_recruit_finished → _show_map。
+	await _open_opening_recruit()
 
 
 func _show_map() -> void:

@@ -85,8 +85,6 @@ func _test_recruit_arena_transition() -> void:
 			rt.unit.current_hp = 0
 	sim.advance_fixed_step()
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RESULT, "RESULT after wipe")
-	_expect(battle.is_budget_victory_choice_pending(), "budget victory choice pending")
-	_expect(battle.apply_budget_victory_choice("gold"), "pick +8 gold")
 
 	var completed: Array = []
 	battle.encounter_completed.connect(func(won: bool) -> void: completed.append(won))

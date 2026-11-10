@@ -1,16 +1,16 @@
 class_name RecruitSession
 extends RefCounted
 ## 招募阶段逻辑：进门快照、抽候选人、招募/替换、刷新、重置、跳过/完成。
-## 不拥有 UI；只改 DeckState（队伍）与 RunEconomy 金币（刷新/道具）。
+## 不拥有 UI；只改 DeckState（队伍 As-Is）与 RunEconomy 金币。
 ## 候选人默认 5 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
-## 招募入手不花金；入座占攻/血预算。每角色本局 3 份：入手扣、出售/结算离队退回。
+## 每个可招募角色本局 9 份：招募成功才扣除，拿光后不再出现。
 
 signal session_changed
 signal session_finished(kept_changes: bool)
 
 const CANDIDATE_COUNT := 5
 ## 每个可招募角色在本局卡池中的份数。拿光后不再抽到。
-const COPIES_PER_CHARACTER := 3
+const COPIES_PER_CHARACTER := 9
 
 var config: RecruitConfig
 var deck: DeckState
@@ -41,11 +41,9 @@ var _persisted_candidates: Array[UnitData] = []
 var _persisted_locked: Array[bool] = []
 ## 本 Run 已播过的队伍羁绊台词 id；招募重置不清除。
 var played_party_bark_ids: PackedStringArray = PackedStringArray()
-## 本局已招募拿走的份数（unit id → 次数）。出售 / 替换 / 结算离队退回。
+## 本局已招募拿走的份数（unit id → 次数）。出售 / 替换离队不退回。
 var _taken_copies: Dictionary = {}
 var _snapshot_taken_copies: Dictionary = {}
-var _snapshot_budget: Dictionary = {}
-var _snapshot_pending_pool_returns: Array[String] = []
 
 
 func configure(
@@ -78,35 +76,11 @@ func begin(
 	## 开局招募不继承上一场锁定。
 	if require_nonempty_roster:
 		clear_persisted_locks()
-	_flush_pending_pool_returns()
 	candidates.clear()
 	_roll_candidates()
 	_capture_snapshot()
 	is_active = true
 	session_changed.emit()
-
-
-## 结算离队等写入的 pending_pool_returns 在进招募时退回份数。
-func _flush_pending_pool_returns() -> void:
-	if deck == null:
-		return
-	for unit_id in deck.take_pending_pool_returns():
-		_return_copy_id(str(unit_id))
-
-
-func return_copy_for_unit(unit: UnitData) -> void:
-	if unit == null:
-		return
-	_return_copy_id(unit.id)
-
-
-func _return_copy_id(unit_id: String) -> void:
-	if unit_id.is_empty():
-		return
-	var taken := _copies_taken(unit_id)
-	if taken <= 0:
-		return
-	_taken_copies[unit_id] = taken - 1
 
 
 ## 清空跨场锁定（新 Run / 开局招募）。
@@ -183,7 +157,7 @@ func get_recruit_cost(unit: UnitData) -> int:
 
 func get_seat_cap() -> int:
 	## 队伍席位上限：取牌库 max_size 与座位网格总数的较小值。
-	## 本版主路径 max_size=10、网格 2×5=10 → cap=10。
+	## 本版主路径 max_size=5、网格 2×5=10 → cap≈5；不用 deploy_cap。
 	if deck == null:
 		return 0
 	var deck_cap := deck.get_max_size()
@@ -197,7 +171,7 @@ func get_seat_cap() -> int:
 	return mini(deck_cap, seat_grid)
 
 
-## 总拥有已满：已入座达上场席位上限且备战满（点买无法再招）。
+## 总拥有已满：已入座达上场席位上限且备战满（点买无法再招，除非可三合一溢出）。
 func is_roster_full() -> bool:
 	if deck == null:
 		return true
@@ -224,9 +198,11 @@ func get_min_tier() -> int:
 	return 1
 
 
-## 招募入手不花金；有候选人即可点买（入座另受预算约束，不够则进备战）。
 func can_afford_recruit(candidate_index: int) -> bool:
-	return get_candidate(candidate_index) != null
+	var unit := get_candidate(candidate_index)
+	if unit == null or economy == null:
+		return false
+	return economy.can_afford(get_recruit_cost(unit))
 
 
 func can_refresh() -> bool:
@@ -240,22 +216,27 @@ func needs_replace() -> bool:
 	return is_roster_full()
 
 
-## 主路径已关闭三合一；保留签名恒 false。
-func can_recruit_via_merge(_unit: UnitData) -> bool:
-	return false
+## 满员时若买入会使「同 id 同 1 星」凑满 3 只并自动三合一，则无需换人。
+func can_recruit_via_merge(unit: UnitData) -> bool:
+	if unit == null or deck == null:
+		return false
+	return deck.would_complete_triple_on_add(unit, 1)
 
 
-## 点买不强制选替换；总拥有满时为 true（UI 提示拖替换/先出售）。
+## 点买不强制选替换；总拥有满且不可三合一时为 true（UI 提示拖替换/先出售）。
 func needs_replace_for_candidate(candidate_index: int) -> bool:
 	if not is_roster_full():
 		return false
-	return get_candidate(candidate_index) != null
+	var unit := get_candidate(candidate_index)
+	if can_recruit_via_merge(unit):
+		return false
+	return true
 
 
-## 点买（seat_index<0 且无 replace）：预算够且上场未满→首空座；否则备战；都满→失败。
-## 拖到空座：seat_index≥0 落到该座（预算不足则失败/回退备战由 DeckState 处理）。
-## 点选替换：replace_entry_id≥0，旧人退预算+份数回库、继承座位。
-## 入手不花金。
+## 点买（seat_index<0 且无 replace）：上场未满→首空座；上场满且备战未满→备战；都满→失败。
+## 拖到空座：seat_index≥0 落到该座。
+## 点选替换：replace_entry_id≥0，旧人不退金、继承座位（UI 拖候选人盖到已占座须拒绝，勿走本路径）。
+## 例外：总拥有满但可三合一时允许短暂溢出买入。
 func try_recruit(
 	candidate_index: int,
 	replace_entry_id: int = -1,
@@ -274,19 +255,24 @@ func try_recruit(
 	if unit == null:
 		result["reason"] = "no_candidate"
 		return result
+	var cost := get_recruit_cost(unit)
+	if not economy.can_afford(cost):
+		result["reason"] = "no_gold"
+		return result
 
-	## 拖到已占座：随时可替换（旧人退预算与池份；不花金）。
+	## 拖到已占座：随时可替换（旧人不退金）。
 	if replace_entry_id >= 0:
-		var old_entry := deck.get_entry(replace_entry_id)
-		if old_entry == null:
+		if deck.get_entry(replace_entry_id) == null:
 			result["reason"] = "bad_replace"
 			return result
-		var old_unit_id := old_entry.get_unit_id()
+		if not economy.spend(cost):
+			result["reason"] = "no_gold"
+			return result
 		var replaced := deck.replace_entry(replace_entry_id, unit)
 		if replaced == null:
+			economy.grant(cost)
 			result["reason"] = "replace_failed"
 			return result
-		_return_copy_id(old_unit_id)
 		_note_copy_taken(unit)
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
@@ -298,30 +284,35 @@ func try_recruit(
 		session_changed.emit()
 		return result
 
-	if is_roster_full():
+	var merge_overflow := is_roster_full() and can_recruit_via_merge(unit)
+	if is_roster_full() and not merge_overflow:
 		result["reason"] = "roster_full"
 		return result
 
-	## 指定空座（拖上区）；占用则回退为点买优先上场（满/预算不足则备战）。
+	## 指定空座（拖上区）；占用则回退为点买优先上场（满则备战）。
 	var preferred := seat_index
 	## 点买与回退路径一律 prefer_bench=false：先空座，席位满再进备战。
 	var prefer_bench := false
 	if preferred >= 0:
 		if not deck.is_seat_free(preferred):
 			preferred = -1
-		elif not deck.can_seat_more():
+		elif not deck.can_seat_more() and not merge_overflow:
 			result["reason"] = "seat_cap_full"
 			return result
 
+	if not economy.spend(cost):
+		result["reason"] = "no_gold"
+		return result
 	var entry := deck.add_entry(unit, 0, preferred, prefer_bench)
 	if entry == null:
+		economy.grant(cost)
 		result["reason"] = "add_failed"
 		return result
 	_note_copy_taken(unit)
 	candidates[candidate_index] = null
 	_set_candidate_locked(candidate_index, false)
 	result["ok"] = true
-	result["reason"] = "added"
+	result["reason"] = "merged" if merge_overflow else "added"
 	result["entry"] = entry
 	result["seat_index"] = entry.seat_index
 	session_changed.emit()
@@ -363,35 +354,23 @@ func try_refresh() -> bool:
 	return true
 
 
-## 出售队伍成员：退预算（若在座）、份数回库；不退金币。变动计入快照，可 reset。
+## 出售上区队伍成员：正常退金并腾位；变动计入快照，可 reset。
 func try_sell(entry_id: int) -> Dictionary:
-	var result := {
-		"ok": false,
-		"reason": "inactive",
-		"gold": 0,
-		"budget_atk": 0,
-		"budget_hp": 0,
-		"entry_id": entry_id,
-	}
+	var result := {"ok": false, "reason": "inactive", "gold": 0, "entry_id": entry_id}
 	if not is_active or deck == null or economy == null:
 		return result
 	var entry := deck.get_entry(entry_id)
 	if entry == null:
 		result["reason"] = "bad_entry"
 		return result
-	var unit_id := entry.get_unit_id()
-	var was_occupying := deck.budget != null and deck.budget.is_occupying(entry_id)
-	var occ := deck.budget.get_occupation(entry_id) if deck.budget != null else {"atk": 0, "hp": 0}
+	var price := DeckUpgradeService.get_sell_price(entry)
 	if not deck.remove_entry(entry_id):
 		result["reason"] = "remove_failed"
 		return result
-	_return_copy_id(unit_id)
+	economy.grant(price)
 	result["ok"] = true
 	result["reason"] = "sold"
-	result["gold"] = 0
-	if was_occupying:
-		result["budget_atk"] = int(occ.get("atk", 0))
-		result["budget_hp"] = int(occ.get("hp", 0))
+	result["gold"] = price
 	session_changed.emit()
 	return result
 
@@ -450,8 +429,6 @@ func _capture_snapshot() -> void:
 	_snapshot_gold = economy.gold if economy != null else 0
 	_snapshot_entries.clear()
 	_snapshot_next_entry_id = 0
-	_snapshot_budget = {}
-	_snapshot_pending_pool_returns.clear()
 	if deck != null:
 		var roster := deck.capture_roster()
 		var source: Array = roster.get("entries", [])
@@ -459,10 +436,6 @@ func _capture_snapshot() -> void:
 			if item is DeckEntry:
 				_snapshot_entries.append(item as DeckEntry)
 		_snapshot_next_entry_id = int(roster.get("next_entry_id", 0))
-		_snapshot_budget = roster.get("budget", {})
-		var pending: Array = roster.get("pending_pool_returns", [])
-		for unit_id in pending:
-			_snapshot_pending_pool_returns.append(str(unit_id))
 	_snapshot_candidates = candidates.duplicate()
 	_snapshot_locked = candidate_locked.duplicate()
 	_snapshot_taken_copies = _taken_copies.duplicate()
@@ -479,8 +452,6 @@ func _restore_snapshot() -> void:
 		deck.restore_roster({
 			"entries": _snapshot_entries,
 			"next_entry_id": _snapshot_next_entry_id,
-			"budget": _snapshot_budget,
-			"pending_pool_returns": _snapshot_pending_pool_returns.duplicate(),
 		})
 	candidates = _snapshot_candidates.duplicate()
 	candidate_locked = _snapshot_locked.duplicate()
@@ -585,7 +556,7 @@ func _pick_one(preferred_tier: int) -> UnitData:
 	if pool.is_empty():
 		return null
 	## 解锁到 T 时：把 [min, T] 并入可抽池（倒数 6 层起 min=2，不再出 T1）。
-	## 已拿走的份数，加上当前货架上还没买的，不能超过每角色 COPIES_PER_CHARACTER 份。
+	## 已拿走的份数，加上当前货架上还没买的，不能超过每角色 9 份。
 	var min_tier := get_min_tier()
 	var tier_matched: Array[UnitData] = []
 	var unlocked: Array[UnitData] = []
