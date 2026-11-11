@@ -3452,7 +3452,13 @@ func set_catalog_deck_entries(
 	queue_redraw()
 
 
-func set_catalog_units(units: Array[UnitData], columns: int = 5, preview_level: int = 1) -> void:
+## max_rows > 0 时固定行数（角色库翻页：格大小不随末页人数跳动）；0 = 旧行为按人数拉高。
+func set_catalog_units(
+	units: Array[UnitData],
+	columns: int = 5,
+	preview_level: int = 1,
+	max_rows: int = 0,
+) -> void:
 	_cancel_press()
 	clear_recruit_mode()
 	sim = null
@@ -3463,16 +3469,26 @@ func set_catalog_units(units: Array[UnitData], columns: int = 5, preview_level: 
 	catalog_preview_level = clampi(preview_level, 1, 3)
 	catalog_units.clear()
 	var cols := maxi(1, columns)
-	var rows := maxi(4, int(ceili(float(maxi(1, units.size())) / float(cols))))
+	var needed_rows := int(ceili(float(maxi(1, units.size())) / float(cols)))
+	var rows: int
+	if max_rows > 0:
+		rows = maxi(1, max_rows)
+	else:
+		rows = maxi(4, needed_rows)
 	board_size = Vector2i(cols, rows)
+	var capacity := cols * rows
+	var placed := 0
 	for i in units.size():
+		if placed >= capacity:
+			break
 		var unit := units[i]
 		if unit == null:
 			continue
 		catalog_units.append({
 			"unit": unit,
-			"cell": Vector2i(i % cols, int(i / cols)),
+			"cell": Vector2i(placed % cols, int(placed / cols)),
 		})
+		placed += 1
 	queue_redraw()
 
 
@@ -3501,11 +3517,9 @@ func _draw() -> void:
 	_frame_shake = _motion.get_shake_offset()
 	draw_set_transform(_frame_shake)
 	## 动态棋盘格由父级 PhaseGridBackground 绘制；此处只铺半场轻色调帮助敌我分区。
-	## 纯目录模式不铺色，留给卡牌格。
-	if catalog_active and catalog_plain_backdrop:
+	## 角色库 / 纯目录：不铺色，透出动态格底。
+	if catalog_active:
 		pass
-	elif catalog_active:
-		draw_rect(Rect2(rect.position, rect.size), PLAYER_TINT)
 	else:
 		draw_rect(Rect2(rect.position + enemy_off, Vector2(rect.size.x, mid * px)), ENEMY_TINT)
 		draw_rect(
@@ -4011,13 +4025,13 @@ func _draw_catalog_units(px: float) -> void:
 		if cell == NO_CELL or unit == null:
 			continue
 		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
-		## 纯目录：卡牌底板略厚，贴近角色库可读性。
+		## 纯目录：卡牌底板略厚。角色库：浅描边让动态格底透出。
 		if catalog_plain_backdrop:
 			draw_rect(cell_rect.grow(-2.0), Color(0.14, 0.17, 0.22, 0.95))
 			draw_rect(cell_rect.grow(-2.0), Color(0.55, 0.48, 0.32, 0.75), false, 2.0)
 		else:
-			draw_rect(cell_rect, RECRUIT_CAND_EMPTY)
-			draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.35), false, 1.0)
+			draw_rect(cell_rect, Color(RECRUIT_CAND_EMPTY, 0.12))
+			draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.40), false, 1.0)
 		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7

@@ -4,6 +4,8 @@ extends Control
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const RECRUIT_CONFIG_PATH := "res://resources/recruit/default_recruit_config.tres"
 const CATALOG_COLUMNS := 5
+const CATALOG_ROWS := 4
+const PAGE_SIZE := CATALOG_COLUMNS * CATALOG_ROWS
 ## 触发按钮优先按此序排列（与 UnitInfoText 文案一致）；池中未出现的不显示。
 const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_COMBAT_START,
@@ -57,6 +59,11 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
 @onready var _arena: RealtimeArenaView = %CodexArena
+@onready var _page_bar: HBoxContainer = %PageBar
+@onready var _prev_page_button: Button = %PrevPageButton
+@onready var _next_page_button: Button = %NextPageButton
+@onready var _page_label: Label = %PageLabel
+@onready var _background: PhaseGridBackground = $Background
 @onready var _content_root: Control = $Root
 
 var _all_units: Array[UnitData] = []
@@ -69,6 +76,8 @@ var _selected_effect: EffectCategory = EffectCategory.ALL
 var _preview_level: int = 1
 ## 顶部筛选栏展开；收起后棋盘更高。
 var _filters_expanded: bool = true
+## 当前页（0 起）；筛选变更时归零。
+var _page_index: int = 0
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
 var _effect_buttons: Dictionary = {} # EffectCategory -> Button
@@ -83,6 +92,12 @@ func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	if _filter_toggle != null:
 		_filter_toggle.pressed.connect(_on_filter_toggle_pressed)
+	if _prev_page_button != null:
+		_prev_page_button.pressed.connect(_on_prev_page_pressed)
+	if _next_page_button != null:
+		_next_page_button.pressed.connect(_on_next_page_pressed)
+	if _background != null:
+		_background.set_theme_id(PhaseGridPalettes.ThemeId.CODEX, false)
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
 	_effect_button_group.allow_unpress = false
@@ -268,6 +283,7 @@ func _on_tier_pressed(tier: int) -> void:
 	if _selected_tier == tier:
 		return
 	_selected_tier = tier
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -275,6 +291,7 @@ func _on_trigger_pressed(trigger: StringName) -> void:
 	if _selected_trigger == trigger:
 		return
 	_selected_trigger = trigger
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -282,6 +299,7 @@ func _on_effect_pressed(category: EffectCategory) -> void:
 	if _selected_effect == category:
 		return
 	_selected_effect = category
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -428,14 +446,61 @@ func _filtered_units() -> Array[UnitData]:
 
 func _rebuild_board() -> void:
 	var shown := _filtered_units()
-	_empty_label.visible = shown.is_empty()
-	_count_label.text = _format_count(shown.size())
+	var total := shown.size()
+	var pages := _page_count(total)
+	_page_index = clampi(_page_index, 0, pages - 1)
+	_empty_label.visible = total == 0
+	_count_label.text = _format_count(total)
+	_update_page_bar(pages)
 	if _arena == null:
 		return
-	if shown.is_empty():
+	if total == 0:
 		_arena.clear_catalog_mode()
 		return
-	_arena.set_catalog_units(shown, CATALOG_COLUMNS, _preview_level)
+	var page_units := _page_slice(shown)
+	_arena.set_catalog_units(page_units, CATALOG_COLUMNS, _preview_level, CATALOG_ROWS)
+
+
+func _page_count(total: int) -> int:
+	if total <= 0:
+		return 1
+	return maxi(1, int(ceili(float(total) / float(PAGE_SIZE))))
+
+
+func _page_slice(shown: Array[UnitData]) -> Array[UnitData]:
+	var out: Array[UnitData] = []
+	var start := _page_index * PAGE_SIZE
+	var stop := mini(start + PAGE_SIZE, shown.size())
+	for i in range(start, stop):
+		out.append(shown[i])
+	return out
+
+
+func _update_page_bar(pages: int) -> void:
+	var multi := pages > 1
+	if _page_bar != null:
+		_page_bar.visible = multi
+	if _page_label != null:
+		_page_label.text = "%d / %d" % [_page_index + 1, pages]
+	if _prev_page_button != null:
+		_prev_page_button.disabled = not multi or _page_index <= 0
+	if _next_page_button != null:
+		_next_page_button.disabled = not multi or _page_index >= pages - 1
+
+
+func _on_prev_page_pressed() -> void:
+	if _page_index <= 0:
+		return
+	_page_index -= 1
+	_rebuild_board()
+
+
+func _on_next_page_pressed() -> void:
+	var pages := _page_count(_filtered_units().size())
+	if _page_index >= pages - 1:
+		return
+	_page_index += 1
+	_rebuild_board()
 
 
 func _format_count(count: int) -> String:
