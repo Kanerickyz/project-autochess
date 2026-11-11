@@ -105,6 +105,7 @@ static func _test_swap_retargets_damage() -> void:
 
 
 static func _test_counterattack_swap_when_assassin_attacks() -> void:
+	## 出手单向：刺客打敌不触发反打，故无换位；敌方仍吃刺客伤害。
 	var grid := _grid()
 	var bus := _bus()
 	var pipeline := DamagePipeline.new(bus, grid)
@@ -120,14 +121,10 @@ static func _test_counterattack_swap_when_assassin_attacks() -> void:
 	var ally_hp_before := tank.current_hp
 	pipeline.apply_attack_exchange(assassin, enemy)
 
-	_assert_eq(grid.find_cell_of(assassin), Vector2i(0, 2), "assassin swapped on counterattack")
-	_assert_eq(grid.find_cell_of(tank), Vector2i(2, 2), "tank occupies assassin original cell")
-	_assert_eq(
-		tank.current_hp,
-		ally_hp_before - enemy.get_effective_attack(),
-		"tank takes enemy counterattack damage",
-	)
-	_assert_eq(assassin.current_hp, assassin_hp_before, "assassin not hit by counterattack")
+	_assert_eq(grid.find_cell_of(assassin), Vector2i(2, 2), "assassin stays put without counter")
+	_assert_eq(grid.find_cell_of(tank), Vector2i(0, 2), "tank stays put without counter")
+	_assert_eq(tank.current_hp, ally_hp_before, "tank takes no counter damage")
+	_assert_eq(assassin.current_hp, assassin_hp_before, "assassin takes no counter damage")
 	_assert_true(enemy.current_hp < 5, "enemy still takes assassin strike damage")
 
 

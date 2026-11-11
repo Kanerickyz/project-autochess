@@ -1,7 +1,7 @@
 class_name RealtimeDamagePipeline
 extends RefCounted
 ## 战斗唯一的扣血入口；命中/受伤/死亡全部经 CombatEventBus 广播。
-## 出手命中时可与主目标对砍：双方同批扣血，无先后手。
+## 出手只单向扣血：行动者伤目标（含溅射），目标不因被打而反打。
 
 var _bus: CombatEventBus
 var _rng: RandomNumberGenerator
@@ -18,8 +18,7 @@ func set_rng(rng: RandomNumberGenerator) -> void:
 	_rng = rng if rng != null else RandomNumberGenerator.new()
 
 
-## 结算一次命中（含可选反打）。splash_radius > 0 时按目标格切比雪夫溅射敌方。
-## 若 source 也在 primary 的攻击距离内，primary 反打 source（单体、同批扣血）。
+## 结算一次命中（单向）。splash_radius > 0 时按目标格切比雪夫溅射敌方。
 ## 返回本次被击杀的单位（按 instance_id 升序）。
 func resolve_hit(
 	source: RtUnit,
@@ -34,11 +33,7 @@ func resolve_hit(
 	var source_instance: UnitInstance = source.unit if source != null else null
 	_emit(CombatEvents.ON_ATTACK_HIT, source_instance, primary.unit, 0)
 
-	var counter := can_counterattack(primary, source)
-	if counter:
-		_emit(CombatEvents.ON_ATTACK_HIT, primary.unit, source_instance, 0)
-
-	## 同批打击表：先全部扣血，再统一标死，避免「先打死对方导致无法反打」。
+	## 同批打击表：主目标 + 溅射一并扣血，再统一标死。
 	var pending: Array[Dictionary] = []
 	var victims: Array[RtUnit] = [primary]
 	if splash_radius > 0.0:
@@ -48,12 +43,6 @@ func resolve_hit(
 			"source": source_instance,
 			"target": victim,
 			"amount": damage,
-		})
-	if counter and source != null and source.is_alive():
-		pending.append({
-			"source": primary.unit,
-			"target": source,
-			"amount": primary.unit.get_effective_attack(),
 		})
 
 	var death_pending: Array[Dictionary] = []
@@ -143,20 +132,9 @@ func _stage_lethal_kill(death: Dictionary, from_attack: bool) -> void:
 	_pending_death_finalizations.append(death)
 
 
-## 防守方能否对行动者反打：双方存活、防守方未在部署、行动者在其攻距内。
-## Boss 首领被打时不反打（友方打首领不对砍）；首领打友方时友方仍可反打。
-static func can_counterattack(defender: RtUnit, attacker: RtUnit) -> bool:
-	if defender == null or attacker == null:
-		return false
-	if not defender.is_alive() or not attacker.is_alive():
-		return false
-	if defender.is_deploying():
-		return false
-	if defender.is_boss_leader():
-		return false
-	var reach := defender.get_stats().attack_reach
-	var dist := defender.edge_distance_to(attacker)
-	return dist <= reach + RtUnitBrain.REACH_EPSILON
+## 已废止对砍反打：出手一律单向，保留函数供旧调用方恒返回 false。
+static func can_counterattack(_defender: RtUnit, _attacker: RtUnit) -> bool:
+	return false
 
 
 static func collect_splash_victims(

@@ -32,7 +32,7 @@
 
 ## 3. 结算顺序
 
-**普攻**（含反打，走 `RealtimeDamagePipeline.resolve_hit` / 旧网格 `from_attack=true`）：
+**普攻**（单向出手，走 `RealtimeDamagePipeline.resolve_hit` / 旧网格 `from_attack=true`）：
 
 ```text
 基础伤害 → +狂暴（攻击方）→ +虚弱（受击方，护甲前）→ 护甲 → 扣 HP

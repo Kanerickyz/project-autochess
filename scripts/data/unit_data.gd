@@ -22,7 +22,7 @@ extends Resource
 @export var occupation: String = ""
 
 @export_group("Boss")
-## Boss 遭遇首领标记：斩首胜负、对砍例外、足迹策略机。
+## Boss 遭遇首领标记：斩首胜负、足迹策略机。
 @export var is_boss_leader: bool = false
 ## 逻辑足迹宽（格）；普通单位为 1。Boss 召唤统领为 2。
 @export_range(1, 3, 1) var footprint_w: int = 1

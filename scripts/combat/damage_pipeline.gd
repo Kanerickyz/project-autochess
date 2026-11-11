@@ -87,6 +87,7 @@ func apply_rolled_damage(
 	apply_damage(source, target, rolled.amount, from_attack)
 
 
+## 出手只单向结算；保留旧名兼容调用方（不再对砍反打）。
 func apply_attack_exchange(attacker: UnitInstance, defender: UnitInstance) -> void:
 	if attacker == null or defender == null:
 		return
@@ -94,8 +95,6 @@ func apply_attack_exchange(attacker: UnitInstance, defender: UnitInstance) -> vo
 		return
 
 	_resolve_melee_strike(attacker, defender)
-	if attacker.is_alive() and defender.is_alive():
-		_resolve_melee_strike(defender, attacker)
 
 
 func _resolve_melee_strike(attacker: UnitInstance, defender: UnitInstance) -> void:
