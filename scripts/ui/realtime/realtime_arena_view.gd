@@ -174,6 +174,8 @@ var bench_triple_merge_hint_entry_ids: Dictionary = {}
 ## 备战行与棋盘底边的空隙（逻辑格；仅棋盘外备战）。
 const BENCH_GAP_TILES := 0.25
 const BENCH_ROW_TILES := 1.0
+## 招募 / 地图商店：上下各留约半格，避免纸片头顶/脚底钻进 Hud / Dock。
+const CONTENT_SAFE_PAD_TILES := 0.4
 ## 战斗加速倍率：缩短反馈 / 时停表现寿命；是否暂停模拟由控制器时停队列决定。
 var presentation_time_scale: float = 1.0
 ## 胜后半场退出/招募进入：上半场 / 下半场像素位移（由控制器 Tween）。
@@ -431,6 +433,12 @@ func _bench_layout_tiles() -> float:
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
 
 
+func _content_safe_pad_tiles() -> float:
+	if recruit_active or map_shop_active:
+		return CONTENT_SAFE_PAD_TILES
+	return 0.0
+
+
 func _overflow_layout_tiles_for_cells(max_cell_y: int) -> float:
 	if max_cell_y < board_size.y:
 		return 0.0
@@ -477,7 +485,8 @@ func _tile_to_shelf_cell(tile_pos: Vector2) -> Vector2i:
 func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
-	var content_rows := float(board_size.y) + _bench_layout_tiles()
+	var pad := _content_safe_pad_tiles()
+	var content_rows := float(board_size.y) + _bench_layout_tiles() + pad * 2.0
 	## 角色库 / 纯目录：按控件宽高直接铺格，避开背景树带 gutter（否则竖屏格忽大忽小）。
 	if catalog_active:
 		return maxf(1.0, minf(size.x / float(board_size.x), size.y / content_rows))
@@ -510,9 +519,10 @@ func get_board_rect() -> Rect2:
 	var px := get_cell_px()
 	var board_px := Vector2(board_size) * px
 	var bench_h := _bench_layout_tiles() * px
-	var total := Vector2(board_px.x, board_px.y + bench_h)
-	var origin := (size - total) * 0.5
-	## 棋盘在内容区顶部；准备/战斗备战行画在 board 底边下方。
+	var pad_px := _content_safe_pad_tiles() * px
+	var total := Vector2(board_px.x, board_px.y + bench_h + pad_px * 2.0)
+	var origin := (size - total) * 0.5 + Vector2(0.0, pad_px)
+	## 棋盘在内容区顶部（含上下 safe pad）；准备/战斗备战行画在 board 底边下方。
 	return Rect2(origin, board_px)
 
 

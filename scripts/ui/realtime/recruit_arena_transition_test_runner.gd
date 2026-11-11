@@ -126,17 +126,21 @@ func _test_recruit_arena_transition() -> void:
 		if info is Dictionary and info.get("unit") != null:
 			alive_cands += 1
 	_expect(alive_cands == RecruitSession.CANDIDATE_COUNT, "3 candidate unit bodies")
-	## 招募时 Dock 保持占位，Arena 高度不膨胀。
+	## 招募时 Dock 按 RecruitHud 收缩；Arena 应收得更多垂直空间。
 	var recruit_dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(recruit_dock != null and recruit_dock.visible, "dock stays visible in recruit")
 	_expect(recruit_dock.find_child("RecruitHud", true, false) != null, "RecruitHud parented under Dock")
+	_expect(
+		is_equal_approx(recruit_dock.custom_minimum_size.y, 0.0),
+		"dock min height not locked to prepare hand"
+	)
 	if prepare_arena_h > 1.0:
 		_expect(
-			absf(arena.size.y - prepare_arena_h) <= 2.0,
-			"arena height matches prepare (no dock collapse)"
+			arena.size.y + 1.0 >= prepare_arena_h,
+			"arena height >= prepare after recruit dock shrink"
 		)
-	## 招募三段栈：team → gap → bench → gap → cand → action（可虚拟行）。
-	var seat_rows := 2
+	## 招募三段栈：team 4×5 → gap → bench → gap → cand → action（可虚拟行）。
+	var seat_rows := 4
 	var expected_team_max_y := seat_rows - 1
 	var expected_bench_y := seat_rows + 1
 	var expected_cand_y := seat_rows + 3
