@@ -23,8 +23,8 @@ enum MovementPattern {
 @export_group("Combat")
 ## 连续平面移速（格/秒）。≤0 时按 steps_per_turn 推导：max(0.5, steps)；steps=0 → 不移动。
 @export_range(0.0, 10.0, 0.05) var move_speed: float = 0.0
-## 两次攻击之间的间隔（秒）；并行下按此连打。
-@export_range(0.1, 10.0, 0.05) var attack_interval: float = 1.2
+## 两次攻击之间的间隔（秒）；并行下按此连打。默认 1.5。
+@export_range(0.1, 10.0, 0.05) var attack_interval: float = 1.5
 ## 首次攻击前摇（秒），进入射程后到第一次出手
 ## 进距后首刀前摇；主路径默认 0（无蓄力）。测试可设大值卡住出手。
 @export_range(0.0, 5.0, 0.05) var attack_windup: float = 0.0
