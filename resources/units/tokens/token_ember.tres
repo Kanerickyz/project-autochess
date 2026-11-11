@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="UnitStats_token_ember"]
 script = ExtResource("2_stats")
-max_hp = 1
+max_hp = 3
 attack = 1
 steps_per_turn = 2
 attack_interval = 0.9

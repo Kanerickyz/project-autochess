@@ -8,7 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_mammoth"]
 script = ExtResource("2_stats")
-max_hp = 12
+max_hp = 36
 attack = 4
 
 [resource]

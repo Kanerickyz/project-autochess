@@ -8,7 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_mosquito"]
 script = ExtResource("2_stats")
-max_hp = 2
+max_hp = 6
 attack = 2
 
 [resource]

@@ -9,7 +9,7 @@
 
 [sub_resource type="Resource" id="UnitStats_queen"]
 script = ExtResource("2_stats")
-max_hp = 7
+max_hp = 21
 movement_pattern = 6
 
 [resource]

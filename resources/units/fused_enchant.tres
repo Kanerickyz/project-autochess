@@ -6,7 +6,7 @@
 [sub_resource type="Resource" id="UnitStats_fused"]
 script = ExtResource("2")
 attack = 1
-max_hp = 1
+max_hp = 3
 steps_per_turn = 1
 attack_interval = 1.4
 attack_windup = 0.0

@@ -8,8 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_pigeon"]
 script = ExtResource("2_stats")
-max_hp = 1
-
+max_hp = 3
 [resource]
 script = ExtResource("1")
 id = "pigeon"
