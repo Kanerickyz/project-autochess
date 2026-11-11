@@ -180,6 +180,8 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	## 半格按「当前格所属座位行」计算；寻路换行时 begin_step/_commit_step 会随目标格刷新。
 	rt.snap_to_cell(cell)
 	rt.spawn_time = elapsed_seconds
+	## 入场默认不能出手：先走满一轮 attack_interval。
+	rt.attack_timer = maxf(0.05, rt.get_stats().attack_interval)
 	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
 		rt.skip_deploy()

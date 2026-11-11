@@ -90,14 +90,13 @@ static func decide(
 	if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
 		if unit.state != RtUnit.State.ATTACKING:
 			unit.state = RtUnit.State.ATTACKING
-			## 无蓄力前摇：进距即可出手；节奏只走 attack_interval。
-			## 测试仍可设超大 attack_windup 卡住首刀（见下方 max）。
-			unit.attack_timer = maxf(0.0, stats.attack_windup)
+			## 保留入场 interval 门闩；测试可用超大 attack_windup 抬高首刀等待。
+			unit.attack_timer = maxf(unit.attack_timer, maxf(0.0, stats.attack_windup))
 		unit.attack_timer -= dt
 		if unit.attack_timer <= TIME_EPSILON:
 			decision.fire = true
 			unit.attack_timer += maxf(0.05, stats.attack_interval)
-		## 进距后允许微移贴脸（软碰撞会分开），但不主动冲穿。
+		## 进距后允许微移贴脸，但不主动冲穿。
 		return decision
 
 	unit.state = RtUnit.State.MOVING
@@ -148,7 +147,7 @@ static func decide_boss_leader(
 		if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
 			if unit.state != RtUnit.State.ATTACKING:
 				unit.state = RtUnit.State.ATTACKING
-				unit.attack_timer = maxf(0.0, stats.attack_windup)
+				unit.attack_timer = maxf(unit.attack_timer, maxf(0.0, stats.attack_windup))
 			unit.attack_timer -= dt
 			if unit.attack_timer <= TIME_EPSILON:
 				decision.fire = true
@@ -605,6 +604,6 @@ static func _nearest_footprint_cell(from: Vector2i, target: RtUnit) -> Vector2i:
 
 static func _drop_target(unit: RtUnit) -> void:
 	unit.target = null
-	unit.attack_timer = 0.0
+	## 保留 attack_timer：丢目标不刷新出手门闩。
 	if unit.state == RtUnit.State.ATTACKING:
 		unit.state = RtUnit.State.MOVING
