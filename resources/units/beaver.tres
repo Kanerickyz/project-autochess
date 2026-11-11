@@ -8,8 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_beaver"]
 script = ExtResource("2_stats")
-max_hp = 2
-
+max_hp = 6
 [resource]
 script = ExtResource("1")
 id = "beaver"

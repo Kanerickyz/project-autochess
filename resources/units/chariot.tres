@@ -9,7 +9,7 @@
 
 [sub_resource type="Resource" id="UnitStats_chariot"]
 script = ExtResource("2_stats")
-max_hp = 3
+max_hp = 9
 attack = 4
 movement_pattern = 2
 

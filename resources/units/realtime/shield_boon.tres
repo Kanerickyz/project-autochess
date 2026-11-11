@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_shield_boon"]
 script = ExtResource("2_stats")
-max_hp = 10
+max_hp = 30
 attack = 1
 steps_per_turn = 1
 attack_interval = 1.4

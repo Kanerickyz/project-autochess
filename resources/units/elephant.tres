@@ -9,7 +9,7 @@
 
 [sub_resource type="Resource" id="UnitStats_elephant"]
 script = ExtResource("2_stats")
-max_hp = 4
+max_hp = 12
 movement_pattern = 5
 
 [resource]

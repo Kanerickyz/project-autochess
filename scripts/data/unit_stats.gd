@@ -12,7 +12,7 @@ enum MovementPattern {
 	TELEPORT,
 }
 
-@export var max_hp: int = 10
+@export var max_hp: int = 30
 @export var attack: int = 3
 @export var attack_range: int = 1
 @export var movement_pattern: MovementPattern = MovementPattern.ORTHOGONAL

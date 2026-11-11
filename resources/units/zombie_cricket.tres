@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="UnitStats_zombie_cricket"]
 script = ExtResource("2_stats")
-max_hp = 1
+max_hp = 3
 attack = 1
 
 [resource]

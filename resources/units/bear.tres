@@ -8,7 +8,7 @@
 
 [sub_resource type="Resource" id="UnitStats_bear"]
 script = ExtResource("2_stats")
-max_hp = 5
+max_hp = 15
 attack = 1
 
 [resource]
