@@ -19,7 +19,7 @@ enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
-const DEFAULT_BOARD_SIZE := Vector2i(5, 4)
+const DEFAULT_BOARD_SIZE := Vector2i(5, 8)
 const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn")
 ## 0 = 每场随机；非 0 = 固定种子（抽牌、敌人组成与落点、模拟）
 @export var rng_seed: int = 0
@@ -2933,7 +2933,7 @@ func _rebuild_recruit_team_slots() -> void:
 		var config := _deck_state.get_config()
 		if config != null:
 			seat_cols = config.get_seat_cols()
-	## 友方半场画在上区前 seat_rows 行（5×4 + enemy_side/match_ally → y=0..1），
+	## 友方半场画在上区前 seat_rows 行（5×8 + enemy_side/match_ally 时半场内居中），
 	## 与备战之间空出 gap1（y = seat_rows）；不占满则改自定义格保证前两行。
 	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
 	var team_max := -1

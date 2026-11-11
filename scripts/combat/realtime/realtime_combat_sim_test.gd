@@ -1393,7 +1393,7 @@ static func _test_boss_parallel_with_allies() -> bool:
 ## 首领召唤的枯骨代理须朝远离出生点的方向推进（不能卡死不动）。
 static func _test_boss_summon_minions_advance() -> bool:
 	var sim := _new_sim()
-	## 召唤推进需要纵深；保留显式大盘，不跟主路径 5×4。
+	## 召唤推进需要纵深；保留显式大盘，不跟主路径 5×8。
 	sim.configure(ARENA, 61)
 	var boss_data := load("res://resources/units/realtime/giant_knight.tres") as UnitData
 	if boss_data == null or boss_data.summon_unit == null:
@@ -1578,7 +1578,7 @@ static func _test_ranged_attack_reach_clamped_to_2() -> bool:
 ## 首领 2×2 足迹在 9 宽场上应水平居中（足迹中心贴近 board_cx=4）。
 static func _test_boss_footprint_horiz_centered() -> bool:
 	var sim := _new_sim()
-	## 本断言依赖 9 宽；保留显式大盘，不跟主路径 5×4。
+	## 本断言依赖 9 宽；保留显式大盘，不跟主路径 5×8。
 	sim.configure(Vector2i(9, 16), 62)
 	## 敌方前排居中座约 (4,5)
 	var boss := sim.add_unit(
