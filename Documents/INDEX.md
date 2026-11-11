@@ -38,7 +38,7 @@
 | [Features/RECRUIT_SHOP.md](./Features/RECRUIT_SHOP.md) | **招募商店**（角色 5 槽＋道具行；药水永久；旗帜扩席至 10） |
 | [Features/MAP_SHOP.md](./Features/MAP_SHOP.md) | **地图商店**（消耗品＋装备＋半场换座；本切片不含买人） |
 | [Features/COMBAT_FEEDBACK.md](./Features/COMBAT_FEEDBACK.md) | **战斗观战反馈**（当前行动者高亮 + 一动结算；技能结果数字 + 稀有短提示；无出手条/普攻飘字/战斗日志） |
-| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 2×5 角色座位、5×8、半场各 4 行） |
+| [Features/COMBATLEVEL.md](./Features/COMBATLEVEL.md) | **战斗关卡**（竖屏半场、双方 4×5 角色座位、5×8、半场各 4 行） |
 | [BUFF_SYSTEM.md](./BUFF_SYSTEM.md) | **增益卡**规格、示例、附加流（文档目标） |
 | [WEB_DEPLOY.md](./WEB_DEPLOY.md) | **GitHub Pages 浏览器试玩**（Actions 导出 Web、私有库限制） |
 | [Reference/SUPER_AUTO_PETS.md](./Reference/SUPER_AUTO_PETS.md) | **SAP Turtle Pack** 单位与食物参考（外部资料） |

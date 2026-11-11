@@ -40,7 +40,7 @@ func _make_empty_deck_config() -> DeckConfig:
 	config.starting_unit = null
 	config.starting_count = 0
 	config.max_size = 20
-	config.seat_rows = 2
+	config.seat_rows = 4
 	config.seat_cols = 5
 	return config
 
@@ -106,14 +106,21 @@ func _test_opening_enter_recruit_ui() -> void:
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
 
-	## 招募三段栈：team → gap → bench → gap → cand → action（招募区内紧凑，可虚拟行）。
-	var seat_rows := 2
+	## 招募三段栈：team 4×5 → gap → bench → gap → cand → action（招募区内紧凑，可虚拟行）。
+	var seat_rows := 4
 	var expected_team_max_y := seat_rows - 1
 	var expected_bench_y := seat_rows + 1
 	var expected_cand_y := seat_rows + 3
 	var expected_action_y := seat_rows + 4
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
 	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
+	if arena.recruit_team_slots != null:
+		_expect(arena.recruit_team_slots.seat_rows == 4, "recruit team 4 rows")
+		_expect(arena.recruit_team_slots.seat_cols == 5, "recruit team 5 cols")
+		_expect(arena.recruit_team_slots.slot_count == 20, "recruit team 20 seats")
+		_expect(arena.recruit_team_slots.get_cell(0) == Vector2i(0, 0), "recruit team front-left at y0")
+		_expect(arena.recruit_team_slots.get_cell(15) == Vector2i(0, 3), "recruit team back-left at y3")
+		_expect(expected_team_max_y == 3, "team max y == 3")
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		_expect(cell.y == expected_cand_y, "candidate y == seat_rows+3")
@@ -137,6 +144,8 @@ func _test_opening_enter_recruit_ui() -> void:
 			var ic: Vector2i = info.get("cell", Vector2i(-1, -1))
 			_expect(ic.y == expected_action_y, "all items share action row")
 	_expect(arena.recruit_sell_cell.y == expected_action_y, "sell same row as items")
+	if arena.bench_slots != null and arena.bench_slots.slot_count > 0:
+		_expect(arena.bench_slots.get_cell(0).y == expected_bench_y, "bench between team and candidates")
 	_expect(arena.recruit_lock_cell.y == expected_action_y, "lock same row as items")
 	_expect(arena.recruit_sell_cell != arena.recruit_lock_cell, "sell/lock not overlapping")
 	_expect(arena.recruit_sell_cell.y == expected_cand_y + 1, "sell on action row")

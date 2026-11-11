@@ -4,8 +4,8 @@ extends Resource
 const DEFAULT_HAND_WIDTH := 4
 ## 开局上场席位上限（与 PLAYER / starter deck 定稿一致）。
 const DEFAULT_DEPLOY_CAP := 10
-## 战斗半场座位行数（8 高棋盘 → 双方各 2 行贴中线，共四行）。
-const DEFAULT_SEAT_ROWS := 2
+## 战斗半场座位行数（8 高棋盘 → 双方各 4 行铺满半场；招募上区同构）。
+const DEFAULT_SEAT_ROWS := 4
 const DEFAULT_SEAT_COLS := 5
 
 ## Legacy single starter; ignored when starting_units is non-empty.
@@ -20,7 +20,7 @@ const DEFAULT_SEAT_COLS := 5
 @export_range(1, 20, 1) var draw_count: int = DEFAULT_HAND_WIDTH
 ## 遭遇准备阶段手牌宽度（默认与上场人数上限同值；不要求大于座位数）。
 @export_range(1, 20, 1) var hand_width: int = DEFAULT_HAND_WIDTH
-## 友方/敌方角色座位行数（默认 2，战斗贴中线；前排近中线、后排靠己方底）。
+## 友方/敌方角色座位行数（默认 4，铺满半场；前排近中线、后排靠己方底）。
 @export_range(1, 8, 1) var seat_rows: int = DEFAULT_SEAT_ROWS
 ## 友方/敌方角色座位列数（默认 5，与棋盘宽对齐）。
 @export_range(1, 10, 1) var seat_cols: int = DEFAULT_SEAT_COLS
@@ -59,7 +59,7 @@ func get_seat_cols() -> int:
 	return seat_cols if seat_cols > 0 else DEFAULT_SEAT_COLS
 
 
-## 单侧座位总数（默认 2×5=10）。旧 slot_count 仅作兼容回退。
+## 单侧座位总数（默认 4×5=20）。旧 slot_count 仅作兼容回退。
 func get_slot_count() -> int:
 	var from_grid := get_seat_rows() * get_seat_cols()
 	if from_grid > 0:

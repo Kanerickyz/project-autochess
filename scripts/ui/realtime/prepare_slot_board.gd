@@ -1,13 +1,13 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
+## 准备 / 招募角色座位：双方各 4×5（与 5×8 半场对齐铺满）；满座 ≠ 上场人数上限。
 
-const DEFAULT_SEAT_ROWS := 2
+const DEFAULT_SEAT_ROWS := 4
 const DEFAULT_SEAT_COLS := 5
 ## 逻辑行间距（整格）；0 = 相邻行占座。半格观感见 SEAT_ROW_EXTRA_GAP。
 const SEAT_ROW_GAP_CELLS := 0
-## 前后排额外行距（格）：叠在相邻逻辑行上，使格心距 = 1 + 本值（隔半格 → 0.5）。
-const SEAT_ROW_EXTRA_GAP := 0.5
+## 前后排额外行距（格）：4 行铺满半场时略收，避免剪影互盖；仍保留可读分层。
+const SEAT_ROW_EXTRA_GAP := 0.25
 ## 座位列间距（格）；默认 0 铺满棋盘宽。与行距分离，避免加行距时因列向放不下整块被收拢。
 const SEAT_COL_GAP_CELLS := 0
 ## 兼容旧名：等同列间距（历史调用若仍引用则不影响行距）。
@@ -82,7 +82,7 @@ func configure_grid(
 		seat_assign_seq[i] = -1
 
 
-## 兼容旧单排 API：改为默认 2×5 网格（忽略旧 slot_count，改用默认行列）。
+## 兼容旧单排 API：改为默认 4×5 网格（忽略旧 slot_count，改用默认行列）。
 func configure(_p_slot_count: int, p_board_size: Vector2i) -> void:
 	configure_grid(DEFAULT_SEAT_ROWS, DEFAULT_SEAT_COLS, p_board_size, false)
 
@@ -261,7 +261,7 @@ func get_display_center(slot_index: int) -> Vector2:
 	return center
 
 
-## 战斗寻路用：逻辑格若落在默认 2×5 座位前/后排，返回半格 Y 偏移；否则 ZERO。
+## 战斗寻路用：逻辑格若落在默认座位行，返回半格 Y 偏移；否则 ZERO。
 ## 按「当前格所属座位行」计算，避免开局 bias 随单位换行把前后排间距压扁/颠倒。
 static func combat_row_visual_bias(
 	cell: Vector2i,
