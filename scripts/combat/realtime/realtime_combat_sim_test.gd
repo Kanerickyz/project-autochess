@@ -12,6 +12,7 @@ static func run_all() -> bool:
 	ok = _check("parallel_lock_order_snapshot", _test_parallel_lock_order_snapshot()) and ok
 	ok = _check("parallel_all_units_move", _test_parallel_all_units_move()) and ok
 	ok = _check("melee_approach_hits_on_interval", _test_melee_approach_hits_on_interval()) and ok
+	ok = _check("spawn_waits_full_attack_interval", _test_spawn_waits_full_attack_interval()) and ok
 	ok = _check("continuous_slide_diagonal", _test_continuous_slide_diagonal()) and ok
 	ok = _check("soft_collision_no_overlap", _test_soft_collision_no_overlap()) and ok
 	ok = _check("euclidean_attack_reach", _test_euclidean_attack_reach()) and ok
@@ -221,6 +222,53 @@ static func _test_parallel_all_units_move() -> bool:
 	return true
 
 
+## 入场默认不能出手：贴身也须先走满一轮 attack_interval。
+static func _test_spawn_waits_full_attack_interval() -> bool:
+	var bus := CombatEventBus.new()
+	var sim := _new_sim(bus)
+	sim.configure(ARENA, 1)
+	var interval := 1.0
+	var attacker := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"steps_per_turn": 0, "attack_reach": 1.0, "attack_windup": 0.0,
+			"attack_interval": interval, "attack": 10,
+		}),
+		Vector2(9.5, 20.5),
+	)
+	var dummy := sim.add_unit(
+		make_dummy(UnitInstance.Team.ENEMY, 100000, {"body_radius": 0.4}),
+		Vector2(9.5, 19.5),
+	)
+	if absf(attacker.attack_timer - interval) > 0.001:
+		push_error(
+			"spawn_gate: attack_timer should start at interval (got %.3f)"
+			% attacker.attack_timer
+		)
+		bus.free()
+		return false
+	var hit_times: Array[float] = []
+	bus.combat_event.connect(
+		func(event_type: StringName, payload: CombatEventPayload) -> void:
+			if event_type == CombatEvents.ON_DAMAGE_TAKEN and payload.target == dummy.unit:
+				hit_times.append(sim.elapsed_seconds)
+	)
+	## 固定步长下首刀可早约 1 帧；0.85s 前绝不能出手。
+	_run_until(sim, 0.85)
+	if not hit_times.is_empty():
+		push_error("spawn_gate: hit before interval at t=%.3f" % hit_times[0])
+		bus.free()
+		return false
+	_run_until(sim, interval + 0.2)
+	bus.free()
+	if hit_times.is_empty():
+		push_error("spawn_gate: expected first hit after interval")
+		return false
+	if hit_times[0] < 0.85 or hit_times[0] > interval + 0.15:
+		push_error("spawn_gate: first hit out of window t=%.3f" % hit_times[0])
+		return false
+	return true
+
+
 ## 进距后按 attack_interval 连打；靠近用连续移速。
 static func _test_melee_approach_hits_on_interval() -> bool:
 	var bus := CombatEventBus.new()
@@ -317,7 +365,7 @@ static func _test_euclidean_attack_reach() -> bool:
 	var a := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 0, "body_radius": 0.4, "attack_reach": 0.5,
-			"attack_windup": 0.0, "attack_interval": 1.0,
+			"attack_windup": 0.0, "attack_interval": 0.05,
 		}),
 		Vector2(9.5, 20.5),
 	)
@@ -325,6 +373,7 @@ static func _test_euclidean_attack_reach() -> bool:
 		make_dummy(UnitInstance.Team.ENEMY, 100000, {"body_radius": 0.4}),
 		Vector2(9.5, 19.5),
 	)
+	## 入场须先走满 interval；短间隔下 0.2s 足够出首刀。
 	_run_until(sim, 0.2)
 	if near.unit.current_hp >= near.unit.get_effective_max_hp():
 		push_error("euclid: near target should be in reach (edge=%.3f)" % a.edge_distance_to(near))
@@ -335,7 +384,7 @@ static func _test_euclidean_attack_reach() -> bool:
 	var b := sim2.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"steps_per_turn": 0, "body_radius": 0.4, "attack_reach": 0.5,
-			"attack_windup": 0.0, "attack_interval": 1.0,
+			"attack_windup": 0.0, "attack_interval": 0.05,
 		}),
 		Vector2(9.5, 20.5),
 	)
@@ -455,11 +504,11 @@ static func _test_deploy_time_freezes() -> bool:
 		}),
 		Vector2(0.5, 31.5),
 	)
-	## 射手放在同列远处，格距须落在 attack_reach 内
+	## 射手放在同列远处，格距须落在 attack_reach 内；短 interval 以便部署窗内出首刀。
 	var shooter := sim.add_unit(
 		make_unit(UnitInstance.Team.ENEMY, {
 			"attack_reach": 20.0, "sight_range": 40.0, "attack_windup": 0.0,
-			"projectile_speed": 0.0, "steps_per_turn": 0, "attack": 5,
+			"attack_interval": 0.05, "projectile_speed": 0.0, "steps_per_turn": 0, "attack": 5,
 		}),
 		Vector2(9.5, 10.5),
 	)
