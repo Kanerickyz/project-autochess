@@ -1,6 +1,6 @@
 class_name PrepareSlotBoardTest
 extends RefCounted
-## 座位几何：战斗半场前排贴中线；招募上区与我半场同行序；2×5 + 半格行距（5×4 贴满）。
+## 座位几何：战斗半场前排贴中线；招募上区与我半场同行序；2×5 + 半格行距（主路径 5×8）。
 
 
 static func run_all() -> bool:
@@ -10,7 +10,7 @@ static func run_all() -> bool:
 	ok = _check("recruit_matches_ally_row_order", _test_recruit_matches_ally_row_order()) and ok
 	ok = _check("recruit_front_not_enemy_front", _test_recruit_front_not_enemy_front()) and ok
 	ok = _check("fills_half_field", _test_fills_half_field()) and ok
-	ok = _check("combat_row_bias_follows_cell", _test_combat_row_bias_follows_cell()) and ok
+	ok = _check("combat_row_bias_follows_cell", _test_combat_row_visual_bias()) and ok
 	ok = _check("bench_row_below_board", _test_bench_row_below_board()) and ok
 	if ok:
 		print("PrepareSlotBoardTest: all passed")
@@ -29,28 +29,28 @@ static func _check(name: String, passed: bool) -> bool:
 
 static func _test_ally_front_above_back() -> bool:
 	var board := PrepareSlotBoard.new()
-	board.configure_grid(2, 5, Vector2i(5, 4), false)
+	board.configure_grid(2, 5, Vector2i(5, 8), false)
 	var front := board.get_cell(0)
 	var back := board.get_cell(5) ## 末行首列
-	var mid := BoardHalf.midline_row(4)
+	var mid := BoardHalf.midline_row(8)
 	return front.y >= mid and front.y < back.y and board.slot_count == 10
 
 
 static func _test_enemy_front_near_midline() -> bool:
 	var board := PrepareSlotBoard.new()
-	board.configure_grid(2, 5, Vector2i(5, 4), true)
+	board.configure_grid(2, 5, Vector2i(5, 8), true)
 	var front := board.get_cell(0)
 	var back := board.get_cell(5)
-	var mid := BoardHalf.midline_row(4)
-	## 5×4 贴满：敌前 y=1、敌后 y=0，绝不叠格。
-	return front.y < mid and front.y > back.y and front.y == 1 and back.y == 0
+	var mid := BoardHalf.midline_row(8)
+	## 5×8：敌前 y=2、敌后 y=1（mid_sep=2），绝不叠格。
+	return front.y < mid and front.y > back.y and front.y == 2 and back.y == 1
 
 
 static func _test_recruit_matches_ally_row_order() -> bool:
 	var recruit := PrepareSlotBoard.new()
-	recruit.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	recruit.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	var ally := PrepareSlotBoard.new()
-	ally.configure_grid(2, 5, Vector2i(5, 4), false)
+	ally.configure_grid(2, 5, Vector2i(5, 8), false)
 	var r_front := recruit.get_cell(0)
 	var r_back := recruit.get_cell(5)
 	var a_front := ally.get_cell(0)
@@ -60,24 +60,24 @@ static func _test_recruit_matches_ally_row_order() -> bool:
 		return false
 	if r_front.x != a_front.x or r_back.x != a_back.x:
 		return false
-	return BoardHalf.midline_row(4) > r_front.y
+	return BoardHalf.midline_row(8) > r_front.y
 
 
 static func _test_recruit_front_not_enemy_front() -> bool:
 	## 招募上区前排 ≠ 敌方前排落点（避免再退回旧颠倒映射）。
 	var recruit := PrepareSlotBoard.new()
-	recruit.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	recruit.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	var enemy := PrepareSlotBoard.new()
-	enemy.configure_grid(2, 5, Vector2i(5, 4), true, false)
+	enemy.configure_grid(2, 5, Vector2i(5, 8), true, false)
 	return recruit.get_cell(0).y != enemy.get_cell(0).y
 
 
 static func _test_fills_half_field() -> bool:
-	## 2×5 贴中线占满半场两行（共 10 格）；5×4 半场高 2，四行贴满整盘。
+	## 2×5 贴中线占半场前两行（共 10 格）；5×8 半场高 4，上下各留白一行。
 	var ally := PrepareSlotBoard.new()
-	ally.configure_grid(2, 5, Vector2i(5, 4), false)
-	var mid := BoardHalf.midline_row(4)
-	var half_bottom := 4
+	ally.configure_grid(2, 5, Vector2i(5, 8), false)
+	var mid := BoardHalf.midline_row(8)
+	var half_bottom := 8
 	var seen: Dictionary = {}
 	var min_y := 999
 	var max_y := -1
@@ -96,9 +96,9 @@ static func _test_fills_half_field() -> bool:
 	var back_c := ally.get_display_center(5)
 	if not is_equal_approx(back_c.y - front_c.y, 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP):
 		return false
-	## 敌我四行显示格心距一致（隔半格）；贴满盘用累积外推。
+	## 敌我前排显示格心距隔半格（mid_sep=2 + 非贴满外推）。
 	var enemy := PrepareSlotBoard.new()
-	enemy.configure_grid(2, 5, Vector2i(5, 4), true)
+	enemy.configure_grid(2, 5, Vector2i(5, 8), true)
 	var gap := 1.0 + PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
 	var e_back := enemy.get_display_center(5).y
 	var e_front := enemy.get_display_center(0).y
@@ -111,49 +111,48 @@ static func _test_fills_half_field() -> bool:
 	)
 
 
-static func _test_combat_row_bias_follows_cell() -> bool:
-	var board := Vector2i(5, 4)
-	var front_y := 2
-	var back_y := 3
+static func _test_combat_row_visual_bias() -> bool:
+	var board := Vector2i(5, 8)
+	var front_y := 4
+	var back_y := 5
 	var front_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, front_y), board, false)
 	var back_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, back_y), board, false)
 	## 敌半场格不属于友方座位行。
 	var empty_b := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 0), board, false)
 	var spread := PrepareSlotBoard.SEAT_ROW_EXTRA_GAP * 0.5
-	var extra := PrepareSlotBoard.SEAT_ROW_EXTRA_GAP
-	## 贴满外推：友前 +EXTRA/2，友后 +EXTRA/2+EXTRA。
-	if not is_equal_approx(front_b.y, spread):
+	## 5×8 非贴满：友前 -EXTRA/2，友后 +EXTRA/2。
+	if not is_equal_approx(front_b.y, -spread):
 		return false
-	if not is_equal_approx(back_b.y, spread + extra):
+	if not is_equal_approx(back_b.y, spread):
 		return false
 	if empty_b != Vector2.ZERO:
 		return false
-	var enemy_front := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 1), board, true)
-	var enemy_back := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 0), board, true)
+	var enemy_front := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 2), board, true)
+	var enemy_back := PrepareSlotBoard.combat_row_visual_bias(Vector2i(0, 1), board, true)
 	return (
-		is_equal_approx(enemy_front.y, -spread)
-		and is_equal_approx(enemy_back.y, -spread - extra)
+		is_equal_approx(enemy_front.y, spread)
+		and is_equal_approx(enemy_back.y, -spread)
 	)
 
 
 static func _test_bench_row_below_board() -> bool:
 	var board := PrepareSlotBoard.new()
-	board.configure_bench_row(Vector2i(5, 4), 5)
+	board.configure_bench_row(Vector2i(5, 8), 5)
 	if board.slot_count != 5 or board.cells.size() != 5:
 		return false
 	var xs: Dictionary = {}
 	for cell in board.cells:
-		if cell.y != 4:
+		if cell.y != 8:
 			return false
 		if cell.x < 0 or cell.x >= 5:
 			return false
 		xs[cell.x] = true
-	if not (xs.size() == 5 and board.find_slot_at_cell(Vector2i(2, 4)) == 2):
+	if not (xs.size() == 5 and board.find_slot_at_cell(Vector2i(2, 8)) == 2):
 		return false
 	## 招募中缝：显式 row_y = midline。
-	var mid := BoardHalf.midline_row(4)
+	var mid := BoardHalf.midline_row(8)
 	var seam := PrepareSlotBoard.new()
-	seam.configure_bench_row(Vector2i(5, 4), 5, mid)
+	seam.configure_bench_row(Vector2i(5, 8), 5, mid)
 	for cell in seam.cells:
 		if cell.y != mid:
 			return false

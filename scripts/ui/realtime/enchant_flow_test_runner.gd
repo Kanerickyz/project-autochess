@@ -218,14 +218,14 @@ func _test_enchant_team_seat_swap() -> void:
 func _test_enchant_scroll_vs_drag_gesture() -> void:
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	root.add_child(arena)
 	await process_frame
 	var deck_cfg := DeckConfig.new()
 	deck_cfg.max_size = 24
 	var deck := DeckState.new()
 	deck.configure(deck_cfg)
-	## 5×4 友方半场仅 2 行×5=10 格；留空格供半场空白 pan（不必贴满）。
+	## 5×8 友方半场 4 行中贴中线 2 行×5=10 格；留空格供半场空白 pan（不必贴满）。
 	for i in 8:
 		var u := UnitData.new()
 		u.id = "mem_%d" % i
