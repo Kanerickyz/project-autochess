@@ -105,6 +105,8 @@ const GOLD_COIN_SLIDE_TILE_MIN := 0.18
 const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
+## false：角色脚下不绘攻击/生命/护甲纸片（长按信息卡仍可读）；招募价签金币仍可绘。
+const SHOW_FOOT_ATK_HP_BADGES := false
 ## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
 const STAT_BADGE_HEIGHT_MUL := 0.42
 const STAT_BADGE_MIN_HEIGHT := 11.0
@@ -4741,6 +4743,7 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 
 
 ## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
+## SHOW_FOOT_ATK_HP_BADGES=false 时跳过攻/血/护甲，仅保留招募价签金币。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -4752,11 +4755,15 @@ func _draw_stat_badges(
 	gold_affordable: bool = true,
 	badge_scale: float = 1.0,
 ) -> void:
+	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
+	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
+	if not SHOW_FOOT_ATK_HP_BADGES:
+		if show_gold:
+			_draw_recruit_gold_badge(center, gold_cost, gold_affordable, alpha, px)
+		return
 	var armor_tex := UiStatIcons.armor_texture()
 	var show_armor := armor > 0 and armor_tex != null
-	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
 	var primary_count := 2 + (1 if show_armor else 0)
-	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
 	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
 	var scale := maxf(0.5, badge_scale)
 	badge *= scale
