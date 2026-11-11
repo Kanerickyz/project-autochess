@@ -478,8 +478,8 @@ func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
 	var content_rows := float(board_size.y) + _bench_layout_tiles()
-	## 纯角色目录：铺满控件，不留背景树带边距（与角色库体量一致）。
-	if catalog_active and catalog_plain_backdrop:
+	## 角色库 / 纯目录：按控件宽高直接铺格，避开背景树带 gutter（否则竖屏格忽大忽小）。
+	if catalog_active:
 		return maxf(1.0, minf(size.x / float(board_size.x), size.y / content_rows))
 	var bg := _get_background_rect()
 	var gutter := maxf(0.0, bg.position.x + bg.size.x * BACKGROUND_TREE_BAND * (1.0 - BOARD_TREE_OVERLAP))
