@@ -37,6 +37,7 @@
 
 - 代码：`MainMenuParallaxBackground`（`PhaseGridBackground`）+ `main_menu_background.gdshader` — **两种深色**纯色**正方形棋盘**格，自**右上向左下**缓慢滚动；指针仅轻微改 `pointer_offset`。
 - **局内复用**：战斗 / 准备 / 招募 / 地图商店 / 附魔 / 地图选路共用**同一块常驻** `PhaseGridBackground`（不随阶段销毁/隐藏）；换阶段只 **lerp 双色**（约 0.75s）。色板见 `PhaseGridPalettes`（战斗冷铁灰；地图深蓝；招募墨绿；商店琥珀；附魔品红）。
+- **角色库**：独立场景挂 `PhaseGridBackground`（`ThemeId.CODEX` 靛蓝）；单位按 **5 列 × 4 行**分页展示，超出一页用上一页/下一页切换。竖屏（iPhone 14 Pro **393×852**）带 SafeMargin；筛选默认收起并可区内滚动，格子按控件宽度铺满避免忽大忽小，翻页条钉在安全区底部。
 - 待美术：可改为营地分层图或替换 `color_dark_a/b`；静态图回退仍可用 `menu_background.jpg`。
 - 静态回退：可将场景 `Background` 改回单 `TextureRect`（或接设置关动效）。
 

@@ -4,6 +4,13 @@ extends Control
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const RECRUIT_CONFIG_PATH := "res://resources/recruit/default_recruit_config.tres"
 const CATALOG_COLUMNS := 5
+const CATALOG_ROWS := 4
+const PAGE_SIZE := CATALOG_COLUMNS * CATALOG_ROWS
+## iPhone 14 Pro 逻辑宽；窄于此默认收起筛选，避免顶栏挤掉棋盘/翻页。
+const NARROW_VIEW_WIDTH := 430.0
+## 筛选区最大高度占可视高度比例（超出内部滚动，不把页栏顶出屏）。
+const FILTER_SCROLL_MAX_RATIO := 0.28
+const FILTER_SCROLL_MAX_PX := 220.0
 ## 触发按钮优先按此序排列（与 UnitInfoText 文案一致）；池中未出现的不显示。
 const TRIGGER_ORDER: Array[StringName] = [
 	CombatEvents.ON_COMBAT_START,
@@ -49,15 +56,23 @@ const EFFECT_CATEGORY_ORDER: Array[EffectCategory] = [
 
 @onready var _back_button: Button = %BackButton
 @onready var _filter_toggle: Button = %FilterToggle
+@onready var _filter_scroll: ScrollContainer = %FilterScroll
 @onready var _filter_body: VBoxContainer = %FilterBody
 @onready var _tier_filter: HBoxContainer = %TierFilter
 @onready var _trigger_filter: HBoxContainer = %TriggerFilter
 @onready var _effect_filter: HBoxContainer = %EffectFilter
 @onready var _star_filter: HBoxContainer = %StarFilter
+@onready var _hint_label: Label = %HintLabel
 @onready var _count_label: Label = %CountLabel
 @onready var _empty_label: Label = %EmptyLabel
 @onready var _arena: RealtimeArenaView = %CodexArena
-@onready var _content_root: Control = $Root
+@onready var _page_bar: HBoxContainer = %PageBar
+@onready var _prev_page_button: Button = %PrevPageButton
+@onready var _next_page_button: Button = %NextPageButton
+@onready var _page_label: Label = %PageLabel
+@onready var _safe_margin: MarginContainer = %SafeMargin
+@onready var _background: PhaseGridBackground = $Background
+@onready var _content_root: Control = $SafeMargin/Root
 
 var _all_units: Array[UnitData] = []
 ## 0 = 全部；1–6 = 对应 tier
@@ -67,8 +82,12 @@ var _selected_trigger: StringName = &""
 var _selected_effect: EffectCategory = EffectCategory.ALL
 ## 1 = 一星；2 = 一次三合一预览
 var _preview_level: int = 1
-## 顶部筛选栏展开；收起后棋盘更高。
+## 顶部筛选栏展开；收起后棋盘更高。窄屏默认收起。
 var _filters_expanded: bool = true
+## 用户是否手动点过筛选开合（点过后不再被窄屏默认覆盖）。
+var _filters_user_toggled: bool = false
+## 当前页（0 起）；筛选变更时归零。
+var _page_index: int = 0
 var _tier_buttons: Dictionary = {} # tier -> Button
 var _trigger_buttons: Dictionary = {} # StringName -> Button
 var _effect_buttons: Dictionary = {} # EffectCategory -> Button
@@ -83,6 +102,12 @@ func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	if _filter_toggle != null:
 		_filter_toggle.pressed.connect(_on_filter_toggle_pressed)
+	if _prev_page_button != null:
+		_prev_page_button.pressed.connect(_on_prev_page_pressed)
+	if _next_page_button != null:
+		_next_page_button.pressed.connect(_on_next_page_pressed)
+	if _background != null:
+		_background.set_theme_id(PhaseGridPalettes.ThemeId.CODEX, false)
 	_tier_button_group.allow_unpress = false
 	_trigger_button_group.allow_unpress = false
 	_effect_button_group.allow_unpress = false
@@ -92,24 +117,104 @@ func _ready() -> void:
 	_build_trigger_filters()
 	_build_effect_filters()
 	_build_star_filters()
-	_apply_filter_collapsed()
+	_apply_responsive_layout()
+	if not get_viewport().size_changed.is_connected(_on_viewport_resized):
+		get_viewport().size_changed.connect(_on_viewport_resized)
 	_rebuild_board()
 	_back_button.grab_focus()
 
 
+func _on_viewport_resized() -> void:
+	_apply_responsive_layout()
+
+
 func _on_filter_toggle_pressed() -> void:
+	_filters_user_toggled = true
 	_filters_expanded = not _filters_expanded
 	_apply_filter_collapsed()
+	## 展开/收起后立刻按可用高度重算筛选上限，避免页栏被顶出。
+	_apply_filter_scroll_cap()
+	_apply_arena_min_height()
+
+
+func _apply_responsive_layout() -> void:
+	_apply_safe_margins()
+	_apply_narrow_defaults()
+	_apply_filter_collapsed()
+	_apply_filter_scroll_cap()
+	_apply_arena_min_height()
+
+
+func _apply_safe_margins() -> void:
+	if _safe_margin == null:
+		return
+	var view_h := get_viewport().get_visible_rect().size.y
+	## 与主菜单同档：给刘海 / Home 指示条留空。
+	var top := 44 if view_h >= 800.0 else 28
+	var bottom := 52 if view_h >= 800.0 else 28
+	_safe_margin.add_theme_constant_override("margin_top", top)
+	_safe_margin.add_theme_constant_override("margin_bottom", bottom)
+	_safe_margin.add_theme_constant_override("margin_left", 12)
+	_safe_margin.add_theme_constant_override("margin_right", 12)
+
+
+func _apply_narrow_defaults() -> void:
+	var view_w := get_viewport().get_visible_rect().size.x
+	## 仅首次进入窄屏时默认收起；用户手动展开后不强制改回。
+	if view_w <= NARROW_VIEW_WIDTH and not _filters_user_toggled:
+		_filters_expanded = false
 
 
 func _apply_filter_collapsed() -> void:
-	if _filter_body != null:
+	if _filter_scroll != null:
+		_filter_scroll.visible = _filters_expanded
+	elif _filter_body != null:
 		_filter_body.visible = _filters_expanded
 	if _filter_toggle != null:
 		_filter_toggle.text = "筛选 ▴" if _filters_expanded else "筛选 ▾"
 		_filter_toggle.tooltip_text = (
 			"收起筛选栏，扩大棋盘" if _filters_expanded else "展开品阶 / 触发 / 效果 / 星级筛选"
 		)
+
+
+func _filter_scroll_cap_px() -> float:
+	var view_h := get_viewport().get_visible_rect().size.y
+	return minf(FILTER_SCROLL_MAX_PX, view_h * FILTER_SCROLL_MAX_RATIO)
+
+
+func _apply_filter_scroll_cap() -> void:
+	if _filter_scroll == null or not _filters_expanded:
+		if _filter_scroll != null:
+			_filter_scroll.custom_minimum_size = Vector2.ZERO
+		return
+	var cap := _filter_scroll_cap_px()
+	## 固定占用上限高度：内容超出在区内滚动，不继续撑开顶栏。
+	_filter_scroll.custom_minimum_size = Vector2(0.0, cap)
+	_filter_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _apply_arena_min_height() -> void:
+	if _arena == null:
+		return
+	## 以内容区宽度锁定 5×4 正方形格所需高度，减少筛选开合时棋子忽大忽小。
+	var view := get_viewport().get_visible_rect().size
+	var content_w := 0.0
+	if _content_root != null and _content_root.size.x > 1.0:
+		content_w = _content_root.size.x
+	elif _safe_margin != null and _safe_margin.size.x > 1.0:
+		content_w = _safe_margin.size.x
+	else:
+		content_w = maxf(1.0, view.x - 24.0)
+	## 与 BoardLayout 竖屏基准对齐：格宽不超过参考逻辑宽。
+	content_w = minf(content_w, BoardLayout.VIEWPORT_WIDTH)
+	var cell := content_w / float(CATALOG_COLUMNS)
+	var need_h := cell * float(CATALOG_ROWS)
+	## 预留下方页栏 + 顶栏（+ 展开时筛选上限），避免最小高度把翻页顶出屏。
+	var chrome := 140.0
+	if _filters_expanded:
+		chrome += _filter_scroll_cap_px()
+	var max_h := maxf(160.0, view.y - chrome)
+	_arena.custom_minimum_size = Vector2(0.0, minf(need_h, max_h))
 
 
 func _load_pool() -> void:
@@ -154,7 +259,7 @@ func _build_tier_filters() -> void:
 		var button := Button.new()
 		button.toggle_mode = true
 		button.button_group = _tier_button_group
-		button.custom_minimum_size = Vector2(64, 36)
+		button.custom_minimum_size = Vector2(56, 36)
 		button.text = "全部" if tier == 0 else "T%d" % tier
 		button.pressed.connect(_on_tier_pressed.bind(tier))
 		_tier_filter.add_child(button)
@@ -268,6 +373,7 @@ func _on_tier_pressed(tier: int) -> void:
 	if _selected_tier == tier:
 		return
 	_selected_tier = tier
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -275,6 +381,7 @@ func _on_trigger_pressed(trigger: StringName) -> void:
 	if _selected_trigger == trigger:
 		return
 	_selected_trigger = trigger
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -282,6 +389,7 @@ func _on_effect_pressed(category: EffectCategory) -> void:
 	if _selected_effect == category:
 		return
 	_selected_effect = category
+	_page_index = 0
 	_rebuild_board()
 
 
@@ -428,14 +536,61 @@ func _filtered_units() -> Array[UnitData]:
 
 func _rebuild_board() -> void:
 	var shown := _filtered_units()
-	_empty_label.visible = shown.is_empty()
-	_count_label.text = _format_count(shown.size())
+	var total := shown.size()
+	var pages := _page_count(total)
+	_page_index = clampi(_page_index, 0, pages - 1)
+	_empty_label.visible = total == 0
+	_count_label.text = _format_count(total)
+	_update_page_bar(pages)
 	if _arena == null:
 		return
-	if shown.is_empty():
+	if total == 0:
 		_arena.clear_catalog_mode()
 		return
-	_arena.set_catalog_units(shown, CATALOG_COLUMNS, _preview_level)
+	var page_units := _page_slice(shown)
+	_arena.set_catalog_units(page_units, CATALOG_COLUMNS, _preview_level, CATALOG_ROWS)
+
+
+func _page_count(total: int) -> int:
+	if total <= 0:
+		return 1
+	return maxi(1, int(ceili(float(total) / float(PAGE_SIZE))))
+
+
+func _page_slice(shown: Array[UnitData]) -> Array[UnitData]:
+	var out: Array[UnitData] = []
+	var start := _page_index * PAGE_SIZE
+	var stop := mini(start + PAGE_SIZE, shown.size())
+	for i in range(start, stop):
+		out.append(shown[i])
+	return out
+
+
+func _update_page_bar(pages: int) -> void:
+	var multi := pages > 1
+	if _page_bar != null:
+		_page_bar.visible = multi
+	if _page_label != null:
+		_page_label.text = "%d / %d" % [_page_index + 1, pages]
+	if _prev_page_button != null:
+		_prev_page_button.disabled = not multi or _page_index <= 0
+	if _next_page_button != null:
+		_next_page_button.disabled = not multi or _page_index >= pages - 1
+
+
+func _on_prev_page_pressed() -> void:
+	if _page_index <= 0:
+		return
+	_page_index -= 1
+	_rebuild_board()
+
+
+func _on_next_page_pressed() -> void:
+	var pages := _page_count(_filtered_units().size())
+	if _page_index >= pages - 1:
+		return
+	_page_index += 1
+	_rebuild_board()
 
 
 func _format_count(count: int) -> String:

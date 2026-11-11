@@ -10,6 +10,8 @@ enum ThemeId {
 	RECRUIT,
 	MAP_SHOP,
 	ENCHANT,
+	## 局外角色库（追加在末尾，勿重排既有枚举值）。
+	CODEX,
 }
 
 
@@ -57,6 +59,12 @@ static func colors_for(theme_id: ThemeId) -> Dictionary:
 			return {
 				"a": Color(0.09, 0.03, 0.11),
 				"b": Color(0.28, 0.09, 0.30),
+			}
+		ThemeId.CODEX:
+			## 角色库：靛蓝档案感（与主菜单灰紫、附魔品红区分）。
+			return {
+				"a": Color(0.04, 0.06, 0.14),
+				"b": Color(0.10, 0.16, 0.30),
 			}
 		_:
 			return {
