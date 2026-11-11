@@ -603,7 +603,7 @@ func _test_recruit_team_sell_drag() -> void:
 	entry.unit = unit
 	entry.level = 2
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, entry)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
@@ -688,7 +688,7 @@ func _test_recruit_team_bench_drag() -> void:
 	entry.unit = unit
 	entry.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, entry)
 	var mid_y := BoardHalf.midline_row(4)
 	var bench := PrepareSlotBoard.new()
@@ -776,7 +776,7 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	seated.unit = load(UNIT_PATHS[0]) as UnitData
 	seated.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
+	team.configure_grid(4, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, seated)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team

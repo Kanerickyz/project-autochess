@@ -87,7 +87,7 @@ var _board_size: Vector2i = DEFAULT_BOARD_SIZE
 var _phase: Phase = Phase.IDLE
 var _card_flow: EncounterCardFlow = EncounterCardFlow.new()
 var _slots: PrepareSlotBoard = PrepareSlotBoard.new()
-## 敌方座位几何（镜像 2×5）；准备预览 / 开战落点用，不存 DeckEntry。
+## 敌方座位几何（镜像 4×5）；准备预览 / 开战落点用，不存 DeckEntry。
 var _enemy_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _deploy_cap: int = DeckConfig.DEFAULT_DEPLOY_CAP
 var _cards: Array[RealtimeHandCard] = []
@@ -2933,26 +2933,21 @@ func _rebuild_recruit_team_slots() -> void:
 		var config := _deck_state.get_config()
 		if config != null:
 			seat_cols = config.get_seat_cols()
-	## 友方半场画在上区前 seat_rows 行（5×8 + enemy_side/match_ally 时半场内居中），
-	## 与备战之间空出 gap1（y = seat_rows）；不占满则改自定义格保证前两行。
-	_recruit_team_slots.configure_grid(seat_rows, seat_cols, _board_size, true, true)
-	var team_max := -1
-	for si in _recruit_team_slots.slot_count:
-		team_max = maxi(team_max, _recruit_team_slots.get_cell(si).y)
-	if team_max != _recruit_layout_team_max_y():
-		var cells: Array[Vector2i] = []
-		var start_x := (_board_size.x - seat_cols) / 2
-		start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
-		for row_i in seat_rows:
-			for c in seat_cols:
-				var x := clampi(start_x + c, 0, maxi(0, _board_size.x - 1))
-				cells.append(Vector2i(x, row_i))
-		_recruit_team_slots.configure_custom_cells(cells)
-		_recruit_team_slots.board_size = _board_size
-		_recruit_team_slots.seat_rows = seat_rows
-		_recruit_team_slots.seat_cols = seat_cols
-		_recruit_team_slots.is_enemy_side = true
-		_recruit_team_slots.match_ally_row_order = true
+	## 招募上区：固定铺满前 seat_rows 行×seat_cols 列（默认 4×5），前排在上、后排在下；
+	## 与备战之间空出 gap1（y = seat_rows），避免队伍纸片压住备战/候选人。
+	var cells: Array[Vector2i] = []
+	var start_x := (_board_size.x - seat_cols) / 2
+	start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
+	for row_i in seat_rows:
+		for c in seat_cols:
+			var x := clampi(start_x + c, 0, maxi(0, _board_size.x - 1))
+			cells.append(Vector2i(x, row_i))
+	_recruit_team_slots.configure_custom_cells(cells)
+	_recruit_team_slots.board_size = _board_size
+	_recruit_team_slots.seat_rows = seat_rows
+	_recruit_team_slots.seat_cols = seat_cols
+	_recruit_team_slots.is_enemy_side = true
+	_recruit_team_slots.match_ally_row_order = true
 	if _recruit_session == null or _recruit_session.deck == null:
 		return
 	var deck := _recruit_session.deck
@@ -3016,13 +3011,16 @@ func _build_recruit_item_previews() -> Array:
 
 ## 招募纵向布局源（逻辑 y；可超出 board_size.y 作虚拟行，不加战斗逻辑行）。
 ## 自上而下：team 0..seat_rows-1 → gap1 → bench → gap2 → candidates → actions。
-## seat_rows=2 时：team 0–1，gap@2，bench@3，gap@4，cand@5，action@6。
+## seat_rows=4 时：team 0–3，gap@4，bench@5，gap@6，cand@7，action@8。
 func _recruit_layout_seat_rows() -> int:
+	## 招募上区与战斗半场同高：铺满半场行数（5×8 → 4），再与配置取较大值防缩水。
+	var half_rows := BoardHalf.midline_row(maxi(1, _board_size.y))
+	var configured := DeckConfig.DEFAULT_SEAT_ROWS
 	if _deck_state != null:
 		var config := _deck_state.get_config()
 		if config != null:
-			return maxi(1, config.get_seat_rows())
-	return DeckConfig.DEFAULT_SEAT_ROWS
+			configured = maxi(1, config.get_seat_rows())
+	return maxi(half_rows, configured)
 
 
 func _recruit_layout_team_max_y() -> int:

@@ -201,7 +201,7 @@ var catalog_active: bool = false
 var catalog_plain_backdrop: bool = false
 ## >0 时覆盖 get_unit_visual_scale（远征统计等窄条目录用，避免缩略棋盘放大剪影）。
 var catalog_visual_scale_override: float = -1.0
-## 上半场队伍座位（几何同敌方 2×5）；occupants 为 DeckEntry。
+## 上半场队伍座位（几何同友方 4×5 半场）；occupants 为 DeckEntry。
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
