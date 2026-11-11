@@ -31,6 +31,8 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
 ## PREPARE→COMBAT 阵容落点过渡秒数；≤0 瞬切。默认跟 recruit 节奏接近。
 @export_range(0.0, 2.0, 0.05) var combat_lineup_enter_seconds: float = 0.3
+## 胜负遮罩：场上动作落定后再延迟秒数；≤0 跳过延迟（测试可置 0）。
+@export_range(0.0, 3.0, 0.05) var result_overlay_delay_sec: float = 1.0
 
 var last_seed: int = 0
 
@@ -165,6 +167,8 @@ var _final_trial_active: bool = false
 var _final_trial_wave_index: int = 0
 var _final_trial_floors_cleared: int = 0
 var _boss_final_trial_offer: bool = false
+## 已收到 combat_finished、正在等动作落定 / 延迟再弹遮罩。
+var _result_overlay_pending: bool = false
 
 @onready var _encounter_label: Label = %EncounterLabel
 @onready var _gold_label: Label = %GoldLabel
@@ -2094,6 +2098,7 @@ func _build_enemy_previews(spawns: Array) -> Array:
 
 func _teardown_sim() -> void:
 	_lock_phase_active = false
+	_result_overlay_pending = false
 	_kill_lineup_enter_tween()
 	if _timestop_queue != null:
 		_timestop_queue.clear()
@@ -3874,6 +3879,9 @@ func _show_skill_trigger_info_for_owner(owner: UnitInstance, trigger_spec: Effec
 
 
 func _on_combat_finished(won: bool) -> void:
+	if _result_overlay_pending or _phase == Phase.RESULT:
+		return
+	_result_overlay_pending = true
 	if _deck_state != null:
 		_deck_state.refill_all_equipment_armor()
 	_timestop_queue.clear()
@@ -3921,8 +3929,37 @@ func _on_combat_finished(won: bool) -> void:
 		if _continue_button != null:
 			_continue_button.text = "继续"
 		_update_result_action_buttons()
+	## 仍处 COMBAT：等出击/死亡演出落定，再延迟后弹遮罩。
+	await _await_combat_presentation_settle()
+	if not is_inside_tree():
+		_result_overlay_pending = false
+		return
+	if result_overlay_delay_sec > 0.001:
+		await get_tree().create_timer(result_overlay_delay_sec).timeout
+		if not is_inside_tree():
+			_result_overlay_pending = false
+			return
+	_reveal_result_overlay(won)
+
+
+## 等到出击/回位 tween 与死亡残影播完（有墙钟上限，避免假死）。
+func _await_combat_presentation_settle() -> void:
+	var guard := 0
+	while guard < 360:
+		if _arena == null or not _arena.has_busy_combat_presentation():
+			return
+		await get_tree().process_frame
+		if _arena != null:
+			_arena.queue_redraw()
+		guard += 1
+
+
+func _reveal_result_overlay(won: bool) -> void:
+	_result_overlay_pending = false
 	_result_overlay.visible = true
-	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, _sim.elapsed_seconds, _sim.fixed_step_count])
+	var elapsed := _sim.elapsed_seconds if _sim != null else 0.0
+	var steps := _sim.fixed_step_count if _sim != null else 0
+	print("RealtimeBattle: finished won=%s elapsed=%.2fs steps=%d" % [won, elapsed, steps])
 	_set_phase(Phase.RESULT)
 	_update_tape_controls()
 	combat_resolved.emit(won)
