@@ -123,10 +123,7 @@ var _stat_collector: RunCombatStatCollector = RunCombatStatCollector.new()
 var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
-var _recruit_title: Label
 var _recruit_hint: Label
-var _recruit_gold: Label
-var _recruit_seat: Label
 var _recruit_refresh_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
@@ -2738,7 +2735,7 @@ func _ensure_recruit_hud() -> void:
 	style.bg_color = Color(0.10, 0.14, 0.12, 0.92)
 	style.set_content_margin_all(8.0)
 	_recruit_hud.add_theme_stylebox_override("panel", style)
-	## 放进 Dock：招募时保持底栏占位，Arena 格像素与准备/战斗一致。
+	## 放进 Dock：招募时按 RecruitHud 自然高度收缩，把垂直空间还给 Arena。
 	var dock_box: Node = null
 	if _dock != null:
 		dock_box = _dock.get_node_or_null("DockBox")
@@ -2746,7 +2743,7 @@ func _ensure_recruit_hud() -> void:
 		dock_box.add_child(_recruit_hud)
 	else:
 		_recruit_hud.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		_recruit_hud.offset_top = -132.0
+		_recruit_hud.offset_top = -96.0
 		_recruit_hud.offset_bottom = 0.0
 		add_child(_recruit_hud)
 
@@ -2754,24 +2751,7 @@ func _ensure_recruit_hud() -> void:
 	box.add_theme_constant_override("separation", 6)
 	_recruit_hud.add_child(box)
 
-	var top := HBoxContainer.new()
-	box.add_child(top)
-	_recruit_title = Label.new()
-	_recruit_title.text = "招募"
-	_recruit_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_recruit_title)
-	var gold_row := HBoxContainer.new()
-	gold_row.name = "RecruitGoldRow"
-	gold_row.add_theme_constant_override("separation", 4)
-	top.add_child(gold_row)
-	UiStatIcons.ensure_gold_icon(gold_row)
-	_recruit_gold = Label.new()
-	_recruit_gold.text = UiStatIcons.format_gold_label(0)
-	gold_row.add_child(_recruit_gold)
-	_recruit_seat = Label.new()
-	_recruit_seat.text = "席位 0/0"
-	top.add_child(_recruit_seat)
-
+	## 标题 / 金币 / 入座由顶栏 Hud 展示，底栏只留 hint + 操作钮。
 	_recruit_hint = Label.new()
 	_recruit_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_recruit_hint.text = "将下半场候选人拖到上半场队伍"
@@ -2797,29 +2777,11 @@ func _ensure_recruit_hud() -> void:
 	row.add_child(_recruit_finish_btn)
 
 
-## 准备阶段底栏等效高度：手牌行 + 开战 + DockBox 间距 + panel 上下边距。
-## 本版已取消准备刷新手牌，不再计入刷新钮高度。
-## 开局招募时开战钮尚未显示，不能用当前 _dock.size（会偏矮 → Arena 变高）。
-func _prepare_equivalent_dock_height() -> float:
-	var hand_h := 88.0
-	if _hand_row != null:
-		hand_h = maxf(_hand_row.custom_minimum_size.y, hand_h)
-	var start_h := 40.0
-	if _start_button != null:
-		start_h = maxf(_start_button.custom_minimum_size.y, start_h)
-	var sep := 6.0
-	var margin_tb := 14.0 ## StyleBoxFlat_dock content_margin top 6 + bottom 8
-	return margin_tb + hand_h + sep + start_h
-
-
 func _hide_combat_chrome_for_recruit() -> void:
-	## 只藏手牌/开战/刷新；Dock 锁到准备等效高度，避免开局/胜后招募 Arena 变高变宽。
+	## 只藏手牌/开战/刷新；Dock 不锁准备手牌等效高，按 RecruitHud 自然高度收缩。
 	if _dock != null:
 		_dock.visible = true
-		var keep_h := _prepare_equivalent_dock_height()
-		if _dock.size.y > keep_h:
-			keep_h = _dock.size.y
-		_dock.custom_minimum_size.y = keep_h
+		_dock.custom_minimum_size.y = 0.0
 	if _hand_row != null:
 		_hand_row.visible = false
 	if _prepare_action_row != null:
@@ -3116,15 +3078,6 @@ func _refresh_recruit_hud() -> void:
 	var seated_n := deck.get_seated_count() if deck != null else 0
 	var bench_n := deck.get_bench_count() if deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
-	if _recruit_gold != null:
-		_recruit_gold.text = UiStatIcons.format_gold_label(gold)
-		var gold_row := _recruit_gold.get_parent() as Control
-		if gold_row != null:
-			UiStatIcons.ensure_gold_icon(gold_row)
-	if _recruit_seat != null:
-		_recruit_seat.text = "入座 %d/%d 备战 %d/%d" % [
-			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
-		]
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"

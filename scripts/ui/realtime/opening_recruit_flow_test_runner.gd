@@ -101,10 +101,11 @@ func _test_opening_enter_recruit_ui() -> void:
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
 	_expect(dock != null and dock.visible, "dock visible during opening recruit")
-	## 本版无准备刷新钮：等效高度 ≈ hand(88)+开战(40)+间距/边距 ≈ 148。
-	_expect(dock.custom_minimum_size.y >= 140.0, "dock min height == prepare-equivalent")
+	## 招募底栏按 RecruitHud 自然高度收缩，不再锁准备手牌等效高。
+	_expect(is_equal_approx(dock.custom_minimum_size.y, 0.0), "dock min height not locked to prepare hand")
 	var hud := dock.find_child("RecruitHud", true, false)
 	_expect(hud != null and (hud as CanvasItem).visible, "RecruitHud in Dock visible")
+	_expect(dock.find_child("RecruitGoldRow", true, false) == null, "RecruitHud omits duplicate gold row")
 
 	## 招募三段栈：team 4×5 → gap → bench → gap → cand → action（招募区内紧凑，可虚拟行）。
 	var seat_rows := 4
@@ -281,7 +282,12 @@ func _test_arena_height_prepare_vs_recruit() -> void:
 
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(dock != null and dock.visible, "dock visible in post-win-style recruit")
-	_expect(absf(arena.size.y - prepare_h) <= 2.0, "arena height matches prepare")
+	_expect(
+		is_equal_approx(dock.custom_minimum_size.y, 0.0),
+		"dock min height not locked to prepare hand"
+	)
+	## Dock 收缩后 Arena 应收得更多垂直空间（不再强锁与准备同高）。
+	_expect(arena.size.y + 1.0 >= prepare_h, "arena height >= prepare after recruit dock shrink")
 
 	battle.queue_free()
 	await process_frame
