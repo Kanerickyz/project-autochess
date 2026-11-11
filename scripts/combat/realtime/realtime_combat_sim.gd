@@ -633,7 +633,7 @@ func _fire(rt: RtUnit) -> void:
 		return
 	rt.last_attack_time = elapsed_seconds
 	unit_attacked.emit(rt, target)
-	## 出手瞬间结算伤害/对砍；投射物只是观战包装。
+	## 出手瞬间结算单向伤害；投射物只是观战包装。
 	_resolve_hit(rt, target, damage, stats.splash_radius)
 	if stats.projectile_speed <= 0.0 or target == null:
 		return
@@ -969,7 +969,7 @@ func _check_finished() -> void:
 		return
 	var player_alive := count_alive(UnitInstance.Team.PLAYER)
 	var enemy_alive := count_alive(UnitInstance.Team.ENEMY)
-	## 对砍同归于尽：同帧双方清空 → 清敌胜（见 COMBAT §7.2）
+	## 同帧双方清空（技能等）→ 清敌胜（见 COMBAT §7.2）
 	if enemy_alive == 0 and player_alive == 0:
 		if not _defer_wipe_check_for_pending_effects():
 			_finish(true)

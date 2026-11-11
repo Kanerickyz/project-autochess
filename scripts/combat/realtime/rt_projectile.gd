@@ -1,7 +1,7 @@
 class_name RtProjectile
 extends RefCounted
 ## 观战用投射物包装：朝目标飞、到点或目标已死则结束。
-## 伤害/对砍已在出手瞬间由 RealtimeCombatSim 结算；本类不参与攻击判定。
+## 伤害已在出手瞬间由 RealtimeCombatSim 结算；本类不参与攻击判定。
 
 static var _next_id: int = 0
 

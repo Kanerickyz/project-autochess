@@ -28,8 +28,8 @@ static func run_all() -> bool:
 	ok = _check("determinism_frame_rate_independent", _test_determinism_frame_rate_independent()) and ok
 	ok = _check("projectile_vanishes_when_target_dead", _test_projectile_vanishes_when_target_dead()) and ok
 	ok = _check("dead_units_stop_acting", _test_dead_units_stop_acting()) and ok
-	ok = _check("mutual_melee_exchange", _test_mutual_melee_exchange()) and ok
-	ok = _check("mutual_kill_both_die_player_wins", _test_mutual_kill_both_die_player_wins()) and ok
+	ok = _check("melee_one_way_hit", _test_melee_one_way_hit()) and ok
+	ok = _check("melee_one_way_kill_player_wins", _test_melee_one_way_kill_player_wins()) and ok
 	ok = _check("ranged_out_of_reach_no_counter", _test_ranged_out_of_reach_no_counter()) and ok
 	ok = _check("boss_decapitation_wins_and_routs", _test_boss_decapitation_wins_and_routs()) and ok
 	ok = _check("boss_no_counter_when_targeted", _test_boss_no_counter_when_targeted()) and ok
@@ -789,8 +789,8 @@ static func _test_dead_units_stop_acting() -> bool:
 	return true
 
 
-## 邻格近战出手：双方同批对砍扣血（无先后手）。
-static func _test_mutual_melee_exchange() -> bool:
+## 邻格近战出手：只单向扣血，被打方不反打。
+static func _test_melee_one_way_hit() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 41)
 	var ally := sim.add_unit(
@@ -809,26 +809,26 @@ static func _test_mutual_melee_exchange() -> bool:
 	)
 	sim.begin_combat()
 	var guard := 0
-	while ally.unit.current_hp == 50 and guard < 40:
+	while foe.unit.current_hp == 50 and guard < 40:
 		sim.advance_fixed_step()
 		guard += 1
-	if ally.unit.current_hp != 50 - 11:
-		push_error("mutual: ally hp=%d expected %d (counter 11)" % [ally.unit.current_hp, 50 - 11])
-		return false
 	if foe.unit.current_hp != 50 - 7:
-		push_error("mutual: foe hp=%d expected %d" % [foe.unit.current_hp, 50 - 7])
+		push_error("one_way: foe hp=%d expected %d" % [foe.unit.current_hp, 50 - 7])
+		return false
+	if ally.unit.current_hp != 50:
+		push_error("one_way: ally should take no counter (hp=%d)" % ally.unit.current_hp)
 		return false
 	if not ally.is_alive() or not foe.is_alive():
-		push_error("mutual: both should still be alive")
+		push_error("one_way: both should still be alive")
 		return false
 	return true
 
 
-## 对砍同归于尽：双方同帧阵亡 → 清敌胜。
-static func _test_mutual_kill_both_die_player_wins() -> bool:
+## 近战单向击杀：敌死友存 → 清敌胜。
+static func _test_melee_one_way_kill_player_wins() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 42)
-	sim.add_unit(
+	var ally := sim.add_unit(
 		make_unit(UnitInstance.Team.PLAYER, {
 			"max_hp": 5, "attack": 20, "steps_per_turn": 0, "attack_reach": 1.0,
 			"attack_windup": 0.0, "id": "ally",
@@ -848,18 +848,21 @@ static func _test_mutual_kill_both_die_player_wins() -> bool:
 		sim.advance_fixed_step()
 		guard += 1
 	if not sim.is_finished():
-		push_error("mutual_kill: combat should finish")
+		push_error("one_way_kill: combat should finish")
 		return false
 	if not sim.did_player_win():
-		push_error("mutual_kill: simultaneous wipe should count as player win")
+		push_error("one_way_kill: player should win after killing foe")
 		return false
-	if sim.count_alive(UnitInstance.Team.PLAYER) != 0 or sim.count_alive(UnitInstance.Team.ENEMY) != 0:
-		push_error("mutual_kill: both teams should be empty")
+	if sim.count_alive(UnitInstance.Team.ENEMY) != 0:
+		push_error("one_way_kill: enemies should be empty")
+		return false
+	if ally == null or not ally.is_alive():
+		push_error("one_way_kill: ally should survive (no counter)")
 		return false
 	return true
 
 
-## 远程在攻距外命中：目标不反打。
+## 远程命中：目标不反打（单向出手）。
 static func _test_ranged_out_of_reach_no_counter() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 43)
@@ -1942,7 +1945,7 @@ static func _test_defer_warden_convert_defers_player_wipe_loss() -> bool:
 	if not sim.has_pending_effects():
 		push_error("warden_wipe: convert should be queued")
 		return false
-	## 模拟对砍后禁卫已阵亡、策反尚未结算（defer 队列仍挂着 OnKill）。
+	## 模拟禁卫已阵亡、策反尚未结算（defer 队列仍挂着 OnKill）。
 	warden.unit.current_hp = 0
 	warden.state = RtUnit.State.DEAD
 	if sim.count_alive(UnitInstance.Team.PLAYER) != 0:

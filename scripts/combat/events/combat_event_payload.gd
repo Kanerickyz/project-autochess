@@ -5,7 +5,7 @@ var event_type: StringName
 var source: UnitInstance
 var target: UnitInstance
 var amount: int = 0
-## 击杀来自出手（普攻、溅射、对砍），不是技能伤害。
+## 击杀来自出手（普攻、溅射），不是技能伤害。
 var from_attack: bool = false
 ## 扣血前目标当前生命；≥0 时供条件（如削峰）使用。-1 = 未设置。
 var target_hp_before: int = -1
