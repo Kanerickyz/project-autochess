@@ -91,19 +91,20 @@ func _check_layout() -> void:
 	for px: float in [30.0, 37.0, 60.0]:
 		var badge := view.get_stat_badge_size(px)
 		_expect(badge.y >= RealtimeArenaView.STAT_BADGE_MIN_HEIGHT - 0.01, "badge readable at px %.0f" % px)
+		var sprite_cap := px * RealtimeArenaView.SPRITE_MAX_WIDTH_CELLS * RealtimeArenaView.STAT_BADGE_ROW_MAX_SPRITE_W
 		var pair := view.get_fitted_stat_badge_size(px, 2)
 		var gap := pair.y * RealtimeArenaView.STAT_BADGE_GAP_MUL
 		var pair_w := pair.x * 2.0 + gap
 		_expect(
-			pair_w <= px * RealtimeArenaView.STAT_BADGE_ROW_MAX_CELL_W + 0.05,
-			"fitted atk/hp pair fits one cell at px %.0f" % px
+			pair_w <= sprite_cap + 0.05,
+			"fitted atk/hp pair fits sprite width at px %.0f" % px
 		)
 		var trio := view.get_fitted_stat_badge_size(px, 3)
 		var trio_gap := trio.y * RealtimeArenaView.STAT_BADGE_GAP_MUL
 		var trio_w := trio.x * 3.0 + trio_gap * 2.0
 		_expect(
-			trio_w <= px * RealtimeArenaView.STAT_BADGE_ROW_MAX_CELL_W + 0.05,
-			"fitted atk/hp/armor row fits one cell at px %.0f" % px
+			trio_w <= sprite_cap + 0.05,
+			"fitted atk/hp/armor row fits sprite width at px %.0f" % px
 		)
 	view.free()
 

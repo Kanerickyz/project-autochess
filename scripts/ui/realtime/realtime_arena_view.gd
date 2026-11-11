@@ -105,19 +105,24 @@ const GOLD_COIN_SLIDE_TILE_MIN := 0.18
 const GOLD_COIN_SLIDE_TILE_MAX := 0.42
 const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
-## false：角色脚下不绘攻击/生命/护甲纸片（长按信息卡仍可读）；招募价签金币仍可绘。
-const SHOW_FOOT_ATK_HP_BADGES := false
-## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按行宽缩到单格内互不挡。
-const STAT_BADGE_HEIGHT_MUL := 0.42
-const STAT_BADGE_MIN_HEIGHT := 11.0
-const STAT_BADGE_MAX_HEIGHT := 24.0
-## 一行徽章总宽不超过该比例×格宽，避免邻格脚下数值互叠。
-const STAT_BADGE_ROW_MAX_CELL_W := 0.96
+## 攻/血/护甲纸片默认隐藏；仅当数值变化时短暂显示（长按信息卡仍可读）。招募价签金币仍可绘。
+const FOOT_ATK_HP_ON_CHANGE_ONLY := true
+## 数值变化后保持可见的时长（秒）；末尾 STAT_BADGE_FADE_SEC 淡出。
+const STAT_BADGE_REVEAL_SEC := 1.2
+const STAT_BADGE_FADE_SEC := 0.28
+## 标签高度只随格子尺寸变化，所有单位同一尺寸；绘制时再按剪影宽度缩进纸片内。
+const STAT_BADGE_HEIGHT_MUL := 0.34
+const STAT_BADGE_MIN_HEIGHT := 9.0
+const STAT_BADGE_MAX_HEIGHT := 20.0
+## 一行徽章总宽不超过剪影宽度比例，避免超出角色美术纸片。
+const STAT_BADGE_ROW_MAX_SPRITE_W := 0.90
 ## 同排徽章间距（相对徽章高度）；略疏一点避免贴图软边看起来粘在一起。
-const STAT_BADGE_GAP_MUL := 0.12
+const STAT_BADGE_GAP_MUL := 0.10
 ## 贴图左侧是图标，数字居中于右侧空白区（按贴图宽度比例）。
 const STAT_NUMBER_CENTER_X := 0.66
 const STAT_NUMBER_MAX_WIDTH := 0.42
+## 徽章底边相对脚底锚点上移（相对格宽），整行落在纸片剪影内。
+const STAT_BADGE_INSET_ABOVE_FEET := 0.04
 ## 受击闪白：modulate 拉高到接近纯白，墨线仍保留轮廓。
 const SPRITE_FLASH_MUL := 5.0
 ## 镜头震动时背景外扩，避免露边。
@@ -222,11 +227,17 @@ var lineup_aura_bonuses: Dictionary = {}
 ## 小丑牌风徽章缩放：entry_id → float（1=常态）。
 var _lineup_aura_badge_scale: Dictionary = {}
 var _lineup_aura_tweens: Dictionary = {}
-## 战斗受击：脚下攻血徽章缩放（RtUnit instance_id → float）。
+## 战斗受击：攻血徽章缩放（RtUnit instance_id → float）。
 var _combat_badge_scale: Dictionary = {}
 var _combat_badge_tweens: Dictionary = {}
 ## 上一帧已处理的 last_hit_time（instance_id → float），用于侦测新受击。
 var _combat_badge_last_hit: Dictionary = {}
+## 攻/血揭示：key（战斗 instance_id 或 "entry:%d"）→ 消失时刻（_fx_clock）。
+var _stat_badge_reveal_until: Dictionary = {}
+## 战斗攻/血基线：instance_id → Vector2i(atk, hp)；用于侦测变化。
+var _combat_stat_baseline: Dictionary = {}
+## 入座展示攻/血基线：entry_id → Vector2i(atk, hp)。
+var _lineup_stat_baseline: Dictionary = {}
 
 
 var _hover_cell: Vector2i = NO_CELL
@@ -342,9 +353,16 @@ func _process(delta: float) -> void:
 	if sim != null and sim.has_started():
 		_motion.speed_scale = presentation_time_scale
 		_motion.sync_units(sim.get_units(), sim.get_current_actor())
-		_sync_combat_hp_badge_punches(sim.get_units())
-	elif not _combat_badge_last_hit.is_empty() or not _combat_badge_scale.is_empty():
+		_sync_combat_stat_badge_reveals(sim.get_units())
+	elif (
+		not _combat_badge_last_hit.is_empty()
+		or not _combat_badge_scale.is_empty()
+		or not _combat_stat_baseline.is_empty()
+	):
 		_clear_combat_badge_punches()
+	## 淡出进行中需要每帧重绘，否则 alpha 卡在最后一帧。
+	if not _stat_badge_reveal_until.is_empty():
+		queue_redraw()
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
 	if _combat_skill_info_pin <= 0 and _auto_info_until_clock >= 0.0 and _fx_clock >= _auto_info_until_clock:
@@ -737,6 +755,7 @@ func set_lineup_aura_bonuses(next: Dictionary) -> void:
 
 
 func _punch_lineup_aura_badge(entry_id: int, d_atk: int, d_hp: int) -> void:
+	_reveal_stat_badges(_lineup_stat_key(entry_id))
 	var old_tw: Tween = _lineup_aura_tweens.get(entry_id) as Tween
 	if old_tw != null and old_tw.is_valid():
 		old_tw.kill()
@@ -789,7 +808,33 @@ func _tween_badge_scale_punch(tw: Tween, apply: Callable, peak: float) -> void:
 	tw.tween_method(apply, peak, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
-func _sync_combat_hp_badge_punches(units: Array) -> void:
+func _lineup_stat_key(entry_id: int) -> String:
+	return "entry:%d" % entry_id
+
+
+func _reveal_stat_badges(key: Variant) -> void:
+	if key == null:
+		return
+	_stat_badge_reveal_until[key] = _fx_clock + STAT_BADGE_REVEAL_SEC
+	queue_redraw()
+
+
+func _stat_badge_visibility_for(key: Variant) -> float:
+	if not FOOT_ATK_HP_ON_CHANGE_ONLY:
+		return 1.0
+	if key == null or not _stat_badge_reveal_until.has(key):
+		return 0.0
+	var until := float(_stat_badge_reveal_until[key])
+	var left := until - _fx_clock
+	if left <= 0.0:
+		_stat_badge_reveal_until.erase(key)
+		return 0.0
+	if left < STAT_BADGE_FADE_SEC:
+		return clampf(left / STAT_BADGE_FADE_SEC, 0.0, 1.0)
+	return 1.0
+
+
+func _sync_combat_stat_badge_reveals(units: Array) -> void:
 	var seen: Dictionary = {}
 	for item in units:
 		var rt := item as RtUnit
@@ -797,7 +842,21 @@ func _sync_combat_hp_badge_punches(units: Array) -> void:
 			continue
 		var key := rt.get_instance_id()
 		seen[key] = true
-		## 首次入表只记时间，避免 NEVER==NEVER 时永远不登记、把第一击当成「初见」吞掉。
+		var atk := rt.get_effective_attack()
+		var hp := rt.get_current_hp()
+		var stats := Vector2i(atk, hp)
+		## 首次入表只记基线与受击时间，避免开场全员闪一下。
+		if not _combat_stat_baseline.has(key):
+			_combat_stat_baseline[key] = stats
+			_combat_badge_last_hit[key] = rt.last_hit_time
+			continue
+		var prev_stats: Vector2i = _combat_stat_baseline[key]
+		var changed := prev_stats.x != stats.x or prev_stats.y != stats.y
+		_combat_stat_baseline[key] = stats
+		if changed:
+			_reveal_stat_badges(key)
+			_punch_combat_hp_badge(key)
+		## 兼容旧受击侦测：即便 current_hp 因同帧回满未变，仍用 last_hit_time 打一次。
 		if not _combat_badge_last_hit.has(key):
 			_combat_badge_last_hit[key] = rt.last_hit_time
 			continue
@@ -807,10 +866,14 @@ func _sync_combat_hp_badge_punches(units: Array) -> void:
 		_combat_badge_last_hit[key] = rt.last_hit_time
 		if rt.last_hit_amount <= 0:
 			continue
-		_punch_combat_hp_badge(key)
+		if not changed:
+			_reveal_stat_badges(key)
+			_punch_combat_hp_badge(key)
 	for key in _combat_badge_last_hit.keys():
 		if not seen.has(key):
 			_combat_badge_last_hit.erase(key)
+			_combat_stat_baseline.erase(key)
+			_stat_badge_reveal_until.erase(key)
 			_kill_combat_badge_punch(key)
 
 
@@ -850,6 +913,14 @@ func _clear_combat_badge_punches() -> void:
 	_combat_badge_tweens.clear()
 	_combat_badge_scale.clear()
 	_combat_badge_last_hit.clear()
+	_combat_stat_baseline.clear()
+	## 只清战斗 instance_id 键；保留 entry:* 入座揭示。
+	var drop: Array = []
+	for key in _stat_badge_reveal_until.keys():
+		if key is int:
+			drop.append(key)
+	for key in drop:
+		_stat_badge_reveal_until.erase(key)
 
 
 func _combat_badge_scale_for(rt: RtUnit) -> float:
@@ -3887,6 +3958,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			"alpha": alpha,
 			"armor": entry.get_armor_block(),
 			"scale": _entry_badge_scale(entry.entry_id),
+			"vis": _stat_badge_visibility_for(_lineup_stat_key(entry.entry_id)),
 		})
 	for job in badge_jobs:
 		_draw_stat_badges(
@@ -3899,6 +3971,7 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			-1,
 			true,
 			float(job["scale"]),
+			float(job["vis"]),
 		)
 	if _merge_active:
 		_draw_merge_fx(px, off)
@@ -4287,6 +4360,7 @@ func _draw_prepare_slots(px: float) -> void:
 			"alpha": alpha,
 			"armor": entry.get_armor_block(),
 			"scale": _entry_badge_scale(entry.entry_id),
+			"vis": _stat_badge_visibility_for(_lineup_stat_key(entry.entry_id)),
 		})
 	for job in badge_jobs:
 		_draw_stat_badges(
@@ -4299,6 +4373,7 @@ func _draw_prepare_slots(px: float) -> void:
 			-1,
 			true,
 			float(job["scale"]),
+			float(job["vis"]),
 		)
 
 
@@ -4455,6 +4530,7 @@ func _draw_units(px: float) -> void:
 			"alpha": alpha,
 			"armor": rt.unit.get_armor_block() if rt.unit != null else 0,
 			"scale": _combat_badge_scale_for(rt),
+			"vis": _stat_badge_visibility_for(rt.get_instance_id()),
 		})
 	for job in badge_jobs:
 		_draw_stat_badges(
@@ -4467,6 +4543,7 @@ func _draw_units(px: float) -> void:
 			-1,
 			true,
 			float(job["scale"]),
+			float(job["vis"]),
 		)
 	_draw_corpses(px)
 
@@ -4733,22 +4810,22 @@ func get_stat_badge_size(px: float) -> Vector2:
 func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) -> Vector2:
 	var base := get_stat_badge_size(px)
 	var n := maxi(1, count)
-	var cap := max_width if max_width > 0.0 else px * STAT_BADGE_ROW_MAX_CELL_W
+	var cap := max_width if max_width > 0.0 else px * SPRITE_MAX_WIDTH_CELLS * STAT_BADGE_ROW_MAX_SPRITE_W
 	var gap_mul := STAT_BADGE_GAP_MUL
 	## total_w = n*w + (n-1)*h*gap_mul，且 w/h = base.x/base.y。
 	var aspect := base.x / maxf(1.0, base.y)
 	var denom := float(n) * aspect + float(n - 1) * gap_mul
 	var h_fit := cap / maxf(0.001, denom)
 	var h := minf(base.y, h_fit)
-	## 可读下限：仍优先不互挡，故允许略低于名义 MIN。
+	## 可读下限：仍优先不超出纸片，故允许略低于名义 MIN。
 	h = maxf(h, minf(STAT_BADGE_MIN_HEIGHT, base.y * 0.72))
 	if h * denom > cap + 0.01:
 		h = cap / maxf(0.001, denom)
 	return Vector2(h * aspect, h)
 
 
-## 脚下纸片标签：攻 + 血（同排缩进单格）；护甲同排；金币单独第二行居中，避免与邻格互挡。
-## SHOW_FOOT_ATK_HP_BADGES=false 时跳过攻/血/护甲，仅保留招募价签金币。
+## 角色纸片内攻/血标签：默认隐藏（atk_hp_visibility）；金币价签可常驻第二行。
+## 徽章锚在脚底锚点之上，总宽不超过剪影宽度，避免超出美术纸片。
 func _draw_stat_badges(
 	center: Vector2,
 	attack: int,
@@ -4759,10 +4836,12 @@ func _draw_stat_badges(
 	gold_cost: int = -1,
 	gold_affordable: bool = true,
 	badge_scale: float = 1.0,
+	atk_hp_visibility: float = 0.0,
 ) -> void:
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
-	var max_w := px * STAT_BADGE_ROW_MAX_CELL_W
-	if not SHOW_FOOT_ATK_HP_BADGES:
+	var max_w := px * SPRITE_MAX_WIDTH_CELLS * STAT_BADGE_ROW_MAX_SPRITE_W
+	var show_stats := (not FOOT_ATK_HP_ON_CHANGE_ONLY) or atk_hp_visibility > 0.02
+	if not show_stats:
 		if show_gold:
 			_draw_recruit_gold_badge(center, gold_cost, gold_affordable, alpha, px)
 		return
@@ -4772,26 +4851,35 @@ func _draw_stat_badges(
 	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
 	var scale := maxf(0.5, badge_scale)
 	badge *= scale
+	## 放大时仍夹在剪影宽内，防止 punch 撑出纸片。
+	var total_probe := badge.x * float(primary_count) + badge.y * STAT_BADGE_GAP_MUL * float(primary_count - 1)
+	if total_probe > max_w and total_probe > 0.0:
+		badge *= max_w / total_probe
 	var gap := badge.y * STAT_BADGE_GAP_MUL
-	var top := center.y + px * 0.38 + badge.y * 0.05
+	var feet_y := center.y + px * 0.38
+	var top := feet_y - badge.y - px * STAT_BADGE_INSET_ABOVE_FEET
 	var total_w := badge.x * float(primary_count) + gap * float(primary_count - 1)
 	var half_span := total_w * 0.5
-	var cx := clampf(center.x, half_span, maxf(half_span, size.x - half_span))
+	## 水平：相对角色中心夹在剪影半宽内，再夹进画布。
+	var sprite_half := px * SPRITE_MAX_WIDTH_CELLS * 0.5
+	var cx := clampf(center.x, center.x - sprite_half + half_span, center.x + sprite_half - half_span)
+	cx = clampf(cx, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
+	var stat_alpha := alpha * clampf(atk_hp_visibility, 0.0, 1.0)
 	var slot := 0
 	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 	slot += 1
-	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, alpha)
+	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, stat_alpha)
 	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
 	slot += 1
-	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, alpha)
+	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, stat_alpha)
 	if show_armor:
 		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-		_draw_stat_badge(armor_rect, armor_tex, armor, alpha)
+		_draw_stat_badge(armor_rect, armor_tex, armor, stat_alpha)
 	if show_gold:
 		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
 		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
-		var gold_top := top + badge.y + gap * 1.6
+		var gold_top := feet_y + gap * 0.8
 		var gold_half := gold_badge.x * 0.5
 		var gold_cx := clampf(center.x, gold_half, maxf(gold_half, size.x - gold_half))
 		var gold_rect := Rect2(Vector2(gold_cx - gold_half, gold_top), gold_badge)
