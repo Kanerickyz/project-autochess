@@ -1,8 +1,9 @@
 class_name RealtimeUnitMotion
 extends Node
 ## Run 战场单位程序动画（纯表现）：只产出绘制用偏移 / 旋转 / 缩放 / 闪白与镜头震动，
-## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别蓄力、出手、受击，
+## 不改 RtUnit 与战斗结算。通过轮询 RtUnit 的状态与时间戳识别出手、受击，
 ## 死亡由控制器生成残影：侧倒淡出结束后移除，不再绘制。
+## 移动 / 攻击互斥：走时只播 walk；出手打断 walk 只播攻击（无蓄力前摇）。
 
 ## 行走（格步 / 连续滑移共用语汇）：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
 const WALK_TILT := 0.16
@@ -40,20 +41,15 @@ const DRAG_TILT_PER_SPEED := 0.085
 const DRAG_SWAY_TILES := 0.1
 const DRAG_SHADOW_MUL := 1.95
 const DRAG_HOLD_ALPHA := 1.0
-## 近战蓄力 / 出手 / 受击 / 死亡：与拖影同语汇（BACK 过冲、倾斜、影）。
-const WINDUP_PULL_TILES := 0.18
-const WINDUP_LIFT_TILES := 0.05
-const WINDUP_TILT := 0.22
-const WINDUP_SQUASH := Vector2(1.14, 0.86)
-const WINDUP_SHADOW_MUL := 1.45
-const LUNGE_SECONDS := 0.09
-const LUNGE_ATTACKER_TILES := 0.42
-const LUNGE_TARGET_TILES := 0.18
+## 近战出手 / 受击 / 死亡：与拖影同语汇（BACK 过冲、倾斜、影）。无蓄力前摇。
+const LUNGE_SECONDS := 0.05
+const LUNGE_ATTACKER_TILES := 0.36
+const LUNGE_TARGET_TILES := 0.14
 const LUNGE_TILT := 0.28
 const LUNGE_SCALE := Vector2(0.86, 1.16)
 const LUNGE_SHADOW_MUL := 1.75
-const RECOVER_SECONDS := 0.22
-const RANGED_RECOIL_TILES := 0.14
+const RECOVER_SECONDS := 0.10
+const RANGED_RECOIL_TILES := 0.12
 const RANGED_TILT := 0.18
 const HIT_KNOCK_TILES := 0.14
 const HIT_TILT := 0.32
@@ -281,7 +277,7 @@ static func sample_drag_hold(elapsed: float, velocity_tiles: Vector2) -> Diction
 	}
 
 
-## 每帧由战场视图调用：同步场上单位，识别蓄力 / 出手 / 受击，并更新行走摆动。
+## 每帧由战场视图调用：同步场上单位，识别出手 / 受击，并更新行走摆动。
 ## current_actor：若有则该单位不播待机；并行主路径通常为 null。
 func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	var seen: Dictionary = {}
@@ -308,35 +304,13 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 		if rt == null:
 			continue
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
+		tracked.winding = false
 		_update_slide_walk(rt, tracked, dt)
-		## 出手后 state 仍停在 ATTACKING（计时器 ≤ 0），只把计时中的前摇视为蓄力。
-		var was_winding := tracked.winding
-		var winding := (
-			rt.state == RtUnit.State.ATTACKING
-			and rt.target != null
-			and rt.attack_timer > 0.0
-			and (current_actor == null or current_actor == rt)
-		)
-		if was_winding and not winding and current_actor != rt:
-			_soft_home(tracked.pose)
-			_soft_home_partner(tracked)
-			tracked.winding = false
-			was_winding = false
-		if winding and not was_winding:
-			_play_windup(rt, tracked)
 		var did_strike := rt.last_attack_time != tracked.last_attack
 		if did_strike:
 			tracked.last_attack = rt.last_attack_time
-			tracked.winding = false
 			tracked.windup_partner_id = 0
 			_play_strike(rt, tracked)
-		elif was_winding and not winding:
-			## 蓄力取消（无出手）：自身与迎击 partner 弹回，避免卡姿。
-			_soft_home(tracked.pose)
-			_soft_home_partner(tracked)
-			tracked.winding = false
-		else:
-			tracked.winding = winding
 	for item in units:
 		var rt := item as RtUnit
 		if rt == null:
@@ -349,12 +323,18 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 	_prune_corpses()
 
 
-## 用逻辑位移推进滑移相位；起步时短 tween 微抬倾。
+## 用逻辑位移推进滑移相位；起步时短 tween 微抬倾。攻击中不推进 walk。
 func _update_slide_walk(rt: RtUnit, tracked: Tracked, dt: float) -> void:
 	if rt == null or tracked == null:
 		return
 	if not rt.is_alive() or rt.is_deploying() or rt.is_stepping():
-		tracked.sliding = false
+		_clear_walk(tracked)
+		tracked.has_logic_pos = true
+		tracked.last_logic_pos = rt.position
+		return
+	## 攻击态 / 出手 tween：打断移动采样，避免与攻击叠姿。
+	if _blocks_walk(rt, tracked):
+		_clear_walk(tracked)
 		tracked.has_logic_pos = true
 		tracked.last_logic_pos = rt.position
 		return
@@ -376,7 +356,6 @@ func _update_slide_walk(rt: RtUnit, tracked: Tracked, dt: float) -> void:
 		if (
 			not was_sliding
 			and tracked.slide_quiet_sec >= 0.12
-			and not tracked.winding
 			and not _is_busy(tracked.pose)
 		):
 			_play_walk_start(tracked.pose, tracked.slide_dir)
@@ -410,6 +389,7 @@ static func shake_px_for_damage(amount: int) -> float:
 
 ## 行走：小丑牌式抬起跳 + 摆动倾斜 + 朝向微倾 + 影加深。
 ## 格步：与 step_t 同步；连续滑移：与路程相位同步。返回 { offset, rotation, scale, shadow_mul }。
+## 攻击 / 出手 tween 中返回 rest，不与攻击姿叠加。
 func walk_pose(rt: RtUnit) -> Dictionary:
 	var rest := {
 		"offset": Vector2.ZERO,
@@ -419,17 +399,42 @@ func walk_pose(rt: RtUnit) -> Dictionary:
 	}
 	if rt == null:
 		return rest
+	var tracked: Tracked = _tracked.get(rt.get_instance_id())
+	if tracked != null and _blocks_walk(rt, tracked):
+		return rest
 	if rt.is_stepping():
+		## 格步本身是移动；若已切入攻击态则上面已 rest。
 		var t := rt.step_t
 		var move := rt.step_to - rt.step_from
 		var dir := move.normalized() if move.length_squared() > 0.0001 else Vector2.ZERO
 		return sample_walk_cycle(t, dir)
-	var tracked: Tracked = _tracked.get(rt.get_instance_id())
 	if tracked == null or not tracked.sliding:
 		return rest
 	var cycle := maxf(0.05, WALK_SLIDE_CYCLE_TILES)
 	var t_slide := fposmod(tracked.slide_phase / cycle, 1.0)
 	return sample_walk_cycle(t_slide, tracked.slide_dir)
+
+
+func _blocks_walk(rt: RtUnit, tracked: Tracked) -> bool:
+	if rt == null or tracked == null:
+		return false
+	if rt.state == RtUnit.State.ATTACKING:
+		return true
+	if tracked.winding:
+		return true
+	if tracked.pose != null and tracked.pose.lunging:
+		return true
+	if tracked.pose != null and _is_busy(tracked.pose):
+		return true
+	return false
+
+
+func _clear_walk(tracked: Tracked) -> void:
+	if tracked == null:
+		return
+	tracked.sliding = false
+	tracked.slide_phase = 0.0
+	tracked.slide_quiet_sec = 0.0
 
 
 ## 单跳周期采样（t∈[0,1]）：格步与连续滑移共用。
@@ -503,39 +508,9 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	)
 
 
-func _play_windup(rt: RtUnit, tracked: Tracked) -> void:
-	var dir := _dir_to(rt, rt.target)
-	var windup := maxf(0.08, rt.get_stats().attack_windup if rt.get_stats() != null else 0.3)
-	var pose := tracked.pose
-	var tilt := _tilt_for_dir(-dir) * WINDUP_TILT
-	var pulled := -dir * WINDUP_PULL_TILES + Vector2(0.0, -WINDUP_LIFT_TILES)
-	var tween := _new_tween(pose)
-	tween.tween_property(pose, "offset", pulled, windup * 0.8) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "scale", WINDUP_SQUASH, windup * 0.8) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "rotation", tilt, windup * 0.8) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(pose, "shadow_mul", WINDUP_SHADOW_MUL, windup * 0.8)
-	tracked.windup_partner_id = 0
-	## 近战目标同步蓄力迎击，形成「双方对冲」。
-	if _is_melee(rt) and rt.target != null and rt.target.is_alive():
-		var partner_id := rt.target.get_instance_id()
-		var target_tracked: Tracked = _tracked.get(partner_id)
-		if target_tracked != null and not target_tracked.winding and not _is_busy(target_tracked.pose):
-			tracked.windup_partner_id = partner_id
-			var tpose := target_tracked.pose
-			var ttween := _new_tween(tpose)
-			var t_pull := dir * WINDUP_PULL_TILES * 0.65 + Vector2(0.0, -WINDUP_LIFT_TILES * 0.6)
-			ttween.tween_property(tpose, "offset", t_pull, windup * 0.8) \
-				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			ttween.parallel().tween_property(tpose, "scale", Vector2(1.08, 0.9), windup * 0.8) \
-				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			ttween.parallel().tween_property(tpose, "rotation", _tilt_for_dir(dir) * WINDUP_TILT * 0.7, windup * 0.8)
-			ttween.parallel().tween_property(tpose, "shadow_mul", 1.3, windup * 0.8)
-
-
 func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
+	## 出手打断移动采样，只播攻击 tween。
+	_clear_walk(tracked)
 	var target := rt.target
 	var dir := _dir_to(rt, target)
 	var pose := tracked.pose
@@ -579,23 +554,6 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	charge.parallel().tween_property(tpose, "rotation", _tilt_for_dir(-dir) * LUNGE_TILT * 0.7, LUNGE_SECONDS)
 	## 撞上后走 _play_hit → 始终 _tween_home（攻击者 mid-lunge 早退除外）。
 	charge.tween_callback(_play_hit.bind(tpose, dir, hit_shake))
-
-
-## 打断当前 action tween（若有），再 BACK 弹回原位。
-func _soft_home(pose: Pose) -> void:
-	if pose == null:
-		return
-	var tween := _new_tween(pose)
-	_tween_home(tween, pose)
-
-
-func _soft_home_partner(tracked: Tracked) -> void:
-	if tracked == null or tracked.windup_partner_id == 0:
-		return
-	var partner: Tracked = _tracked.get(tracked.windup_partner_id)
-	tracked.windup_partner_id = 0
-	if partner != null:
-		_soft_home(partner.pose)
 
 
 ## 受击：闪白 + 小丑牌式踢退倾斜压扁 + 影加深 + BACK 弹回 + 镜头震动。

@@ -23,8 +23,9 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_sample_idle()
 	_test_shake_scales_with_damage()
-	await _test_windup_cancel_soft_home()
+	await _test_no_windup_presentation()
 	await _test_strike_action_tween_lifecycle()
+	await _test_strike_clears_walk_pose()
 	await _test_long_press_info()
 	await _test_prepare_seat_drag_swap()
 	await _test_prepare_bench_drag_deploy()
@@ -896,8 +897,8 @@ func _await_seconds(sec: float) -> void:
 		await process_frame
 
 
-## 蓄力取消（无出手）：soft_home 把自身与迎击 partner 弹回零姿。
-func _test_windup_cancel_soft_home() -> void:
+## 进距蓄力态不播蓄力前摇 tween（无后撤压扁）。
+func _test_no_windup_presentation() -> void:
 	var motion := RealtimeUnitMotion.new()
 	root.add_child(motion)
 	await process_frame
@@ -905,46 +906,24 @@ func _test_windup_cancel_soft_home() -> void:
 	var atk: RtUnit = pair[0]
 	var tgt: RtUnit = pair[1]
 	atk.state = RtUnit.State.ATTACKING
-	## 拉长前摇，确保采样时仍在 tween running（非卡在终点无 tween）。
 	atk.attack_timer = 0.8
 	if atk.get_stats() != null:
 		atk.get_stats().attack_windup = 0.8
 	motion.sync_units([atk, tgt])
 	await process_frame
+	await _await_seconds(0.12)
 	var atk_pose := motion.get_pose(atk)
-	var tgt_pose := motion.get_pose(tgt)
-	_expect(atk_pose != null and tgt_pose != null, "windup cancel: poses tracked")
-	_expect(motion.has_active_action_tween(), "windup cancel: action tween busy while winding")
-	## 等蓄力 tween 拉到非零姿（仍短于 windup，tween 未结束）。
-	await _await_seconds(0.15)
-	_expect(
-		atk_pose != null and atk_pose.offset.length() > 0.04,
-		"windup cancel: attacker pulled back during windup",
-	)
-	_expect(
-		tgt_pose != null and tgt_pose.offset.length() > 0.02,
-		"windup cancel: melee target braces during windup",
-	)
-	_expect(motion.has_active_action_tween(), "windup cancel: action tween still busy mid-windup")
-	## 取消蓄力：timer≤0 且未改 last_attack → soft_home。
-	atk.attack_timer = 0.0
-	atk.state = RtUnit.State.MOVING
-	motion.sync_units([atk, tgt])
-	await process_frame
-	_expect(motion.has_active_action_tween(), "windup cancel: soft_home starts action tween")
-	await _await_seconds(RealtimeUnitMotion.RECOVER_SECONDS + 0.12)
-	_expect(not motion.has_active_action_tween(), "windup cancel: soft_home finishes")
+	_expect(atk_pose != null, "no windup: pose tracked")
+	_expect(not motion.has_active_action_tween(), "no windup: no action tween while waiting to fire")
 	_expect(
 		atk_pose.offset.length() <= 0.03 and absf(atk_pose.rotation) <= 0.05,
-		"windup cancel: attacker offset/rotation home",
+		"no windup: attacker stays near rest (no pull-back)",
 	)
+	var walk := motion.walk_pose(atk)
 	_expect(
-		tgt_pose.offset.length() <= 0.03 and absf(tgt_pose.rotation) <= 0.05,
-		"windup cancel: partner offset/rotation home",
+		(walk.get("offset", Vector2.ZERO) as Vector2).length() <= 0.001,
+		"no windup: ATTACKING blocks walk pose",
 	)
-	## idle/flash 不应计入 action tween。
-	atk_pose.flash = 1.0
-	_expect(not motion.has_active_action_tween(), "idle/flash alone does not count as action tween")
 	motion.queue_free()
 	await process_frame
 
@@ -981,6 +960,46 @@ func _test_strike_action_tween_lifecycle() -> void:
 		atk_pose.offset.length() <= 0.03 and absf(atk_pose.rotation) <= 0.05,
 		"strike: attacker settles home after recover",
 	)
+	motion.queue_free()
+	await process_frame
+
+
+## 出手打断滑移 walk：strike 期间 walk_pose 为 rest。
+func _test_strike_clears_walk_pose() -> void:
+	var motion := RealtimeUnitMotion.new()
+	root.add_child(motion)
+	await process_frame
+	var pair := _make_rt_pair(UNIT_PATHS[0], UNIT_PATHS[1])
+	var atk: RtUnit = pair[0]
+	var tgt: RtUnit = pair[1]
+	atk.state = RtUnit.State.MOVING
+	motion.sync_units([atk, tgt])
+	await process_frame
+	var tracked: Variant = motion._tracked.get(atk.get_instance_id())
+	_expect(tracked != null, "strike/walk: tracked exists")
+	tracked.sliding = true
+	tracked.slide_phase = RealtimeUnitMotion.WALK_SLIDE_CYCLE_TILES * 0.35
+	tracked.slide_dir = Vector2(0.0, -1.0)
+	var walk_before := motion.walk_pose(atk)
+	_expect(
+		(walk_before.get("offset", Vector2.ZERO) as Vector2).length() > 0.02,
+		"strike/walk: moving unit has walk hop before strike",
+	)
+	atk.state = RtUnit.State.ATTACKING
+	atk.last_attack_time = 2.0
+	motion.sync_units([atk, tgt])
+	await process_frame
+	_expect(motion.has_active_action_tween(), "strike/walk: strike tween running")
+	_expect(not tracked.sliding, "strike/walk: sliding cleared on strike")
+	var walk_mid := motion.walk_pose(atk)
+	_expect(
+		(walk_mid.get("offset", Vector2.ZERO) as Vector2).length() <= 0.001,
+		"strike/walk: walk_pose rest while attacking",
+	)
+	await _await_seconds(
+		RealtimeUnitMotion.LUNGE_SECONDS + RealtimeUnitMotion.RECOVER_SECONDS + 0.15
+	)
+	_expect(not motion.has_active_action_tween(), "strike/walk: recover done")
 	motion.queue_free()
 	await process_frame
 
@@ -1059,7 +1078,7 @@ func _test_combat_motion() -> void:
 			break
 	## 本遭遇若开局已贴身可能无迈步；有冲撞偏移则仍算走位通道可读。
 	_expect(saw_walk or saw_lunge or saw_offset, "walking tilts the sprite")
-	_expect(saw_offset, "windup / lunge offsets the sprite")
+	_expect(saw_offset, "lunge offsets the sprite")
 	_expect(saw_flash, "hit flashes the sprite white")
 	_expect(saw_shake, "hit shakes the camera")
 	_expect(saw_death or saw_corpse, "a unit dies during the encounter")
@@ -1074,7 +1093,7 @@ func _test_combat_motion() -> void:
 	## 并行交战中可能长时间无「站住」；有待机或行走跳采样即可。
 	_expect(saw_idle or saw_walk, "standing idle bob or slide walk hop")
 	_expect(saw_slide_not_idle or saw_walk, "sliding units skip idle (or walk pose reads)")
-	## 停模拟后强制归零：蓄力 tween 可能停在非零姿。
+	## 停模拟后强制归零：出手 tween 可能停在非零姿。
 	battle.time_scale = 0.0
 	motion.speed_scale = 1.0
 	motion.force_home_all()

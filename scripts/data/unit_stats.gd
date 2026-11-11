@@ -26,7 +26,8 @@ enum MovementPattern {
 ## 两次攻击之间的间隔（秒）；并行下按此连打。
 @export_range(0.1, 10.0, 0.05) var attack_interval: float = 1.2
 ## 首次攻击前摇（秒），进入射程后到第一次出手
-@export_range(0.0, 5.0, 0.05) var attack_windup: float = 0.3
+## 进距后首刀前摇；主路径默认 0（无蓄力）。测试可设大值卡住出手。
+@export_range(0.0, 5.0, 0.05) var attack_windup: float = 0.0
 ## 攻击距离（格；主路径按碰撞圆边缘欧氏距）
 @export_range(0.0, 12.0, 0.05) var attack_reach: float = 0.8
 ## 索敌半径（格）；范围内无敌人时向全场最近敌人前进

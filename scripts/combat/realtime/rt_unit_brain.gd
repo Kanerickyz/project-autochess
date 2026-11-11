@@ -88,6 +88,8 @@ static func decide(
 	if unit.state == RtUnit.State.ATTACKING or edge <= stats.attack_reach + REACH_EPSILON:
 		if unit.state != RtUnit.State.ATTACKING:
 			unit.state = RtUnit.State.ATTACKING
+			## 无蓄力前摇：进距即可出手；节奏只走 attack_interval。
+			## 测试仍可设超大 attack_windup 卡住首刀（见下方 max）。
 			unit.attack_timer = maxf(0.0, stats.attack_windup)
 		unit.attack_timer -= dt
 		if unit.attack_timer <= TIME_EPSILON:
