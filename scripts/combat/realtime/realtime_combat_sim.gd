@@ -1,8 +1,8 @@
 class_name RealtimeCombatSim
 extends RefCounted
-## 即时并行滑移战纯逻辑模拟：全员同时索敌 → 连续滑移 → 进距按攻击间隔出手。
-## 软碰撞互挤；固定步长推进，结果与调用方帧率无关。
-## 坐标单位为格（连续）；时间单位为秒。
+## 即时并行滑移战纯逻辑模拟：全员同时索敌 → 绕障连续滑移 → 进距按攻击间隔出手。
+## 移动圆裁剪 + 侧向转向；残余重叠由移动方退让（不推动静止单位）。
+## 固定步长推进，结果与调用方帧率无关。坐标单位为格（连续）；时间单位为秒。
 
 signal unit_added(unit: RtUnit)
 signal unit_attacked(attacker: RtUnit, target: RtUnit)
@@ -450,8 +450,8 @@ func advance_fixed_step() -> void:
 	_tick_all_deploying()
 	_tick_boss_cooldowns()
 	_tick_unit_status_pulses()
-	_advance_all_units_parallel()
-	_resolve_separation()
+	var movers := _advance_all_units_parallel()
+	_resolve_separation(movers)
 	_sync_cells_from_positions()
 
 	## 投射物仅观战演出；伤害已在出手时结算。
@@ -565,7 +565,9 @@ func _apply_poison_tick_before_round_start(actor: RtUnit) -> bool:
 	return actor.is_alive()
 
 
-func _advance_all_units_parallel() -> void:
+## 推进并行决策与位移；返回本步有位移的单位 instance_id 集合。
+func _advance_all_units_parallel() -> Dictionary:
+	var movers: Dictionary = {}
 	var can_summon_fn := func(actor: RtUnit) -> bool:
 		return _boss_can_summon(actor)
 	var can_boss_teleport_fn := func(actor: RtUnit, origin: Vector2i) -> bool:
@@ -586,6 +588,7 @@ func _advance_all_units_parallel() -> void:
 			continue
 		if decision.move != Vector2.ZERO:
 			rt.position = _clamp_to_arena(rt.position + decision.move, rt.get_radius())
+			movers[rt.get_instance_id()] = true
 
 	for i in _units.size():
 		var rt2 := _units[i]
@@ -603,6 +606,7 @@ func _advance_all_units_parallel() -> void:
 		if decision2.fire and rt2.target != null and rt2.target.is_alive():
 			_fire(rt2)
 			_consume_turn_refresh_armed(rt2)
+	return movers
 
 
 ## 观战 hold 时仍推进全员攻击前摇/间隔，避免卡在蓄力姿。
@@ -694,7 +698,8 @@ func _sync_unit_grid_pos() -> void:
 			rt.unit.grid_pos = rt.get_cell()
 
 
-func _resolve_separation() -> void:
+## 残余重叠分离：本步移动者优先退让；静止单位不被顶走。
+func _resolve_separation(movers: Dictionary = {}) -> void:
 	var count := _units.size()
 	for _iter in SEPARATION_ITERATIONS:
 		var moved := false
@@ -718,13 +723,23 @@ func _resolve_separation() -> void:
 				else:
 					normal = Vector2.RIGHT.rotated(_rng.randf() * TAU)
 				var overlap := min_dist - dist
-				var a_share := b.get_mass() / (a.get_mass() + b.get_mass())
+				var a_moving := movers.has(a.get_instance_id())
+				var b_moving := movers.has(b.get_instance_id())
+				var a_share := 0.5
 				if a.is_deploying() and b.is_deploying():
 					continue
 				elif a.is_deploying():
 					a_share = 0.0
 				elif b.is_deploying():
 					a_share = 1.0
+				elif a_moving and not b_moving:
+					## 只有 A 在动：A 全部退让，不推动静止 B。
+					a_share = 1.0
+				elif b_moving and not a_moving:
+					a_share = 0.0
+				else:
+					## 双方都动或都静：按质量分摊。
+					a_share = b.get_mass() / (a.get_mass() + b.get_mass())
 				a.position -= normal * overlap * a_share
 				b.position += normal * overlap * (1.0 - a_share)
 				moved = true

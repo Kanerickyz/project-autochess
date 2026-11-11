@@ -15,7 +15,7 @@ static func run_all() -> bool:
 	ok = _check("continuous_slide_diagonal", _test_continuous_slide_diagonal()) and ok
 	ok = _check("soft_collision_no_overlap", _test_soft_collision_no_overlap()) and ok
 	ok = _check("euclidean_attack_reach", _test_euclidean_attack_reach()) and ok
-	ok = _check("ally_blocker_soft_push_melee", _test_ally_blocker_soft_push_melee()) and ok
+	ok = _check("ally_blocker_steer_around_melee", _test_ally_blocker_steer_around_melee()) and ok
 	ok = _check("ranged_damage_on_fire_projectile_visual", _test_ranged_damage_on_fire_projectile_visual()) and ok
 	ok = _check("deploy_time_freezes", _test_deploy_time_freezes()) and ok
 	ok = _check("deploy_after_begin_before_first_step", _test_deploy_after_begin_before_first_step()) and ok
@@ -350,8 +350,8 @@ static func _test_euclidean_attack_reach() -> bool:
 	return true
 
 
-## 友军挡路时靠软碰撞互挤，仍能贴近敌军攻距。
-static func _test_ally_blocker_soft_push_melee() -> bool:
+## 友军挡路：绕行进距，且不把挡路友军顶走。
+static func _test_ally_blocker_steer_around_melee() -> bool:
 	var sim := _new_sim()
 	sim.configure(ARENA, 11)
 	var attack_reach := 0.8
@@ -366,7 +366,7 @@ static func _test_ally_blocker_soft_push_melee() -> bool:
 		}),
 		Vector2(9.5, 28.5),
 	)
-	sim.add_unit(
+	var ally := sim.add_unit(
 		make_dummy(UnitInstance.Team.PLAYER, 100000, {"id": "ally_blocker", "body_radius": 0.4}),
 		Vector2(9.5, 24.5),
 	)
@@ -374,10 +374,17 @@ static func _test_ally_blocker_soft_push_melee() -> bool:
 		make_dummy(UnitInstance.Team.ENEMY, 100000, {"id": "enemy_dummy", "body_radius": 0.4}),
 		Vector2(9.5, 20.5),
 	)
+	var ally_home := ally.position
 	var timeout := 40.0
 	var reached := false
 	while sim.elapsed_seconds < timeout - 0.0001 and not sim.is_finished():
 		sim.advance_fixed_step()
+		if ally.position.distance_to(ally_home) > 0.2:
+			push_error(
+				"ally_blocker: stationary ally was pushed (pos=%s home=%s)"
+				% [ally.position, ally_home]
+			)
+			return false
 		if attacker.edge_distance_to(enemy) <= attack_reach + RtUnitBrain.REACH_EPSILON:
 			reached = true
 			break

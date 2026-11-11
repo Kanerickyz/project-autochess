@@ -1,13 +1,15 @@
 class_name RtUnitBrain
 extends RefCounted
-## 即时并行决策：索敌 → 连续滑移意图 → 进距按攻击间隔出手。
-## 攻距 / 索敌用碰撞圆边缘欧氏距；不修改其他单位。
+## 即时并行决策：索敌 → 绕障连续滑移 → 进距按攻击间隔出手。
+## 攻距 / 索敌用碰撞圆边缘欧氏距；移动意图不推动其他单位（圆裁剪 + 侧向转向）。
 
 ## 进入攻击判定的距离容差（格）
 const REACH_EPSILON := 0.02
 ## 已锁定目标时允许超出 reach 的滞回（格）
 const REACH_HYSTERESIS := 0.25
 const TIME_EPSILON := 0.000001
+## 与他圆保持的最小间隙（格），避免贴边抖动。
+const BODY_CLEARANCE := 0.03
 ## Boss 低血阈值：≤ 此比例时优先瞬移拉开威胁
 const BOSS_LOW_HP_RATIO := 0.4
 ## Boss 瞬移默认冷却（秒）；召唤冷却取 UnitData.summon_cooldown_actions（按秒）。
@@ -107,7 +109,7 @@ static func decide(
 	if dist <= 0.0:
 		return decision
 	var travel := minf(speed * dt, maxf(0.0, edge - stats.attack_reach))
-	decision.move = to_target / dist * travel
+	decision.move = steer_move(unit, to_target / dist * travel, units)
 	return decision
 
 
@@ -167,7 +169,7 @@ static func decide_boss_leader(
 		if decision.teleport_cell != Vector2i(-1, -1):
 			return decision
 
-	## 冷却未到：连续滑移靠近（Boss 也可走）。
+	## 冷却未到：连续滑移靠近（Boss 也可走）；同样绕障不顶人。
 	unit.state = RtUnit.State.MOVING
 	if unit.target == null:
 		return decision
@@ -180,8 +182,159 @@ static func decide_boss_leader(
 		return decision
 	var edge2 := unit.edge_distance_to(unit.target)
 	var travel := minf(speed * dt, maxf(0.0, edge2 - stats.attack_reach))
-	decision.move = to_target / dist * travel
+	decision.move = steer_move(unit, to_target / dist * travel, units)
 	return decision
+
+
+## 朝目标位移：圆裁剪防穿体；受阻则沿障碍切线 / 侧向绕行（不推动他单位）。
+static func steer_move(unit: RtUnit, desired: Vector2, units: Array) -> Vector2:
+	if unit == null or desired.length_squared() < 0.00000001:
+		return Vector2.ZERO
+	var travel := desired.length()
+	var goal_dir := desired / travel
+	var candidates: Array[Vector2] = []
+	candidates.append(desired)
+	var perp := Vector2(-goal_dir.y, goal_dir.x)
+	var side_options: Array[float] = [1.0, -1.0]
+	var weight_options: Array[float] = [0.45, 0.9, 1.4, 2.2]
+	for side in side_options:
+		## 纯侧向：正前方堵死时先横移让开。
+		candidates.append(perp * side * travel)
+		for weight in weight_options:
+			var blended: Vector2 = goal_dir + perp * side * weight
+			if blended.length_squared() < 0.00000001:
+				continue
+			candidates.append(blended.normalized() * travel)
+	## 对近距挡路圆取切线方向。
+	for item in units:
+		var other := item as RtUnit
+		if other == null or other == unit or not other.is_alive():
+			continue
+		if unit.is_deploying() and other.is_deploying():
+			continue
+		var clear_r := unit.get_radius() + other.get_radius() + BODY_CLEARANCE
+		var to_o := other.position - unit.position
+		var dist := to_o.length()
+		if dist < 0.0001 or dist > clear_r + travel * 2.5:
+			continue
+		for tangent in _circle_tangents(to_o, clear_r):
+			candidates.append(tangent * travel)
+
+	var best := clip_move(unit, desired, units)
+	var best_score := _steer_score(unit, best, goal_dir)
+	for raw in candidates:
+		var cand := clip_move(unit, raw, units)
+		if cand.length_squared() < 0.00000001:
+			continue
+		var score := _steer_score(unit, cand, goal_dir)
+		if score > best_score + 0.00001:
+			best_score = score
+			best = cand
+	return best
+
+
+## 将位移裁到不与其他存活单位碰撞圆重叠（可沿切向滑过）。
+static func clip_move(unit: RtUnit, desired: Vector2, units: Array) -> Vector2:
+	if unit == null or desired.length_squared() < 0.00000001:
+		return Vector2.ZERO
+	var move := desired
+	var origin := unit.position
+	var radius := unit.get_radius()
+	for item in units:
+		var other := item as RtUnit
+		if other == null or other == unit or not other.is_alive():
+			continue
+		if unit.is_deploying() and other.is_deploying():
+			continue
+		move = _clip_against_circle(origin, radius, move, other.position, other.get_radius())
+		if move.length_squared() < 0.00000001:
+			return Vector2.ZERO
+	return move
+
+
+## 从原点看向圆心 to_center、避让半径 clear_r 的两条单位切线方向。
+static func _circle_tangents(to_center: Vector2, clear_r: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var dist := to_center.length()
+	if dist <= clear_r + 0.0001:
+		## 已贴上：左右切向即垂直方向。
+		var n := to_center.normalized() if dist > 0.0001 else Vector2.RIGHT
+		out.append(Vector2(-n.y, n.x))
+		out.append(Vector2(n.y, -n.x))
+		return out
+	var sin_a := clampf(clear_r / dist, 0.0, 0.999)
+	var cos_a := sqrt(1.0 - sin_a * sin_a)
+	var basis := to_center / dist
+	var left := Vector2(
+		basis.x * cos_a - basis.y * sin_a,
+		basis.x * sin_a + basis.y * cos_a,
+	)
+	var right := Vector2(
+		basis.x * cos_a + basis.y * sin_a,
+		-basis.x * sin_a + basis.y * cos_a,
+	)
+	out.append(left.normalized())
+	out.append(right.normalized())
+	return out
+
+
+static func _steer_score(unit: RtUnit, move: Vector2, goal_dir: Vector2) -> float:
+	if unit == null:
+		return 0.0
+	var progress := move.length()
+	var forward := 0.0
+	if goal_dir.length_squared() > 0.0001 and progress > 0.0001:
+		forward = move.normalized().dot(goal_dir)
+	var target := unit.target
+	if target == null or not target.is_alive():
+		return progress + forward * 0.2
+	var next := unit.position + move
+	var edge_now := unit.edge_distance_to(target)
+	var edge_next := next.distance_to(target.position) - unit.get_radius() - target.get_radius()
+	## 缩短边缘距为主；前进分量与位移量为辅（便于先横移再绕）。
+	return (edge_now - edge_next) * 6.0 + progress * 0.55 + forward * progress * 0.35
+
+
+static func _clip_against_circle(
+	origin: Vector2,
+	radius_self: float,
+	move: Vector2,
+	center: Vector2,
+	radius_other: float,
+) -> Vector2:
+	var min_dist := radius_self + radius_other + BODY_CLEARANCE
+	var to_center := center - origin
+	var sep_sq := to_center.length_squared()
+	var min_sq := min_dist * min_dist
+	## 已重叠：去掉朝向对方的分量，只允许切向 / 离开。
+	if sep_sq < min_sq - 0.0000001:
+		var normal := to_center.normalized() if sep_sq > 0.00000001 else Vector2.RIGHT
+		var toward := move.dot(normal)
+		if toward > 0.0:
+			return move - normal * toward
+		return move
+	var aa := move.length_squared()
+	if aa < 0.00000001:
+		return Vector2.ZERO
+	## |origin + t*move - center| = min_dist → 二次方程。
+	var w := origin - center
+	var bb := 2.0 * w.dot(move)
+	var cc := w.length_squared() - min_sq
+	var disc := bb * bb - 4.0 * aa * cc
+	if disc < 0.0:
+		return move
+	var root := sqrt(disc)
+	var inv := 1.0 / (2.0 * aa)
+	var t1 := (-bb - root) * inv
+	var t2 := (-bb + root) * inv
+	var t_hit := 1.0
+	if t1 > 0.0001 and t1 < t_hit:
+		t_hit = t1
+	if t2 > 0.0001 and t2 < t_hit:
+		t_hit = t2
+	if t_hit >= 1.0:
+		return move
+	return move * maxf(0.0, t_hit - 0.002)
 
 
 ## 兼容旧一动 API：转调并行 decide（忽略 steps / has_attacked）。
