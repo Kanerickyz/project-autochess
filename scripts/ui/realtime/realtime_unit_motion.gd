@@ -6,18 +6,19 @@ extends Node
 ## 移动 / 攻击互斥：走时只播 walk；出手打断 walk 只播攻击（无蓄力前摇）。
 
 ## 行走（格步 / 连续滑移共用语汇）：小丑牌式抬起跳 + 朝向倾斜 + 影加深（脚底为轴）。
-const WALK_TILT := 0.16
-const WALK_HOP_TILES := 0.1
-const WALK_LEAN := 0.12
-const WALK_SQUASH := Vector2(1.08, 0.92)
-const WALK_SHADOW_MUL := 1.55
+const WALK_TILT := 0.18
+const WALK_HOP_TILES := 0.12
+const WALK_LEAN := 0.14
+const WALK_SQUASH := Vector2(1.1, 0.9)
+const WALK_SHADOW_MUL := 1.6
 ## 连续滑移：位移累计超过此阈值才算在走；每走这么多「格」完成一跳周期。
-const WALK_SLIDE_SPEED_MIN := 0.12
-const WALK_SLIDE_CYCLE_TILES := 0.55
+## 周期宜短：避免慢移时「一跳拖很远」的滑步感。
+const WALK_SLIDE_SPEED_MIN := 0.1
+const WALK_SLIDE_CYCLE_TILES := 0.26
 ## 起步瞬间短 tween：微抬 + 朝向倾，接到周期采样。
-const WALK_START_SEC := 0.08
-const WALK_START_LIFT := 0.06
-const WALK_START_TILT := 0.14
+const WALK_START_SEC := 0.06
+const WALK_START_LIFT := 0.07
+const WALK_START_TILT := 0.16
 ## 非行动者 / 准备席待机：轻呼吸起伏（战斗用 idle_tween；准备/招募用 sample_idle）。
 const IDLE_BOB_TILES := 0.045
 const IDLE_SQUASH := Vector2(1.04, 0.96)
