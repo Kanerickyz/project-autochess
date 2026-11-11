@@ -149,7 +149,7 @@ func _test_mapper_and_arena_direct() -> void:
 		_expect(String(status_pops[0]["text"]).find("虚弱") >= 0, "mapper: weak label")
 
 	var arena := RealtimeArenaView.new()
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	arena.size = Vector2(393, 700)
 	root.add_child(arena)
 	arena.spawn_gold_coin_burst(Vector2(2.5, 10.5), 2)

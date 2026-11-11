@@ -67,7 +67,7 @@
 | `kill_damage_random_enemy_1` | 震波余刃 | 出手 · 条件稀有 | 否 | 自己**攻击**击杀时，对**随机一名敌人**造成 **1** 伤害（三合一后 **3**；`merge_value_mult=3`）。不含本技能伤害造成的击杀 | **偏弱** | 余震 | 收割·点残；`OnKill` + `KILL_FROM_ATTACK` + `RANDOM_ENEMY` |
 | `combat_start_nearby_ally_atk_1` | 咒刃点锋 | 上场 · 一场一次 | 否* | 上场时，**周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 咒刃 | 上场·惠攻；`OnSummoned` + 邻座友方生成镜像；附近=1 格；`exclude_owner` |
 | `combat_start_nearby_ally_hp_1` | 盾祷厚泽 | 上场 · 一场一次 | 否* | 上场时，**周围一格其他友方**本场临时生命上限与当前各 **+1**（三合一后 **+3**；`merge_value_mult=3`） | **偏弱～中庸** | 盾祷 | 上场·加厚；`OnSummoned` + 邻座友方生成镜像；附近=1 格；`exclude_owner` |
-| `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | （未挂载） | 资源保留 |
+| `kill_spawn_weak` | 绝境增援 | 出手 · 条件稀有 | 否 | 自己击杀时，生成 **1** 只 **3/20** 随从（三合一后 **9/60**；`merge_value_mult=3`；共用 `token_weak`） | **中庸** | （未挂载） | 资源保留 |
 | `hurt_nearby_enemies_apply_weak` | 铁锹震惧 | 挨打 · 高频 | 否 | 自己受伤时，对**事件目标周围一格敌军**施加 **虚弱 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 掘墓 | `OnDamageTaken` + `ENEMIES_ADJACENT_TO_EVENT_TARGET`（中心=受伤者） |
 | `turn_start_nearby_atk_small` | 前锋鸣鼓 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格其他友方**本场临时攻击 **+2**（三合一后 **+6**；`merge_value_mult=3`） | **中庸** | （池内；鼓手已不挂载） | 节奏 |
 | `turn_start_nearby_allies_apply_berserk` | 战鼓狂暴 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格友方**施加 **狂暴 1 层**（三合一后 **3 层**；`merge_value_mult=3`；不含自身） | **中庸** | 鼓手 | `NEARBY_ALLIES` + `exclude_owner` |
@@ -97,7 +97,7 @@
 | `ally_hurt_random_ally_atk_1` | 木鼓振锋 | 同伴 · 高频 | **是**（友方受伤） | **其他友方受伤**时，**随机一名友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`；**含自己**；不加生命） | **偏弱～中庸** | 木鼓 | `OnFriendDamageTaken` + `RANDOM_ALLY`；仅攻 |
 | `ally_death_nearby_atk_small` | 亡者之志 | 同伴 · 偶尔多次 | **是**（友方阵亡） | 友方死亡时，**周围一格**友方本场临时**小幅**提高攻击 | **中庸～偏强** | （池内；号手已不挂载） | 小队·范围；附近=1 格 |
 | `friend_summon_lr_allies_atk_hp_1` | 召从振锋 | 同伴 · 条件稀有 | **是**（友方随从被召唤） | 友方**战斗随从**被召唤时，持有者**正交左右邻格**友方本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；当前生命同步） | **中庸** | 号手 | `OnFriendSummoned` + `ORTHOGONAL_LEFT_RIGHT_ALLIES`；`exclude_owner` |
-| `ally_death_spawn_weak` | 义士应召 | 同伴 · 偶尔多次 | **是**（友方角色阵亡） | 友方**角色**（非随从/代理）死亡时，己方半场生成 **1** 只 **2/2** 随从（三合一后 **6/6**；`merge_value_mult=3`） | **中庸** | 召魂 | 见 §4；`EVENT_TARGET_IS_NOT_COMBAT_SUMMON` |
+| `ally_death_spawn_weak` | 义士应召 | 同伴 · 偶尔多次 | **是**（友方角色阵亡） | 友方**角色**（非随从/代理）死亡时，己方半场生成 **1** 只 **3/20** 随从（三合一后 **9/60**；`merge_value_mult=3`） | **中庸** | 召魂 | 见 §4；`EVENT_TARGET_IS_NOT_COMBAT_SUMMON` |
 | `friend_summon_nearby_ally_atk_1` | 邻座振锋（仅攻） | 同伴 · 条件稀有 | **是**（友方随从被召唤） | 友方**战斗随从**被召唤时，**持有者周围一格其他友方**本场临时攻击 **+1**（三合一后 **+3**；`merge_value_mult=3`；3★ **+9**） | **中庸** | （未挂载） | 仅攻版资源保留；链枷已改挂 +1/+1 |
 | `friend_summon_nearby_ally_atk_hp_1` | 邻座振锋 | 同伴 · 条件稀有 | **是**（友方随从被召唤） | 友方**战斗随从**被召唤时，**持有者周围一格其他友方**本场临时攻击与生命上限各 **+1**（三合一后 **+3**；`merge_value_mult=3`；3★ **+9**；当前生命同步抬同等数值） | **中庸** | 链枷（**T3**） | 仅 `is_combat_summon`；中心是持有者，不含自己；普通入座不触发 |
 | `friend_summon_nearby_ally_hp_1` | 召从厚泽 | 同伴 · 条件稀有 | **是**（友方随从被召唤） | 友方**战斗随从**被召唤时，**持有者周围一格其他友方**本场临时生命上限 **+1**（三合一后 **+3**；`merge_value_mult=3`；3★ **+9**；当前生命同步抬同等数值） | **中庸** | 奥术 | 仅 `is_combat_summon`；中心是持有者，不含自己；普通入座不触发 |

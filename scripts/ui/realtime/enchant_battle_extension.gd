@@ -90,7 +90,7 @@ func _build_forge_previews() -> Array:
 	var out: Array = []
 	if _session == null:
 		return out
-	var board_size := Vector2i(5, 4)
+	var board_size := Vector2i(5, 8)
 	if _battle != null:
 		board_size = _battle.get_board_size()
 	var slot_cells := EnchantLayout.forge_slot_cells(board_size)
@@ -117,7 +117,7 @@ func _entry_on_forge(entry_id: int) -> bool:
 
 
 func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
-	var board_size := Vector2i(5, 4)
+	var board_size := Vector2i(5, 8)
 	if _battle != null:
 		board_size = _battle.get_board_size()
 	if _expanded_team:

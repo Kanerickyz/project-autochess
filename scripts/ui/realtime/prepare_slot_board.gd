@@ -1,6 +1,6 @@
 class_name PrepareSlotBoard
 extends RefCounted
-## 准备阶段角色座位：双方各 2×5（与 5×4 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
+## 准备阶段角色座位：双方各 2×5（与 5×8 棋盘对齐，战斗座位贴中线）；满座 ≠ 上场人数上限。
 
 const DEFAULT_SEAT_ROWS := 2
 const DEFAULT_SEAT_COLS := 5
@@ -159,7 +159,7 @@ static func _desired_mid_sep_cells() -> int:
 	return maxi(1, int(round(1.0 + 2.0 * SEAT_ROW_EXTRA_GAP)))
 
 
-## 半场放不下理想空档时收拢（5×4：mid_sep=1，四行占满 y=0..3，不叠格）。
+## 半场放不下理想空档时收拢（5×4 贴满：mid_sep=1；5×8：mid_sep=2）。
 static func _effective_mid_sep_cells(height: int, rows: int, stride: int) -> int:
 	var mid := BoardHalf.midline_row(height)
 	var half_h := mid
@@ -183,7 +183,7 @@ static func uses_packed_row_visual(p_board_size: Vector2i) -> bool:
 ## match_ally_row_order：招募上区把友方画在敌半场时用——索引 0 仍为前排，
 ## 但行序与我半场一致（屏幕上前排在上、后排在下），半场内仍垂直居中以免与敌前排撞格。
 ## 配合 SEAT_ROW_EXTRA_GAP=0.5：战斗四行显示格心距均为 1.5。
-## 5×4 贴满时 mid_sep 收拢为 1（逻辑相邻跨中线），显示侧改累积半格外推。
+## 贴满盘（如旧 5×4）mid_sep 收拢为 1，显示侧改累积半格外推；5×8 用 mid_sep=2。
 static func _centered_row_ys(
 	height: int,
 	rows: int,

@@ -555,7 +555,7 @@ func _test_recruit_candidate_preview_drag() -> void:
 	## 卡壳已回撤：买不起仍可起拖；松在下半场非法区不发 recruit_drop。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
@@ -603,7 +603,7 @@ func _test_recruit_team_sell_drag() -> void:
 	entry.unit = unit
 	entry.level = 2
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, entry)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
@@ -679,7 +679,7 @@ func _test_recruit_team_bench_drag() -> void:
 	## 招募：上区拖到中缝备战应发 bench_drop，不被最近空座吸附抢走。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	root.add_child(arena)
 	await process_frame
 	var unit := load(UNIT_PATHS[0]) as UnitData
@@ -688,11 +688,11 @@ func _test_recruit_team_bench_drag() -> void:
 	entry.unit = unit
 	entry.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, entry)
 	var mid_y := BoardHalf.midline_row(4)
 	var bench := PrepareSlotBoard.new()
-	bench.configure_bench_row(Vector2i(5, 4), DeckState.BENCH_CAPACITY, mid_y)
+	bench.configure_bench_row(Vector2i(5, 8), DeckState.BENCH_CAPACITY, mid_y)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team
 	arena.bench_visible = true
@@ -768,7 +768,7 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	## 候选人拖到已上场友方：拒绝，不发 recruit_drop（避免旧人被替换消失）。
 	var arena := RealtimeArenaView.new()
 	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 4)
+	arena.board_size = Vector2i(5, 8)
 	root.add_child(arena)
 	await process_frame
 	var seated := DeckEntry.new()
@@ -776,7 +776,7 @@ func _test_recruit_candidate_rejects_occupied_seat() -> void:
 	seated.unit = load(UNIT_PATHS[0]) as UnitData
 	seated.level = 1
 	var team := PrepareSlotBoard.new()
-	team.configure_grid(2, 5, Vector2i(5, 4), true, true)
+	team.configure_grid(2, 5, Vector2i(5, 8), true, true)
 	team.try_assign(0, seated)
 	arena.recruit_active = true
 	arena.recruit_team_slots = team

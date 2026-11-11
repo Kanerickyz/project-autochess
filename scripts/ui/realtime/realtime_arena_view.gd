@@ -145,7 +145,7 @@ const DRAG_SOURCE_ALPHA := 0.32
 const MERGE_FLY_SEC := 0.28
 const MERGE_POP_SEC := 0.42
 
-var board_size: Vector2i = Vector2i(5, 4)
+var board_size: Vector2i = Vector2i(5, 8)
 ## 相对旧 9×16 基准放大剪影，使紧凑棋盘上角色仍饱满可读。
 const REFERENCE_BOARD_WIDTH := 9.0
 const REFERENCE_BOARD_HEIGHT := 16.0
