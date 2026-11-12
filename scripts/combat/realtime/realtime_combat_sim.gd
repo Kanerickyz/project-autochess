@@ -1329,13 +1329,21 @@ func _on_bus_event(event_type: StringName, payload: CombatEventPayload) -> void:
 		if payload != null and payload.source != null:
 			_apply_actor_turn_refresh(payload.source)
 		return
-	if event_type != CombatEvents.ON_DAMAGE_TAKEN or payload.target == null:
+	## ON_DEAL_DAMAGE 覆盖非致死与致死；ON_DAMAGE_TAKEN 仅非致死（致死不发）。
+	if (
+		event_type != CombatEvents.ON_DEAL_DAMAGE
+		and event_type != CombatEvents.ON_DAMAGE_TAKEN
+	):
+		return
+	if payload == null or payload.target == null:
 		return
 	for rt in _units:
 		if rt.unit == payload.target:
 			rt.last_hit_time = elapsed_seconds
 			rt.last_hit_amount = maxi(0, payload.amount)
-			unit_damaged.emit(rt, payload.amount)
+			rt.last_hit_was_crit = payload.is_crit
+			if event_type == CombatEvents.ON_DAMAGE_TAKEN:
+				unit_damaged.emit(rt, payload.amount)
 			return
 
 

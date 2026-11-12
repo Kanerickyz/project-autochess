@@ -51,6 +51,7 @@ static func run_all() -> bool:
 	ok = _check("ranged_attack_reach_clamped_to_2", _test_ranged_attack_reach_clamped_to_2()) and ok
 	ok = _check("acquire_prefers_closer_edge", _test_acquire_prefers_lane_on_chebyshev_tie()) and ok
 	ok = _check("flanks_do_not_collapse_left", _test_flanks_do_not_collapse_left()) and ok
+	ok = _check("attack_crit_doubles_and_marks", _test_attack_crit_doubles_and_marks()) and ok
 	ok = _check("windup_advances_under_presentation_hold", _test_windup_advances_under_presentation_hold()) and ok
 	ok = _check("step_breaks_on_pending_defer", _test_step_breaks_on_pending_defer()) and ok
 	ok = _check("deferred_hit_keeps_chained_skill_batches", _test_deferred_hit_keeps_chained_skill_batches()) and ok
@@ -94,6 +95,7 @@ const _STAT_OVERRIDE_KEYS := [
 	"max_hp", "attack", "steps_per_turn", "move_speed", "attack_interval",
 	"attack_windup", "attack_reach", "sight_range", "body_radius", "mass",
 	"projectile_speed", "splash_radius", "deploy_time", "attack_range",
+	"crit_chance", "crit_multiplier",
 ]
 
 
@@ -105,6 +107,9 @@ static func make_unit(team: UnitInstance.Team, overrides: Dictionary = {}) -> Un
 	stats.attack_interval = 1.0
 	stats.attack_windup = 0.3
 	stats.attack_reach = 1.0
+	## 测例默认关暴击，避免 5% 默认概率打乱精确扣血断言；需测暴击时显式覆盖。
+	stats.crit_chance = 0.0
+	stats.crit_multiplier = 1.5
 	stats.sight_range = 5.5
 	stats.body_radius = 0.4
 	stats.mass = 1.0
@@ -1606,7 +1611,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 	return true
 
 
-## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
+## 同列前方优先于左侧先生成单位（即使切比雪夫同距、左侧 id 更小）。
 static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 	var sim := _new_sim()
 	## 需要宽场验证左右分路；保留显式大盘。
@@ -1688,6 +1693,49 @@ static func _test_flanks_do_not_collapse_left() -> bool:
 		return false
 	if e_left.is_alive() and e_left.cell.x > 3:
 		push_error("flanks: enemy left drifted right to %s" % e_left.cell)
+		return false
+	return true
+
+
+## 普攻暴击：100% 暴击率时按 1.5×，并标记 last_hit_was_crit。
+static func _test_attack_crit_doubles_and_marks() -> bool:
+	var sim := _new_sim()
+	sim.configure(ARENA, 77)
+	var attacker := sim.add_unit(
+		make_unit(UnitInstance.Team.PLAYER, {
+			"attack": 4,
+			"crit_chance": 1.0,
+			"crit_multiplier": 1.5,
+			"steps_per_turn": 0,
+			"attack_windup": 0.0,
+			"attack_interval": 0.5,
+			"attack_reach": 1.5,
+		}),
+		Vector2(8.5, 12.5),
+	)
+	var defender := sim.add_unit(
+		make_unit(UnitInstance.Team.ENEMY, {
+			"max_hp": 40,
+			"steps_per_turn": 0,
+			"attack_reach": 0.0,
+		}),
+		Vector2(8.5, 11.5),
+	)
+	sim._pipeline.resolve_hit(attacker, defender, 4, 0.0, sim.get_units())
+	if defender.unit.current_hp != 34:
+		push_error(
+			"crit: expected hp 34 after 4×1.5 hit, got %d"
+			% defender.unit.current_hp
+		)
+		return false
+	if not defender.last_hit_was_crit:
+		push_error("crit: last_hit_was_crit should be true")
+		return false
+	if defender.last_hit_amount != 6:
+		push_error("crit: last_hit_amount expected 6 got %d" % defender.last_hit_amount)
+		return false
+	if attacker.unit.crit_miss_streak != 0:
+		push_error("crit: streak should reset after crit")
 		return false
 	return true
 

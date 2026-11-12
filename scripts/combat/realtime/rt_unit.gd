@@ -32,6 +32,8 @@ var last_attack_time: float = NEVER
 var last_hit_time: float = NEVER
 ## 最近一次实际扣血量（护甲减免后）；供震屏幅度等表现使用。
 var last_hit_amount: int = 0
+## 最近一次扣血是否暴击；供受击整白反馈。
+var last_hit_was_crit: bool = false
 var spawn_time: float = 0.0
 ## 兼容旧字段；并行下中途召唤立刻可动（不再推迟）。
 var action_eligible_from_round: int = 0

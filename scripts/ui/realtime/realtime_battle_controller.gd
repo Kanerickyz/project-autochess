@@ -131,12 +131,17 @@ var _recruit_session: RecruitSession
 var _recruit_team_slots: PrepareSlotBoard = PrepareSlotBoard.new()
 var _recruit_hud: Control
 var _recruit_hint: Label
+var _recruit_timer_bar: ProgressBar
 var _recruit_refresh_btn: Button
 var _recruit_skip_btn: Button
 var _recruit_finish_btn: Button
 var _recruit_selected_candidate: int = -1
 var _recruit_selected_replace_id: int = -1
 var _recruit_animating: bool = false
+## 招募阶段剩余秒；<0 表示未启用倒计时。
+var _recruit_timer_remaining: float = -1.0
+var _recruit_timer_duration: float = 0.0
+var _recruit_timer_active: bool = false
 ## 待播三合一演出（DeckState.triple_merged 入队，招募 sync 后播放）。
 var _pending_merge_fx: Array = []
 ## 招募半场道具行（生命/力量药水、旗帜）；不挂准备阶段。
@@ -294,6 +299,7 @@ func _process(delta: float) -> void:
 		_tick_combat_presentation(delta)
 		if _arena != null:
 			_arena.queue_redraw()
+	_tick_recruit_phase_timer(delta)
 	_refresh_hud()
 	_refresh_cards()
 
@@ -1558,6 +1564,7 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	await _play_half_field_enter_animation(seconds)
 	_recruit_animating = false
 	_sync_recruit_arena()
+	_start_recruit_phase_timer()
 	_refresh_recruit_hud()
 
 
@@ -1790,6 +1797,7 @@ func _on_map_shop_team_seat_drop(entry_id: int, target_seat: int) -> void:
 
 
 func exit_recruit() -> void:
+	_stop_recruit_phase_timer()
 	_close_recruit_shop()
 	_unbind_recruit_session()
 	_recruit_session = null
@@ -2912,11 +2920,29 @@ func _ensure_recruit_hud() -> void:
 	box.add_theme_constant_override("separation", 6)
 	_recruit_hud.add_child(box)
 
-	## 标题 / 金币 / 入座由顶栏 Hud 展示，底栏只留 hint + 操作钮。
+	## 标题 / 金币 / 入座由顶栏 Hud 展示，底栏只留 hint + 倒计时进度条 + 操作钮。
 	_recruit_hint = Label.new()
 	_recruit_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_recruit_hint.text = "将下半场候选人拖到上半场队伍"
 	box.add_child(_recruit_hint)
+	_recruit_timer_bar = ProgressBar.new()
+	_recruit_timer_bar.min_value = 0.0
+	_recruit_timer_bar.max_value = 1.0
+	_recruit_timer_bar.value = 1.0
+	_recruit_timer_bar.show_percentage = false
+	_recruit_timer_bar.custom_minimum_size = Vector2(0.0, 14.0)
+	_recruit_timer_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_recruit_timer_bar.visible = false
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = Color(0.06, 0.09, 0.08, 0.95)
+	bar_bg.set_corner_radius_all(4)
+	bar_bg.set_content_margin_all(2.0)
+	var bar_fill := StyleBoxFlat.new()
+	bar_fill.bg_color = Color(0.42, 0.78, 0.55, 0.95)
+	bar_fill.set_corner_radius_all(3)
+	_recruit_timer_bar.add_theme_stylebox_override("background", bar_bg)
+	_recruit_timer_bar.add_theme_stylebox_override("fill", bar_fill)
+	box.add_child(_recruit_timer_bar)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
@@ -3257,6 +3283,14 @@ func _refresh_recruit_hud() -> void:
 		_recruit_skip_btn.disabled = _recruit_animating or not _recruit_session.can_skip()
 	if _recruit_finish_btn != null:
 		_recruit_finish_btn.disabled = _recruit_animating or not _recruit_session.can_finish()
+	if _recruit_timer_bar != null:
+		if _recruit_timer_active and _recruit_timer_remaining >= 0.0 and _recruit_timer_duration > 0.0:
+			_recruit_timer_bar.visible = true
+			_recruit_timer_bar.max_value = _recruit_timer_duration
+			_recruit_timer_bar.value = clampf(_recruit_timer_remaining, 0.0, _recruit_timer_duration)
+		else:
+			_recruit_timer_bar.visible = false
+			_recruit_timer_bar.value = 0.0
 	if _gold_label != null:
 		_gold_label.text = UiStatIcons.format_gold_label(gold)
 	if _phase_label != null:
@@ -3557,6 +3591,58 @@ func _on_recruit_finish_pressed() -> void:
 	_recruit_session.finish()
 	exit_recruit()
 	recruit_finished.emit(true)
+
+
+func _start_recruit_phase_timer() -> void:
+	_stop_recruit_phase_timer()
+	if _recruit_session == null:
+		return
+	var seconds := RecruitConfig.DEFAULT_PHASE_SECONDS
+	if _recruit_session.config != null:
+		seconds = _recruit_session.config.get_phase_seconds()
+	if seconds <= 0.0:
+		return
+	_recruit_timer_duration = seconds
+	_recruit_timer_remaining = seconds
+	_recruit_timer_active = true
+
+
+func _stop_recruit_phase_timer() -> void:
+	_recruit_timer_active = false
+	_recruit_timer_remaining = -1.0
+	_recruit_timer_duration = 0.0
+
+
+func _tick_recruit_phase_timer(delta: float) -> void:
+	if not _recruit_timer_active or _phase != Phase.RECRUIT:
+		return
+	if _recruit_animating or _recruit_session == null:
+		return
+	_recruit_timer_remaining -= delta
+	if _recruit_timer_remaining > 0.0:
+		return
+	_recruit_timer_remaining = 0.0
+	_auto_advance_recruit_phase()
+
+
+## 倒计时结束：能完成则完成（保留改动）；否则在允许时跳过；仍无法离开则重新计时。
+func _auto_advance_recruit_phase() -> void:
+	if _phase != Phase.RECRUIT or _recruit_session == null or _recruit_animating:
+		return
+	_stop_recruit_phase_timer()
+	if _recruit_session.can_finish():
+		_recruit_session.finish()
+		exit_recruit()
+		recruit_finished.emit(true)
+		return
+	if _recruit_session.can_skip():
+		_recruit_session.skip()
+		exit_recruit()
+		recruit_finished.emit(false)
+		return
+	## 开局空队等：无法完成/跳过时重开倒计时，避免卡死在 0。
+	_start_recruit_phase_timer()
+	_refresh_recruit_hud()
 
 
 # --- 回调 ---

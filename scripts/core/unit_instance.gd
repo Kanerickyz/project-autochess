@@ -40,6 +40,8 @@ var armor_block: int = 0
 var combat_temp_armor: int = 0
 ## 本场远程投射普攻命中加伤（徽章等；护甲前；遭遇结束随实例销毁）。
 var combat_ranged_hit_bonus: int = 0
+## 自上次暴击后连续未暴击普攻次数（保底用；玩家不可见；遭遇内）。
+var crit_miss_streak: int = 0
 ## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
 var _deck_entry_ref: WeakRef = null
 
