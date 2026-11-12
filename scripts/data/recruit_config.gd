@@ -8,7 +8,7 @@ const DEFAULT_CANDIDATE_COUNT := 5
 const DEFAULT_EXIT_SECONDS := 0.5
 const DEFAULT_ENTER_SECONDS := 0.45
 ## 招募阶段限时（秒）；≤0 关闭自动结束。
-const DEFAULT_PHASE_SECONDS := 15.0
+const DEFAULT_PHASE_SECONDS := 30.0
 
 @export_range(0, 20, 1) var refresh_cost: int = DEFAULT_REFRESH_COST
 @export_range(1, 20, 1) var default_unit_cost: int = DEFAULT_UNIT_COST
