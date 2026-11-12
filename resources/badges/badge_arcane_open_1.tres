@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_arcane_open_1"
+display_name = "秘仪卷轴"
+kind = 0
+occupation = "秘术"
+threshold_n = 2
+tier = 1
+effect_kind = 5
+value = 1
+value_secondary = 1
+condition_short = "秘术 × 2"
+effect_text = "开战：敌军虚弱 1 + 中毒 1"
+accent_color = Color(0.48, 0.36, 0.68, 1)

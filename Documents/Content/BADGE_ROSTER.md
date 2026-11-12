@@ -2,7 +2,7 @@
 
 > Content · 羁绊向徽章花名册与数值草案 · 2026-11-12  
 > 规则见 [Features/BADGE.md](../Features/BADGE.md)；职业词表见 [Features/SYNERGY.md](../Features/SYNERGY.md)。  
-> **【数值草案 · 未定稿】** 点数可调；**【As-Is】** 未实现资源 / UI。  
+> **【数值草案 · 未定稿】** 点数可调；**【As-Is】** `resources/badges/*.tres` + 开战/命中效果已挂主路径。  
 > **本版不写**：纯全局徽章花名册、出现权重表、持有上限格数、正式美术。
 
 ---

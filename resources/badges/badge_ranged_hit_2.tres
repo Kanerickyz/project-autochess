@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_ranged_hit_2"
+display_name = "破空羽檄"
+kind = 0
+occupation = "远程"
+threshold_n = 5
+tier = 2
+effect_kind = 2
+value = 2
+value_secondary = 0
+condition_short = "远程 × 5"
+effect_text = "远程投射普攻命中 +2（护甲前）"
+accent_color = Color(0.32, 0.58, 0.4, 1)

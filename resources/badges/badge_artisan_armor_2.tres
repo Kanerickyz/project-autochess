@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_artisan_armor_2"
+display_name = "匠作符契"
+kind = 0
+occupation = "工匠"
+threshold_n = 2
+tier = 1
+effect_kind = 3
+value = 2
+value_secondary = 0
+condition_short = "工匠 × 2"
+effect_text = "开战：友方临时护甲 +2"
+accent_color = Color(0.62, 0.52, 0.32, 1)

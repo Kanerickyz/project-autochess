@@ -24,9 +24,11 @@ var recruit_config: RecruitConfig = DEFAULT_RECRUIT_CONFIG
 var map_shop_config: MapShopConfig = MapShopConfig.load_or_default()
 var _battle: RealtimeBattleController
 var _recruit_session: RecruitSession = RecruitSession.new()
+var _badge_session: BadgeSession = BadgeSession.new()
 var _map_shop_service: MapShopService = MapShopService.new()
 var _rng := RandomNumberGenerator.new()
 var _recruit_busy: bool = false
+var _badge_busy: bool = false
 var _enchant_busy: bool = false
 var _map_shop_busy: bool = false
 ## 时机 A：点开始后、见地图前先开局招募；期间抑制 MAP→_show_map。
@@ -54,6 +56,7 @@ func _ready() -> void:
 	_battle.set_run_stat_ledger(_run_stat_ledger)
 	_battle.encounter_completed.connect(_on_encounter_completed)
 	_battle.final_trial_floors_recorded.connect(_on_final_trial_floors_recorded)
+	_battle.badge_finished.connect(_on_badge_finished)
 	_battle.recruit_finished.connect(_on_recruit_finished)
 	_battle.enchant_finished.connect(_on_enchant_finished)
 	_battle.map_shop_finished.connect(_on_map_shop_finished)
@@ -85,8 +88,11 @@ func _start_new_run() -> void:
 	_recruit_session.clear_persisted_locks()
 	_recruit_session.clear_party_bark_flags()
 	_recruit_session.clear_taken_copies()
+	if run_controller.run_state != null:
+		run_controller.run_state.clear_badges()
 	_battle.reset_final_trial_state()
 	_battle.setup(deck_state, run_economy, run_controller.get_board_defaults())
+	_sync_battle_owned_badges()
 	if run_controller.map_config != null:
 		_battle.set_map_floor_count(_recruit_map_floor_count())
 		_battle.set_forward_tier_unlock(_is_endless())
@@ -151,6 +157,7 @@ func _on_map_node_selected(node_id: int) -> void:
 			if _is_endless():
 				_battle.set_map_floor_count(maxi(ENDLESS_RECRUIT_SOFT_FLOOR_COUNT, node.get_floor()))
 		var floor_index := node.get_floor()
+		_sync_battle_owned_badges()
 		_battle.start_encounter(
 			encounter,
 			run_controller.get_encounter_tier_index(),
@@ -203,9 +210,14 @@ func _on_encounter_completed(won: bool) -> void:
 		_battle_root.visible = false
 		if _battle != null:
 			_battle.exit_recruit()
+			_battle.exit_badge()
 		run_controller.complete_encounter()
 		return
 
+	## 普通/精英胜：先徽章三选一，再招募。
+	if _badge_session.should_offer_badge(node_type, true):
+		await _open_badge_pick()
+		return
 	await _open_recruit()
 
 
@@ -229,6 +241,43 @@ func _open_opening_recruit() -> void:
 	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
 	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
 	await _battle.enter_recruit(_recruit_session, enter_s)
+
+
+func _sync_battle_owned_badges() -> void:
+	if _battle == null or run_controller == null or run_controller.run_state == null:
+		return
+	_battle.set_owned_badge_ids(run_controller.run_state.get_owned_badge_ids())
+
+
+## 胜后徽章三选一（不花金）；结束后进招募。
+func _open_badge_pick() -> void:
+	if _badge_busy:
+		return
+	_badge_busy = true
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(false)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _rng.randi()
+	_badge_session.configure(run_controller.run_state, rng)
+	_badge_session.forward_tier_unlock = _is_endless()
+	_badge_session.begin(
+		_recruit_map_floor(),
+		_recruit_map_floor_count(),
+		_is_endless(),
+	)
+	_sync_battle_owned_badges()
+	_battle.enter_badge(_badge_session)
+
+
+func _on_badge_finished(_picked: bool) -> void:
+	_badge_busy = false
+	_sync_battle_owned_badges()
+	if _battle != null:
+		_battle.exit_badge()
+	await _open_recruit()
 
 
 ## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
