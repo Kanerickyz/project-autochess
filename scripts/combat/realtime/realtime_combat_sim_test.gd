@@ -1606,7 +1606,7 @@ static func _test_boss_footprint_horiz_centered() -> bool:
 	return true
 
 
-## 同切比雪夫时优先曼哈顿更近（同列）的敌人，避免全体锁左侧先生成单位。
+## 同列前方优先于左侧先生成单位（即使切比雪夫同距、左侧 id 更小）。
 static func _test_acquire_prefers_lane_on_chebyshev_tie() -> bool:
 	var sim := _new_sim()
 	## 需要宽场验证左右分路；保留显式大盘。
