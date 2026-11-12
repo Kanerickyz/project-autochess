@@ -608,6 +608,9 @@ func _ensure_badge_pick_overlay() -> void:
 	_badge_pick_overlay = BadgePickOverlay.new()
 	_badge_pick_overlay.name = "BadgePickOverlay"
 	_badge_pick_overlay.z_index = 80
+	_badge_pick_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_badge_pick_overlay.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_badge_pick_overlay.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_badge_pick_overlay.badge_picked.connect(_on_badge_pick_chosen)
 	_badge_pick_overlay.badge_skipped.connect(_on_badge_pick_skipped)
 	_badge_pick_overlay.badge_long_pressed.connect(_on_badge_pick_long_pressed)

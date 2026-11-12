@@ -110,9 +110,19 @@ static func _test_fail_clears_badges() -> bool:
 
 static func _test_catalog_loads_roster() -> bool:
 	BadgeCatalog.clear_cache()
+	if BadgeCatalog.BADGE_PATHS.size() < 13:
+		push_error("badge catalog: BADGE_PATHS expected >=13")
+		return false
 	var all_badges := BadgeCatalog.all_badges()
 	if all_badges.size() < 13:
 		push_error("badge catalog: expected >=13 got %d" % all_badges.size())
+		return false
+	## 显式路径加载：不可依赖 DirAccess（Web/导出列目录会空）。
+	if all_badges.size() != BadgeCatalog.BADGE_PATHS.size():
+		push_error(
+			"badge catalog: loaded %d != paths %d"
+			% [all_badges.size(), BadgeCatalog.BADGE_PATHS.size()]
+		)
 		return false
 	var ids := {
 		"badge_tank_hp_2": true,

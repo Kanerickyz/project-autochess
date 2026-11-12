@@ -1,10 +1,26 @@
 class_name BadgeCatalog
 extends RefCounted
-## 徽章池查询：扫描 resources/badges；按品阶 / 已持有过滤候选。
+## 徽章池查询：显式路径加载（Web/导出不可依赖 DirAccess 列目录）。
 
-const BADGES_DIR := "res://resources/badges"
 ## 整局持有上限（文档未给格数；实现常量，满员 FIFO 替换）。
 const MAX_OWNED := 8
+
+## 花名册路径（与 resources/badges / BADGE_ROSTER 对齐；新增徽章须追加）。
+const BADGE_PATHS: PackedStringArray = [
+	"res://resources/badges/badge_tank_hp_2.tres",
+	"res://resources/badges/badge_tank_hp_5.tres",
+	"res://resources/badges/badge_warrior_melee_atk_3.tres",
+	"res://resources/badges/badge_warrior_melee_atk_5.tres",
+	"res://resources/badges/badge_ranged_hit_1.tres",
+	"res://resources/badges/badge_ranged_hit_2.tres",
+	"res://resources/badges/badge_artisan_armor_2.tres",
+	"res://resources/badges/badge_artisan_armor_5.tres",
+	"res://resources/badges/badge_band_rage_2.tres",
+	"res://resources/badges/badge_band_rage_4.tres",
+	"res://resources/badges/badge_arcane_open_1.tres",
+	"res://resources/badges/badge_arcane_open_2.tres",
+	"res://resources/badges/badge_alliance_amp.tres",
+]
 
 static var _cache: Array[BadgeData] = []
 static var _cache_loaded: bool = false
@@ -70,21 +86,12 @@ static func _ensure_loaded() -> void:
 	if _cache_loaded:
 		return
 	_cache.clear()
-	var dir := DirAccess.open(BADGES_DIR)
-	if dir == null:
-		push_warning("BadgeCatalog: cannot open %s" % BADGES_DIR)
-		_cache_loaded = true
-		return
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var path := "%s/%s" % [BADGES_DIR, file_name]
-			var res := load(path)
-			if res is BadgeData:
-				_cache.append(res as BadgeData)
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	for path in BADGE_PATHS:
+		var res := load(path)
+		if res is BadgeData:
+			_cache.append(res as BadgeData)
+		else:
+			push_warning("BadgeCatalog: failed to load BadgeData at %s" % path)
 	_cache.sort_custom(func(a: BadgeData, b: BadgeData) -> bool:
 		if a == null or b == null:
 			return a != null

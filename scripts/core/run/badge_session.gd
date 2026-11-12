@@ -124,7 +124,14 @@ func _roll_candidates() -> void:
 		get_min_tier(),
 		false,
 	)
+	## 品阶窗过窄时放宽到 ≤max_tier，避免三选一空白。
 	if pool.is_empty():
+		pool = BadgeCatalog.filter_candidates(owned, get_max_tier(), 1, false)
+	if pool.is_empty():
+		push_warning(
+			"BadgeSession: empty offer pool (owned=%d catalog=%d max_tier=%d)"
+			% [owned.size(), BadgeCatalog.all_badges().size(), get_max_tier()]
+		)
 		return
 	## 洗牌后取前 OFFER_COUNT。
 	var shuffled: Array[BadgeData] = pool.duplicate()
