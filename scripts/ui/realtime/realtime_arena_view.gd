@@ -107,6 +107,8 @@ const STAT_FONT := preload("res://resources/ui/stat_badge_font.tres")
 const STAT_TEXT := Color(0.10, 0.08, 0.07, 1.0)
 ## 攻/血/护甲纸片默认隐藏；仅当数值变化时短暂显示（长按信息卡仍可读）。招募价签金币仍可绘。
 const FOOT_ATK_HP_ON_CHANGE_ONLY := true
+## 当前生命低于该阈值时，脚下血量纸片常显（攻击仍跟变化显隐）。
+const LOW_HP_FOOT_BADGE_THRESHOLD := 10
 ## 数值变化后保持可见的时长（秒）；末尾 STAT_BADGE_FADE_SEC 淡出。
 const STAT_BADGE_REVEAL_SEC := 1.2
 const STAT_BADGE_FADE_SEC := 0.28
@@ -365,7 +367,8 @@ func _process(delta: float) -> void:
 	):
 		_clear_combat_badge_punches()
 	## 淡出进行中需要每帧重绘，否则 alpha 卡在最后一帧。
-	if not _stat_badge_reveal_until.is_empty():
+	## 低血常显也需在无变化显隐时继续刷新。
+	if not _stat_badge_reveal_until.is_empty() or _combat_has_low_hp_badge():
 		queue_redraw()
 	if _press_ms >= 0 and not _info_shown and Time.get_ticks_msec() - _press_ms >= LONG_PRESS_MS:
 		_show_info_card(_press_info)
@@ -844,6 +847,18 @@ func _stat_badge_visibility_for(key: Variant) -> float:
 	if left < STAT_BADGE_FADE_SEC:
 		return clampf(left / STAT_BADGE_FADE_SEC, 0.0, 1.0)
 	return 1.0
+
+
+func _combat_has_low_hp_badge() -> bool:
+	if sim == null or not sim.has_started():
+		return false
+	for item in sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or not rt.is_alive():
+			continue
+		if rt.get_current_hp() < LOW_HP_FOOT_BADGE_THRESHOLD:
+			return true
+	return false
 
 
 func _sync_combat_stat_badge_reveals(units: Array) -> void:
@@ -4854,6 +4869,7 @@ func get_fitted_stat_badge_size(px: float, count: int, max_width: float = -1.0) 
 
 
 ## 角色纸片内攻/血标签：默认隐藏（atk_hp_visibility）；金币价签可常驻第二行。
+## 当前生命 < LOW_HP_FOOT_BADGE_THRESHOLD 时血量纸片常显。
 ## 徽章锚在脚底锚点之上，总宽不超过剪影宽度，避免超出美术纸片。
 func _draw_stat_badges(
 	center: Vector2,
@@ -4869,14 +4885,24 @@ func _draw_stat_badges(
 ) -> void:
 	var show_gold := gold_cost >= 0 and STAT_GOLD_TEX != null
 	var max_w := px * SPRITE_MAX_WIDTH_CELLS * STAT_BADGE_ROW_MAX_SPRITE_W
-	var show_stats := (not FOOT_ATK_HP_ON_CHANGE_ONLY) or atk_hp_visibility > 0.02
-	if not show_stats:
+	var change_vis := (
+		1.0 if not FOOT_ATK_HP_ON_CHANGE_ONLY else clampf(atk_hp_visibility, 0.0, 1.0)
+	)
+	var show_change_stats := change_vis > 0.02
+	var low_hp_persist := hp < LOW_HP_FOOT_BADGE_THRESHOLD
+	var show_hp := show_change_stats or low_hp_persist
+	if not show_hp:
 		if show_gold:
 			_draw_recruit_gold_badge(center, gold_cost, gold_affordable, alpha, px)
 		return
 	var armor_tex := UiStatIcons.armor_texture()
-	var show_armor := armor > 0 and armor_tex != null
-	var primary_count := 2 + (1 if show_armor else 0)
+	var show_atk := show_change_stats
+	var show_armor := show_change_stats and armor > 0 and armor_tex != null
+	var primary_count := (1 if show_atk else 0) + (1 if show_hp else 0) + (1 if show_armor else 0)
+	if primary_count <= 0:
+		if show_gold:
+			_draw_recruit_gold_badge(center, gold_cost, gold_affordable, alpha, px)
+		return
 	var badge := get_fitted_stat_badge_size(px, primary_count, max_w)
 	var scale := maxf(0.5, badge_scale)
 	badge *= scale
@@ -4894,17 +4920,20 @@ func _draw_stat_badges(
 	var cx := clampf(center.x, center.x - sprite_half + half_span, center.x + sprite_half - half_span)
 	cx = clampf(cx, half_span, maxf(half_span, size.x - half_span))
 	var x0 := cx - half_span
-	var stat_alpha := alpha * clampf(atk_hp_visibility, 0.0, 1.0)
+	var change_alpha := alpha * change_vis
+	var hp_alpha := alpha if low_hp_persist else change_alpha
 	var slot := 0
-	var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-	slot += 1
-	_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, stat_alpha)
-	var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-	slot += 1
-	_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, stat_alpha)
+	if show_atk:
+		var atk_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		slot += 1
+		_draw_stat_badge(atk_rect, STAT_ATTACK_TEX, attack, change_alpha)
+	if show_hp:
+		var hp_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
+		slot += 1
+		_draw_stat_badge(hp_rect, STAT_HP_TEX, hp, hp_alpha)
 	if show_armor:
 		var armor_rect := Rect2(Vector2(x0 + (badge.x + gap) * float(slot), top), badge)
-		_draw_stat_badge(armor_rect, armor_tex, armor, stat_alpha)
+		_draw_stat_badge(armor_rect, armor_tex, armor, change_alpha)
 	if show_gold:
 		## 价签单独一行居中：不与攻/血抢横向，邻格候选人也不互挡。
 		var gold_badge := get_fitted_stat_badge_size(px, 1, max_w)
