@@ -25,9 +25,18 @@ func set_effect_resolver(resolver: EffectResolver) -> void:
 	_effect_resolver = resolver
 
 
-func roll_damage(_source: UnitInstance, base_amount: int) -> DamageRoll:
-	var result := DamageRoll.new(maxi(0, base_amount))
-	return result
+func roll_damage(source: UnitInstance, base_amount: int) -> DamageRoll:
+	var amount := maxi(0, base_amount)
+	var is_crit := false
+	if source != null and source.stats != null and amount > 0:
+		var chance := clampf(source.stats.crit_chance, 0.0, 1.0)
+		if chance > 0.0 and _rng.randf() < chance:
+			is_crit = true
+			var mult := source.stats.crit_multiplier
+			if mult < 1.0:
+				mult = 2.0
+			amount = maxi(1, int(round(float(amount) * mult)))
+	return DamageRoll.new(amount, is_crit)
 
 
 func apply_damage(
@@ -35,6 +44,7 @@ func apply_damage(
 	target: UnitInstance,
 	amount: int,
 	from_attack: bool = false,
+	is_crit: bool = false,
 ) -> void:
 	if target == null or not target.is_alive():
 		return
@@ -57,6 +67,7 @@ func apply_damage(
 	payload.amount = final_amount
 	payload.target_hp_before = hp_before
 	payload.from_attack = from_attack
+	payload.is_crit = is_crit
 
 	## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
 	if target.is_alive():
@@ -84,7 +95,7 @@ func apply_rolled_damage(
 	from_attack: bool = false,
 ) -> void:
 	var rolled := roll_damage(source, base_amount)
-	apply_damage(source, target, rolled.amount, from_attack)
+	apply_damage(source, target, rolled.amount, from_attack, rolled.is_crit)
 
 
 ## 出手只单向结算；保留旧名兼容调用方（不再对砍反打）。

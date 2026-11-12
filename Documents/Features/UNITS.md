@@ -58,6 +58,8 @@
  ├ 攻击距离（attack_reach）
  ├ 攻击间隔（attack_interval）
  ├ 攻击前摇（attack_windup）
+ ├ 暴击率（crit_chance，默认 5%）
+ ├ 暴击倍率（crit_multiplier，默认 2×）
  ├ 投射物速度（projectile_speed）
  ├ 溅射半径（splash_radius）
 移动与索敌
@@ -87,6 +89,8 @@
 | **攻击距离**（attack_reach） | 与目标的**切比雪夫格距**不大于它就能出手（单位：格；与八向一致） |
 | **攻击间隔**（attack_interval） | 两次出手之间的时间 |
 | **攻击前摇**（attack_windup） | 进入攻击距离、锁定新目标后，到第一次出手之间的等待 |
+| **暴击率**（crit_chance） | 普攻命中时触发暴击的概率；默认 **5%** |
+| **暴击倍率**（crit_multiplier） | 暴击时相对本次攻击基数的伤害倍率；默认 **2×** |
 | **投射物速度**（projectile_speed） | 有值就是远程，伤害在投射物命中时结算；为零就是近战，出手即命中 |
 | **溅射半径**（splash_radius） | 有值时以**目标格**为中心、切比雪夫格距 ≤ 该值的敌人受伤；为零就是单体 |
 

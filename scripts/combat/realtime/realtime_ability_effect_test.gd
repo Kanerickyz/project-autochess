@@ -162,7 +162,11 @@ static func _test_mount_bindings() -> bool:
 
 
 static func _make_from_data(data: UnitData, team: UnitInstance.Team) -> UnitInstance:
-	return UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	var unit := UnitInstance.from_unit_data(data, Vector2i.ZERO, team)
+	## 能力测例默认关暴击，避免默认 5% 打乱精确扣血断言。
+	if unit.stats != null:
+		unit.stats.crit_chance = 0.0
+	return unit
 
 
 static func _dummy(team: UnitInstance.Team, hp: int = 100000, overrides: Dictionary = {}) -> UnitInstance:
