@@ -15,7 +15,8 @@
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
 | [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战、徽章栏） |
-| [Features/BADGE.md](./Features/BADGE.md) | **徽章**（胜后三选一；羁绊向 + 纯全局；无徽章无羁绊数值） |
+| [Features/BADGE.md](./Features/BADGE.md) | **徽章**（胜后三选一；职业×N；持有条 UX；无徽章无羁绊数值） |
+| [Content/BADGE_ROSTER.md](./Content/BADGE_ROSTER.md) | **徽章库**（羁绊向花名册与数值草案） |
 | [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（徽章之后短名单；招人/替换/刷新/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
