@@ -45,16 +45,18 @@ func resolve_hit(
 			"amount": damage,
 		})
 
+	## 整次出手只掷一次暴击（溅射共享），避免多目标重复推进保底。
+	var attack_roll := _roll_attack_crit(source_instance, damage)
 	var death_pending: Array[Dictionary] = []
 	for strike in pending:
 		var tgt: RtUnit = strike["target"]
 		var src: UnitInstance = strike["source"]
-		var amount: int = int(strike["amount"])
-		if tgt == null or not tgt.is_alive() or amount <= 0:
+		if tgt == null or not tgt.is_alive():
 			continue
-		var rolled_hit := _roll_attack_crit(src, amount)
-		var rolled: int = rolled_hit.amount
-		var is_crit: bool = rolled_hit.is_crit
+		var rolled: int = attack_roll.amount
+		var is_crit: bool = attack_roll.is_crit
+		if rolled <= 0:
+			continue
 		if src != null:
 			rolled = CombatStatusStack.adjust_attack_damage(rolled, src)
 		rolled = CombatStatusStack.adjust_incoming_before_armor(rolled, tgt.unit)
@@ -137,19 +139,9 @@ func _stage_lethal_kill(death: Dictionary, from_attack: bool) -> void:
 	_pending_death_finalizations.append(death)
 
 
-## 普攻掷暴击：按来源 UnitStats.crit_chance / crit_multiplier。
+## 普攻掷暴击（含保底递增）；整次出手调用一次。
 func _roll_attack_crit(source: UnitInstance, base_amount: int) -> DamageRoll:
-	var amount := maxi(0, base_amount)
-	var is_crit := false
-	if source != null and source.stats != null and amount > 0:
-		var chance := clampf(source.stats.crit_chance, 0.0, 1.0)
-		if chance > 0.0 and _rng.randf() < chance:
-			is_crit = true
-			var mult := source.stats.crit_multiplier
-			if mult < 1.0:
-				mult = 2.0
-			amount = maxi(1, int(round(float(amount) * mult)))
-	return DamageRoll.new(amount, is_crit)
+	return CritRoll.roll_attack(source, base_amount, _rng)
 
 
 ## 已废止对砍反打：出手一律单向，保留函数供旧调用方恒返回 false。

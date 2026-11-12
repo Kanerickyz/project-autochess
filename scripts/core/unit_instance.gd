@@ -38,6 +38,8 @@ var main_ability_override: AbilityData = null
 var armor_block: int = 0
 ## 本场技能授予的临时护甲（可叠加；遭遇结束随实例销毁；不回写队伍装备）。
 var combat_temp_armor: int = 0
+## 自上次暴击后连续未暴击普攻次数（保底用；玩家不可见；遭遇内）。
+var crit_miss_streak: int = 0
 ## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
 var _deck_entry_ref: WeakRef = null
 

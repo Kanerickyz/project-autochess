@@ -26,17 +26,7 @@ func set_effect_resolver(resolver: EffectResolver) -> void:
 
 
 func roll_damage(source: UnitInstance, base_amount: int) -> DamageRoll:
-	var amount := maxi(0, base_amount)
-	var is_crit := false
-	if source != null and source.stats != null and amount > 0:
-		var chance := clampf(source.stats.crit_chance, 0.0, 1.0)
-		if chance > 0.0 and _rng.randf() < chance:
-			is_crit = true
-			var mult := source.stats.crit_multiplier
-			if mult < 1.0:
-				mult = 2.0
-			amount = maxi(1, int(round(float(amount) * mult)))
-	return DamageRoll.new(amount, is_crit)
+	return CritRoll.roll_attack(source, base_amount, _rng)
 
 
 func apply_damage(
