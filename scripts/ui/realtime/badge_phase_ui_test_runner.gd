@@ -55,6 +55,7 @@ func _test_enter_badge_skip() -> void:
 	rng.seed = 11
 	session.configure(run, rng)
 	session.begin(1, 15, false)
+	_expect(session.get_candidates().size() == BadgeSession.OFFER_COUNT, "skip path has 3 candidates")
 	var finished: Array = []
 	battle.badge_finished.connect(func(picked: bool) -> void: finished.append(picked))
 	battle.enter_badge(session)
@@ -62,7 +63,10 @@ func _test_enter_badge_skip() -> void:
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.BADGE, "phase BADGE")
 	var overlay := battle.get_node_or_null("BadgePickOverlay") as BadgePickOverlay
 	_expect(overlay != null and overlay.visible, "pick overlay visible")
-	_expect(overlay.find_child("BadgeSlot0", true, false) != null, "circular slot0 exists")
+	## 全屏钉死：避免尺寸 0 导致候选挤左上且看不见。
+	_expect(overlay.size.x > 100.0 and overlay.size.y > 100.0, "pick overlay non-zero size")
+	var slot0 := overlay.find_child("BadgeSlot0", true, false) as Control
+	_expect(slot0 != null and slot0.visible, "circular slot0 visible")
 	overlay.badge_skipped.emit()
 	await process_frame
 	_expect(finished.size() == 1 and finished[0] == false, "skip emits picked=false")

@@ -25,7 +25,10 @@ var _candidates: Array[BadgeData] = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	## 必须 anchors+offsets，否则代码新建 Control 尺寸常为 0，内容挤左上、Dim 不可见。
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
 	_build()
 	visible = false
 	set_process(false)
@@ -145,12 +148,22 @@ func _make_candidate_slot(index: int) -> Control:
 
 
 func show_offers(candidates: Array[BadgeData]) -> void:
+	## 再次钉死全屏，避免父节点晚布局后仍为 0 尺寸。
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_candidates = candidates.duplicate()
+	var shown := 0
 	for i in _slots.size():
 		var slot: Control = _slots[i]
 		var badge: BadgeData = candidates[i] if i < candidates.size() else null
 		_bind_slot(slot, badge)
 		slot.visible = badge != null
+		if badge != null:
+			shown += 1
+	if _title != null:
+		if shown <= 0:
+			_title.text = "暂无可选徽章（可跳过）"
+		else:
+			_title.text = "选择徽章（免费 · 可跳过）"
 	visible = true
 	move_to_front()
 
