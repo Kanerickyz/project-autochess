@@ -2,7 +2,7 @@
 
 > 中世纪幻想 2D PvE 自走棋（养队 + 准备站位观战 + 胜后招募 + 清波制；**Boss 斩首例外**）· Godot 4.6 · 最后更新：2026-10-30
 >
-> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 10 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 即时并行滑移战（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
+> 玩法以 [GAME_VISION.md](./GAME_VISION.md) 与 Features 定稿为准；**玩家拥有物 / 友方持久占位 / 席位上限本版 10 / 自动三合一**见 [Features/PLAYER.md](./Features/PLAYER.md)；**胜后徽章**见 [Features/BADGE.md](./Features/BADGE.md)；**胜后招募**（出售腾位、上区即战斗占位）见 [Features/RECRUIT.md](./Features/RECRUIT.md)（To-Be；As-Is 占位持久与准备无手牌刷新尚未对齐）。**【战斗 To-Be】** 即时并行滑移战（见 [Features/COMBAT.md](./Features/COMBAT.md)）。**Boss** 见 [Features/BOSS.md](./Features/BOSS.md)。角色库见 [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md)（资源显示名可能仍为旧占位）。
 >
 > **产品线 0.6**：`application/config/version` 自 **`6.0.1`** 起（主菜单 `v6.0.…`）；`0.5.*` 线已结束。细则见 [CONTRIBUTING.md](../CONTRIBUTING.md)「应用版本号」。
 
@@ -14,13 +14,14 @@
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md) | Agent 职责、纵切片流程、L0–L5、**轻量/完全验收** |
 | [GAME_VISION.md](./GAME_VISION.md) | 主循环、**清波胜负**（Boss **斩首例外**）、单局时长、流派联动、棋盘与敌压 |
 | [Features/BOSS.md](./Features/BOSS.md) | **Boss**（斩首、2×2 足迹、一动三选一、推开、召唤统领） |
-| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战） |
-| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（普通/精英胜后短名单；招人/替换/刷新/重置/跳过/完成） |
+| [Features/PLAYER.md](./Features/PLAYER.md) | **玩家**（队伍 / 队伍席位上限、角色座位、全体上场、准备站位、开战观战、徽章栏） |
+| [Features/BADGE.md](./Features/BADGE.md) | **徽章**（胜后三选一；羁绊向 + 纯全局；无徽章无羁绊数值） |
+| [Features/RECRUIT.md](./Features/RECRUIT.md) | **招募**（徽章之后短名单；招人/替换/刷新/跳过/完成） |
 | [Features/UNIT_PARTY_BARKS.md](./Features/UNIT_PARTY_BARKS.md) | **队伍羁绊台词**（招募进队短句气泡；Run 一次；纯表现） |
 | [Features/UNITS.md](./Features/UNITS.md) | **角色单位**（友方角色 / 敌方角色 / 生成的代理角色；属性与行为规则；功能与数值分离） |
 | [Features/UNIT_ABILITIES.md](./Features/UNIT_ABILITIES.md) | **角色技能**（自带技能/白板、事件联动、强度评估维度；具体技能归 Content） |
 | [Features/ARCHETYPE.md](./Features/ARCHETYPE.md) | **流派**（内部六主轴；异常流·中毒簇职能与毒向受益者规则） |
-| [Features/SYNERGY.md](./Features/SYNERGY.md) | **种族 / 职业羁绊**（两套轴；职业六类词表；效果管线边界） |
+| [Features/SYNERGY.md](./Features/SYNERGY.md) | **种族 / 职业羁绊**（门槛 + Tag；团队数值由徽章交付） |
 | [Content/INDEX.md](./Content/INDEX.md) | **内容库索引**（与 Features 并列） |
 | [Content/UNITS_ROSTER.md](./Content/UNITS_ROSTER.md) | **友方角色库**（五十二人 · 含中毒三角；与技能 1:1；realtime 资源已写） |
 | [Content/BOSS_ROSTER.md](./Content/BOSS_ROSTER.md) | **Boss 内容册**（第一只召唤统领；数值旋钮待填） |
