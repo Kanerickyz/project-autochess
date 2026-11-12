@@ -12,6 +12,8 @@ enum ThemeId {
 	ENCHANT,
 	## 局外角色库（追加在末尾，勿重排既有枚举值）。
 	CODEX,
+	## 胜后徽章三选一（追加在末尾）。
+	BADGE,
 }
 
 
@@ -65,6 +67,12 @@ static func colors_for(theme_id: ThemeId) -> Dictionary:
 			return {
 				"a": Color(0.04, 0.06, 0.14),
 				"b": Color(0.10, 0.16, 0.30),
+			}
+		ThemeId.BADGE:
+			## 徽章三选一：青铜敕令感。
+			return {
+				"a": Color(0.09, 0.07, 0.04),
+				"b": Color(0.26, 0.20, 0.10),
 			}
 		_:
 			return {

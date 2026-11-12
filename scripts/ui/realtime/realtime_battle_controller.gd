@@ -14,8 +14,10 @@ signal recruit_finished(kept_changes: bool)
 signal enchant_finished(did_fuse: bool)
 ## 地图商店离开回地图。
 signal map_shop_finished
+## 胜后徽章三选一结束（picked=是否领取）。
+signal badge_finished(picked: bool)
 
-enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP }
+enum Phase { IDLE, PREPARE, COMBAT, RESULT, RECRUIT, ENCHANT, MAP_SHOP, BADGE }
 
 const HINT_SECONDS := 2.0
 const NO_CELL := Vector2i(-1, -1)
@@ -111,6 +113,11 @@ var _timestop_queue: RealtimeTimestopQueue = RealtimeTimestopQueue.new()
 var _combo_tracker: CombatComboTracker = CombatComboTracker.new()
 var _combo_hud: ComboCounterHud
 var _synergy_tag_hud: SynergyTagHud
+var _badge_owned_bar: BadgeOwnedBar
+var _badge_pick_overlay: BadgePickOverlay
+var _badge_session: BadgeSession
+## 本局持有徽章 id（由 Run 注入；跨遭遇保留）。
+var _owned_badge_ids: PackedStringArray = PackedStringArray()
 ## 一动已结束但技能尾巴未播完：等待结算队列排空后再清零连击。
 var _combo_reset_after_skill_tail: bool = false
 ## 正在执行「先卡再结算」的第二拍；ON_EFFECT_RESOLVED 只捕获 payload，不再入队。
@@ -256,6 +263,8 @@ func _ready() -> void:
 	_ensure_tier_unlock_toast()
 	_ensure_combo_hud()
 	_ensure_synergy_tag_hud()
+	_ensure_badge_owned_bar()
+	_ensure_badge_pick_overlay()
 	_enchant_ui.setup(self)
 	_enchant_session.session_finished.connect(_on_enchant_session_finished)
 	_map_shop_ui.setup(self)
@@ -365,6 +374,13 @@ func set_world_backdrop_mode(enabled: bool) -> void:
 			_synergy_tag_hud.visible = false
 		else:
 			_refresh_synergy_tag_hud()
+	if _badge_owned_bar != null:
+		if enabled:
+			_badge_owned_bar.visible = false
+		else:
+			_refresh_badge_owned_bar()
+	if _badge_pick_overlay != null and enabled:
+		_badge_pick_overlay.hide_offers()
 	if _result_overlay != null and enabled:
 		_result_overlay.visible = false
 	if _arena != null:
@@ -569,6 +585,145 @@ func _ensure_synergy_tag_hud() -> void:
 	_synergy_tag_hud = SynergyTagHud.new()
 	_synergy_tag_hud.name = "SynergyTagHud"
 	overlay.add_child(_synergy_tag_hud)
+
+
+func _ensure_badge_owned_bar() -> void:
+	if _badge_owned_bar != null:
+		return
+	_badge_owned_bar = BadgeOwnedBar.new()
+	_badge_owned_bar.name = "BadgeOwnedBar"
+	_badge_owned_bar.z_index = 55
+	add_child(_badge_owned_bar)
+
+
+func _ensure_badge_pick_overlay() -> void:
+	if _badge_pick_overlay != null:
+		return
+	_badge_pick_overlay = BadgePickOverlay.new()
+	_badge_pick_overlay.name = "BadgePickOverlay"
+	_badge_pick_overlay.z_index = 80
+	_badge_pick_overlay.badge_picked.connect(_on_badge_pick_chosen)
+	_badge_pick_overlay.badge_skipped.connect(_on_badge_pick_skipped)
+	_badge_pick_overlay.badge_long_pressed.connect(_on_badge_pick_long_pressed)
+	add_child(_badge_pick_overlay)
+
+
+## Run 注入本局已持有徽章；跨遭遇调用以刷新底栏。
+func set_owned_badge_ids(ids: PackedStringArray) -> void:
+	_owned_badge_ids = ids.duplicate()
+	_refresh_badge_owned_bar()
+
+
+func get_owned_badge_ids() -> PackedStringArray:
+	return _owned_badge_ids.duplicate()
+
+
+func _refresh_badge_owned_bar() -> void:
+	_ensure_badge_owned_bar()
+	if _badge_owned_bar == null:
+		return
+	if _world_backdrop_mode:
+		_badge_owned_bar.visible = false
+		return
+	match _phase:
+		Phase.PREPARE, Phase.RECRUIT, Phase.COMBAT, Phase.RESULT, Phase.BADGE:
+			pass
+		_:
+			_badge_owned_bar.visible = false
+			return
+	var badges := BadgeCatalog.resolve_owned(_owned_badge_ids)
+	_badge_owned_bar.set_owned_badges(badges)
+
+
+## 胜后徽章三选一；结束后发 badge_finished。
+func enter_badge(session: BadgeSession) -> void:
+	if session == null:
+		push_error("RealtimeBattleController.enter_badge: session is null")
+		return
+	_badge_session = session
+	_ensure_badge_pick_overlay()
+	_hide_combat_chrome_for_recruit()
+	_set_phase(Phase.BADGE)
+	if _encounter_label != null:
+		_encounter_label.text = "徽章"
+	if _phase_label != null:
+		_phase_label.text = "徽章三选一"
+		_phase_label.modulate = Color.WHITE
+	_badge_pick_overlay.show_offers(session.get_candidates())
+	_refresh_badge_owned_bar()
+
+
+func exit_badge() -> void:
+	if _badge_pick_overlay != null:
+		_badge_pick_overlay.hide_offers()
+	_badge_session = null
+	if _phase == Phase.BADGE:
+		_set_phase(Phase.IDLE)
+
+
+func get_badge_session() -> BadgeSession:
+	return _badge_session
+
+
+func _on_badge_pick_chosen(index: int) -> void:
+	if _badge_session == null or not _badge_session.is_active:
+		return
+	var result := _badge_session.try_pick(index)
+	if not bool(result.get("ok", false)):
+		return
+	_owned_badge_ids = (
+		_badge_session.run_state.get_owned_badge_ids()
+		if _badge_session.run_state != null
+		else _owned_badge_ids
+	)
+	_finish_badge_phase(true)
+
+
+func _on_badge_pick_skipped() -> void:
+	if _badge_session == null or not _badge_session.is_active:
+		return
+	_badge_session.skip()
+	_finish_badge_phase(false)
+
+
+func _on_badge_pick_long_pressed(badge: BadgeData) -> void:
+	## 说明卡由 BadgePickOverlay 自带（覆盖 Dim）；持有条兜底同步文案。
+	if badge == null:
+		return
+	_ensure_badge_owned_bar()
+	if _badge_owned_bar != null:
+		_badge_owned_bar.show_info_for(badge)
+
+
+func _finish_badge_phase(picked: bool) -> void:
+	if _badge_pick_overlay != null:
+		_badge_pick_overlay.hide_offers()
+	_badge_session = null
+	_refresh_badge_owned_bar()
+	if _phase == Phase.BADGE:
+		_set_phase(Phase.IDLE)
+	badge_finished.emit(picked)
+
+
+func _apply_owned_badges_to_sim() -> void:
+	if _sim == null or _owned_badge_ids.is_empty():
+		return
+	var allies: Array = []
+	var enemies: Array = []
+	for item in _sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or rt.unit == null or not rt.is_alive():
+			continue
+		if rt.unit.team == UnitInstance.Team.PLAYER:
+			allies.append(rt.unit)
+		elif rt.unit.team == UnitInstance.Team.ENEMY:
+			enemies.append(rt.unit)
+	BadgeCombatApplier.apply_combat_start(
+		_owned_badge_ids,
+		allies,
+		enemies,
+		_sim.get_effect_resolver(),
+	)
 
 
 func _refresh_synergy_tag_hud() -> void:
@@ -1689,6 +1844,8 @@ func _begin_combat_from_prepare() -> void:
 	_rebuild_cards()
 
 	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
+	## 徽章开战效果先于 OnCombatStart 技能入队（同源 EffectResolver；无升星倍率）。
+	_apply_owned_badges_to_sim()
 	## 锁阵开战技能可短串行入队；排空后并行战斗不再 defer / 不播介绍卡。
 	_sim.defer_effect_resolve = true
 	_sim.begin_combat()
@@ -1879,6 +2036,8 @@ func _apply_phase_grid_theme(phase: Phase, animate: bool) -> void:
 			theme_id = PhaseGridPalettes.ThemeId.MAP_SHOP
 		Phase.ENCHANT:
 			theme_id = PhaseGridPalettes.ThemeId.ENCHANT
+		Phase.BADGE:
+			theme_id = PhaseGridPalettes.ThemeId.BADGE
 	_solid_bg.set_theme_id(theme_id, animate)
 
 
@@ -2578,6 +2737,8 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 	if _sim == null:
 		_tape_rewinding = false
 		return
+	## 与实战一致：徽章开战效果 → defer 开战技能 → flush。
+	_apply_owned_badges_to_sim()
 	## 与实战一致：开战前先 defer，开战技能入队后经 flush 排空并排行动队列。
 	## 重演循环内保持 defer，每步后瞬时排空（等价播报时长为 0），避免与实战分叉提前终局。
 	_sim.defer_effect_resolve = true
@@ -4159,6 +4320,7 @@ func _refresh_hud() -> void:
 	if _encounter_label == null:
 		return
 	_refresh_synergy_tag_hud()
+	_refresh_badge_owned_bar()
 	if _phase == Phase.RECRUIT:
 		_refresh_recruit_hud()
 		return
@@ -4218,6 +4380,8 @@ func _refresh_hud() -> void:
 			_phase_label.text = "附魔"
 		Phase.MAP_SHOP:
 			_phase_label.text = "商店"
+		Phase.BADGE:
+			_phase_label.text = "徽章三选一"
 		_:
 			_phase_label.text = "等待"
 

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_band_rage_2"
+display_name = "凯旋鼓点"
+kind = 0
+occupation = "军乐队"
+threshold_n = 2
+tier = 1
+effect_kind = 4
+value = 2
+value_secondary = 0
+condition_short = "军乐队 × 2"
+effect_text = "开战：友方狂暴 2 层"
+accent_color = Color(0.72, 0.48, 0.58, 1)

@@ -38,11 +38,20 @@ func resolve_hit(
 	var victims: Array[RtUnit] = [primary]
 	if splash_radius > 0.0:
 		victims = collect_splash_victims(primary, splash_radius, units)
+	## 远程投射普攻：徽章命中加伤叠进基础伤害（护甲前，与狂暴/虚弱同段）。
+	var hit_damage := damage
+	if (
+		source_instance != null
+		and source_instance.combat_ranged_hit_bonus > 0
+		and BadgeCombatApplier.is_ranged_projectile_unit(source_instance)
+	):
+		hit_damage = damage + source_instance.combat_ranged_hit_bonus
+
 	for victim in victims:
 		pending.append({
 			"source": source_instance,
 			"target": victim,
-			"amount": damage,
+			"amount": hit_damage,
 		})
 
 	var death_pending: Array[Dictionary] = []

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_artisan_armor_5"
+display_name = "百工符玺"
+kind = 0
+occupation = "工匠"
+threshold_n = 5
+tier = 2
+effect_kind = 3
+value = 5
+value_secondary = 0
+condition_short = "工匠 × 5"
+effect_text = "开战：友方临时护甲 +5"
+accent_color = Color(0.7, 0.55, 0.28, 1)

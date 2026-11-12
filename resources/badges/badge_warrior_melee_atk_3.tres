@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_warrior_melee_atk_3"
+display_name = "斩阵号角"
+kind = 0
+occupation = "战士"
+threshold_n = 3
+tier = 1
+effect_kind = 1
+value = 1
+value_secondary = 0
+condition_short = "战士 × 3"
+effect_text = "开战：近战友方攻击 +1"
+accent_color = Color(0.72, 0.38, 0.32, 1)

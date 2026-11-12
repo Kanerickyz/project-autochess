@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_band_rage_4"
+display_name = "通宵凯歌"
+kind = 0
+occupation = "军乐队"
+threshold_n = 5
+tier = 2
+effect_kind = 4
+value = 4
+value_secondary = 0
+condition_short = "军乐队 × 5"
+effect_text = "开战：友方狂暴 4 层"
+accent_color = Color(0.78, 0.36, 0.52, 1)

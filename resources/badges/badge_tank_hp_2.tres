@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_tank_hp_2"
+display_name = "铁壁敕令"
+kind = 0
+occupation = "坦克"
+threshold_n = 2
+tier = 1
+effect_kind = 0
+value = 3
+value_secondary = 0
+condition_short = "坦克 × 2"
+effect_text = "开战：友方最大生命 +3"
+accent_color = Color(0.45, 0.55, 0.72, 1)

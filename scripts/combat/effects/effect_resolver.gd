@@ -132,6 +132,13 @@ func clear_pending() -> void:
 	_pending_batches.clear()
 
 
+## 徽章等非技能来源：按 EffectAction 结算，不走升星倍率（owner=null）。
+func apply_unscaled_action(action: EffectAction, target: UnitInstance) -> bool:
+	if action == null or target == null:
+		return false
+	return _execute_action(action, target, null, 0, null, null, false)
+
+
 ## 战斗状态等仅对存活单位入队；击杀当次 ON_DEAL_DAMAGE 不再播「破甲箭」叠虚弱。
 static func _can_enqueue_action_on_target(
 	action: EffectAction,

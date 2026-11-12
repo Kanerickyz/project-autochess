@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BadgeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/badge_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_alliance_amp"
+display_name = "同盟敕印"
+kind = 0
+occupation = ""
+threshold_n = 0
+tier = 2
+effect_kind = 6
+value = 1
+value_secondary = 0
+condition_short = "同盟 · 职绑已满足"
+effect_text = "已满足职绑点数各 +1"
+accent_color = Color(0.78, 0.68, 0.28, 1)
