@@ -125,6 +125,8 @@ const STAT_NUMBER_MAX_WIDTH := 0.42
 const STAT_BADGE_INSET_ABOVE_FEET := 0.04
 ## 受击闪白：modulate 拉高到接近纯白，墨线仍保留轮廓。
 const SPRITE_FLASH_MUL := 5.0
+## 暴击整白：更高倍率，剪影接近纯白块。
+const SPRITE_CRIT_FLASH_MUL := 24.0
 ## 镜头震动时背景外扩，避免露边。
 const SHAKE_BLEED_PX := 8.0
 ## 长按查看单位信息（SAP 式）：按住超过阈值弹卡，松手收起且不触发点按。
@@ -4779,8 +4781,11 @@ func _draw_unit_sprite(
 	_draw_ellipse_filled(shadow_pos, shadow_rx, maxf(2.0, px * 0.12 * shadow_mul), shadow)
 	var base := PLAYER_COLOR if is_player else ENEMY_COLOR
 	var lift := 1.0 + clampf(tint.get_luminance() - base.get_luminance(), 0.0, 0.5)
+	var flash_mul := SPRITE_FLASH_MUL
+	if pose != null and pose.crit_white:
+		flash_mul = SPRITE_CRIT_FLASH_MUL
 	var modulate_color := Color(lift, lift, lift, a).lerp(
-		Color(SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, SPRITE_FLASH_MUL, a), clampf(flash, 0.0, 1.0)
+		Color(flash_mul, flash_mul, flash_mul, a), clampf(flash, 0.0, 1.0)
 	)
 	draw_set_transform(_frame_shake + feet + offset, rot, scl)
 	## 道具墨线底边对齐角色脚底；角色图 content_bottom=1，不挪。

@@ -57,6 +57,10 @@ const HIT_TILT := 0.32
 const HIT_SQUASH := Vector2(1.16, 0.86)
 const HIT_SHADOW_MUL := 1.65
 const HIT_FLASH_SECONDS := 0.16
+## 暴击整白：更长停顿 + 更慢淡出，和普通受击闪白区分。
+const CRIT_FLASH_HOLD_SECONDS := 0.12
+const CRIT_FLASH_SECONDS := 0.32
+const CRIT_SHAKE_MULT := 1.45
 ## 震屏（像素）：幅度随实际扣血；下限保证可读，上限防糊屏。
 const SHAKE_BASE_PX := 1.2
 const SHAKE_PER_DAMAGE_PX := 1.1
@@ -76,6 +80,8 @@ class Pose:
 	var rotation := 0.0
 	var scale := Vector2.ONE
 	var flash := 0.0
+	## 暴击时强制整白剪影（绘制侧读此标志）。
+	var crit_white := false
 	var alpha := 1.0
 	## 接触阴影倍率（拖影 / 检视抬起时加深外扩）。
 	var shadow_mul := 1.0
@@ -159,6 +165,7 @@ func _reset_pose_visual(pose: Pose) -> void:
 	pose.scale = Vector2.ONE
 	pose.alpha = 1.0
 	pose.flash = 0.0
+	pose.crit_white = false
 	pose.shadow_mul = 1.0
 	pose.idle_offset = Vector2.ZERO
 	pose.idle_scale = Vector2.ONE
@@ -319,7 +326,10 @@ func sync_units(units: Array, current_actor: RtUnit = null) -> void:
 		var tracked: Tracked = _tracked[rt.get_instance_id()]
 		if rt.last_hit_time != tracked.last_hit:
 			tracked.last_hit = rt.last_hit_time
-			_play_hit(tracked.pose, Vector2.ZERO, shake_px_for_damage(rt.last_hit_amount))
+			var shake := shake_px_for_damage(rt.last_hit_amount)
+			if rt.last_hit_was_crit:
+				shake = minf(SHAKE_MAX_PX, shake * CRIT_SHAKE_MULT)
+			_play_hit(tracked.pose, Vector2.ZERO, shake, rt.last_hit_was_crit)
 	_sync_idle_states(units, current_actor)
 	_prune_corpses()
 
@@ -481,6 +491,7 @@ func play_death(rt: RtUnit, unit_id: String, half_height: float) -> void:
 	var fall_dir := -1.0 if rt.is_player() else 1.0
 	var pose := corpse.pose
 	pose.flash = 1.0
+	pose.crit_white = rt.last_hit_was_crit
 	var tween := _new_tween(pose)
 	## 先小丑牌式踢起倾斜，再侧倒缩小淡出。
 	var kick_rot := pose.rotation + DEATH_KICK_TILT * fall_dir
@@ -539,8 +550,11 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 	_tween_home(lunge, pose)
 	if target == null:
 		return
-	## 扣血已在出手瞬间结算；用 last_hit_amount 驱动震幅。
+	## 扣血已在出手瞬间结算；用 last_hit_amount / last_hit_was_crit 驱动震幅与整白。
+	var hit_crit := target.last_hit_was_crit
 	var hit_shake := shake_px_for_damage(target.last_hit_amount)
+	if hit_crit:
+		hit_shake = minf(SHAKE_MAX_PX, hit_shake * CRIT_SHAKE_MULT)
 	var target_tracked: Tracked = _tracked.get(target.get_instance_id())
 	if target_tracked == null:
 		## 目标已在本步被击杀：残影自己播放闪白，这里只补震屏。
@@ -554,12 +568,13 @@ func _play_strike(rt: RtUnit, tracked: Tracked) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	charge.parallel().tween_property(tpose, "rotation", _tilt_for_dir(-dir) * LUNGE_TILT * 0.7, LUNGE_SECONDS)
 	## 撞上后走 _play_hit → 始终 _tween_home（攻击者 mid-lunge 早退除外）。
-	charge.tween_callback(_play_hit.bind(tpose, dir, hit_shake))
+	charge.tween_callback(_play_hit.bind(tpose, dir, hit_shake, hit_crit))
 
 
 ## 受击：闪白 + 小丑牌式踢退倾斜压扁 + 影加深 + BACK 弹回 + 镜头震动。
-func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
-	_flash(pose)
+## 暴击时整白更久、震屏更大。
+func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float, was_crit: bool = false) -> void:
+	_flash(pose, was_crit)
 	if pose.lunging and _is_busy(pose):
 		_shake(shake_px)
 		return
@@ -582,14 +597,23 @@ func _play_hit(pose: Pose, knock_dir: Vector2, shake_px: float) -> void:
 	_shake(shake_px)
 
 
-func _flash(pose: Pose) -> void:
+func _flash(pose: Pose, was_crit: bool = false) -> void:
 	if pose.flash_tween != null:
 		pose.flash_tween.kill()
 	pose.flash = 1.0
+	pose.crit_white = was_crit
 	pose.flash_tween = create_tween()
 	pose.flash_tween.set_speed_scale(maxf(0.25, speed_scale))
-	pose.flash_tween.tween_interval(0.05)
-	pose.flash_tween.tween_property(pose, "flash", 0.0, HIT_FLASH_SECONDS)
+	if was_crit:
+		pose.flash_tween.tween_interval(CRIT_FLASH_HOLD_SECONDS)
+		pose.flash_tween.tween_property(pose, "flash", 0.0, CRIT_FLASH_SECONDS)
+	else:
+		pose.flash_tween.tween_interval(0.05)
+		pose.flash_tween.tween_property(pose, "flash", 0.0, HIT_FLASH_SECONDS)
+	pose.flash_tween.tween_callback(func() -> void:
+		if pose != null:
+			pose.crit_white = false
+	)
 
 
 func _tween_home(tween: Tween, pose: Pose) -> void:

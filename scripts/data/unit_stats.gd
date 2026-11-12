@@ -30,6 +30,10 @@ enum MovementPattern {
 @export_range(0.0, 5.0, 0.05) var attack_windup: float = 0.0
 ## 攻击距离（格；主路径按碰撞圆边缘欧氏距）
 @export_range(0.0, 12.0, 0.05) var attack_reach: float = 0.8
+## 普攻暴击率（0–1）；默认 5%（约每 20 次保底 1 次，未中则实际概率递增）。
+@export_range(0.0, 1.0, 0.01) var crit_chance: float = 0.05
+## 暴击伤害倍率（相对本次攻击基数）；默认 1.5 倍。
+@export_range(1.0, 5.0, 0.05) var crit_multiplier: float = 1.5
 ## 索敌半径（格）；范围内无敌人时向全场最近敌人前进
 @export_range(0.0, 32.0, 0.1) var sight_range: float = 5.5
 ## 碰撞圆半径（格）
@@ -68,6 +72,8 @@ func duplicate_stats() -> UnitStats:
 	copy.attack_interval = attack_interval
 	copy.attack_windup = attack_windup
 	copy.attack_reach = attack_reach
+	copy.crit_chance = crit_chance
+	copy.crit_multiplier = crit_multiplier
 	copy.sight_range = sight_range
 	copy.body_radius = body_radius
 	copy.visual_half_width = visual_half_width

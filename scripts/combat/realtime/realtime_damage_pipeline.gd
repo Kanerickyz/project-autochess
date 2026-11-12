@@ -45,14 +45,18 @@ func resolve_hit(
 			"amount": damage,
 		})
 
+	## 整次出手只掷一次暴击（溅射共享），避免多目标重复推进保底。
+	var attack_roll := _roll_attack_crit(source_instance, damage)
 	var death_pending: Array[Dictionary] = []
 	for strike in pending:
 		var tgt: RtUnit = strike["target"]
 		var src: UnitInstance = strike["source"]
-		var amount: int = int(strike["amount"])
-		if tgt == null or not tgt.is_alive() or amount <= 0:
+		if tgt == null or not tgt.is_alive():
 			continue
-		var rolled := amount
+		var rolled: int = attack_roll.amount
+		var is_crit: bool = attack_roll.is_crit
+		if rolled <= 0:
+			continue
 		if src != null:
 			rolled = CombatStatusStack.adjust_attack_damage(rolled, src)
 		rolled = CombatStatusStack.adjust_incoming_before_armor(rolled, tgt.unit)
@@ -64,9 +68,9 @@ func resolve_hit(
 		tgt.unit.current_hp = maxi(0, tgt.unit.current_hp - final_amount)
 		## 致死一击只走死亡，不触发「受到伤害 / 友方受伤」。
 		if tgt.unit.is_alive():
-			_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
-			_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before)
-		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before)
+			_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before, false, is_crit)
+			_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before, false, is_crit)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before, false, is_crit)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
 			death_pending.append({
@@ -74,6 +78,7 @@ func resolve_hit(
 				"target": tgt,
 				"rolled": final_amount,
 				"hp_before": hp_before,
+				"is_crit": is_crit,
 			})
 
 	death_pending.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -113,9 +118,10 @@ func emit_post_kill_death_events(death: Dictionary) -> void:
 	var src2: UnitInstance = death.get("source")
 	var rolled2: int = int(death.get("rolled", 0))
 	var hp_before2: int = int(death.get("hp_before", -1))
-	_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, hp_before2)
-	_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2)
-	_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2)
+	var is_crit2: bool = bool(death.get("is_crit", false))
+	_emit(CombatEvents.ON_DEATH, src2, tgt2.unit, rolled2, hp_before2, false, is_crit2)
+	_emit(CombatEvents.ON_FRIEND_DEATH, src2, tgt2.unit, rolled2, hp_before2, false, is_crit2)
+	_emit(CombatEvents.ON_ENEMY_DEATH, src2, tgt2.unit, rolled2, hp_before2, false, is_crit2)
 
 
 func _stage_lethal_kill(death: Dictionary, from_attack: bool) -> void:
@@ -123,13 +129,19 @@ func _stage_lethal_kill(death: Dictionary, from_attack: bool) -> void:
 	var src2: UnitInstance = death["source"]
 	var rolled2: int = int(death["rolled"])
 	var hp_before2: int = int(death.get("hp_before", -1))
+	var is_crit2: bool = bool(death.get("is_crit", false))
 	tgt2.state = RtUnit.State.DEAD
 	tgt2.target = null
 	if src2 != null:
-		_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack)
-		_emit(CombatEvents.ON_FRIEND_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack)
+		_emit(CombatEvents.ON_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack, is_crit2)
+		_emit(CombatEvents.ON_FRIEND_KILL, src2, tgt2.unit, rolled2, hp_before2, from_attack, is_crit2)
 	death["from_attack"] = from_attack
 	_pending_death_finalizations.append(death)
+
+
+## 普攻掷暴击（含保底递增）；整次出手调用一次。
+func _roll_attack_crit(source: UnitInstance, base_amount: int) -> DamageRoll:
+	return CritRoll.roll_attack(source, base_amount, _rng)
 
 
 ## 已废止对砍反打：出手一律单向，保留函数供旧调用方恒返回 false。
@@ -222,6 +234,7 @@ func _emit(
 	amount: int,
 	target_hp_before: int = -1,
 	from_attack: bool = false,
+	is_crit: bool = false,
 ) -> void:
 	if _bus == null:
 		return
@@ -231,4 +244,5 @@ func _emit(
 	payload.amount = amount
 	payload.target_hp_before = target_hp_before
 	payload.from_attack = from_attack
+	payload.is_crit = is_crit
 	_bus.emit_event(event_type, payload)

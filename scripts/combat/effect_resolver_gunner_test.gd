@@ -1,6 +1,6 @@
 class_name EffectResolverGunnerTest
 extends RefCounted
-## 暴击已移除：直伤按基数结算。
+## 枪手直伤：关闭暴击后按基数结算（连环点射技能另测）。
 
 static var _failures: int = 0
 
@@ -35,6 +35,7 @@ static func _test_rolled_damage_equals_base() -> void:
 	var attacker := UnitInstance.new("gunner", Vector2i(0, 0), UnitInstance.Team.PLAYER)
 	attacker.stats = UnitStats.new()
 	attacker.stats.attack = 3
+	attacker.stats.crit_chance = 0.0
 	attacker.current_hp = 4
 	grid.place(attacker, Vector2i(0, 0))
 	var defender := UnitInstance.new("enemy", Vector2i(1, 0), UnitInstance.Team.ENEMY)
