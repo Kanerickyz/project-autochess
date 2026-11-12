@@ -522,14 +522,31 @@ static func grid_reach(reach: float) -> float:
 	return maxf(0.0, reach)
 
 
-## sight_range 内边缘距最近敌人；没有则全场最近。平局取较小 instance_id。
+## 优先本列（同 cell.x）前方敌人，避免全体锁左侧先生成单位；无同列再全场最近。
+## sight_range 内优先；没有则全场。平局：列差更小 → 边缘距更近 → 较小 instance_id。
 static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 	var sight := unit.get_stats().sight_range
+	var my_col := unit.cell.x
+	var lane := _pick_acquire_candidate(unit, units, sight, true, my_col)
+	if lane != null:
+		return lane
+	return _pick_acquire_candidate(unit, units, sight, false, my_col)
+
+
+static func _pick_acquire_candidate(
+	unit: RtUnit,
+	units: Array,
+	sight: float,
+	same_column_only: bool,
+	my_col: int,
+) -> RtUnit:
 	var best_in_sight: RtUnit = null
 	var best_in_sight_dist := INF
+	var best_in_sight_col := 0x7fffffff
 	var best_in_sight_id := 0x7fffffff
 	var best_any: RtUnit = null
 	var best_any_dist := INF
+	var best_any_col := 0x7fffffff
 	var best_any_id := 0x7fffffff
 	for item in units:
 		var other := item as RtUnit
@@ -537,20 +554,43 @@ static func acquire_target(unit: RtUnit, units: Array) -> RtUnit:
 			continue
 		if other.get_team() == unit.get_team():
 			continue
+		var col_delta := absi(other.cell.x - my_col)
+		if same_column_only and col_delta != 0:
+			continue
 		var edge := unit.edge_distance_to(other)
 		var oid := other.get_id()
-		if edge < best_any_dist or (is_equal_approx(edge, best_any_dist) and oid < best_any_id):
+		if _is_better_acquire(edge, col_delta, oid, best_any_dist, best_any_col, best_any_id):
 			best_any_dist = edge
+			best_any_col = col_delta
 			best_any_id = oid
 			best_any = other
-		if edge <= sight and (
-			edge < best_in_sight_dist
-			or (is_equal_approx(edge, best_in_sight_dist) and oid < best_in_sight_id)
+		if edge <= sight and _is_better_acquire(
+			edge, col_delta, oid, best_in_sight_dist, best_in_sight_col, best_in_sight_id
 		):
 			best_in_sight_dist = edge
+			best_in_sight_col = col_delta
 			best_in_sight_id = oid
 			best_in_sight = other
 	return best_in_sight if best_in_sight != null else best_any
+
+
+static func _is_better_acquire(
+	edge: float,
+	col_delta: int,
+	oid: int,
+	best_edge: float,
+	best_col: int,
+	best_id: int,
+) -> bool:
+	if col_delta < best_col:
+		return true
+	if col_delta > best_col:
+		return false
+	if edge < best_edge:
+		return true
+	if not is_equal_approx(edge, best_edge):
+		return false
+	return oid < best_id
 
 
 ## 兼容旧格步贪心（测例 / 工具）；并行主路径不用。

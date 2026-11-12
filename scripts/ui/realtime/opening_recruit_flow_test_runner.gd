@@ -90,7 +90,9 @@ func _test_opening_enter_recruit_ui() -> void:
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 33
-	session.configure(load(RECRUIT_PATH) as RecruitConfig, deck, economy, rng)
+	var recruit_cfg := (load(RECRUIT_PATH) as RecruitConfig).duplicate(true) as RecruitConfig
+	recruit_cfg.phase_seconds = 0.0
+	session.configure(recruit_cfg, deck, economy, rng)
 	session.require_nonempty_roster = true
 	session.begin(0.0)
 
@@ -274,7 +276,9 @@ func _test_arena_height_prepare_vs_recruit() -> void:
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 44
-	session.configure(load(RECRUIT_PATH) as RecruitConfig, deck, economy, rng)
+	var recruit_cfg2 := (load(RECRUIT_PATH) as RecruitConfig).duplicate(true) as RecruitConfig
+	recruit_cfg2.phase_seconds = 0.0
+	session.configure(recruit_cfg2, deck, economy, rng)
 	session.require_nonempty_roster = false
 	session.begin(0.2)
 	await battle.enter_recruit(session, 0.0)

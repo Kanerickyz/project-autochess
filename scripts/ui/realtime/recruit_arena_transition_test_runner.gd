@@ -108,7 +108,9 @@ func _test_recruit_arena_transition() -> void:
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	session.configure(recruit_config, deck, economy, rng)
+	var cfg := recruit_config.duplicate(true) as RecruitConfig
+	cfg.phase_seconds = 0.0
+	session.configure(cfg, deck, economy, rng)
 	session.begin(0.2)
 	_expect(session.get_candidates().size() == RecruitSession.CANDIDATE_COUNT, "3 candidates rolled")
 
