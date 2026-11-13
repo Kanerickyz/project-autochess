@@ -40,6 +40,8 @@ var armor_block: int = 0
 var combat_temp_armor: int = 0
 ## 本场远程投射普攻命中加伤（徽章等；护甲前；遭遇结束随实例销毁）。
 var combat_ranged_hit_bonus: int = 0
+## 本场攻击间隔倍率（1=原速；叠乘缩短；遭遇结束随实例销毁）。
+var combat_attack_interval_factor: float = 1.0
 ## 自上次暴击后连续未暴击普攻次数（保底用；玩家不可见；遭遇内）。
 var crit_miss_streak: int = 0
 ## 弱引用回写队伍装备（耗尽销毁）；召唤物等无队伍条目时为空。
@@ -257,6 +259,25 @@ func get_effective_max_hp() -> int:
 	if stats == null:
 		return 1
 	return maxi(1, stats.max_hp + stat_modifiers.get_flat_bonus(&"max_hp"))
+
+
+## 本场有效攻击间隔（秒）；叠乘缩短后仍不低于 0.05。
+func get_effective_attack_interval() -> float:
+	if stats == null:
+		return 1.0
+	var factor := maxf(0.05, combat_attack_interval_factor)
+	return maxf(0.05, stats.attack_interval * factor)
+
+
+## value=缩短百分比（3 → 乘以 0.97）；可叠乘。
+func scale_combat_attack_interval(reduce_percent: int) -> void:
+	var p := clampi(reduce_percent, 0, 95)
+	if p <= 0:
+		return
+	combat_attack_interval_factor = maxf(
+		0.05,
+		combat_attack_interval_factor * (1.0 - float(p) / 100.0),
+	)
 
 
 func get_armor_block() -> int:

@@ -181,7 +181,7 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	rt.snap_to_cell(cell)
 	rt.spawn_time = elapsed_seconds
 	## 入场默认不能出手：先走满一轮 attack_interval。
-	rt.attack_timer = maxf(0.05, rt.get_stats().attack_interval)
+	rt.attack_timer = rt.get_attack_interval()
 	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
 		rt.skip_deploy()
@@ -626,7 +626,7 @@ func advance_attack_windup_under_hold(dt: float) -> void:
 			rt.attack_timer -= dt
 		if rt.attack_timer <= RtUnitBrain.TIME_EPSILON:
 			_fire(rt)
-			rt.attack_timer += maxf(0.05, rt.get_stats().attack_interval)
+			rt.attack_timer += rt.get_attack_interval()
 
 
 func _fire(rt: RtUnit) -> void:

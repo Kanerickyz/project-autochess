@@ -99,6 +99,13 @@ func get_stats() -> UnitStats:
 	return unit.stats
 
 
+## 含本场技能叠乘缩短后的攻击间隔。
+func get_attack_interval() -> float:
+	if unit != null:
+		return unit.get_effective_attack_interval()
+	return maxf(0.05, get_stats().attack_interval)
+
+
 func get_move_speed() -> float:
 	if unit != null and unit.cannot_move:
 		return 0.0

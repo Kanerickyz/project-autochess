@@ -1187,6 +1187,20 @@ func _execute_action(
 			_bus.emit_event(CombatEvents.ON_ACTOR_TURN_REFRESH, refresh)
 			print("[Effect] %s granted actor turn refresh" % owner.id)
 			executed = true
+		EffectAction.Type.SCALE_ATTACK_INTERVAL:
+			if not target.is_alive():
+				return false
+			## 不走升星倍率：value 即缩短百分比。
+			var reduce_pct := maxi(0, action.value)
+			if reduce_pct <= 0:
+				return false
+			var before := target.get_effective_attack_interval()
+			target.scale_combat_attack_interval(reduce_pct)
+			print(
+				"[Effect] %s attack_interval ×(1-%d%%) -> %.3f (was %.3f)"
+				% [target.id, reduce_pct, target.get_effective_attack_interval(), before]
+			)
+			executed = true
 		EffectAction.Type.ADD_BANKED_TURN_REFRESH_CHARGE:
 			if owner == null or not owner.is_alive():
 				return false
