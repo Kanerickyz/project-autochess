@@ -97,13 +97,23 @@ func _test_enter_badge_pick() -> void:
 	_expect(finished.size() == 1 and finished[0] == true, "pick emits picked=true")
 	_expect(run.has_badge(want_id), "run_state has picked id")
 	_expect(battle.get_owned_badge_ids().has(want_id), "battle owned synced")
-	var bar := battle.get_node_or_null("BadgeOwnedBar") as BadgeOwnedBar
+	var bar := battle.find_child("BadgeOwnedBar", true, false) as BadgeOwnedBar
 	_expect(bar != null, "owned bar exists")
+	## 须在 Dock 内分区，不能用屏幕底锚点盖住倍速按钮。
+	_expect(
+		bar.get_parent() != null and str(bar.get_parent().name) == "DockBox",
+		"owned bar parented under DockBox"
+	)
 	## 持有条在准备/招募/战斗显示；IDLE 过渡可隐藏。强制进准备刷新底栏。
 	battle.set_owned_badge_ids(run.get_owned_badge_ids())
 	battle.call("_set_phase", RealtimeBattleController.Phase.PREPARE)
 	await process_frame
 	_expect(bar.visible, "owned bar visible in PREPARE with badges")
+	## 战斗胶带行可见时，持有条应在其上方（DockBox 更小的 child index）。
+	battle.call("_ensure_tape_controls")
+	var tape := battle.find_child("TapeRow", true, false) as Control
+	if tape != null and bar.get_parent() == tape.get_parent():
+		_expect(bar.get_index() < tape.get_index(), "owned bar above TapeRow in DockBox")
 	battle.queue_free()
 	await process_frame
 
@@ -128,7 +138,7 @@ func _test_pick_long_press_info_when_owned_empty() -> void:
 	await process_frame
 	var info := overlay.get_node_or_null("PickInfoCard") as CanvasItem
 	_expect(info != null and info.visible, "pick info card visible with empty owned")
-	var bar := battle.get_node_or_null("BadgeOwnedBar") as BadgeOwnedBar
+	var bar := battle.find_child("BadgeOwnedBar", true, false) as BadgeOwnedBar
 	if bar != null:
 		bar.show_info_for(cand)
 		_expect(bar.visible, "owned bar forced visible for info fallback")

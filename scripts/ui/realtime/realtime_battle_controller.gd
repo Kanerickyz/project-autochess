@@ -594,12 +594,19 @@ func _ensure_synergy_tag_hud() -> void:
 
 
 func _ensure_badge_owned_bar() -> void:
-	if _badge_owned_bar != null:
+	if _badge_owned_bar != null and is_instance_valid(_badge_owned_bar):
 		return
 	_badge_owned_bar = BadgeOwnedBar.new()
 	_badge_owned_bar.name = "BadgeOwnedBar"
-	_badge_owned_bar.z_index = 55
-	add_child(_badge_owned_bar)
+	## 进 DockBox 顶端一行：与胶带/开战按钮分区，避免盖住「倍速」。
+	var dock_box: Node = null
+	if _dock != null:
+		dock_box = _dock.get_node_or_null("DockBox")
+	if dock_box != null:
+		dock_box.add_child(_badge_owned_bar)
+		dock_box.move_child(_badge_owned_bar, 0)
+	else:
+		add_child(_badge_owned_bar)
 
 
 func _ensure_badge_pick_overlay() -> void:
