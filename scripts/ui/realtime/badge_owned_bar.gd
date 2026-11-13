@@ -1,13 +1,14 @@
 class_name BadgeOwnedBar
 extends Control
 ## 招募 / 准备 / 战斗底部持有徽章横排；长按弹出说明。
+## 挂在 DockBox 内作为独立行，不叠在上一动/倍速/下一动按钮上。
 
 signal badge_long_pressed(badge: BadgeData)
 
 const ICON_SIZE := 36.0
 const GAP := 8.0
 const LONG_PRESS_SEC := 0.45
-const PAD := 8.0
+const ROW_HEIGHT := 44.0
 
 var _row: HBoxContainer
 var _info: PanelContainer
@@ -21,11 +22,9 @@ var _long_fired: bool = false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	offset_top = -56.0
-	offset_bottom = -8.0
-	offset_left = 12.0
-	offset_right = -12.0
+	## Dock 内流式布局：不要用屏幕底锚点（会盖住倍速等按钮）。
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
 	_build()
 	visible = false
 	set_process(false)
@@ -36,7 +35,7 @@ func _build() -> void:
 	_row.name = "OwnedRow"
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_row.add_theme_constant_override("separation", int(GAP))
-	_row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_row)
 
@@ -82,8 +81,10 @@ func set_owned_badges(badges: Array[BadgeData]) -> void:
 	hide_info()
 	if _badges.is_empty():
 		visible = false
+		custom_minimum_size = Vector2(0.0, 0.0)
 		return
 	visible = true
+	custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
 	for i in _badges.size():
 		var badge: BadgeData = _badges[i]
 		var icon := BadgeCircleDraw.new()
@@ -104,10 +105,11 @@ func show_info_for(badge: BadgeData) -> void:
 		return
 	## 三选一阶段持有可为空：仍须显示说明卡，不能因空列表把整条藏死。
 	visible = true
+	custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
 	_info_title.text = badge.display_name
 	_info_body.text = "%s\n%s" % [badge.get_condition_label(), badge.effect_text]
 	_info.reset_size()
-	## 底栏上方居中。
+	## 本行上方居中（向 Arena 方向弹出，不挡 Dock 按钮）。
 	_info.position = Vector2(
 		(size.x - _info.get_combined_minimum_size().x) * 0.5,
 		-(_info.get_combined_minimum_size().y + 12.0),
