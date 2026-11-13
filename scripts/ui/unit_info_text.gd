@@ -101,6 +101,22 @@ static func get_display_name_from_unit_data(data: UnitData) -> String:
 	return "未知"
 
 
+## 介绍卡侧栏用：已知职业返回词表名；空 / 未知返回空串。
+static func get_occupation_label_from_unit_data(data: UnitData) -> String:
+	if data == null:
+		return ""
+	var occ := str(data.occupation).strip_edges()
+	if not SynergyOccupations.is_known(occ):
+		return ""
+	return occ
+
+
+static func get_occupation_label(unit: UnitInstance) -> String:
+	if unit == null:
+		return ""
+	return get_occupation_label_from_unit_data(unit.unit_data)
+
+
 static func get_skills_block_from_unit_data(
 	data: UnitData, level: int = 1, with_stat_icons: bool = false
 ) -> String:

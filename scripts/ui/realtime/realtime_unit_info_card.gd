@@ -160,7 +160,7 @@ func _init() -> void:
 	column.add_child(_skills_label)
 
 
-## info: {name, side_player, attack, hp, skills, texture?, tier?, recruit_cost?, recruit_cost_affordable?}
+## info: {name, side_player, attack, hp, skills, texture?, tier?, occupation?, recruit_cost?, recruit_cost_affordable?}
 ## 物品：{is_item, kind_label, cost, armor?, skills, texture?} — 隐藏攻血标，侧栏写种类与价格。
 ## anchor: 单位贴图头顶（父节点本地坐标）；bounds: 可放置范围。
 ## slide_dir: 滑动切换水平方向（-1 左 / 0 首次弹出 / +1 右），小丑牌式倾斜用。
@@ -371,7 +371,13 @@ func _apply_content(info: Dictionary) -> void:
 	else:
 		var tier := int(info.get("tier", 0))
 		var side := "我方" if is_player else "敌方"
-		_side_label.text = "%s · T%d" % [side, tier] if tier > 0 else side
+		var occupation := String(info.get("occupation", "")).strip_edges()
+		var parts: PackedStringArray = [side]
+		if tier > 0:
+			parts.append("T%d" % tier)
+		if not occupation.is_empty():
+			parts.append(occupation)
+		_side_label.text = " · ".join(parts)
 		_side_label.add_theme_color_override("font_color", PLAYER_ACCENT if is_player else ENEMY_ACCENT)
 	_style.border_color = INK
 	_attack_badge.visible = not is_item
