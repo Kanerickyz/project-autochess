@@ -2458,7 +2458,9 @@ func inspect_at(local_pos: Vector2) -> Dictionary:
 		var center: Vector2 = info["center"]
 		var feet_y := center.y + px * 0.38
 		var badge_h := get_fitted_stat_badge_size(px, 2).y
-		var hit := Rect2(center.x - px * 0.55, feet_y - px * 1.6, px * 1.1, px * 1.6 + badge_h * 2.35)
+		var hit_half_w := float(info.get("inspect_hit_half_w", px * 0.55))
+		var hit_w := hit_half_w * 2.0
+		var hit := Rect2(center.x - hit_half_w, feet_y - px * 1.6, hit_w, px * 1.6 + badge_h * 2.35)
 		if not hit.has_point(local_pos):
 			continue
 		var d := local_pos.distance_squared_to(center)
@@ -2493,17 +2495,27 @@ func _collect_inspectables() -> Array[Dictionary]:
 			var cell: Vector2i = info_dict.get("cell", NO_CELL)
 			if cell == NO_CELL:
 				continue
-			var tile := Vector2(cell) + Vector2(0.5, 0.5)
+			var unit: UnitData = null
 			var deck_entry: DeckEntry = info_dict.get("deck_entry") as DeckEntry
-			if deck_entry != null and deck_entry.unit != null:
-				out.append(_info_from_entry(deck_entry, tile_to_local(tile), "catalog:%d" % i))
-				continue
-			var unit: UnitData = info_dict.get("unit") as UnitData
+			if deck_entry != null:
+				unit = deck_entry.unit
+			else:
+				unit = info_dict.get("unit") as UnitData
 			if unit == null:
 				continue
-			out.append(_info_from_unit_data(
-				unit, tile_to_local(tile), "catalog:%d" % i, catalog_preview_level
-			))
+			var tile := footprint_center_tile(cell, unit)
+			var center_local := tile_to_local(tile)
+			var hit_hw := get_cell_px() * 0.5 * float(maxi(1, unit.footprint_w))
+			if deck_entry != null:
+				var packed := _info_from_entry(deck_entry, center_local, "catalog:%d" % i)
+				packed["inspect_hit_half_w"] = hit_hw
+				out.append(packed)
+			else:
+				var packed := _info_from_unit_data(
+					unit, center_local, "catalog:%d" % i, catalog_preview_level
+				)
+				packed["inspect_hit_half_w"] = hit_hw
+				out.append(packed)
 		return out
 	if recruit_active:
 		if recruit_team_slots != null:
@@ -2518,18 +2530,18 @@ func _collect_inspectables() -> Array[Dictionary]:
 			var unit: UnitData = cand.get("unit") as UnitData
 			var cell: Vector2i = cand.get("cell", NO_CELL)
 			if unit != null and cell != NO_CELL:
-				var tile := Vector2(cell) + Vector2(0.5, 0.5)
+				var tile := footprint_center_tile(cell, unit)
 				var cand_i := int(cand.get("index", -1))
-				out.append(
-					_info_from_unit_data(
-						unit,
-						tile_to_local(tile) + ally_off,
-						"cand:%d" % cand_i,
-						1,
-						int(cand.get("cost", 0)),
-						bool(cand.get("affordable", true)),
-					)
+				var packed := _info_from_unit_data(
+					unit,
+					tile_to_local(tile) + ally_off,
+					"cand:%d" % cand_i,
+					1,
+					int(cand.get("cost", 0)),
+					bool(cand.get("affordable", true)),
 				)
+				packed["inspect_hit_half_w"] = get_cell_px() * 0.5 * float(maxi(1, unit.footprint_w))
+				out.append(packed)
 		for oi in recruit_items.size():
 			var item_info := _info_from_recruit_item_index(oi, ally_off)
 			if not item_info.is_empty():
@@ -3506,16 +3518,27 @@ func set_catalog_deck_entries(
 	catalog_preview_level = 1
 	catalog_units.clear()
 	var cols := maxi(1, columns)
-	var placed := 0
+	var deck_entries: Array[DeckEntry] = []
 	for entry in entries:
-		if entry == null or entry.unit == null:
+		if entry != null and entry.unit != null:
+			deck_entries.append(entry)
+	var unit_list: Array = []
+	for entry in deck_entries:
+		unit_list.append(entry.unit)
+	var layout := layout_catalog_cells_for_units(unit_list, cols)
+	var max_row := -1
+	for slot in layout:
+		if not (slot is Dictionary):
 			continue
-		catalog_units.append({
-			"deck_entry": entry,
-			"cell": Vector2i(placed % cols, int(placed / cols)),
-		})
-		placed += 1
-	var rows := maxi(1, int(ceili(float(maxi(1, placed)) / float(cols))))
+		var cell: Vector2i = (slot as Dictionary).get("cell", NO_CELL)
+		max_row = maxi(max_row, cell.y)
+		var src_i: int = (slot as Dictionary).get("source_index", -1)
+		if src_i >= 0 and src_i < deck_entries.size():
+			catalog_units.append({
+				"deck_entry": deck_entries[src_i],
+				"cell": cell,
+			})
+	var rows := maxi(1, max_row + 1)
 	board_size = Vector2i(cols, rows)
 	queue_redraw()
 
@@ -3543,20 +3566,28 @@ func set_catalog_units(
 		rows = maxi(1, max_rows)
 	else:
 		rows = maxi(4, needed_rows)
-	board_size = Vector2i(cols, rows)
-	var capacity := cols * rows
-	var placed := 0
-	for i in units.size():
-		if placed >= capacity:
-			break
-		var unit := units[i]
+	var layout := layout_catalog_cells_for_units(units, cols, rows if max_rows > 0 else -1)
+	for slot in layout:
+		if not (slot is Dictionary):
+			continue
+		var unit_i: int = (slot as Dictionary).get("source_index", -1)
+		if unit_i < 0 or unit_i >= units.size():
+			continue
+		var unit := units[unit_i]
 		if unit == null:
 			continue
 		catalog_units.append({
 			"unit": unit,
-			"cell": Vector2i(placed % cols, int(placed / cols)),
+			"cell": (slot as Dictionary).get("cell", NO_CELL),
 		})
-		placed += 1
+	if max_rows <= 0:
+		var max_row := -1
+		for item in catalog_units:
+			if item is Dictionary:
+				var c: Vector2i = (item as Dictionary).get("cell", NO_CELL)
+				max_row = maxi(max_row, c.y)
+		rows = maxi(4, max_row + 1)
+	board_size = Vector2i(cols, rows)
 	queue_redraw()
 
 
@@ -4118,7 +4149,10 @@ func _draw_catalog_units(px: float) -> void:
 			unit = deck_entry.unit
 		if cell == NO_CELL or unit == null:
 			continue
-		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px, px))
+		var fw := float(maxi(1, unit.footprint_w))
+		var fh := float(maxi(1, unit.footprint_h))
+		var fp_span := maxf(fw, fh)
+		var cell_rect := Rect2(rect.position + Vector2(cell) * px, Vector2(px * fw, px * fh))
 		## 纯目录：卡牌底板略厚。角色库：浅描边让动态格底透出。
 		if catalog_plain_backdrop:
 			draw_rect(cell_rect.grow(-2.0), Color(0.14, 0.17, 0.22, 0.95))
@@ -4126,7 +4160,7 @@ func _draw_catalog_units(px: float) -> void:
 		else:
 			draw_rect(cell_rect, Color(RECRUIT_CAND_EMPTY, 0.12))
 			draw_rect(cell_rect, Color(RECRUIT_CAND_BORDER, 0.40), false, 1.0)
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var center_tile := footprint_center_tile(cell, unit)
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
@@ -4136,8 +4170,24 @@ func _draw_catalog_units(px: float) -> void:
 		)
 		var unit_id := deck_entry.get_unit_id() if deck_entry != null else unit.id
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR, 0.95, label, px, true, Vector2.ZERO,
-			true, unit_id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit_id, cell.x + cell.y * 8),
+			center_tile,
+			radius,
+			vwx,
+			vhy,
+			PLAYER_COLOR,
+			0.95,
+			label,
+			px,
+			true,
+			Vector2.ZERO,
+			true,
+			unit_id,
+			null,
+			Vector2.ZERO,
+			fp_span,
+			fw,
+			fh,
+			_idle_seed_for(unit_id, cell.x + cell.y * 8),
 		)
 		var atk := 0
 		var hp := 0
@@ -4234,7 +4284,13 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			var cell_i: Vector2i = (cand as Dictionary).get("cell", NO_CELL)
 			if cell_i == NO_CELL:
 				continue
-			var c := tile_to_local(Vector2(cell_i) + Vector2(0.5, 0.5)) + off
+			var cand_unit: UnitData = (cand as Dictionary).get("unit") as UnitData
+			var focus_tile := (
+				footprint_center_tile(cell_i, cand_unit)
+				if cand_unit != null
+				else Vector2(cell_i) + Vector2(0.5, 0.5)
+			)
+			var c := tile_to_local(focus_tile) + off
 			if c.distance_squared_to(focus_c) <= hit_r2:
 				focus_at = idx
 				break
@@ -4256,14 +4312,33 @@ func _draw_recruit_candidates(px: float, off: Vector2) -> void:
 			continue
 		## 拖拽中的候选人在原位半透明；跟手剪影由 _draw_drag_follower 画。
 		var alpha := DRAG_SOURCE_ALPHA if index == _recruit_drag_index else 0.95
-		var center_tile := Vector2(cell) + Vector2(0.5, 0.5)
+		var fw := float(maxi(1, unit.footprint_w))
+		var fh := float(maxi(1, unit.footprint_h))
+		var fp_span := maxf(fw, fh)
+		var center_tile := footprint_center_tile(cell, unit)
 		var stats := unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR.lightened(0.15), alpha, unit.display_name, px, true, off,
-			true, unit.id, null, Vector2.ZERO, 1.0, _idle_seed_for(unit.id, index),
+			center_tile,
+			radius,
+			vwx,
+			vhy,
+			PLAYER_COLOR.lightened(0.15),
+			alpha,
+			unit.display_name,
+			px,
+			true,
+			off,
+			true,
+			unit.id,
+			null,
+			Vector2.ZERO,
+			fp_span,
+			fw,
+			fh,
+			_idle_seed_for(unit.id, index),
 		)
 		var atk := stats.attack if stats != null else 0
 		var hp := stats.max_hp if stats != null else 0
@@ -4687,6 +4762,45 @@ func _footprint_cell_spans(
 		return Vector2(maxf(1.0, footprint_w_cells), maxf(1.0, footprint_h_cells))
 	var legacy := maxf(1.0, footprint_span)
 	return Vector2(legacy, legacy)
+
+
+## 锚格 + 单位足迹 → 绘制/命中用的逻辑 tile 中心（2×1 建筑横跨两列）。
+func footprint_center_tile(anchor_cell: Vector2i, unit: UnitData) -> Vector2:
+	var fw := 1.0
+	var fh := 1.0
+	if unit != null:
+		fw = float(maxi(1, unit.footprint_w))
+		fh = float(maxi(1, unit.footprint_h))
+	return Vector2(float(anchor_cell.x) + fw * 0.5, float(anchor_cell.y) + fh * 0.5)
+
+
+## 角色库分页：多格列建筑占 footprint_w 列，行内不足时换行。
+## max_rows≤0 不限制行数；否则 y≥max_rows 的条目丢弃。
+static func layout_catalog_cells_for_units(
+	units: Array,
+	columns: int,
+	max_rows: int = -1,
+) -> Array:
+	var cols := maxi(1, columns)
+	var out: Array = []
+	var col := 0
+	var row := 0
+	for i in units.size():
+		var unit := units[i] as UnitData
+		if unit == null:
+			continue
+		var fw := maxi(1, unit.footprint_w)
+		if col + fw > cols:
+			col = 0
+			row += 1
+		if max_rows > 0 and row >= max_rows:
+			break
+		out.append({"source_index": i, "cell": Vector2i(col, row)})
+		col += fw
+		if col >= cols:
+			col = 0
+			row += 1
+	return out
 
 
 func _draw_body(
