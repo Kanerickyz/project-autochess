@@ -1586,7 +1586,10 @@ func _spawn_unit(
 	if origin == Vector2i(-1, -1):
 		origin = payload.target.grid_pos
 	var prefer_player_half := team == UnitInstance.Team.PLAYER
-	if not _has_spawn_cell_available(prefer_player_half):
+	var death_replace_at_origin := not payload.target.is_alive()
+	if death_replace_at_origin and origin != Vector2i(-1, -1):
+		_grid.remove_unit(payload.target)
+	elif not _has_spawn_cell_available(prefer_player_half):
 		return false
 	var summon_context := owner if owner != null else payload.target
 	## 每次数以 spawn_count 为准（召魂等同，无额外只数规则）。

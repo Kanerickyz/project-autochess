@@ -441,6 +441,8 @@ static func collect_info_attachments_from_unit(
 static func get_skills_block(unit: UnitInstance, with_stat_icons: bool = false) -> String:
 	if unit == null or unit.unit_data == null:
 		return "无技能"
+	if unit.combat_abilities_suppressed:
+		return "无技能"
 
 	var lines: PackedStringArray = []
 	if unit.unit_data.ability != null:
