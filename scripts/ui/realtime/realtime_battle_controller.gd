@@ -3297,7 +3297,7 @@ func _refresh_recruit_hud() -> void:
 	var gold := _recruit_session.economy.gold if _recruit_session.economy != null else 0
 	var deck := _recruit_session.deck
 	var roster_n := deck.size() if deck != null else 0
-	var seated_n := deck.get_seated_count() if deck != null else 0
+	var seated_n := deck.get_seated_population() if deck != null else 0
 	var bench_n := deck.get_bench_count() if deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
 	if _recruit_hint != null:
@@ -3331,7 +3331,7 @@ func _refresh_recruit_hud() -> void:
 	if _phase_label != null:
 		_phase_label.text = "招募"
 	if _pop_label != null:
-		_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
+		_pop_label.text = "人口 %d/%d 备战 %d/%d" % [
 			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
 	if _encounter_label != null:
@@ -3555,7 +3555,9 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 		"roster_full", "need_replace":
 			_recruit_hint.text = "拥有已满：请出售腾位，或点选上区角色替换"
 		"seat_cap_full":
-			_recruit_hint.text = "上场席位已满"
+			_recruit_hint.text = "上场人口已满（建筑占 2）"
+		"seat_occupied":
+			_recruit_hint.text = "该格不够放此单位（建筑需连续 2 格）"
 		_:
 			_recruit_hint.text = "无法招募（%s）" % reason
 
@@ -4464,9 +4466,9 @@ func _refresh_hud() -> void:
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
-	var seated_n := _slots.occupied_count()
+	var seated_n := _slots.get_occupied_population()
 	var bench_n := _deck_state.get_bench_count() if _deck_state != null else 0
-	_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
+	_pop_label.text = "人口 %d/%d 备战 %d/%d" % [
 		seated_n,
 		_deploy_cap,
 		bench_n,

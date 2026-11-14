@@ -294,10 +294,11 @@ func try_recruit(
 	## 点买与回退路径一律 prefer_bench=false：先空座，席位满再进备战。
 	var prefer_bench := false
 	if preferred >= 0:
-		if not deck.is_seat_free(preferred):
-			preferred = -1
-		elif not deck.can_seat_more() and not merge_overflow:
+		if not deck.can_seat_unit(unit) and not merge_overflow:
 			result["reason"] = "seat_cap_full"
+			return result
+		if not deck.is_seat_free_for_unit(preferred, unit):
+			result["reason"] = "seat_occupied"
 			return result
 
 	if not economy.spend(cost):
