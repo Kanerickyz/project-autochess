@@ -3838,6 +3838,8 @@ func _draw_map_shop_offers(px: float, off: Vector2) -> void:
 			null,
 			Vector2.ZERO,
 			1.0,
+			-1.0,
+			-1.0,
 			_idle_seed_for("map_shop:%d" % i, i),
 			icon,
 		)
@@ -3874,6 +3876,8 @@ func _draw_map_shop_offer_drop_hint(px: float, mid: int) -> void:
 		null,
 		Vector2.ZERO,
 		1.0,
+		-1.0,
+		-1.0,
 		-1,
 		_drag_texture,
 	)
@@ -4805,6 +4809,8 @@ func _draw_recruit_prop(
 		null,
 		Vector2.ZERO,
 		1.0,
+		-1.0,
+		-1.0,
 		idle_seed,
 		tex,
 	)
@@ -5207,6 +5213,8 @@ func _draw_drag_follower(px: float) -> void:
 		_drag_pose,
 		null,
 		1.0,
+		-1.0,
+		-1.0,
 		-1,
 		_drag_texture,
 	)
