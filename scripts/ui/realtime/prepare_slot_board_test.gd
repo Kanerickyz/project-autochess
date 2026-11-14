@@ -162,6 +162,10 @@ static func _test_footprint_display_center_span2() -> bool:
 	var indices := board.get_footprint_seat_indices(0, unit)
 	if indices.size() != 2 or indices[0] != 0 or indices[1] != 1:
 		return false
+	var cell0 := board.get_cell(0)
+	var cell1 := board.get_cell(1)
+	if cell0.y != cell1.y or cell1.x != cell0.x + 1:
+		return false
 	var c0 := board.get_display_center(0)
 	var c1 := board.get_display_center(1)
 	var mid := board.get_footprint_display_center(0, unit)
