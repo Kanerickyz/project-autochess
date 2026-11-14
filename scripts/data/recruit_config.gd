@@ -9,6 +9,7 @@ const DEFAULT_EXIT_SECONDS := 0.5
 const DEFAULT_ENTER_SECONDS := 0.45
 ## 招募阶段限时（秒）；≤0 关闭自动结束。
 const DEFAULT_PHASE_SECONDS := 0.0
+const REALTIME_UNITS_DIR := "res://resources/units/realtime/"
 
 @export_range(0, 20, 1) var refresh_cost: int = DEFAULT_REFRESH_COST
 @export_range(1, 20, 1) var default_unit_cost: int = DEFAULT_UNIT_COST
@@ -21,6 +22,9 @@ const DEFAULT_PHASE_SECONDS := 0.0
 @export var character_pool: Array[UnitData] = []
 ## Legacy alias for ShopPoolConfig-style resources.
 @export var pool: Array[UnitData] = []
+
+static var _runtime_unit_pool: Array[UnitData] = []
+static var _logged_runtime_fallback: bool = false
 
 
 func get_refresh_cost() -> int:
@@ -41,11 +45,51 @@ func get_phase_seconds() -> float:
 
 
 func get_unit_pool() -> Array[UnitData]:
-	if not unit_pool.is_empty():
-		return unit_pool
-	if not character_pool.is_empty():
-		return character_pool
-	return pool
+	var merged := _merge_exported_pools()
+	if not merged.is_empty():
+		return merged
+	if _runtime_unit_pool.is_empty():
+		_runtime_unit_pool = _scan_realtime_player_units()
+	if not _runtime_unit_pool.is_empty() and not _logged_runtime_fallback:
+		_logged_runtime_fallback = true
+		push_warning(
+			"RecruitConfig: exported unit_pool empty; using runtime scan (%d units)"
+			% _runtime_unit_pool.size()
+		)
+	return _runtime_unit_pool.duplicate()
+
+
+func _merge_exported_pools() -> Array[UnitData]:
+	var result: Array[UnitData] = []
+	for source in [unit_pool, character_pool, pool]:
+		for unit in source:
+			if unit != null:
+				result.append(unit)
+	return result
+
+
+static func _scan_realtime_player_units() -> Array[UnitData]:
+	var result: Array[UnitData] = []
+	var dir := DirAccess.open(REALTIME_UNITS_DIR)
+	if dir == null:
+		push_warning("RecruitConfig: cannot open %s" % REALTIME_UNITS_DIR)
+		return result
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".tres"):
+			var path := REALTIME_UNITS_DIR.path_join(file_name)
+			var unit := load(path) as UnitData
+			if unit != null and unit.team_default == UnitInstance.Team.PLAYER:
+				result.append(unit)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	result.sort_custom(func(a: UnitData, b: UnitData) -> bool:
+		if a.tier != b.tier:
+			return a.tier < b.tier
+		return String(a.display_name) < String(b.display_name)
+	)
+	return result
 
 
 ## 合同名 shop_cost → As-Is 字段 UnitData.cost；≤0 用默认。

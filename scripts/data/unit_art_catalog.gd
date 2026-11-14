@@ -33,4 +33,7 @@ func get_archetype(unit_id: String) -> StringName:
 
 func get_texture(unit_id: String, is_player: bool) -> Texture2D:
 	var table := player_textures if is_player else enemy_textures
-	return table.get(get_archetype(unit_id)) as Texture2D
+	var tex := table.get(get_archetype(unit_id)) as Texture2D
+	if tex == null or tex.get_width() < 1 or tex.get_height() < 1:
+		return null
+	return tex

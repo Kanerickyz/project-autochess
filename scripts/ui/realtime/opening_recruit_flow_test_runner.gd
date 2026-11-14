@@ -59,9 +59,13 @@ func _test_empty_starter_deck_and_session_gate() -> void:
 	var session := RecruitSession.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 101
-	session.configure(load(RECRUIT_PATH) as RecruitConfig, deck, economy, rng)
+	var recruit_cfg := load(RECRUIT_PATH) as RecruitConfig
+	session.configure(recruit_cfg, deck, economy, rng)
+	var cfg_pool := recruit_cfg.get_unit_pool()
+	_expect(not cfg_pool.is_empty(), "recruit config unit pool non-empty")
 	session.require_nonempty_roster = true
 	session.begin(0.0)
+	_expect(session.get_candidates().any(func(u): return u != null), "opening: at least one candidate unit")
 	_expect(not session.can_skip(), "opening: can_skip false")
 	_expect(not session.can_finish(), "opening: can_finish false while empty")
 	_expect(session.get_candidates().size() == RecruitSession.CANDIDATE_COUNT, "opening: 3 candidates")
@@ -100,6 +104,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	await process_frame
 
 	var arena := battle.get_arena()
+	_expect(not arena.clip_contents, "arena does not clip recruit/catalog draw")
 	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "opening recruit: ally half slide reset")
 	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "opening recruit: enemy half slide reset")
 	var dock := battle.get_node_or_null("Layout/Dock") as Control

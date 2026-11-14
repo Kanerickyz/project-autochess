@@ -344,7 +344,8 @@ const RECRUIT_LOCK_HOT := Color(0.95, 0.80, 0.30, 0.45)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	clip_contents = true
+	## 招募虚拟货架行、半场滑入、剪影高度都会超出格框；裁剪会整屏看不见单位。
+	clip_contents = false
 	resized.connect(queue_redraw)
 	_motion.name = "UnitMotion"
 	add_child(_motion)
@@ -428,26 +429,32 @@ func _notification(what: int) -> void:
 
 
 func _bench_layout_tiles() -> float:
-	## 招募 / 地图商店：棋盘外虚拟货架行需要额外高度，否则格子被裁切。
-	if recruit_active:
-		return _overflow_layout_tiles_for_cells(_recruit_layout_max_y())
-	if map_shop_active:
-		return _overflow_layout_tiles_for_cells(_map_shop_layout_max_y())
+	## 招募 / 地图商店：虚拟货架行由 _content_row_count() 计入棋盘高度。
+	if recruit_active or map_shop_active:
+		return 0.0
 	if not bench_visible:
 		return 0.0
 	return BENCH_GAP_TILES + BENCH_ROW_TILES
+
+
+## 绘制与缩放用的逻辑行数（含招募/商店棋盘外货架行）。
+func _content_row_count() -> int:
+	if catalog_active:
+		return maxi(1, board_size.y)
+	var layout_max := -1
+	if recruit_active:
+		layout_max = _recruit_layout_max_y()
+	elif map_shop_active:
+		layout_max = _map_shop_layout_max_y()
+	if layout_max >= 0:
+		return maxi(maxi(1, board_size.y), layout_max + 1)
+	return maxi(1, board_size.y)
 
 
 func _content_safe_pad_tiles() -> float:
 	if recruit_active or map_shop_active:
 		return CONTENT_SAFE_PAD_TILES
 	return 0.0
-
-
-func _overflow_layout_tiles_for_cells(max_cell_y: int) -> float:
-	if max_cell_y < board_size.y:
-		return 0.0
-	return float(max_cell_y - board_size.y + 1)
 
 
 func _recruit_layout_max_y() -> int:
@@ -491,7 +498,7 @@ func get_cell_px() -> float:
 	if board_size.x <= 0 or board_size.y <= 0:
 		return 1.0
 	var pad := _content_safe_pad_tiles()
-	var content_rows := float(board_size.y) + _bench_layout_tiles() + pad * 2.0
+	var content_rows := float(_content_row_count()) + _bench_layout_tiles() + pad * 2.0
 	## 角色库 / 纯目录：按控件宽高直接铺格，避开背景树带 gutter（否则竖屏格忽大忽小）。
 	if catalog_active:
 		return maxf(1.0, minf(size.x / float(board_size.x), size.y / content_rows))
@@ -522,7 +529,8 @@ func _get_background_rect() -> Rect2:
 
 func get_board_rect() -> Rect2:
 	var px := get_cell_px()
-	var board_px := Vector2(board_size) * px
+	var rows := _content_row_count()
+	var board_px := Vector2(float(board_size.x) * px, float(rows) * px)
 	var bench_h := _bench_layout_tiles() * px
 	var pad_px := _content_safe_pad_tiles() * px
 	var total := Vector2(board_px.x, board_px.y + bench_h + pad_px * 2.0)
@@ -3687,6 +3695,7 @@ func _draw() -> void:
 		_draw_ghost(px, mid)
 	if _drag_visual_alive:
 		_draw_drag_follower(px)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_enchant_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:
@@ -4709,6 +4718,8 @@ func _draw_body(
 	var tex: Texture2D = override_tex
 	if tex == null and _art != null:
 		tex = _art.get_texture(unit_id, is_player)
+	if tex != null and tex.get_size().x < 1.0:
+		tex = null
 	if tex != null:
 		_draw_unit_sprite(
 			center,
