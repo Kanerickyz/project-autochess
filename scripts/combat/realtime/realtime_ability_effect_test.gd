@@ -52,7 +52,7 @@ static func run_all() -> bool:
 	_check("valkyrie_friend_summon_nearby_atk_hp_star2", _test_valkyrie_friend_summon_nearby_atk_hp_star2())
 	_check("gravewright_hurt_nearby_weak", _test_gravewright_hurt_nearby_weak())
 	_check("gravewright_hurt_nearby_weak_star2", _test_gravewright_hurt_nearby_weak_star2())
-	_check("berserker_kill_turn_refresh", _test_berserker_kill_turn_refresh())
+	_check("berserker_enemy_death_interval", _test_berserker_enemy_death_interval())
 	_check("hurt_gain_atk_on_damage", _test_hurt_gain_atk_on_damage())
 	_check("deal_damage_gain_atk", _test_deal_damage_gain_atk())
 	_check("deal_damage_extra_2", _test_deal_damage_extra_2())
@@ -576,41 +576,50 @@ static func _gravewright_hurt_nearby_weak_expect(star_level: int, expected_weak:
 	return true
 
 
-static func _test_berserker_kill_turn_refresh() -> bool:
+static func _test_berserker_enemy_death_interval() -> bool:
 	var data := _load_unit("res://resources/units/realtime/berserker.tres")
-	if data == null or data.ability == null or data.ability.id != "kill_grant_actor_turn_refresh":
-		push_error("berserker: ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "enemy_death_self_attack_interval_3pct":
+		push_error("berserker: enemy_death interval ability not mounted")
 		return false
 	var specs: Array = data.ability.effect_specs
 	if specs.is_empty() or specs[0] == null:
 		push_error("berserker: missing spec")
 		return false
-	if int(specs[0].max_triggers_per_combat) > 0:
-		push_error("berserker: max_triggers_per_combat must be unlimited (<=0)")
+	if str(specs[0].trigger) != String(CombatEvents.ON_ENEMY_DEATH):
+		push_error("berserker: trigger must be OnEnemyDeath")
 		return false
-	const BOARD := Vector2i(5, 4)
 	var sim := _new_sim()
-	sim.configure(BOARD, 803)
-	var killer_rt := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 3.5))
-	killer_rt.unit.stats.steps_per_turn = 1
-	var victim := sim.add_unit(
-		_dummy(UnitInstance.Team.ENEMY, 1, {"steps_per_turn": 0, "sight_range": 0.0}),
-		Vector2(3.5, 2.5),
+	sim.configure(ARENA, 803)
+	var berserker := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 24.5))
+	var base_iv := berserker.unit.get_effective_attack_interval()
+	var ally := sim.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 20, {"id": "ally_fodder", "steps_per_turn": 0}),
+		Vector2(8.5, 24.5),
+	)
+	var enemy := sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 20, {"id": "enemy_fodder", "steps_per_turn": 0}),
+		Vector2(9.5, 8.5),
+	)
+	sim.add_unit(
+		_dummy(UnitInstance.Team.ENEMY, 100000, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(2.5, 4.5),
 	)
 	sim.begin_combat()
-	var guard := 0
-	while victim.unit.is_alive() and guard < 400:
-		sim.advance_fixed_step()
-		guard += 1
-	if victim.unit.is_alive():
-		push_error("berserker refresh: victim should die")
+	if not sim._pipeline.apply_damage(null, ally, 999):
+		push_error("berserker: failed to kill ally fodder")
 		return false
-	## 并行：击杀续动武装下一次出手（attack_timer 清零），无「当前行动者」概念。
-	if killer_rt.attack_timer > RtUnitBrain.TIME_EPSILON and sim._turn_refresh_armed_instance_id != killer_rt.unit.instance_id:
-		push_error(
-			"berserker refresh: expected turn-refresh arm or ready attack_timer (timer=%.3f armed=%d)"
-			% [killer_rt.attack_timer, sim._turn_refresh_armed_instance_id]
-		)
+	sim._drain_effects()
+	if not is_equal_approx(berserker.unit.get_effective_attack_interval(), base_iv):
+		push_error("berserker: ally death must not shorten interval")
+		return false
+	if not sim._pipeline.apply_damage(null, enemy, 999):
+		push_error("berserker: failed to kill enemy fodder")
+		return false
+	sim._drain_effects()
+	var after := berserker.unit.get_effective_attack_interval()
+	var expect := maxf(0.05, base_iv * 0.97)
+	if not is_equal_approx(after, expect):
+		push_error("berserker: interval %.4f expected %.4f (3%% shorter)" % [after, expect])
 		return false
 	return true
 

@@ -95,7 +95,7 @@ static func decide(
 		unit.attack_timer -= dt
 		if unit.attack_timer <= TIME_EPSILON:
 			decision.fire = true
-			unit.attack_timer += maxf(0.05, stats.attack_interval)
+			unit.attack_timer += unit.get_attack_interval()
 		## 进距后允许微移贴脸，但不主动冲穿。
 		return decision
 
@@ -151,7 +151,7 @@ static func decide_boss_leader(
 			unit.attack_timer -= dt
 			if unit.attack_timer <= TIME_EPSILON:
 				decision.fire = true
-				unit.attack_timer += maxf(0.05, stats.attack_interval)
+				unit.attack_timer += unit.get_attack_interval()
 			return decision
 
 	if can_summon.is_valid() and bool(can_summon.call(unit)):

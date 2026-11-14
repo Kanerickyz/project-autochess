@@ -75,7 +75,8 @@
 | `turn_start_nearby_hp_small` | 固脉一剂 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，**周围一格**友方本场临时生命上限与当前各 **+2**（三合一后 **+8**；`merge_value_mult=4`） | **中庸** | （池内；药师已不挂载） | 医疗·加厚 |
 | `turn_start_nearby_enemies_apply_poison` | 药雾蚀敌 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，对**周围一格敌军**施加 **中毒 1 层**（三合一后 **3 层**；`merge_value_mult=3`） | **中庸** | 药师 | 异常·中毒·邻格施加；`NEARBY_ENEMIES`；见 [POISON_ARCHETYPE.md](./POISON_ARCHETYPE.md) |
 | `turn_start_strike_weakest` | 影袭落刃 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，瞬移至**当前生命最低**敌人邻格并对其造成技能伤害（1★ **2**；三合一升星后 **7**；不触发普攻连击） | **中庸～偏强** | 影刺 | 刺杀·斩后；**【新】** |
-| `kill_grant_actor_turn_refresh` | 血怒再袭 | 出手 · 条件稀有 | 否 | 自己击杀时，**重置本动步数并允许再普攻**（不触发自己回合开始技能；**每场无限次**） | **偏强** | 狂战士 | 收割·连动；`OnActorTurnRefresh` |
+| `kill_grant_actor_turn_refresh` | 血怒再袭 | 出手 · 条件稀有 | 否 | 自己击杀时，**重置本动步数并允许再普攻**（不触发自己回合开始技能；**每场无限次**） | **偏强** | （池内保留；狂战士已改挂） | 收割·连动；`OnActorTurnRefresh` |
+| `enemy_death_self_attack_interval_3pct` | 敌亡急攻 | 死亡 · 多次 | 否 | **敌方角色死亡**时，自身攻击间隔缩短 **3%**（本场叠乘；不走升星倍率） | **中庸** | 狂战士 | `SCALE_ATTACK_INTERVAL` |
 | `turn_start_devour_lr_allies` | 左右吞噬 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，消灭**正交左右邻格**友方，自身本场获得其**全部**有效攻击与生命上限（同步抬当前生命；经死亡管线，可触发友亡）。三合一后同规则且**排除首领**；吞取值**不**套全局 ×6（`merge_value_mult=1`） | **偏强** | 吞噬 | 献祭·吞纳；`ORTHOGONAL_LEFT_RIGHT_ALLIES` + `ABSORB_STATS_AND_KILL` |
 | `combat_start_grant_gold_2` | 发饷入袋 | 开场 · 一场一次 | 否 | **开战时**，玩家获得 **2** 金（三合一后 **6**；`merge_value_mult=3`） | **中庸** | 饷吏 | 经济·稳饷；仅玩家友方结算；敌方镜像空转 |
 | `hurt_grant_gold_1` | 血饷入袋 | 挨打 · 高频 | 否 | 自己受伤时，玩家获得 **1** 金（三合一后 **3**；`merge_value_mult=3`） | **中庸** | 血饷 | 经济·血饷；仅玩家友方结算 |

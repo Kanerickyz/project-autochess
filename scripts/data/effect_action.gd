@@ -38,6 +38,8 @@ enum Type {
 	CONVERT_KILL_TARGET_TO_ALLY,
 	## 本场临时护甲（可叠加；MAP_SHOP §5.1 受伤结算；不占用装备槽、不回写 DeckEntry）。
 	GRANT_COMBAT_ARMOR,
+	## 本场攻击间隔叠乘缩短：value=缩短百分比（3 → ×0.97）；不走升星倍率；下限见 UnitInstance。
+	SCALE_ATTACK_INTERVAL,
 }
 
 enum DamageMode {

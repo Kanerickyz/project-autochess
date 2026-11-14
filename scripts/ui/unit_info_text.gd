@@ -462,6 +462,8 @@ static func get_ability_description(
 		return "自己造成伤害时，再对随机敌人造成 3 次各 18 点的技能伤害"
 	if ability.id == "kill_grant_actor_turn_refresh":
 		return "击杀时，重置本动步数并允许再攻击一次（不触发自己回合开始技能；每场无限次）"
+	if ability.id == "enemy_death_self_attack_interval_3pct":
+		return "敌方角色死亡时，自身攻击间隔缩短 3%（可叠加；本场有效）"
 	if ability.id == "survive_turn_end_bank_turn_refresh":
 		if unit_level <= 1:
 			return (
@@ -787,6 +789,8 @@ static func format_action(
 			return "瞬移至目标邻格"
 		EffectAction.Type.GRANT_ACTOR_TURN_REFRESH:
 			return "重置本动并允许再攻击（每场无限次）"
+		EffectAction.Type.SCALE_ATTACK_INTERVAL:
+			return "攻击间隔缩短 %d%%" % maxi(0, action.value)
 		EffectAction.Type.ABSORB_STATS_AND_KILL:
 			return "消灭目标并获得其全部攻击与生命上限"
 		EffectAction.Type.FUSE_EXPLODE:
