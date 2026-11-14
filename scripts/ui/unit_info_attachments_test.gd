@@ -6,6 +6,7 @@ static func run_all() -> bool:
 	var passed := true
 	passed = _check("entry_skills_exclude_equipment", _test_entry_skills_exclude_equipment()) and passed
 	passed = _check("entry_equipment_attachment", _test_entry_equipment_attachment()) and passed
+	passed = _check("entry_emblem_attachment", _test_entry_emblem_attachment()) and passed
 	passed = _check("bold_skill_trigger_bbcode", _test_bold_skill_trigger_bbcode()) and passed
 	return passed
 
@@ -52,6 +53,32 @@ static func _test_entry_equipment_attachment() -> bool:
 		return false
 	var body := String(info.get("skills", ""))
 	return body.contains("2 / 6")
+
+
+static func _test_entry_emblem_attachment() -> bool:
+	var entry := DeckEntry.new()
+	var unit := UnitData.new()
+	unit.occupation = SynergyOccupations.WARRIOR
+	entry.unit = unit
+	var eq := EquipmentData.new()
+	eq.id = "armor_t1"
+	eq.display_name = "皮甲"
+	eq.armor_block = 4
+	entry.attach_equipment(eq)
+	var em := EquipmentData.new()
+	em.id = "emblem_tank"
+	em.display_name = "坦克纹章"
+	em.granted_occupation = SynergyOccupations.TANK
+	entry.occupation_emblems.append(em)
+	var attachments := UnitInfoText.collect_info_attachments_from_entry(entry, false)
+	if attachments.size() != 2:
+		return false
+	if String(attachments[0].get("attachment_kind_label", "")) != "装备":
+		return false
+	if String(attachments[1].get("attachment_kind_label", "")) != "转职":
+		return false
+	var body := String(attachments[1].get("skills", ""))
+	return body.contains("坦克") and body.contains("额外职业")
 
 
 static func _test_bold_skill_trigger_bbcode() -> bool:

@@ -1,6 +1,7 @@
 class_name MapShopService
 extends RefCounted
-## 地图商店规则：消耗品/装备货架、刷新、购买冲突 RNG、换座写回。
+## 地图商店规则：装备货架（护甲 + 转职纹章）、刷新、购买、换座写回。
+## 本切片货架不含消耗品行；consumable API 保留兼容（默认空货架）。
 
 signal shop_changed
 
@@ -38,7 +39,8 @@ func is_open() -> bool:
 
 func open_shop() -> void:
 	_open = true
-	roll_consumables()
+	## 本切片：只填充装备 5 槽；消耗品货架留空（API 仍可手动塞测）。
+	_consumable_offers.clear()
 	roll_equipment()
 	shop_changed.emit()
 
@@ -118,7 +120,12 @@ func roll_equipment() -> void:
 		_equipment_offers.append(pick)
 
 
+## 刷新货架：扣费后重抽装备 5 槽。方法名保留兼容旧调用。
 func try_refresh_consumables() -> Dictionary:
+	return try_refresh()
+
+
+func try_refresh() -> Dictionary:
 	var failed := {"result": BuyResult.FAILED, "reason": "failed"}
 	if not _open or _economy == null:
 		failed["reason"] = "shop_closed"
@@ -127,7 +134,8 @@ func try_refresh_consumables() -> Dictionary:
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
-	roll_consumables()
+	_consumable_offers.clear()
+	roll_equipment()
 	shop_changed.emit()
 	return {"result": BuyResult.OK, "reason": ""}
 
@@ -173,9 +181,14 @@ func try_buy_consumable_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	}
 
 
-## 拖装备到角色：扣金；已有装备时旧/新随机留一件，不退金；槽空。
+## 拖装备到角色：护甲新替旧；转职同职拒装（不扣金、货架保留）。
 func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
-	var failed := {"result": BuyResult.FAILED, "reason": "failed", "entry": null, "kept_new": false}
+	var failed := {
+		"result": BuyResult.FAILED,
+		"reason": "failed",
+		"entry": null,
+		"kept_new": false,
+	}
 	if not _open or _deck == null or _economy == null:
 		failed["reason"] = "shop_closed"
 		return failed
@@ -187,18 +200,37 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 	if entry == null:
 		failed["reason"] = "no_target"
 		return failed
+
+	if item.is_occupation_emblem():
+		var occ := item.get_granted_occupation()
+		if not SynergyOccupations.is_known(occ) or entry.has_occupation_tag(occ):
+			failed["reason"] = "occupation_conflict"
+			return failed
+		var cost_emblem := maxi(0, item.cost)
+		if not _economy.spend(cost_emblem):
+			failed["reason"] = "cant_afford"
+			return failed
+		if not entry.try_attach_occupation_emblem(item):
+			## 扣金后仍失败：退金并保留货架（理论不应发生）。
+			_economy.grant(cost_emblem)
+			failed["reason"] = "occupation_conflict"
+			return failed
+		_equipment_offers[slot_index] = null
+		_deck.deck_changed.emit()
+		shop_changed.emit()
+		return {
+			"result": BuyResult.OK,
+			"reason": "",
+			"entry": entry,
+			"kept_new": true,
+		}
+
+	## 护甲：新替旧，不退金。
 	var cost := maxi(0, item.cost)
 	if not _economy.spend(cost):
 		failed["reason"] = "cant_afford"
 		return failed
-	var kept_new := true
-	if entry.equipment != null:
-		## 旧/新各 50% 留一件；另一件消失，不退金。
-		kept_new = _rng.randf() < 0.5
-		if kept_new:
-			entry.attach_equipment(item)
-	else:
-		entry.attach_equipment(item)
+	entry.attach_equipment(item)
 	_equipment_offers[slot_index] = null
 	_deck.deck_changed.emit()
 	shop_changed.emit()
@@ -206,7 +238,7 @@ func try_buy_equipment_on_entry(slot_index: int, entry_id: int) -> Dictionary:
 		"result": BuyResult.OK,
 		"reason": "",
 		"entry": entry,
-		"kept_new": kept_new,
+		"kept_new": true,
 	}
 
 

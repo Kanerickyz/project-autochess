@@ -1,7 +1,7 @@
 # Content — 内容库索引
 
 > 与 [Features/](../Features/) 并列：Features 写**规则与系统**，Content 写**具体角色/内容清单**。  
-> 最后更新：2026-11-12
+> 最后更新：2026-11-14
 
 ## 分工
 
@@ -30,5 +30,6 @@
 | [CHARACTER_DESIGN.md](./CHARACTER_DESIGN.md) | **角色落地流程**（合同字段、文档先于实现、占位 DEV 与资源清单） |
 | [UNIT_PARTY_BARKS_ROSTER.md](./UNIT_PARTY_BARKS_ROSTER.md) | **队伍羁绊台词库**（招募进队组合短句；规则见 Features） |
 | [BADGE_ROSTER.md](./BADGE_ROSTER.md) | **徽章库**（羁绊向 ×2/×3/×5 与同盟敕印；数值草案；圆占位） |
+| [EQUIPMENT_ROSTER.md](./EQUIPMENT_ROSTER.md) | **装备库**（护甲三档 + 六职转职纹章；地图商店 5 槽池） |
 
 敌方 Boss / 高威胁位见 [BOSS_ROSTER.md](./BOSS_ROSTER.md) 与 [Features/BOSS.md](../Features/BOSS.md)，不进本版友方总表。

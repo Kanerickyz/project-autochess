@@ -738,11 +738,14 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	var consumed_seats: Array = []
 	for src in [a, b, c]:
 		consumed_seats.append(src.seat_index if src != null else -1)
-	## MAP_SHOP §5.2：参与合成成员的装备中随机留一件，其余消失不退金。
+	## MAP_SHOP §5.2 / §5.3：护甲随机留 1；转职纹章按职去重全留。
 	var merged_eq := _pick_merge_equipment([a, b, c])
 	product.equipment = merged_eq
 	if merged_eq != null:
 		product.equipment_armor_max = merged_eq.get_armor_block()
+	else:
+		product.equipment_armor_max = 0
+	_merge_occupation_emblems(product, [a, b, c])
 	_merge_attached_buffs(product, [a, b, c])
 	_merge_attached_abilities(product, [a, b, c])
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
@@ -755,7 +758,7 @@ func _pick_merge_equipment(sources: Array) -> EquipmentData:
 	var candidates: Array[EquipmentData] = []
 	for item in sources:
 		var entry := item as DeckEntry
-		if entry != null and entry.equipment != null:
+		if entry != null and entry.equipment != null and not entry.equipment.is_occupation_emblem():
 			candidates.append(entry.equipment)
 	if candidates.is_empty():
 		return null
@@ -767,6 +770,31 @@ func _pick_merge_equipment(sources: Array) -> EquipmentData:
 		picked = candidates[rng.randi_range(0, candidates.size() - 1)]
 	## 合成结果持有独立副本，避免与源条目或池资源串改。
 	return picked.duplicate(true) as EquipmentData if picked != null else null
+
+
+## 三合一：合并转职后按职业去重；已与本职冲突的纹章丢弃。
+func _merge_occupation_emblems(product: DeckEntry, sources: Array) -> void:
+	if product == null:
+		return
+	product.occupation_emblems.clear()
+	var seen: Dictionary = {}
+	var native := product.get_native_occupation()
+	if not native.is_empty():
+		seen[native] = true
+	for item in sources:
+		var entry := item as DeckEntry
+		if entry == null:
+			continue
+		for emblem in entry.occupation_emblems:
+			if emblem == null or not emblem.is_occupation_emblem():
+				continue
+			var occ := emblem.get_granted_occupation()
+			if not SynergyOccupations.is_known(occ) or seen.has(occ):
+				continue
+			seen[occ] = true
+			var copy := emblem.duplicate(true) as EquipmentData
+			if copy != null:
+				product.occupation_emblems.append(copy)
 
 
 ## 落座时间最早（seq 最小且 >0）；皆未入座则 null。
@@ -873,6 +901,14 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 		entry.equipment = source.equipment.duplicate(true) as EquipmentData
 	else:
 		entry.equipment = null
+	entry.equipment_armor_max = source.equipment_armor_max
+	entry.occupation_emblems.clear()
+	for emblem in source.occupation_emblems:
+		if emblem == null:
+			continue
+		var copy := emblem.duplicate(true) as EquipmentData
+		if copy != null:
+			entry.occupation_emblems.append(copy)
 	entry.seat_index = source.seat_index
 	entry.bench_slot_index = source.bench_slot_index
 	entry.seat_assign_seq = source.seat_assign_seq

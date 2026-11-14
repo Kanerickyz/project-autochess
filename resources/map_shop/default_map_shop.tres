@@ -9,11 +9,17 @@
 [ext_resource type="Resource" path="res://resources/equipment/armor_t1.tres" id="e_t1"]
 [ext_resource type="Resource" path="res://resources/equipment/armor_t2.tres" id="e_t2"]
 [ext_resource type="Resource" path="res://resources/equipment/armor_t3.tres" id="e_t3"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_tank.tres" id="e_tank"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_warrior.tres" id="e_war"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_ranged.tres" id="e_rng"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_artisan.tres" id="e_art"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_band.tres" id="e_band"]
+[ext_resource type="Resource" path="res://resources/equipment/emblem_arcane.tres" id="e_arc"]
 
 [resource]
 script = ExtResource("1")
 consumable_pool = Array[ExtResource("2_cons")]([ExtResource("c_hp"), ExtResource("c_atk"), ExtResource("c_rare")])
-equipment_pool = Array[ExtResource("3_eq")]([ExtResource("e_t1"), ExtResource("e_t2"), ExtResource("e_t3")])
+equipment_pool = Array[ExtResource("3_eq")]([ExtResource("e_t1"), ExtResource("e_t2"), ExtResource("e_t3"), ExtResource("e_tank"), ExtResource("e_war"), ExtResource("e_rng"), ExtResource("e_art"), ExtResource("e_band"), ExtResource("e_arc")])
 consumable_slot_count = 3
-equipment_slot_count = 3
+equipment_slot_count = 5
 refresh_cost = 2

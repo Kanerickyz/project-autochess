@@ -174,6 +174,10 @@ static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = f
 	if equipment == null:
 		return ""
 	var title := equipment.get_display_name()
+	if equipment.is_occupation_emblem():
+		return "【转职】%s — 附加职业：%s（零护甲）" % [
+			title, equipment.get_granted_occupation()
+		]
 	var block := equipment.get_armor_block()
 	if with_stat_icons:
 		return "【装备】%s — 受伤时抵挡 %d 点伤害" % [title, block]
@@ -188,6 +192,8 @@ static func get_equipment_attachment_skills_block(
 ) -> String:
 	if equipment == null:
 		return ""
+	if equipment.is_occupation_emblem():
+		return "附加职业：%s。不替换本职；零护甲；不改技能。" % equipment.get_granted_occupation()
 	var block := equipment.get_armor_block()
 	var lines: PackedStringArray = []
 	if with_stat_icons:
@@ -209,6 +215,23 @@ static func build_equipment_attachment_info(
 ) -> Dictionary:
 	if equipment == null:
 		return {}
+	if equipment.is_occupation_emblem():
+		return {
+			"is_attachment": true,
+			"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
+			"equipment_id": equipment.id,
+			"attachment_kind_label": "转职",
+			"name": equipment.get_display_name(),
+			"side_player": true,
+			"tier": 0,
+			"attack": 0,
+			"hp": 0,
+			"armor": 0,
+			"skills": get_equipment_attachment_skills_block(
+				equipment, 0, 0, with_stat_icons
+			),
+			"recruit_cost": -1,
+		}
 	if max_armor <= 0:
 		max_armor = equipment.get_armor_block()
 	return {
@@ -229,20 +252,69 @@ static func build_equipment_attachment_info(
 	}
 
 
+## 额外职业列表附属卡（多件纹章收成一张）。
+static func build_occupation_emblems_attachment_info(
+	emblems: Array, with_stat_icons: bool = true
+) -> Dictionary:
+	var names: PackedStringArray = []
+	var occs: PackedStringArray = []
+	var first_id := ""
+	for item in emblems:
+		var emblem := item as EquipmentData
+		if emblem == null or not emblem.is_occupation_emblem():
+			continue
+		if first_id.is_empty():
+			first_id = emblem.id
+		var occ := emblem.get_granted_occupation()
+		if occ.is_empty():
+			continue
+		occs.append(occ)
+		names.append(emblem.get_display_name())
+	if occs.is_empty():
+		return {}
+	var body := "额外职业：%s\n转职纹章纯标签、零护甲；不替换本职、不改技能。" % " / ".join(occs)
+	if with_stat_icons and not names.is_empty():
+		body = "额外职业：%s\n（%s）\n转职纹章纯标签、零护甲；不替换本职、不改技能。" % [
+			" / ".join(occs),
+			"、".join(names),
+		]
+	return {
+		"is_attachment": true,
+		"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
+		"equipment_id": first_id,
+		"attachment_kind_label": "转职",
+		"name": "额外职业",
+		"side_player": true,
+		"tier": 0,
+		"attack": 0,
+		"hp": 0,
+		"armor": 0,
+		"skills": body,
+		"recruit_cost": -1,
+	}
+
+
 static func collect_info_attachments_from_entry(
 	entry: DeckEntry, with_stat_icons: bool = true
 ) -> Array:
 	var out: Array = []
-	if entry == null or entry.equipment == null:
+	if entry == null:
 		return out
-	var max_armor := entry.equipment_armor_max
-	if max_armor <= 0:
-		max_armor = entry.equipment.get_armor_block()
-	var info := build_equipment_attachment_info(
-		entry.equipment, entry.get_armor_block(), max_armor, with_stat_icons
-	)
-	if not info.is_empty():
-		out.append(info)
+	if entry.equipment != null and not entry.equipment.is_occupation_emblem():
+		var max_armor := entry.equipment_armor_max
+		if max_armor <= 0:
+			max_armor = entry.equipment.get_armor_block()
+		var info := build_equipment_attachment_info(
+			entry.equipment, entry.get_armor_block(), max_armor, with_stat_icons
+		)
+		if not info.is_empty():
+			out.append(info)
+	if not entry.occupation_emblems.is_empty():
+		var emblem_info := build_occupation_emblems_attachment_info(
+			entry.occupation_emblems, with_stat_icons
+		)
+		if not emblem_info.is_empty():
+			out.append(emblem_info)
 	return out
 
 
@@ -345,15 +417,22 @@ static func collect_info_attachments_from_unit(
 		return []
 	var out: Array = []
 	var entry := unit.get_linked_deck_entry()
-	if entry != null and entry.equipment != null:
-		var max_armor := entry.equipment_armor_max
-		if max_armor <= 0:
-			max_armor = entry.equipment.get_armor_block()
-		var eq_info := build_equipment_attachment_info(
-			entry.equipment, unit.get_armor_block(), max_armor, with_stat_icons
-		)
-		if not eq_info.is_empty():
-			out.append(eq_info)
+	if entry != null:
+		if entry.equipment != null and not entry.equipment.is_occupation_emblem():
+			var max_armor := entry.equipment_armor_max
+			if max_armor <= 0:
+				max_armor = entry.equipment.get_armor_block()
+			var eq_info := build_equipment_attachment_info(
+				entry.equipment, unit.get_armor_block(), max_armor, with_stat_icons
+			)
+			if not eq_info.is_empty():
+				out.append(eq_info)
+		if not entry.occupation_emblems.is_empty():
+			var emblem_info := build_occupation_emblems_attachment_info(
+				entry.occupation_emblems, with_stat_icons
+			)
+			if not emblem_info.is_empty():
+				out.append(emblem_info)
 	for status_info in collect_combat_status_attachments(unit, with_stat_icons):
 		out.append(status_info)
 	return out
