@@ -342,7 +342,10 @@ func _test_battle_controller_rules() -> void:
 	var cap := battle.get_deploy_cap()
 	_expect(slots_cap.occupied_count() <= cap, "controller: occupied <= deploy_cap after load")
 	_expect(not slots_cap.is_full(), "controller: seats not full when at/under deploy_cap")
-	_expect(slots_cap.can_assign_more(cap) == (slots_cap.occupied_count() < cap), "controller: can_assign_more matches occupancy")
+	_expect(
+		slots_cap.can_assign_more(cap) == (slots_cap.get_occupied_population() + 1 <= cap),
+		"controller: can_assign_more matches population cap",
+	)
 
 	## 换座（无手牌时从备战上阵凑满 ≥2 入座）
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)

@@ -69,3 +69,10 @@ func pick_summon_unit(rng: RandomNumberGenerator = null) -> UnitData:
 ## 【已停用】勿再用于出牌/商店费用。
 func get_command_cost() -> int:
 	return maxi(1, command_cost)
+
+
+## 上场席位人口（占用 max_size / deploy_cap）；建筑职业为 2，其余为 1。
+func get_roster_population() -> int:
+	if occupation == SynergyOccupations.BUILDING:
+		return 2
+	return 1

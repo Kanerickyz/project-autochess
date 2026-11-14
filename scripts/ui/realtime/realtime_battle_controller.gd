@@ -868,8 +868,9 @@ func try_assign_to_slot(entry_id: int, cell: Vector2i) -> String:
 		return "当前不可入座"
 	if not _card_flow.is_in_hand(entry_id):
 		return "该牌不在手牌中"
-	if not _slots.can_assign_more(_deploy_cap):
-		var msg := "已达上场人数上限" if not _slots.is_full() else "座位已满"
+	var entry_pre := _deck_state.get_entry(entry_id) if _deck_state != null else null
+	if entry_pre != null and not _slots.can_assign_entry(entry_pre, _deploy_cap):
+		var msg := "已达上场人口上限" if not _slots.is_full() else "座位已满"
 		_show_hint(msg)
 		return msg
 	if cell != NO_CELL and not BoardHalf.is_player_deploy_cell(cell, _board_size.y):
@@ -962,7 +963,8 @@ func try_auto_deploy_bench(entry_id: int) -> bool:
 		return false
 	if not _is_bench_entry(entry_id):
 		return false
-	if not _deck_state.can_seat_more():
+	var bench_entry := _deck_state.get_entry(entry_id)
+	if bench_entry == null or not _deck_state.can_seat_entry(bench_entry):
 		return false
 	var empty := _deck_state.find_first_empty_seat()
 	if empty < 0:
@@ -2339,7 +2341,7 @@ func _load_persistent_seats_into_prepare() -> void:
 			## 冲突：后来者退回备战（不抢空座）。
 			entry.seat_index = -1
 			entry.seat_assign_seq = 0
-	var placed := 0
+	var placed_pop := 0
 	## 按落座时间序放入，便于开战生成序与板子 seq 一致。
 	var ordered: Array[DeckEntry] = []
 	for entry in _deck_state.get_entries():
@@ -2351,14 +2353,15 @@ func _load_persistent_seats_into_prepare() -> void:
 		return a.seat_assign_seq < b.seat_assign_seq
 	)
 	for entry in ordered:
-		if placed >= _deploy_cap:
+		var pop_cost := entry.get_roster_population()
+		if placed_pop + pop_cost > _deploy_cap:
 			break
 		if entry.seat_index < 0 or entry.seat_index >= _slots.slot_count:
 			continue
 		if not _slots.is_empty(entry.seat_index):
 			continue
 		if _slots.try_assign_with_seq(entry.seat_index, entry, entry.seat_assign_seq):
-			placed += 1
+			placed_pop += pop_cost
 	_refresh_bench_row()
 	_refresh_synergy_tag_hud()
 

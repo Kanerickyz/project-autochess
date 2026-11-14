@@ -14,6 +14,7 @@ static func run_all() -> bool:
 	_test_brain_cadence_tick()
 	_test_cadence_spawn_toward_enemy()
 	_test_building_order_has_seven_occupations()
+	_test_building_roster_population()
 	if _failures == 0:
 		print("GhostGraveyardCadenceTest: all tests passed")
 	else:
@@ -25,6 +26,14 @@ static func _assert(condition: bool, message: String) -> void:
 	if not condition:
 		_failures += 1
 		push_error("GhostGraveyardCadenceTest FAIL: %s" % message)
+
+
+static func _test_building_roster_population() -> void:
+	var data: UnitData = _BuildingData
+	_assert(data.get_roster_population() == 2, "building roster population is 2")
+	var skel := UnitData.new()
+	skel.occupation = SynergyOccupations.WARRIOR
+	_assert(skel.get_roster_population() == 1, "non-building population is 1")
 
 
 static func _test_building_order_has_seven_occupations() -> void:

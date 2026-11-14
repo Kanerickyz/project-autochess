@@ -305,9 +305,27 @@ func is_full() -> bool:
 func can_assign_more(deploy_cap: int) -> bool:
 	if slot_count <= 0:
 		return false
-	if occupied_count() >= maxi(0, deploy_cap):
+	if occupied_count() >= slot_count:
 		return false
-	return occupied_count() < slot_count
+	return get_occupied_population() + 1 <= maxi(0, deploy_cap)
+
+
+## 是否还能让 entry 入座（人口加权；建筑占 2）。
+func can_assign_entry(entry: DeckEntry, deploy_cap: int) -> bool:
+	if entry == null or slot_count <= 0:
+		return false
+	if occupied_count() >= slot_count:
+		return false
+	return get_occupied_population() + entry.get_roster_population() <= maxi(0, deploy_cap)
+
+
+func get_occupied_population() -> int:
+	var n := 0
+	for entry_var in occupants:
+		var entry := entry_var as DeckEntry
+		if entry != null:
+			n += entry.get_roster_population()
+	return n
 
 
 func occupied_count() -> int:
