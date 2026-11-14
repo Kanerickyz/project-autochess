@@ -30,6 +30,9 @@ static func apply_combat_start(
 		"amp": 0,
 		"occupation_counts": {},
 		"ranged_hit_bonus_total": 0,
+		## 本场被兑现效果触及的单位（开战 UI 放大缩小提示用）。
+		"buffed_allies": [],
+		"buffed_enemies": [],
 	}
 	var ally_units: Array[UnitInstance] = []
 	for item in allies:
@@ -71,10 +74,21 @@ static func apply_combat_start(
 
 	var applied: PackedStringArray = PackedStringArray()
 	var ranged_bonus_total := 0
+	var touched_allies: Dictionary = {}
+	var touched_enemies: Dictionary = {}
 	for badge in active_occupation:
 		var points := badge.value + amp
 		var points_sec := badge.value_secondary + amp
-		_apply_badge_effect(badge, points, points_sec, ally_units, enemy_units, resolver)
+		_apply_badge_effect(
+			badge,
+			points,
+			points_sec,
+			ally_units,
+			enemy_units,
+			resolver,
+			touched_allies,
+			touched_enemies,
+		)
 		applied.append(badge.id)
 		if badge.effect_kind == BadgeData.EffectKind.RANGED_HIT_BONUS:
 			ranged_bonus_total += points
@@ -82,6 +96,14 @@ static func apply_combat_start(
 		applied.append(alliance.id)
 	result["applied_ids"] = applied
 	result["ranged_hit_bonus_total"] = ranged_bonus_total
+	var buffed_a: Array = []
+	for k in touched_allies.keys():
+		buffed_a.append(touched_allies[k])
+	var buffed_e: Array = []
+	for k2 in touched_enemies.keys():
+		buffed_e.append(touched_enemies[k2])
+	result["buffed_allies"] = buffed_a
+	result["buffed_enemies"] = buffed_e
 	return result
 
 
@@ -92,6 +114,8 @@ static func _apply_badge_effect(
 	allies: Array[UnitInstance],
 	enemies: Array[UnitInstance],
 	resolver: EffectResolver,
+	touched_allies: Dictionary = {},
+	touched_enemies: Dictionary = {},
 ) -> void:
 	if badge == null or points <= 0:
 		return
@@ -103,6 +127,7 @@ static func _apply_badge_effect(
 			act_hp.value = points
 			for ally in allies:
 				_exec(resolver, act_hp, ally)
+				_mark_touched(touched_allies, ally)
 		BadgeData.EffectKind.ALLY_MELEE_ATTACK:
 			var act_atk := EffectAction.new()
 			act_atk.action_type = EffectAction.Type.MODIFY_STAT
@@ -111,16 +136,19 @@ static func _apply_badge_effect(
 			for ally2 in allies:
 				if is_melee_unit(ally2):
 					_exec(resolver, act_atk, ally2)
+					_mark_touched(touched_allies, ally2)
 		BadgeData.EffectKind.RANGED_HIT_BONUS:
 			for ally3 in allies:
 				if is_ranged_projectile_unit(ally3):
 					ally3.combat_ranged_hit_bonus += points
+					_mark_touched(touched_allies, ally3)
 		BadgeData.EffectKind.ALLY_TEMP_ARMOR:
 			var act_armor := EffectAction.new()
 			act_armor.action_type = EffectAction.Type.GRANT_COMBAT_ARMOR
 			act_armor.value = points
 			for ally4 in allies:
 				_exec(resolver, act_armor, ally4)
+				_mark_touched(touched_allies, ally4)
 		BadgeData.EffectKind.ALLY_BERSERK:
 			var act_rage := EffectAction.new()
 			act_rage.action_type = EffectAction.Type.APPLY_COMBAT_STATUS
@@ -128,6 +156,7 @@ static func _apply_badge_effect(
 			act_rage.value = points
 			for ally5 in allies:
 				_exec(resolver, act_rage, ally5)
+				_mark_touched(touched_allies, ally5)
 		BadgeData.EffectKind.ENEMY_WEAK_AND_POISON:
 			var weak_pts := maxi(0, points)
 			var poison_pts := maxi(0, points_secondary if points_secondary > 0 else points)
@@ -142,12 +171,20 @@ static func _apply_badge_effect(
 			for enemy in enemies:
 				if weak_pts > 0:
 					_exec(resolver, act_weak, enemy)
+					_mark_touched(touched_enemies, enemy)
 				if poison_pts > 0:
 					_exec(resolver, act_poison, enemy)
+					_mark_touched(touched_enemies, enemy)
 		BadgeData.EffectKind.ALLIANCE_AMPLIFY:
 			pass
 		_:
 			pass
+
+
+static func _mark_touched(bucket: Dictionary, unit: UnitInstance) -> void:
+	if unit == null:
+		return
+	bucket[unit.instance_id] = unit
 
 
 static func _exec(resolver: EffectResolver, action: EffectAction, target: UnitInstance) -> void:

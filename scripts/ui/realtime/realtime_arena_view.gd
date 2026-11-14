@@ -924,6 +924,17 @@ func _punch_combat_hp_badge(rt_id: int) -> void:
 	, CONNECT_ONE_SHOT)
 
 
+## 徽章开战兑现：对受影响单位攻血标做与邻座 aura 同款放大缩小提示。
+func punch_combat_units_for_badge_fx(rt_object_ids: Array) -> void:
+	for item in rt_object_ids:
+		var rt_id := int(item)
+		if rt_id == 0:
+			continue
+		_reveal_stat_badges(rt_id)
+		_punch_combat_hp_badge(rt_id)
+	queue_redraw()
+
+
 func _kill_combat_badge_punch(rt_id: int) -> void:
 	var old_tw: Tween = _combat_badge_tweens.get(rt_id) as Tween
 	if old_tw != null and old_tw.is_valid():

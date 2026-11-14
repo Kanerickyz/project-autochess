@@ -1,6 +1,6 @@
 class_name BadgeOwnedBar
 extends Control
-## 招募 / 准备 / 战斗底部持有徽章横排；长按弹出说明。
+## 招募 / 准备 / 战斗底部持有徽章横排；长按弹出说明，滑动切换（对齐单位介绍卡）。
 ## 挂在 DockBox 内作为独立行，不叠在上一动/倍速/下一动按钮上。
 
 signal badge_long_pressed(badge: BadgeData)
@@ -18,6 +18,7 @@ var _badges: Array[BadgeData] = []
 var _press_index: int = -1
 var _press_time: float = 0.0
 var _long_fired: bool = false
+var _shown_index: int = -1
 
 
 func _ready() -> void:
@@ -98,9 +99,10 @@ func set_owned_badges(badges: Array[BadgeData]) -> void:
 func hide_info() -> void:
 	if _info != null:
 		_info.visible = false
+	_shown_index = -1
 
 
-func show_info_for(badge: BadgeData) -> void:
+func show_info_for(badge: BadgeData, index: int = -1) -> void:
 	if badge == null or _info == null:
 		return
 	## 三选一阶段持有可为空：仍须显示说明卡，不能因空列表把整条藏死。
@@ -115,6 +117,8 @@ func show_info_for(badge: BadgeData) -> void:
 		-(_info.get_combined_minimum_size().y + 12.0),
 	)
 	_info.visible = true
+	if index >= 0:
+		_shown_index = index
 	badge_long_pressed.emit(badge)
 
 
@@ -125,6 +129,9 @@ func _on_icon_gui_input(event: InputEvent, index: int) -> void:
 			_begin_press(index)
 		else:
 			_end_press()
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		_track_motion(drag.position)
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index != MOUSE_BUTTON_LEFT:
@@ -133,6 +140,13 @@ func _on_icon_gui_input(event: InputEvent, index: int) -> void:
 			_begin_press(index)
 		else:
 			_end_press()
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if _press_index < 0:
+			return
+		if (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+			return
+		_track_motion(mm.position)
 
 
 func _begin_press(index: int) -> void:
@@ -145,8 +159,32 @@ func _begin_press(index: int) -> void:
 func _end_press() -> void:
 	set_process(false)
 	_press_index = -1
-	if not _long_fired:
-		hide_info()
+	## 与单位介绍卡一致：松手收卡。
+	hide_info()
+
+
+func _track_motion(_local_pos: Vector2) -> void:
+	if _press_index < 0 or not _long_fired:
+		return
+	var hit := _index_at_global(get_global_mouse_position())
+	if hit < 0 or hit == _shown_index:
+		return
+	if hit >= _badges.size() or _badges[hit] == null:
+		return
+	_press_index = hit
+	show_info_for(_badges[hit], hit)
+
+
+func _index_at_global(global_pt: Vector2) -> int:
+	if _row == null:
+		return -1
+	for i in _row.get_child_count():
+		var child := _row.get_child(i) as Control
+		if child == null or not child.visible:
+			continue
+		if child.get_global_rect().has_point(global_pt):
+			return i
+	return -1
 
 
 func _process(delta: float) -> void:
@@ -157,4 +195,4 @@ func _process(delta: float) -> void:
 	if not _long_fired and _press_time >= LONG_PRESS_SEC:
 		_long_fired = true
 		if _press_index < _badges.size():
-			show_info_for(_badges[_press_index])
+			show_info_for(_badges[_press_index], _press_index)

@@ -20,6 +20,7 @@ var _slots: Array[Control] = []
 var _press_index: int = -1
 var _press_time: float = 0.0
 var _long_fired: bool = false
+var _shown_index: int = -1
 var _candidates: Array[BadgeData] = []
 
 
@@ -175,7 +176,7 @@ func hide_offers() -> void:
 	hide_info()
 
 
-func show_info_for(badge: BadgeData) -> void:
+func show_info_for(badge: BadgeData, index: int = -1) -> void:
 	if badge == null or _info == null:
 		return
 	_info_title.text = badge.display_name
@@ -184,11 +185,14 @@ func show_info_for(badge: BadgeData) -> void:
 	var mins := _info.get_combined_minimum_size()
 	_info.position = Vector2((size.x - mins.x) * 0.5, size.y * 0.62)
 	_info.visible = true
+	if index >= 0:
+		_shown_index = index
 
 
 func hide_info() -> void:
 	if _info != null:
 		_info.visible = false
+	_shown_index = -1
 
 
 func _bind_slot(slot: Control, badge: BadgeData) -> void:
@@ -210,6 +214,8 @@ func _on_slot_gui_input(event: InputEvent, index: int) -> void:
 			_begin_press(index)
 		else:
 			_end_press(index)
+	elif event is InputEventScreenDrag:
+		_track_motion()
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index != MOUSE_BUTTON_LEFT:
@@ -218,6 +224,13 @@ func _on_slot_gui_input(event: InputEvent, index: int) -> void:
 			_begin_press(index)
 		else:
 			_end_press(index)
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if _press_index < 0:
+			return
+		if (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+			return
+		_track_motion()
 
 
 func _begin_press(index: int) -> void:
@@ -227,16 +240,42 @@ func _begin_press(index: int) -> void:
 	set_process(true)
 
 
-func _end_press(index: int) -> void:
-	if _press_index != index:
+func _end_press(_index: int) -> void:
+	## 滑动后可能换到别的槽；松手以当前 _press_index 为准。
+	if _press_index < 0:
 		return
 	set_process(false)
-	if _long_fired:
-		_press_index = -1
-		return
+	var pick_index := _press_index
 	_press_index = -1
-	if index >= 0 and index < _candidates.size() and _candidates[index] != null:
-		badge_picked.emit(index)
+	if _long_fired:
+		## 与单位介绍卡一致：长按看说明后松手收卡，不领取。
+		hide_info()
+		return
+	if pick_index >= 0 and pick_index < _candidates.size() and _candidates[pick_index] != null:
+		badge_picked.emit(pick_index)
+
+
+func _track_motion() -> void:
+	if _press_index < 0 or not _long_fired:
+		return
+	var hit := _slot_index_at_global(get_global_mouse_position())
+	if hit < 0 or hit == _shown_index:
+		return
+	if hit >= _candidates.size() or _candidates[hit] == null:
+		return
+	_press_index = hit
+	show_info_for(_candidates[hit], hit)
+	badge_long_pressed.emit(_candidates[hit])
+
+
+func _slot_index_at_global(global_pt: Vector2) -> int:
+	for i in _slots.size():
+		var slot: Control = _slots[i]
+		if slot == null or not slot.visible:
+			continue
+		if slot.get_global_rect().has_point(global_pt):
+			return i
+	return -1
 
 
 func _process(delta: float) -> void:
@@ -250,5 +289,5 @@ func _process(delta: float) -> void:
 			_candidates[_press_index] if _press_index < _candidates.size() else null
 		)
 		if badge != null:
-			show_info_for(badge)
+			show_info_for(badge, _press_index)
 			badge_long_pressed.emit(badge)

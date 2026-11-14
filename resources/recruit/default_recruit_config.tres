@@ -60,7 +60,7 @@
 
 [resource]
 script = ExtResource("1")
-refresh_cost = 1
+refresh_cost = 2
 default_unit_cost = 3
 candidate_count = 5
 half_exit_seconds = 0.5

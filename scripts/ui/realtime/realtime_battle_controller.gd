@@ -726,20 +726,43 @@ func _apply_owned_badges_to_sim() -> void:
 		return
 	var allies: Array = []
 	var enemies: Array = []
+	var rt_by_unit_id: Dictionary = {}
 	for item in _sim.get_units():
 		var rt := item as RtUnit
 		if rt == null or rt.unit == null or not rt.is_alive():
 			continue
+		rt_by_unit_id[rt.unit.instance_id] = rt
 		if rt.unit.team == UnitInstance.Team.PLAYER:
 			allies.append(rt.unit)
 		elif rt.unit.team == UnitInstance.Team.ENEMY:
 			enemies.append(rt.unit)
-	BadgeCombatApplier.apply_combat_start(
+	var applied := BadgeCombatApplier.apply_combat_start(
 		_owned_badge_ids,
 		allies,
 		enemies,
 		_sim.get_effect_resolver(),
 	)
+	_pulse_badge_fx_on_units(applied, rt_by_unit_id)
+
+
+## 开战徽章兑现后：受影响单位攻血标放大缩小（对齐邻座 aura 提示）。
+func _pulse_badge_fx_on_units(applied: Dictionary, rt_by_unit_id: Dictionary) -> void:
+	if _arena == null or applied.is_empty():
+		return
+	var ids: Array = []
+	for list_key in ["buffed_allies", "buffed_enemies"]:
+		var units: Variant = applied.get(list_key, [])
+		if not (units is Array):
+			continue
+		for u in units as Array:
+			var unit := u as UnitInstance
+			if unit == null:
+				continue
+			var rt: RtUnit = rt_by_unit_id.get(unit.instance_id) as RtUnit
+			if rt != null:
+				ids.append(rt.get_instance_id())
+	if not ids.is_empty():
+		_arena.punch_combat_units_for_badge_fx(ids)
 
 
 func _refresh_synergy_tag_hud() -> void:
