@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	_check("apply_status_via_resolver", _test_apply_via_resolver())
 	_check("weak_skip_dead_on_deal_damage", _test_weak_skip_dead_on_deal_damage())
 	_check("status_attachments_ui", _test_status_attachments())
+	_check("revive_on_death", _test_revive_on_death())
 	if _failures == 0:
 		print("CombatStatusTest: all tests passed")
 	else:
@@ -147,3 +148,47 @@ static func _test_status_attachments() -> bool:
 		String(info.get("name", "")) == "虚弱"
 		and String(info.get("attachment_kind", "")) == String(UnitInfoText.INFO_ATTACHMENT_KIND_STATUS)
 	)
+
+
+static func _test_revive_on_death() -> bool:
+	var sim := RealtimeCombatSim.new()
+	sim.configure(Vector2i(18, 32), 991)
+	var unit := UnitInstance.new("rev", Vector2i(0, 0), UnitInstance.Team.PLAYER)
+	unit.stats = UnitStats.new()
+	unit.stats.max_hp = 1
+	unit.stats.attack = 9
+	unit.current_hp = 1
+	unit.combat_statuses.add_stacks(CombatStatusStack.ID_REVIVE, 4)
+	var rt := sim.add_unit(unit, Vector2(2.5, 6.5))
+	if rt == null:
+		sim.dispose()
+		return false
+	var killer_u := UnitInstance.new("k", Vector2i(0, 0), UnitInstance.Team.ENEMY)
+	killer_u.stats = UnitStats.new()
+	killer_u.stats.attack = 5
+	killer_u.stats.max_hp = 10
+	killer_u.current_hp = 10
+	var killer := sim.add_unit(killer_u, Vector2(2.5, 5.5))
+	if killer == null:
+		sim.dispose()
+		return false
+	var died_count: Array[int] = [0]
+	sim.unit_died.connect(func(_u: RtUnit) -> void: died_count[0] += 1)
+	sim.begin_combat()
+	killer.skip_deploy()
+	sim._resolve_hit(killer, rt, 5, 0.0)
+	while sim.has_pending_effects():
+		sim.resolve_next_pending_effect()
+	sim.flush_idle_death_presentations()
+	var ok := (
+		rt.is_alive()
+		and rt.unit.get_effective_attack() == 4
+		and rt.unit.get_effective_max_hp() == 20
+		and rt.unit.current_hp == 20
+		and rt.unit.combat_abilities_suppressed
+		and rt.unit.combat_statuses.get_stacks(CombatStatusStack.ID_REVIVE) == 0
+		and rt.unit.get_main_ability() == null
+		and died_count[0] == 0
+	)
+	sim.dispose()
+	return ok

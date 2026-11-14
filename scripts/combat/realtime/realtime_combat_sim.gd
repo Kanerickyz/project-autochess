@@ -1495,9 +1495,65 @@ func _finalize_pending_deaths() -> bool:
 		if rt != null and rt.is_alive():
 			continue
 		_pipeline.emit_post_kill_death_events(entry)
+		_drain_effect_queue_for_death_finalize()
+		if rt != null and _try_combat_status_revive(rt):
+			continue
 		if rt != null:
 			unit_died.emit(rt)
 	return true
+
+
+func _drain_effect_queue_for_death_finalize() -> void:
+	if _effect_resolver == null:
+		return
+	var guard := EFFECT_DRAIN_GUARD
+	while _effect_resolver.has_pending_steps() and guard > 0:
+		guard -= 1
+		_sync_effect_grid_from_rt_positions()
+		_effect_resolver.process_next_step()
+		_sync_rt_positions_from_effect_grid()
+		_sync_effect_spawns_from_grid()
+		_sync_deaths_from_hp()
+
+
+func _try_combat_status_revive(rt: RtUnit) -> bool:
+	if rt == null or rt.unit == null or rt.unit.is_alive():
+		return false
+	var stacks := CombatStatusRevive.stacks_on_unit(rt.unit)
+	if stacks <= 0:
+		return false
+	var cell := rt.get_cell()
+	if _effect_grid != null:
+		_effect_grid.remove_unit(rt.unit)
+	_clear_occupancy_of(rt)
+	var replica := CombatStatusRevive.build_replica_from(rt.unit, stacks)
+	if replica == null:
+		return false
+	if not _place_unit_on_effect_grid_at(replica, cell):
+		return false
+	rt.unit = replica
+	rt.state = RtUnit.State.MOVING
+	rt.target = null
+	rt.skip_deploy()
+	rt.cell = cell
+	rt.step_dest = cell
+	rt.position = rt.standing_visual_at(cell)
+	_occupy_footprint(rt, cell)
+	_emit_spawn_events(replica, cell)
+	return true
+
+
+func _place_unit_on_effect_grid_at(unit: UnitInstance, cell: Vector2i) -> bool:
+	if _effect_grid == null or unit == null:
+		return false
+	var existing := _effect_grid.get_unit(cell)
+	if existing != null:
+		if existing.is_alive() and existing != unit:
+			return false
+		_effect_grid.remove(cell)
+	_effect_grid.remove_unit(unit)
+	unit.grid_pos = cell
+	return _effect_grid.place(unit, cell)
 
 
 func _battle_convert_kill_target(owner: UnitInstance, target: UnitInstance) -> bool:

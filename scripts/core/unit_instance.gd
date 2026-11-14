@@ -22,6 +22,8 @@ var combat_statuses: CombatStatusStack = CombatStatusStack.new()
 var is_combat_summon: bool = false
 ## 本场由策反等效果转入友方阵营的敌方单位；无 DeckEntry，遭遇结束清场。
 var is_battle_converted: bool = false
+## 复制体/复活体等：战斗内不触发主技能与被动（外观可仍用原 unit_data）。
+var combat_abilities_suppressed: bool = false
 ## 本场已成功生成的随从只数（统计用；不设每角色上限）。
 var combat_summons_spawned: int = 0
 ## 本场经 EffectResolver HEAL 累计受疗量（计在受疗单位上；含友方疗己）。
@@ -197,6 +199,8 @@ func uses_teleport_move_presentation() -> bool:
 
 
 func get_main_ability() -> AbilityData:
+	if combat_abilities_suppressed:
+		return null
 	if main_ability_override != null:
 		return main_ability_override
 	if unit_data != null:
@@ -334,7 +338,7 @@ func _sync_armor_to_deck_entry() -> void:
 
 func get_all_effect_specs() -> Array[EffectSpec]:
 	var specs: Array[EffectSpec] = []
-	if unit_data == null:
+	if combat_abilities_suppressed or unit_data == null:
 		return specs
 	var main_ab := get_main_ability()
 	if main_ab != null:
