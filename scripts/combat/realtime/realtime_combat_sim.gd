@@ -741,9 +741,17 @@ func _resolve_separation(movers: Dictionary = {}) -> void:
 				var overlap := min_dist - dist
 				var a_moving := movers.has(a.get_instance_id())
 				var b_moving := movers.has(b.get_instance_id())
+				var a_immobile := a.unit != null and a.unit.cannot_move
+				var b_immobile := b.unit != null and b.unit.cannot_move
 				var a_share := 0.5
 				if a.is_deploying() and b.is_deploying():
 					continue
+				elif a_immobile and b_immobile:
+					continue
+				elif a_immobile:
+					a_share = 0.0
+				elif b_immobile:
+					a_share = 1.0
 				elif a.is_deploying():
 					a_share = 0.0
 				elif b.is_deploying():

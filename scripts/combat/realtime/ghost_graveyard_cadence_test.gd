@@ -15,6 +15,7 @@ static func run_all() -> bool:
 	_test_cadence_spawn_toward_enemy()
 	_test_building_order_has_seven_occupations()
 	_test_building_roster_population()
+	_test_deck_entry_sync_immobile()
 	if _failures == 0:
 		print("GhostGraveyardCadenceTest: all tests passed")
 	else:
@@ -42,6 +43,15 @@ static func _test_building_order_has_seven_occupations() -> void:
 		SynergyOccupations.ORDER.has(SynergyOccupations.BUILDING),
 		"BUILDING in ORDER",
 	)
+
+
+static func _test_deck_entry_sync_immobile() -> void:
+	var data: UnitData = _BuildingData.duplicate(true)
+	var entry := DeckEntry.new()
+	entry.entry_id = 1
+	entry.unit = data
+	var unit := UnitInstance.from_deck_entry(entry, Vector2i(1, 1), UnitInstance.Team.PLAYER)
+	_assert(unit != null and unit.cannot_move, "from_deck_entry keeps immobile on building")
 
 
 static func _test_brain_cadence_tick() -> void:

@@ -112,6 +112,12 @@ static func decide(
 	## 部署剩余由 sim._tick_all_deploying 推进；此处仅等待。
 	if unit.state == RtUnit.State.DEPLOYING:
 		return decision
+	if unit.unit != null and unit.unit.cannot_move:
+		if uses_attack_cadence(unit):
+			return _decide_attack_cadence(unit, dt)
+		unit.target = null
+		unit.state = RtUnit.State.ATTACKING
+		return decision
 	if uses_attack_cadence(unit):
 		return _decide_attack_cadence(unit, dt)
 
