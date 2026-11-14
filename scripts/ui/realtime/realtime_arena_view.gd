@@ -607,11 +607,11 @@ func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	for i in recruit_team_slots.cells.size():
 		var entry := recruit_team_slots.get_entry(i)
-		if entry == null or entry.unit == null:
+		if entry == null or entry.unit == null or not recruit_team_slots.is_anchor_seat(i):
 			continue
 		if String(entry.unit.id) != unit_id:
 			continue
-		var tile := recruit_team_slots.get_display_center(i)
+		var tile := recruit_team_slots.get_footprint_display_center(i, entry.unit)
 		var center := tile_to_local(tile) + enemy_off
 		## 尖角对准纸片上沿略上方。
 		var tip := center + Vector2(0.0, -get_cell_px() * 0.55)
@@ -2565,8 +2565,8 @@ func _collect_inspectables() -> Array[Dictionary]:
 		var team_off := _prepare_slots_inspect_offset(ally_off)
 		for i in prepare_slots.cells.size():
 			var entry := prepare_slots.get_entry(i)
-			if entry != null:
-				var tile := prepare_slots.get_display_center(i)
+			if entry != null and prepare_slots.is_anchor_seat(i):
+				var tile := prepare_slots.get_footprint_display_center(i, entry.unit)
 				out.append(_info_from_entry(entry, tile_to_local(tile) + team_off))
 	for preview in enemy_previews:
 		if not (preview is Dictionary):
@@ -3052,7 +3052,7 @@ func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 	var slot_i := recruit_team_slots.find_slot_at_cell(cell)
 	if slot_i < 0:
 		return -1
-	var entry := recruit_team_slots.get_entry(slot_i)
+	var entry := recruit_team_slots.get_entry_at_slot(slot_i)
 	if entry == null:
 		return -1
 	return entry.entry_id
@@ -3061,7 +3061,13 @@ func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 	if recruit_team_slots == null or cell == NO_CELL:
 		return -1
-	return recruit_team_slots.find_slot_at_cell(cell)
+	var slot_i := recruit_team_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := recruit_team_slots.get_entry_at_slot(slot_i)
+	if entry != null:
+		return entry.seat_index
+	return slot_i
 
 
 ## 准备阶段可拖已入座角色换座（开战 / 目录 / 其它半场模式除外）。
@@ -3111,7 +3117,7 @@ func _find_prepare_team_entry_at(cell: Vector2i) -> int:
 	var slot_i := prepare_slots.find_slot_at_cell(cell)
 	if slot_i < 0:
 		return -1
-	var entry := prepare_slots.get_entry(slot_i)
+	var entry := prepare_slots.get_entry_at_slot(slot_i)
 	if entry == null:
 		return -1
 	return entry.entry_id
@@ -3120,7 +3126,13 @@ func _find_prepare_team_entry_at(cell: Vector2i) -> int:
 func _find_prepare_team_seat_at(cell: Vector2i) -> int:
 	if prepare_slots == null or cell == NO_CELL:
 		return -1
-	return prepare_slots.find_slot_at_cell(cell)
+	var slot_i := prepare_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := prepare_slots.get_entry_at_slot(slot_i)
+	if entry != null:
+		return entry.seat_index
+	return slot_i
 
 
 func _begin_prepare_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
@@ -3648,13 +3660,12 @@ func _draw() -> void:
 			var body_r := float(preview["radius"])
 			var vwx := float(preview.get("visual_half_width", 0.0))
 			var vhy := float(preview.get("visual_half_height", 0.0))
-			var fp_span := maxf(
-				float(preview.get("footprint_w", 1)),
-				float(preview.get("footprint_h", 1)),
-			)
+			var fw := float(maxi(1, int(preview.get("footprint_w", 1))))
+			var fh := float(maxi(1, int(preview.get("footprint_h", 1))))
+			var fp_span := maxf(fw, fh)
 			_draw_body(
 				preview["position"], body_r, vwx, vhy, ENEMY_COLOR, 0.85, String(preview["label"]), px, false, enemy_off,
-				false, String(preview.get("unit_id", "")), null, Vector2.ZERO, fp_span,
+				false, String(preview.get("unit_id", "")), null, Vector2.ZERO, fp_span, fw, fh,
 			)
 			_draw_stat_badges(
 				tile_to_local(preview["position"]) + enemy_off,
@@ -3989,16 +4000,19 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
-		if entry == null:
+		if entry == null or not recruit_team_slots.is_anchor_seat(i):
 			continue
-		var center_tile := recruit_team_slots.get_display_center(i)
+		var center_tile := recruit_team_slots.get_footprint_display_center(i, entry.unit)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		var fp_span := 1.0
+		var fw := 1.0
+		var fh := 1.0
 		if entry.unit != null:
-			fp_span = maxf(1.0, float(maxi(1, entry.unit.footprint_w)))
+			fw = float(maxi(1, entry.unit.footprint_w))
+			fh = float(maxi(1, entry.unit.footprint_h))
+		var fp_span := maxf(fw, fh)
 		var dragging := (
 			entry.entry_id == _recruit_team_drag_id or entry.entry_id == _map_shop_team_drag_id
 		)
@@ -4027,6 +4041,8 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			merge_pose,
 			Vector2.ZERO,
 			fp_span,
+			fw,
+			fh,
 			idle_seed,
 		)
 		var display := _entry_display_atk_hp(entry)
@@ -4416,20 +4432,27 @@ func _draw_prepare_slots(px: float) -> void:
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = prepare_slots.get_entry(i)
-		if entry == null:
+		if entry == null or not prepare_slots.is_anchor_seat(i):
 			continue
-		var center_tile := prepare_slots.get_display_center(i)
+		var center_tile := prepare_slots.get_footprint_display_center(i, entry.unit)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var fw := 1.0
+		var fh := 1.0
+		if entry.unit != null:
+			fw = float(maxi(1, entry.unit.footprint_w))
+			fh = float(maxi(1, entry.unit.footprint_h))
+		var fp_span := maxf(fw, fh)
 		var dragging := (
 			entry.entry_id == _enchant_team_drag_id or entry.entry_id == _prepare_team_drag_id
 		)
 		var alpha := DRAG_SOURCE_ALPHA if dragging else 0.9
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
+			true, entry.get_unit_id(), null, Vector2.ZERO, fp_span, fw, fh,
+			_idle_seed_for(entry.get_unit_id(), i),
 		)
 		var display := _entry_display_atk_hp(entry)
 		badge_jobs.append({
@@ -4590,10 +4613,12 @@ func _draw_units(px: float) -> void:
 		var scale := 1.12 if is_actor else 1.0
 		var off := Vector2(0.0, ally_half_slide_y if rt.is_player() else enemy_half_slide_y)
 		var fp := rt.get_footprint_size()
-		var fp_span := maxf(float(fp.x), float(fp.y))
+		var fw := float(maxi(1, fp.x))
+		var fh := float(maxi(1, fp.y))
+		var fp_span := maxf(fw, fh)
 		_draw_body(
 			rt.position, rt.get_radius(), vwx * scale, vhy * scale, base, alpha, rt.get_display_name(), px, true, off,
-			rt.is_player(), _rt_unit_id(rt), _motion.get_pose(rt), _motion.walk_pose(rt), fp_span,
+			rt.is_player(), _rt_unit_id(rt), _motion.get_pose(rt), _motion.walk_pose(rt), fp_span, fw, fh,
 		)
 		var center := tile_to_local(rt.position) + off
 		var silhouette_r_px := maxf(vwx, vhy) * scale * px
@@ -4640,6 +4665,17 @@ func _draw_corpses(px: float) -> void:
 		_draw_unit_sprite(center, corpse.half_height * px, px, tex, base, 1.0, corpse.is_player, corpse.pose)
 
 
+func _footprint_cell_spans(
+	footprint_span: float,
+	footprint_w_cells: float,
+	footprint_h_cells: float,
+) -> Vector2:
+	if footprint_w_cells > 0.0 and footprint_h_cells > 0.0:
+		return Vector2(maxf(1.0, footprint_w_cells), maxf(1.0, footprint_h_cells))
+	var legacy := maxf(1.0, footprint_span)
+	return Vector2(legacy, legacy)
+
+
 func _draw_body(
 	tile_pos: Vector2,
 	body_radius: float,
@@ -4656,22 +4692,38 @@ func _draw_body(
 	pose: RealtimeUnitMotion.Pose = null,
 	walk: Variant = null,
 	footprint_span: float = 1.0,
+	footprint_w_cells: float = -1.0,
+	footprint_h_cells: float = -1.0,
 	idle_seed: int = -1,
 	override_tex: Texture2D = null,
 ) -> void:
 	var center := tile_to_local(tile_pos) + pixel_offset
 	var rx := maxf(3.0, _resolve_visual_half(visual_half_width, body_radius, 1.3) * px)
 	var ry := maxf(3.0, _resolve_visual_half(visual_half_height, body_radius, 1.6) * px)
-	## 多格足迹：剪影略放大，使角色在 2×2 内更饱满可读。
-	if footprint_span >= 1.5:
-		rx *= 1.35
-		ry *= 1.35
+	var fp_cells := _footprint_cell_spans(footprint_span, footprint_w_cells, footprint_h_cells)
+	## 足迹按列/行分别拉剪影（建筑 1×2 只加宽不加高）。
+	if fp_cells.x >= 1.5:
+		rx *= minf(1.9, 1.0 + (fp_cells.x - 1.0) * 0.4)
+	if fp_cells.y >= 1.5:
+		ry *= minf(1.9, 1.0 + (fp_cells.y - 1.0) * 0.4)
 	var tex: Texture2D = override_tex
 	if tex == null and _art != null:
 		tex = _art.get_texture(unit_id, is_player)
 	if tex != null:
 		_draw_unit_sprite(
-			center, ry, px, tex, color, alpha, is_player, pose, walk, footprint_span, idle_seed
+			center,
+			ry,
+			px,
+			tex,
+			color,
+			alpha,
+			is_player,
+			pose,
+			walk,
+			footprint_span,
+			idle_seed,
+			footprint_w_cells,
+			footprint_h_cells,
 		)
 		return
 	## 美术目录缺失时的兜底；正常路径每个兵种都有贴图。
@@ -4763,17 +4815,24 @@ func _draw_unit_sprite(
 	walk: Variant = null,
 	footprint_span: float = 1.0,
 	idle_seed: int = -1,
+	footprint_w_cells: float = -1.0,
+	footprint_h_cells: float = -1.0,
 ) -> void:
+	var fp_cells := _footprint_cell_spans(footprint_span, footprint_w_cells, footprint_h_cells)
+	var fw := fp_cells.x
+	var fh := fp_cells.y
 	var h_cap := px * 1.9
-	if footprint_span >= 1.5:
-		h_cap = px * minf(2.6, footprint_span * 1.15)
+	if fh >= 1.5:
+		h_cap = px * minf(2.6, fh * 1.15)
 	var h := clampf(half_height_px * SPRITE_HEIGHT_MUL, px * 1.05, h_cap)
 	var tex_size := tex.get_size()
 	var w := h * tex_size.x / maxf(1.0, tex_size.y)
 	## 贴纸 sheet 剪影偏方/偏宽：限制占格宽度，超限时等比缩小，避免压住邻格。
-	var max_w := px * (
-		SPRITE_MAX_WIDTH_CELLS_FOOTPRINT if footprint_span >= 1.5 else SPRITE_MAX_WIDTH_CELLS
-	)
+	var max_w := px * SPRITE_MAX_WIDTH_CELLS
+	if fw >= 2.0:
+		max_w = px * minf(fw * 1.12, SPRITE_MAX_WIDTH_CELLS_FOOTPRINT * fw / 2.0)
+	elif fw >= 1.5:
+		max_w = px * SPRITE_MAX_WIDTH_CELLS_FOOTPRINT
 	if w > max_w and w > 0.0:
 		var shrink := max_w / w
 		w = max_w
@@ -4784,12 +4843,12 @@ func _draw_unit_sprite(
 		w *= RECRUIT_PROP_SPRITE_SCALE
 		h *= RECRUIT_PROP_SPRITE_SCALE
 		content_bottom = RECRUIT_PROP_CONTENT_BOTTOM
-	## 2×2 几何居中；1×1 战场脚底锚点。
-	var feet := (
-		center + Vector2(0.0, h * 0.5)
-		if footprint_span >= 1.5
-		else center + Vector2(0.0, px * 0.38)
-	)
+	## 2×2 或纵跨多格：几何居中；1×2 横占仍单行脚底锚点。
+	var feet := center + Vector2(0.0, px * 0.38)
+	if fw >= 1.5 and fh >= 1.5:
+		feet = center + Vector2(0.0, h * 0.5)
+	elif fh >= 1.5 and fw < 1.5:
+		feet = center + Vector2(0.0, h * 0.5)
 	var offset := Vector2.ZERO
 	var rot := 0.0
 	var scl := Vector2.ONE
