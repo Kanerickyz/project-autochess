@@ -62,9 +62,10 @@ func _test_battle_controller_rules() -> void:
 	root.add_child(battle)
 	await process_frame
 	battle.setup(deck, economy, level)
+	battle.auto_start_combat_on_encounter = false
 	battle.start_encounter(load(ENCOUNTER_PATH) as EncounterData, 0)
 
-	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: start_encounter enters PREPARE")
+	_expect(battle.get_phase() == RealtimeBattleController.Phase.PREPARE, "controller: start_encounter enters PREPARE (test no-auto)")
 	_expect(battle.get_board_size() == Vector2i(5, 8), "controller: board is 5x8")
 	_expect(battle.get_command_current() == 0.0, "controller: command resource disabled")
 	## 本版准备无手牌抽选：清牌区后按 DeckState 持久占位入座。
