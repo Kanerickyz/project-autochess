@@ -31,6 +31,8 @@ const TIER_UNLOCK_TOAST_SCENE := preload("res://scenes/ui/tier_unlock_toast.tscn
 @export_range(0.0, 2.0, 0.05) var half_exit_seconds: float = 0.5
 ## 招募半场滑入秒数；≤0 瞬切。
 @export_range(0.0, 2.0, 0.05) var recruit_enter_seconds: float = 0.45
+## 进遭遇后立刻开战（无准备阶段）；测试可关。
+@export var auto_start_combat_on_encounter: bool = true
 ## PREPARE→COMBAT 阵容落点过渡秒数；≤0 瞬切。默认跟 recruit 节奏接近。
 @export_range(0.0, 2.0, 0.05) var combat_lineup_enter_seconds: float = 0.3
 ## 胜负遮罩：场上动作落定后再延迟秒数；≤0 跳过延迟（测试可置 0）。
@@ -299,7 +301,6 @@ func _process(delta: float) -> void:
 		_tick_combat_presentation(delta)
 		if _arena != null:
 			_arena.queue_redraw()
-	_tick_recruit_phase_timer(delta)
 	_refresh_hud()
 	_refresh_cards()
 
@@ -406,7 +407,7 @@ func set_spawn_budget_config(config: SpawnBudgetConfig) -> void:
 	_spawn_budget_config = config
 
 
-## 进入遭遇：按持久占位载入友方座位 → PREPARE（可换座写回）；无准备刷新手牌。
+## 进入遭遇：按持久占位载入友方座位；主路径自动开战（无准备阶段）。
 ## floor_index / node_type 供层预算抽阵；node_type < 0 时按 encounter.is_boss/is_elite 推断。
 func start_encounter(
 	encounter: EncounterData,
@@ -485,8 +486,8 @@ func start_encounter(
 	_sync_arena_bench()
 	_refresh_lineup_aura_preview()
 	_rebuild_cards()
-	_set_phase(Phase.PREPARE)
 	_maybe_show_tier_unlock_toast()
+	call_deferred("_try_auto_start_combat_after_load")
 
 
 func get_phase() -> Phase:
@@ -1188,8 +1189,12 @@ func try_deploy(_entry_id: int, _cell: Vector2i) -> String:
 
 ## 至少 1 槽有人时可开战：生成友方、未入槽回抽、刷怪、进入 COMBAT。
 func try_start_combat() -> bool:
-	if _phase != Phase.PREPARE:
-		return _phase == Phase.COMBAT and _sim != null
+	if _phase == Phase.COMBAT and _sim != null:
+		return true
+	if _sim != null:
+		return false
+	if _encounter == null:
+		return false
 	if _slots.occupied_count() < 1:
 		_show_hint("至少安排 1 名角色才能开战")
 		return false
@@ -1198,6 +1203,26 @@ func try_start_combat() -> bool:
 		return false
 	_begin_combat_from_prepare()
 	return true
+
+
+func _try_auto_start_combat_after_load() -> void:
+	if not auto_start_combat_on_encounter:
+		_set_phase(Phase.PREPARE)
+		return
+	if _slots.occupied_count() < 1:
+		_set_phase(Phase.IDLE)
+		if _combat_sandbox_mode:
+			_show_hint("粘贴布局后点开战，或补满队伍")
+		else:
+			_show_hint("至少安排 1 名角色才能开战")
+		_refresh_hud()
+		return
+	if _combat_sandbox_mode and _enemy_spawns.is_empty():
+		_set_phase(Phase.IDLE)
+		_show_hint("双方至少各 1 人方可开战")
+		_refresh_hud()
+		return
+	try_start_combat()
 
 
 ## 复制整局阵容（仅友方）；供远征统计 / 外部调用。
@@ -1426,9 +1451,9 @@ func _prepare_final_trial_wave() -> void:
 		_arena.bench_visible = false
 		_arena.reset_half_slide()
 	_load_persistent_seats_into_prepare()
-	_set_phase(Phase.PREPARE)
 	_refresh_lineup_aura_preview()
 	_refresh_hud()
+	call_deferred("_try_auto_start_combat_after_load")
 
 
 func _build_final_trial_enemy_spawns(wave_index: int) -> Array:
@@ -1599,7 +1624,6 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	await _play_half_field_enter_animation(seconds)
 	_recruit_animating = false
 	_sync_recruit_arena()
-	_start_recruit_phase_timer()
 	_refresh_recruit_hud()
 
 
@@ -2880,10 +2904,6 @@ func _apply_layout_payload(payload) -> String:
 		return err2
 	var node_type := BattleLayoutClipboard.node_type_from_encounter(payload.encounter_type)
 	start_encounter(encounter, _tier_index, _floor_index, int(node_type))
-	if _phase != Phase.PREPARE:
-		var err3 := "粘贴后未能进入准备"
-		_show_hint(err3)
-		return err3
 	_sync_slot_visuals()
 	_refresh_hud()
 	_refresh_cards()
@@ -2955,7 +2975,7 @@ func _ensure_recruit_hud() -> void:
 	box.add_theme_constant_override("separation", 6)
 	_recruit_hud.add_child(box)
 
-	## 标题 / 金币 / 入座由顶栏 Hud 展示，底栏只留 hint + 倒计时进度条 + 操作钮。
+	## 标题 / 金币 / 入座由顶栏 Hud 展示，底栏只留 hint + 操作钮。
 	_recruit_hint = Label.new()
 	_recruit_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_recruit_hint.text = "将下半场候选人拖到上半场队伍"
@@ -3297,7 +3317,7 @@ func _refresh_recruit_hud() -> void:
 	var gold := _recruit_session.economy.gold if _recruit_session.economy != null else 0
 	var deck := _recruit_session.deck
 	var roster_n := deck.size() if deck != null else 0
-	var seated_n := deck.get_seated_count() if deck != null else 0
+	var seated_n := deck.get_seated_population() if deck != null else 0
 	var bench_n := deck.get_bench_count() if deck != null else 0
 	var cap := _recruit_session.get_seat_cap()
 	if _recruit_hint != null:
@@ -3331,7 +3351,7 @@ func _refresh_recruit_hud() -> void:
 	if _phase_label != null:
 		_phase_label.text = "招募"
 	if _pop_label != null:
-		_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
+		_pop_label.text = "人口 %d/%d 备战 %d/%d" % [
 			seated_n, cap, bench_n, DeckState.BENCH_CAPACITY,
 		]
 	if _encounter_label != null:
@@ -3555,7 +3575,9 @@ func _try_recruit(candidate_index: int, replace_entry_id: int, seat_index: int =
 		"roster_full", "need_replace":
 			_recruit_hint.text = "拥有已满：请出售腾位，或点选上区角色替换"
 		"seat_cap_full":
-			_recruit_hint.text = "上场席位已满"
+			_recruit_hint.text = "上场人口已满（建筑占 2）"
+		"seat_occupied":
+			_recruit_hint.text = "该格不够放此单位（建筑需连续 2 格）"
 		_:
 			_recruit_hint.text = "无法招募（%s）" % reason
 
@@ -4407,7 +4429,15 @@ func _refresh_cards() -> void:
 		card.status_text = ""
 		if not in_prepare and card.selected:
 			_set_selected(-1)
-	var show_prepare_actions := in_prepare and not in_recruit and not _final_trial_active
+	var show_prepare_actions := (
+		in_prepare and not in_recruit and not _final_trial_active
+	)
+	var show_sandbox_layout := (
+		_combat_sandbox_mode
+		and _encounter != null
+		and _sim == null
+		and (_phase == Phase.IDLE or in_prepare)
+	)
 	if _prepare_action_row != null:
 		_prepare_action_row.visible = show_prepare_actions
 	if _start_button != null:
@@ -4422,9 +4452,13 @@ func _refresh_cards() -> void:
 		_refresh_button.disabled = true
 		_refresh_button.text = "刷新手牌（已禁用）"
 	if _copy_layout_button != null:
-		_copy_layout_button.visible = show_prepare_actions
+		_copy_layout_button.visible = show_prepare_actions or show_sandbox_layout
 	if _paste_layout_button != null:
-		_paste_layout_button.visible = show_prepare_actions and _combat_sandbox_mode
+		_paste_layout_button.visible = (show_prepare_actions or show_sandbox_layout) and _combat_sandbox_mode
+	if _start_button != null and show_sandbox_layout and not show_prepare_actions:
+		_start_button.visible = true
+		var can_start := _slots.occupied_count() >= 1 and not _enemy_spawns.is_empty()
+		_start_button.disabled = not can_start
 	_refresh_bench_row()
 	_update_tape_controls()
 
@@ -4464,9 +4498,9 @@ func _refresh_hud() -> void:
 	var hand_n := _card_flow.get_hand().size()
 	var draw_n := _card_flow.get_draw_count()
 	var discard_n := _card_flow.get_discard_count()
-	var seated_n := _slots.occupied_count()
+	var seated_n := _slots.get_occupied_population()
 	var bench_n := _deck_state.get_bench_count() if _deck_state != null else 0
-	_pop_label.text = "入座 %d/%d 备战 %d/%d" % [
+	_pop_label.text = "人口 %d/%d 备战 %d/%d" % [
 		seated_n,
 		_deploy_cap,
 		bench_n,

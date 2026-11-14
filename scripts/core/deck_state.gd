@@ -168,6 +168,12 @@ func can_seat_entry(entry: DeckEntry) -> bool:
 	return get_seated_population() + entry.get_roster_population() <= get_max_size()
 
 
+func can_seat_unit(unit: UnitData) -> bool:
+	if unit == null:
+		return false
+	return get_seated_population() + unit.get_roster_population() <= get_max_size()
+
+
 func can_bench_more() -> bool:
 	return get_bench_count() < BENCH_CAPACITY
 
@@ -423,28 +429,62 @@ func remove_entry(entry_id: int) -> bool:
 
 
 ## 第一个空友方座位：先前排到后排，同行中心向外（5 列序 53124）；无空返回 -1。
-func find_first_empty_seat() -> int:
-	var occupied := _occupied_seat_set()
+func find_first_empty_seat(unit: UnitData = null) -> int:
 	var rows := get_seat_rows()
 	var cols := get_seat_cols()
 	var n := get_slot_count()
 	for seat_i in SeatLayout.iter_seats_center_out(rows, cols):
 		if seat_i < 0 or seat_i >= n:
 			continue
-		if not occupied.has(seat_i):
+		if is_seat_free_for_unit(seat_i, unit):
 			return seat_i
-	## 网格外残留空座（配置异常时兜底）
 	for i in n:
-		if not occupied.has(i):
+		if is_seat_free_for_unit(i, unit):
 			return i
 	return -1
 
 
-
 func is_seat_free(seat_index: int) -> bool:
+	return is_seat_free_for_unit(seat_index, null)
+
+
+## 能否以 seat_index 为锚点落座该单位（含 2×1 等足迹占多格）。
+func is_seat_free_for_unit(
+	seat_index: int,
+	unit: UnitData,
+	exclude_entry_id: int = -1,
+) -> bool:
 	if seat_index < 0 or seat_index >= get_slot_count():
 		return false
-	return not _occupied_seat_set().has(seat_index)
+	var occupied := _occupied_seat_set(exclude_entry_id)
+	for si in get_footprint_seat_indices(seat_index, unit):
+		if occupied.has(si):
+			return false
+	return not get_footprint_seat_indices(seat_index, unit).is_empty()
+
+
+func get_footprint_seat_indices(anchor_seat: int, unit: UnitData) -> Array[int]:
+	var fw := 1
+	var fh := 1
+	if unit != null:
+		fw = maxi(1, unit.footprint_w)
+		fh = maxi(1, unit.footprint_h)
+	var cols := maxi(1, get_seat_cols())
+	var rows := maxi(1, get_seat_rows())
+	var anchor_col := anchor_seat % cols
+	var anchor_row := anchor_seat / cols
+	var out: Array[int] = []
+	for dy in fh:
+		for dx in fw:
+			var c := anchor_col + dx
+			var r := anchor_row + dy
+			if c >= cols or r >= rows:
+				return []
+			var si := r * cols + c
+			if si < 0 or si >= get_slot_count():
+				return []
+			out.append(si)
+	return out
 
 
 ## 将成员放到指定空座（或保持原座）；成功刷新落座时间。目标被他人占用时失败。
@@ -462,8 +502,7 @@ func assign_seat(entry_id: int, seat_index: int) -> bool:
 	var from_bench := entry.seat_index < 0
 	if from_bench and not can_seat_entry(entry):
 		return false
-	var occupant := get_entry_at_seat(seat_index)
-	if occupant != null and occupant.entry_id != entry_id:
+	if not is_seat_free_for_unit(seat_index, entry.unit, entry_id):
 		return false
 	_set_seat(entry, seat_index, true)
 	deck_changed.emit()
@@ -490,10 +529,14 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 			return false
 		if not can_seat_entry(entry):
 			return false
+		if not is_seat_free_for_unit(target_seat, entry.unit):
+			return false
 		_set_seat(entry, target_seat, true)
 		deck_changed.emit()
 		return true
 	if other == null:
+		if not is_seat_free_for_unit(target_seat, entry.unit, entry_id):
+			return false
 		_set_seat(entry, target_seat, true)
 		deck_changed.emit()
 		return true
@@ -589,8 +632,13 @@ func get_entry_at_seat(seat_index: int) -> DeckEntry:
 	if seat_index < 0:
 		return null
 	for entry in _entries:
-		if entry != null and entry.seat_index == seat_index:
+		if entry == null or entry.seat_index < 0 or entry.unit == null:
+			continue
+		if entry.seat_index == seat_index:
 			return entry
+		for si in get_footprint_seat_indices(entry.seat_index, entry.unit):
+			if si == seat_index:
+				return entry
 	return null
 
 
@@ -942,7 +990,11 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 	if entry == null:
 		return
 	## 显式空座（拖到上区）：优先落指定座。
-	if preferred_seat >= 0 and preferred_seat < get_slot_count() and is_seat_free(preferred_seat):
+	if (
+		preferred_seat >= 0
+		and preferred_seat < get_slot_count()
+		and is_seat_free_for_unit(preferred_seat, entry.unit)
+	):
 		if can_seat_entry(entry):
 			_set_seat(entry, preferred_seat, true)
 			return
@@ -952,14 +1004,14 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 			## seat_index 保持 -1 = 备战。
 			return
 		if can_seat_entry(entry):
-			var empty := find_first_empty_seat()
+			var empty := find_first_empty_seat(entry.unit)
 			if empty >= 0:
 				_set_seat(entry, empty, true)
 		return
 	## 开局 / 非备战路径：尽量入座，席位满再进备战。
 	var seat := preferred_seat
-	if seat < 0 or seat >= get_slot_count() or not is_seat_free(seat):
-		seat = find_first_empty_seat()
+	if seat < 0 or seat >= get_slot_count() or not is_seat_free_for_unit(seat, entry.unit):
+		seat = find_first_empty_seat(entry.unit)
 	if seat >= 0 and can_seat_entry(entry):
 		_set_seat(entry, seat, true)
 		return
@@ -1051,9 +1103,13 @@ func _set_seat(entry: DeckEntry, seat_index: int, refresh_seq: bool) -> void:
 		entry.seat_assign_seq = _next_seat_seq
 
 
-func _occupied_seat_set() -> Dictionary:
+func _occupied_seat_set(exclude_entry_id: int = -1) -> Dictionary:
 	var occupied := {}
 	for entry in _entries:
-		if entry != null and entry.seat_index >= 0:
-			occupied[entry.seat_index] = true
+		if entry == null or entry.seat_index < 0:
+			continue
+		if entry.entry_id == exclude_entry_id:
+			continue
+		for si in get_footprint_seat_indices(entry.seat_index, entry.unit):
+			occupied[si] = true
 	return occupied

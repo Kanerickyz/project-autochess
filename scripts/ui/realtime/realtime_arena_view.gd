@@ -3996,6 +3996,9 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var fp_span := 1.0
+		if entry.unit != null:
+			fp_span = maxf(1.0, float(maxi(1, entry.unit.footprint_w)))
 		var dragging := (
 			entry.entry_id == _recruit_team_drag_id or entry.entry_id == _map_shop_team_drag_id
 		)
@@ -4009,8 +4012,22 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 			merge_pose.shadow_mul = 1.0 + 0.55 * _merge_survivor_flash
 			idle_seed = -1
 		_draw_body(
-			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(), merge_pose, Vector2.ZERO, 1.0, idle_seed,
+			center_tile,
+			radius,
+			vwx,
+			vhy,
+			PLAYER_COLOR,
+			alpha,
+			entry.get_display_name(),
+			px,
+			true,
+			off,
+			true,
+			entry.get_unit_id(),
+			merge_pose,
+			Vector2.ZERO,
+			fp_span,
+			idle_seed,
 		)
 		var display := _entry_display_atk_hp(entry)
 		badge_jobs.append({

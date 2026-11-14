@@ -60,10 +60,11 @@ func _test_paste_apply() -> int:
 	deck.configure(load("res://resources/deck/realtime_starter_deck.tres") as DeckConfig)
 	battle.setup(deck, RunEconomy.new(), load("res://resources/levels/board_act1.tres") as LevelData)
 	battle.set_combat_sandbox_mode(true)
+	battle.auto_start_combat_on_encounter = false
 	battle.enter_combat_sandbox(0)
 	await process_frame
 	if battle.get_phase() != RealtimeBattleController.Phase.PREPARE:
-		push_error("paste_apply: not PREPARE after empty enter")
+		push_error("paste_apply: not PREPARE after empty enter (sandbox)")
 		failed += 1
 	var e1 := DeckEntry.new()
 	e1.unit = load("res://resources/units/realtime/wardrum.tres") as UnitData
