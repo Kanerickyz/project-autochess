@@ -7,5 +7,5 @@ script = ExtResource("1")
 id = "banner"
 display_name = "旗帜"
 item_type = 2
-cost = 2
+cost = 5
 bonus_value = 1
