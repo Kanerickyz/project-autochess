@@ -237,6 +237,8 @@ func _owner_qualifies_for_event(
 		CombatEvents.ON_ROUND_START:
 			## 旧全场回合：source 为空，全员可听。回合制「自己回合开始」：source=行动者，仅本人。
 			return payload.source == null or payload.source == owner
+		CombatEvents.ON_ATTACK_CADENCE:
+			return payload.source == owner
 		CombatEvents.ON_ACTOR_TURN_END:
 			return payload.source == owner
 		CombatEvents.ON_FRIEND_SUMMONED:
@@ -1577,7 +1579,13 @@ func _spawn_unit(
 ) -> bool:
 	if action.spawn_unit == null or payload.target == null:
 		return false
-	if payload.target.is_alive():
+	var cadence_self_spawn := (
+		owner != null
+		and payload.target != null
+		and payload.target == owner
+		and payload.target.is_alive()
+	)
+	if payload.target.is_alive() and not cadence_self_spawn:
 		return false
 
 	## 击杀生成须跟技能持有者阵营；死亡/友亡的 owner 与死者同队。
@@ -1589,14 +1597,20 @@ func _spawn_unit(
 	var death_replace_at_origin := not payload.target.is_alive()
 	if death_replace_at_origin and origin != Vector2i(-1, -1):
 		_grid.remove_unit(payload.target)
-	elif not _has_spawn_cell_available(prefer_player_half):
+	elif not cadence_self_spawn and not _has_spawn_cell_available(prefer_player_half):
+		return false
+	elif cadence_self_spawn and not _has_spawn_cell_available(prefer_player_half):
 		return false
 	var summon_context := owner if owner != null else payload.target
 	## 每次数以 spawn_count 为准（召魂等同，无额外只数规则）。
 	var spawn_total := AllyDeathSpawnRules.spawn_count_for_owner(action, owner)
 	var spawned_any := false
 	for i in spawn_total:
-		var cell := _pick_spawn_cell(origin, i == 0, prefer_player_half)
+		var cell := Vector2i(-1, -1)
+		if cadence_self_spawn:
+			cell = _pick_spawn_cell_toward_enemy(origin, team, prefer_player_half)
+		else:
+			cell = _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
 			break
 		var spawned := UnitInstance.from_unit_data(action.spawn_unit, cell, team)
@@ -1681,6 +1695,37 @@ func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool, prefer_player_half:
 			if _grid.path_cost(origin, cell) == best_dist:
 				close.append(cell)
 		return close[_rng.randi_range(0, close.size() - 1)]
+	return candidates[0]
+
+
+## 节拍阵地召兵：优先己方半场朝敌方向最近空格。
+func _pick_spawn_cell_toward_enemy(
+	origin: Vector2i,
+	team: UnitInstance.Team,
+	prefer_player_half: bool,
+) -> Vector2i:
+	var height := _grid.get_size().y
+	var candidates := BoardHalf.filter_cells(_grid.get_empty_cells(), height, prefer_player_half)
+	if candidates.is_empty():
+		candidates = _grid.get_empty_cells()
+	if candidates.is_empty():
+		return Vector2i(-1, -1)
+	var toward_enemy := 1 if team == UnitInstance.Team.PLAYER else -1
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var dy_a := (a.y - origin.y) * toward_enemy
+		var dy_b := (b.y - origin.y) * toward_enemy
+		if dy_a != dy_b:
+			return dy_a > dy_b
+		return _grid.path_cost(origin, a) < _grid.path_cost(origin, b)
+	)
+	if _rng != null and candidates.size() > 1:
+		var best_y := (candidates[0].y - origin.y) * toward_enemy
+		var close: Array[Vector2i] = []
+		for cell in candidates:
+			if (cell.y - origin.y) * toward_enemy == best_y:
+				close.append(cell)
+		if close.size() > 1:
+			return close[_rng.randi_range(0, close.size() - 1)]
 	return candidates[0]
 
 

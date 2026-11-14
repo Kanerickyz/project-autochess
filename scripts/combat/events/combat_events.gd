@@ -26,6 +26,8 @@ const ON_EFFECT_RESOLVED := &"OnEffectResolved"
 const ON_EFFECT_FIZZLED := &"OnEffectFizzled"
 const ON_MOVE := &"OnMove"
 const ON_ROUND_START := &"OnRoundStart"
+## 出手节拍到点（建筑阵地等；无目标、常伴随禁移与不普攻）。
+const ON_ATTACK_CADENCE := &"OnAttackCadence"
 ## 自己一动结束且仍存活（回合制交权前）；payload.source = 行动者。
 const ON_ACTOR_TURN_END := &"OnActorTurnEnd"
 ## 击杀续动等：重置当前行动者步数与普攻，不广播 OnRoundStart。

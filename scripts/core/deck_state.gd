@@ -115,6 +115,15 @@ func get_seated_count() -> int:
 	return n
 
 
+## 已入座占用人口（建筑占 2，其余占 1）；≤ 上场席位上限 max_size。
+func get_seated_population() -> int:
+	var n := 0
+	for entry in _entries:
+		if entry != null and entry.seat_index >= 0:
+			n += entry.get_roster_population()
+	return n
+
+
 ## 备战区人数（seat_index < 0）；≤ BENCH_CAPACITY。
 func get_bench_count() -> int:
 	return get_bench_entries().size()
@@ -147,7 +156,16 @@ func get_ownership_max() -> int:
 
 
 func can_seat_more() -> bool:
-	return get_seated_count() < get_max_size()
+	return get_seated_population() + 1 <= get_max_size()
+
+
+## 是否还能让 entry 入座（已入座则按换座不计额外人口，仅校验实体人数）。
+func can_seat_entry(entry: DeckEntry) -> bool:
+	if entry == null:
+		return false
+	if entry.seat_index >= 0:
+		return get_seated_population() <= get_max_size()
+	return get_seated_population() + entry.get_roster_population() <= get_max_size()
 
 
 func can_bench_more() -> bool:
@@ -442,7 +460,7 @@ func assign_seat(entry_id: int, seat_index: int) -> bool:
 		deck_changed.emit()
 		return true
 	var from_bench := entry.seat_index < 0
-	if from_bench and not can_seat_more():
+	if from_bench and not can_seat_entry(entry):
 		return false
 	var occupant := get_entry_at_seat(seat_index)
 	if occupant != null and occupant.entry_id != entry_id:
@@ -470,7 +488,7 @@ func swap_seats(entry_id: int, target_seat: int) -> bool:
 	if from_seat < 0:
 		if other != null:
 			return false
-		if not can_seat_more():
+		if not can_seat_entry(entry):
 			return false
 		_set_seat(entry, target_seat, true)
 		deck_changed.emit()
@@ -925,7 +943,7 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 		return
 	## 显式空座（拖到上区）：优先落指定座。
 	if preferred_seat >= 0 and preferred_seat < get_slot_count() and is_seat_free(preferred_seat):
-		if can_seat_more():
+		if can_seat_entry(entry):
 			_set_seat(entry, preferred_seat, true)
 			return
 	if prefer_bench:
@@ -933,7 +951,7 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 		if get_bench_count() <= BENCH_CAPACITY:
 			## seat_index 保持 -1 = 备战。
 			return
-		if can_seat_more():
+		if can_seat_entry(entry):
 			var empty := find_first_empty_seat()
 			if empty >= 0:
 				_set_seat(entry, empty, true)
@@ -942,7 +960,7 @@ func _place_new_entry(entry: DeckEntry, preferred_seat: int, prefer_bench: bool 
 	var seat := preferred_seat
 	if seat < 0 or seat >= get_slot_count() or not is_seat_free(seat):
 		seat = find_first_empty_seat()
-	if seat >= 0 and can_seat_more():
+	if seat >= 0 and can_seat_entry(entry):
 		_set_seat(entry, seat, true)
 		return
 	## 上场已满：落在首个空备战格。

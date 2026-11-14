@@ -86,6 +86,7 @@ const TRIGGER_NAMES: PackedStringArray = [
 	"OnEffectFizzled",
 	"OnMove",
 	"OnRoundStart",
+	"OnAttackCadence",
 	"OnActorTurnEnd",
 	"OnLevelUp",
 	"OnBuy",

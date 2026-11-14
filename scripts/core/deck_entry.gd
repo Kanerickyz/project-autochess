@@ -68,6 +68,12 @@ func get_command_cost() -> int:
 	return unit.get_command_cost()
 
 
+func get_roster_population() -> int:
+	if unit == null:
+		return 1
+	return unit.get_roster_population()
+
+
 func get_buff_summary() -> String:
 	if attached_buffs.is_empty():
 		return ""

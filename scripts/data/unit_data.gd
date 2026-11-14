@@ -18,8 +18,12 @@ extends Resource
 
 @export_group("Synergy")
 ## 主职业标签（玩家可见）；空 = 无职业，不计入羁绊人数。
-## 词表见 SynergyOccupations（坦克/战士/远程/工匠/军乐队/秘术）。不用 @export_enum("")：Godot 禁止空枚举项。
+## 词表见 SynergyOccupations（坦克/战士/远程/工匠/军乐队/秘术/建筑）。不用 @export_enum("")：Godot 禁止空枚举项。
 @export var occupation: String = ""
+
+@export_group("Body")
+## 战斗内不能移动（开战后不走位；节拍类建筑常用）。
+@export var immobile: bool = false
 
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、足迹策略机。
@@ -65,3 +69,10 @@ func pick_summon_unit(rng: RandomNumberGenerator = null) -> UnitData:
 ## 【已停用】勿再用于出牌/商店费用。
 func get_command_cost() -> int:
 	return maxi(1, command_cost)
+
+
+## 上场席位人口（占用 max_size / deploy_cap）；建筑职业为 2，其余为 1。
+func get_roster_population() -> int:
+	if occupation == SynergyOccupations.BUILDING:
+		return 2
+	return 1
