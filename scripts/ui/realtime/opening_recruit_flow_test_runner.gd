@@ -100,6 +100,8 @@ func _test_opening_enter_recruit_ui() -> void:
 	await process_frame
 
 	var arena := battle.get_arena()
+	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "opening recruit: ally half slide reset")
+	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "opening recruit: enemy half slide reset")
 	var dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
 	_expect(dock != null and dock.visible, "dock visible during opening recruit")

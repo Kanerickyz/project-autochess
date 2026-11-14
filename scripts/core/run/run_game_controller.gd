@@ -239,8 +239,8 @@ func _open_opening_recruit() -> void:
 	## 开局：第 1 层尺 → 仅 T1。
 	_recruit_session.forward_tier_unlock = _is_endless()
 	_recruit_session.begin(0.0, 1, _recruit_map_floor_count())
-	var enter_s := recruit_config.panel_enter_seconds if recruit_config != null else 0.45
-	await _battle.enter_recruit(_recruit_session, enter_s)
+	## 开局不播半场滑入：保证候选人立刻在位（胜后招募仍用 panel_enter_seconds）。
+	await _battle.enter_recruit(_recruit_session, 0.0)
 
 
 func _sync_battle_owned_badges() -> void:

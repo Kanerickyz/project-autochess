@@ -330,6 +330,10 @@ func setup(deck_state: DeckState, economy: RunEconomy, level: LevelData) -> void
 	_deck_state = deck_state
 	_economy = economy
 	_level = level
+	if level != null:
+		_board_size = level.get_board_size()
+		if _arena != null:
+			_arena.board_size = _board_size
 	_connect_deck_merge()
 	if _economy != null:
 		_economy.gold_changed.connect(_on_gold_changed)
@@ -1610,19 +1614,23 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	await get_tree().process_frame
 	_bind_recruit_session()
 	_open_recruit_shop()
-	## 若未播退出（half_exit=0），先瞬移到屏外再滑入，保持「进出一段」。
-	## 先就位 slide，再 sync 单位：开场瞬间队伍/候选人已在半场上（屏外），滑入时可见生成。
+	## 无滑入动画时保持 slide=0，避免候选人先被推到屏外（Web 上 Tween 失败会整屏空白）。
 	if _arena != null:
-		var travel := _half_slide_travel()
-		var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
-		if not already_out:
-			_arena.set_half_slide_offscreen(travel)
+		if seconds <= 0.001:
+			_arena.reset_half_slide()
+		else:
+			var travel := _half_slide_travel()
+			var already_out := absf(_arena.enemy_half_slide_y) > 1.0 or absf(_arena.ally_half_slide_y) > 1.0
+			if not already_out:
+				_arena.set_half_slide_offscreen(travel)
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
 	if _arena != null:
 		_arena.queue_redraw()
 	await _play_half_field_enter_animation(seconds)
 	_recruit_animating = false
+	if _arena != null:
+		_arena.reset_half_slide()
 	_sync_recruit_arena()
 	_refresh_recruit_hud()
 
@@ -1876,10 +1884,12 @@ func exit_recruit() -> void:
 func _play_half_field_enter_animation(seconds: float) -> void:
 	if _arena == null:
 		return
-	_recruit_animating = true
 	if seconds <= 0.001:
+		_recruit_animating = false
 		_arena.reset_half_slide()
+		_arena.queue_redraw()
 		return
+	_recruit_animating = true
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_OUT)
@@ -1888,8 +1898,8 @@ func _play_half_field_enter_animation(seconds: float) -> void:
 	tween.tween_property(_arena, "ally_half_slide_y", 0.0, seconds)
 	tween.tween_method(_redraw_arena_half_slide, 0.0, 1.0, seconds)
 	await tween.finished
-	if _arena != null:
-		_arena.reset_half_slide()
+	_arena.reset_half_slide()
+	_arena.queue_redraw()
 
 
 # --- 流程 ---
@@ -3103,6 +3113,7 @@ func _drain_pending_merge_fx() -> void:
 func _sync_recruit_arena() -> void:
 	if _arena == null or _recruit_session == null:
 		return
+	_recruit_session.ensure_candidates_filled()
 	_rebuild_recruit_team_slots()
 	_arena.recruit_active = true
 	_arena.recruit_team_slots = _recruit_team_slots
