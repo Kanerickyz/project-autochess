@@ -4,7 +4,7 @@ extends Resource
 
 const DEFAULT_PATH := "res://resources/map_shop/default_map_shop.tres"
 const DEFAULT_CONSUMABLE_SLOTS := 3
-const DEFAULT_EQUIPMENT_SLOTS := 3
+const DEFAULT_EQUIPMENT_SLOTS := 5
 const DEFAULT_REFRESH_COST := 2
 
 @export var consumable_pool: Array[MapShopConsumableData] = []
@@ -34,9 +34,15 @@ static func make_code_defaults() -> MapShopConfig:
 		_make_consumable("qunbolong", "群伯龙", 5, 10, -5, ICON_RARE),
 	]
 	config.equipment_pool = [
-		_make_equipment("armor_t1", "护甲 I", 1, 2, ICON_ARMOR),
-		_make_equipment("armor_t2", "护甲 II", 2, 6, ICON_ARMOR),
-		_make_equipment("armor_t3", "护甲 III", 4, 10, ICON_ARMOR),
+		_make_equipment("armor_t1", "护甲 I", 1, 2),
+		_make_equipment("armor_t2", "护甲 II", 2, 6),
+		_make_equipment("armor_t3", "护甲 III", 4, 10),
+		_make_equipment("emblem_tank", "坦克纹章", 4, 0, ICON_ARMOR, SynergyOccupations.TANK),
+		_make_equipment("emblem_warrior", "战士纹章", 4, 0, ICON_ARMOR, SynergyOccupations.WARRIOR),
+		_make_equipment("emblem_ranged", "远程纹章", 4, 0, ICON_ARMOR, SynergyOccupations.RANGED),
+		_make_equipment("emblem_artisan", "工匠纹章", 4, 0, ICON_ARMOR, SynergyOccupations.ARTISAN),
+		_make_equipment("emblem_band", "军乐队纹章", 4, 0, ICON_ARMOR, SynergyOccupations.BAND),
+		_make_equipment("emblem_arcane", "秘术纹章", 4, 0, ICON_ARMOR, SynergyOccupations.ARCANE),
 	]
 	return config
 
@@ -72,12 +78,14 @@ static func _make_equipment(
 	cost: int,
 	block: int,
 	icon_path: String = ICON_ARMOR,
+	occupation: String = "",
 ) -> EquipmentData:
 	var item := EquipmentData.new()
 	item.id = id
 	item.display_name = name
 	item.cost = cost
 	item.armor_block = block
+	item.granted_occupation = occupation
 	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
 		item.icon = load(icon_path) as Texture2D
 	return item

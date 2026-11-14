@@ -98,12 +98,15 @@ func _on_deck_changed() -> void:
 
 func _refresh_all() -> void:
 	_refresh_gold()
-	_rebuild_consumable_slots()
+	## 本切片货架不含消耗品行。
+	if _consumable_row != null:
+		_consumable_row.visible = false
+		_clear_children(_consumable_row)
 	_rebuild_equipment_slots()
 	_rebuild_seats()
 	if _refresh_btn != null and _service != null:
 		var cost := _service.get_refresh_cost()
-		_refresh_btn.text = "刷新消耗品（%d 金）" % cost
+		_refresh_btn.text = "刷新货架（%d 金）" % cost
 		_refresh_btn.disabled = _busy or not _service.can_refresh()
 
 
@@ -178,7 +181,10 @@ func _make_offer_slot(index: int, is_consumable: bool, item: Resource) -> PanelC
 	else:
 		var e := item as EquipmentData
 		title.text = e.get_display_name()
-		detail.text = "护甲抵挡 %d" % e.get_armor_block()
+		if e.is_occupation_emblem():
+			detail.text = "附加职业：%s" % e.get_granted_occupation()
+		else:
+			detail.text = "护甲抵挡 %d" % e.get_armor_block()
 		cost_l.text = "售价 %d" % e.cost
 		panel.set_drag_forwarding(_get_offer_drag_data.bind(panel), Callable(), Callable())
 	col.add_child(title)
@@ -273,28 +279,41 @@ func _make_seat_cell(seat_index: int) -> PanelContainer:
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.set_meta("entry_id", entry.entry_id)
 		panel.set_meta("unit_card", card)
-		if entry.equipment != null:
+		if entry.equipment != null or not entry.occupation_emblems.is_empty():
 			var eq_row := HBoxContainer.new()
 			eq_row.alignment = BoxContainer.ALIGNMENT_CENTER
 			eq_row.add_theme_constant_override("separation", 4)
 			eq_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			col.add_child(eq_row)
-			var armor_tex := UiStatIcons.armor_texture()
-			if armor_tex != null:
-				var icon := TextureRect.new()
-				icon.texture = armor_tex
-				icon.custom_minimum_size = Vector2(14, 14)
-				icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				eq_row.add_child(icon)
-			var eq := Label.new()
-			eq.add_theme_font_size_override("font_size", 11)
-			eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			eq.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
-			eq.text = "%s %d" % [entry.get_equipment_display_name(), entry.get_armor_block()]
-			eq.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			eq_row.add_child(eq)
+			if entry.equipment != null:
+				var armor_tex := UiStatIcons.armor_texture()
+				if armor_tex != null:
+					var icon := TextureRect.new()
+					icon.texture = armor_tex
+					icon.custom_minimum_size = Vector2(14, 14)
+					icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+					icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					eq_row.add_child(icon)
+				var eq := Label.new()
+				eq.add_theme_font_size_override("font_size", 11)
+				eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				eq.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
+				eq.text = "%s %d" % [entry.get_equipment_display_name(), entry.get_armor_block()]
+				eq.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				eq_row.add_child(eq)
+			if not entry.occupation_emblems.is_empty():
+				var extra: PackedStringArray = []
+				for emblem in entry.occupation_emblems:
+					if emblem != null:
+						extra.append(emblem.get_granted_occupation())
+				var oc := Label.new()
+				oc.add_theme_font_size_override("font_size", 11)
+				oc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				oc.add_theme_color_override("font_color", Color(0.85, 0.75, 1.0))
+				oc.text = "转职 %s" % " / ".join(extra)
+				oc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				eq_row.add_child(oc)
 
 	var drag_cb := _get_seat_drag_data.bind(panel) if entry != null and entry.unit != null else Callable()
 	panel.set_drag_forwarding(drag_cb, _can_drop_on_seat.bind(panel), _drop_on_seat.bind(panel))
@@ -404,6 +423,8 @@ func _try_buy_on_seat(slot_index: int, is_consumable: bool, seat_index: int) -> 
 		var reason := String(result.get("reason", "failed"))
 		if reason == "cant_afford":
 			_hint_label.text = "金币不足"
+		elif reason == "occupation_conflict":
+			_hint_label.text = "已有该职业，无法再装同职纹章"
 		else:
 			_hint_label.text = "购买失败"
 		_refresh_all()
@@ -412,10 +433,8 @@ func _try_buy_on_seat(slot_index: int, is_consumable: bool, seat_index: int) -> 
 		_hint_label.text = "生命归零，角色已销毁"
 	elif is_consumable:
 		_hint_label.text = "已使用消耗品"
-	elif bool(result.get("kept_new", true)):
-		_hint_label.text = "已装备"
 	else:
-		_hint_label.text = "装备冲突：保留了旧装备（不退金）"
+		_hint_label.text = "已装备"
 	_refresh_all()
 
 
@@ -423,12 +442,12 @@ func _on_refresh_pressed() -> void:
 	if _busy or _service == null:
 		return
 	_busy = true
-	var result := _service.try_refresh_consumables()
+	var result := _service.try_refresh()
 	_busy = false
 	if int(result.get("result", MapShopService.BuyResult.FAILED)) != MapShopService.BuyResult.OK:
 		_hint_label.text = "金币不足，无法刷新"
 	else:
-		_hint_label.text = "已刷新消耗品"
+		_hint_label.text = "已刷新装备货架"
 	_refresh_all()
 
 

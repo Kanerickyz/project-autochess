@@ -45,11 +45,8 @@ static func apply_combat_start(
 		if u2 != null and u2.is_alive() and u2.team == UnitInstance.Team.ENEMY:
 			enemy_units.append(u2)
 
-	var unit_datas: Array = []
-	for ally in ally_units:
-		if ally.unit_data != null:
-			unit_datas.append(ally.unit_data)
-	var counts := SynergyOccupations.count_from_unit_datas(unit_datas)
+	## 含转职纹章附加职（经 DeckEntry.get_occupation_tags）；同 id 去重。
+	var counts := SynergyOccupations.count_from_unit_instances(ally_units)
 	result["occupation_counts"] = counts
 
 	var badges := BadgeCatalog.resolve_owned(owned_ids)

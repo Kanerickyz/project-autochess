@@ -1802,15 +1802,14 @@ func _on_map_shop_offer_drop(kind: StringName, slot_index: int, entry_id: int) -
 				_map_shop_ui.set_hint("无效目标")
 			"empty_slot":
 				_map_shop_ui.set_hint("货架已空")
+			"occupation_conflict":
+				_map_shop_ui.set_hint("已有该职业，无法再装同职纹章")
 			_:
 				_map_shop_ui.set_hint("无法购买")
 		on_map_shop_changed()
 		return
 	if kind == &"equipment":
-		if bool(result.get("kept_new", true)):
-			_map_shop_ui.set_hint("已装备")
-		else:
-			_map_shop_ui.set_hint("装备冲突：保留了旧装备")
+		_map_shop_ui.set_hint("已装备")
 	elif bool(result.get("destroyed", false)):
 		_map_shop_ui.set_hint("生命归零，角色已销毁")
 	else:

@@ -1,6 +1,6 @@
 class_name MapShopBattleExtension
 extends RefCounted
-## 地图商店：Arena 上队伍 / 下货架 + 底栏（刷新消耗品 / 离开）。
+## 地图商店：Arena 上队伍 / 下装备货架 5 槽 + 底栏（刷新装备 / 离开）。
 
 
 var _battle: RealtimeBattleController
@@ -116,29 +116,19 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 	var out: Array = []
 	if _service == null or not _service.is_open():
 		return out
-	var consumables := _service.get_consumable_offers()
+	## 本切片货架仅装备 5 槽（不含消耗品行）。
 	var equipment := _service.get_equipment_offers()
-	var cons_cells := _build_shelf_row_cells(consumables.size(), board_size, 1)
-	var equip_cells := _build_shelf_row_cells(equipment.size(), board_size, 3)
-	for i in consumables.size():
-		var item: MapShopConsumableData = consumables[i] as MapShopConsumableData
-		var cell := cons_cells[i] if i < cons_cells.size() else Vector2i(-1, -1)
-		var cost := item.cost if item != null else 0
-		out.append({
-			"index": i,
-			"kind": &"consumable",
-			"item": item,
-			"cell": cell,
-			"cost": cost,
-			"affordable": _service.can_afford(cost) if item != null else false,
-			"label": item.get_display_name() if item != null else "",
-			"summary": item.get_effect_summary() if item != null else "",
-			"icon": item.get_icon() if item != null else null,
-		})
+	var equip_cells := _build_shelf_row_cells(equipment.size(), board_size, 2)
 	for i in equipment.size():
 		var item: EquipmentData = equipment[i] as EquipmentData
 		var cell := equip_cells[i] if i < equip_cells.size() else Vector2i(-1, -1)
 		var cost := item.cost if item != null else 0
+		var summary := ""
+		if item != null:
+			if item.is_occupation_emblem():
+				summary = "附加职业：%s" % item.get_granted_occupation()
+			else:
+				summary = "抵挡 %d" % item.get_armor_block()
 		out.append({
 			"index": i,
 			"kind": &"equipment",
@@ -147,7 +137,7 @@ func _build_offer_previews(board_size: Vector2i) -> Array:
 			"cost": cost,
 			"affordable": _service.can_afford(cost) if item != null else false,
 			"label": item.get_display_name() if item != null else "",
-			"summary": "抵挡 %d" % item.get_armor_block() if item != null else "",
+			"summary": summary,
 			"icon": item.get_icon() if item != null else null,
 		})
 	return out
@@ -200,7 +190,7 @@ func _ensure_hud() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hud.add_child(row)
 	_btn_refresh = Button.new()
-	_btn_refresh.text = "刷新消耗品"
+	_btn_refresh.text = "刷新货架"
 	_btn_refresh.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_refresh.pressed.connect(_on_refresh)
 	row.add_child(_btn_refresh)
@@ -216,7 +206,7 @@ func _refresh() -> void:
 		return
 	var gold := _service.get_gold()
 	var cost := _service.get_refresh_cost()
-	_stats_label.text = "%s · 刷新消耗品 %d 金" % [UiStatIcons.format_gold_label(gold), cost]
+	_stats_label.text = "%s · 刷新货架 %d 金" % [UiStatIcons.format_gold_label(gold), cost]
 	_refresh_buttons()
 	if _battle != null:
 		_battle.refresh_map_shop_chrome()
@@ -225,7 +215,7 @@ func _refresh() -> void:
 func _refresh_buttons() -> void:
 	if _btn_refresh != null and _service != null:
 		var cost := _service.get_refresh_cost()
-		_btn_refresh.text = "刷新消耗品（%d 金）" % cost
+		_btn_refresh.text = "刷新货架（%d 金）" % cost
 		_btn_refresh.disabled = _animating or not _service.can_refresh()
 	if _btn_leave != null:
 		_btn_leave.disabled = _animating
@@ -239,7 +229,7 @@ func set_hint(text: String) -> void:
 func _on_refresh() -> void:
 	if _service == null or _animating:
 		return
-	var result := _service.try_refresh_consumables()
+	var result := _service.try_refresh()
 	if int(result.get("result", MapShopService.BuyResult.FAILED)) != MapShopService.BuyResult.OK:
 		var reason := String(result.get("reason", ""))
 		match reason:
@@ -249,7 +239,7 @@ func _on_refresh() -> void:
 				set_hint("无法刷新")
 		_refresh()
 		return
-	set_hint("已刷新消耗品货架")
+	set_hint("已刷新装备货架")
 	_refresh()
 
 
