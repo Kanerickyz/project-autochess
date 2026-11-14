@@ -46,6 +46,15 @@ func _initialize() -> void:
 		catalog.get_texture("knight", true) != catalog.get_texture("knight", false),
 		"player and enemy sprites differ",
 	)
+	var gy_tex := catalog.get_texture("ghost_graveyard", true)
+	_expect(gy_tex != null, "ghost_graveyard player sprite")
+	if gy_tex != null:
+		var gy_sz := gy_tex.get_size()
+		_expect(gy_sz.x == 512 and gy_sz.y == 256, "ghost_graveyard canvas 512x256 (2x1)")
+	_expect(
+		catalog.get_texture("ghost_graveyard", true) != catalog.get_texture("ghost_graveyard", false),
+		"ghost_graveyard player/enemy differ",
+	)
 	_check_layout()
 	if _failures == 0:
 		print("UnitArtCatalogTest: all passed (%d units)" % checked)
