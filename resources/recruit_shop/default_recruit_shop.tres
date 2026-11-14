@@ -10,4 +10,4 @@
 script = ExtResource("1")
 item_pool = Array[ExtResource("3_item")]([ExtResource("i_hp"), ExtResource("i_atk"), ExtResource("i_banner")])
 default_potion_cost = 1
-default_banner_cost = 2
+default_banner_cost = 5

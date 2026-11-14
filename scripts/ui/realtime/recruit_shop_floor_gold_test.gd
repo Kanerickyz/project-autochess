@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	ok = _check("banner_repeatable_until_cap", _test_banner_repeatable_until_cap()) and ok
 	ok = _check("recruit_shop_potion", _test_recruit_shop_potion()) and ok
 	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
+	ok = _check("banner_cost_steps", _test_banner_cost_steps()) and ok
 	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
 	if ok:
 		print("RecruitShopFloorGoldTest: all passed")
@@ -160,6 +161,19 @@ static func _test_recruit_shop_potion() -> bool:
 	if int(r2.get("result", -1)) != RecruitShopService.BuyResult.OK:
 		return false
 	return entry.bonus_max_hp == hp_before + 1 and entry.bonus_attack == atk_before + 1
+
+
+static func _test_banner_cost_steps() -> bool:
+	var econ := _make_economy(100)
+	var expected := [5, 6, 7, 8, 9]
+	for i in expected.size():
+		if econ.get_banner_cost() != expected[i]:
+			return false
+		econ.note_banner_purchased()
+	## 第 6 次起保持末档 9
+	if econ.get_banner_cost() != 9:
+		return false
+	return true
 
 
 static func _test_banner_excluded_at_cap10() -> bool:

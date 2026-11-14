@@ -4,7 +4,7 @@ extends Resource
 
 const DEFAULT_PATH := "res://resources/recruit_shop/default_recruit_shop.tres"
 const DEFAULT_POTION_COST := 1
-const DEFAULT_BANNER_COST := 2
+const DEFAULT_BANNER_COST := 5
 
 ## 道具池（生命药水 / 力量药水 / 旗帜）；空则用代码默认三件。
 @export var item_pool: Array[PrepareItemData] = []

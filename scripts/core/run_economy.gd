@@ -3,8 +3,8 @@ extends RefCounted
 
 signal gold_changed(new_amount: int)
 
-## 旗帜本局成功购买次数（阶梯价 2→3→4→5→6）。
-const BANNER_COST_STEPS: Array[int] = [2, 3, 4, 5, 6]
+## 旗帜本局成功购买次数（阶梯价 5→6→7→8→9；第 6 次及以后仍取末档，满 10 席不可买）。
+const BANNER_COST_STEPS: Array[int] = [5, 6, 7, 8, 9]
 
 var gold: int = 0
 var banner_purchase_count: int = 0
