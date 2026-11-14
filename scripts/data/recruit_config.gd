@@ -74,16 +74,13 @@ static func _scan_realtime_player_units() -> Array[UnitData]:
 	if dir == null:
 		push_warning("RecruitConfig: cannot open %s" % REALTIME_UNITS_DIR)
 		return result
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var path := REALTIME_UNITS_DIR.path_join(file_name)
-			var unit := load(path) as UnitData
-			if unit != null and unit.team_default == UnitInstance.Team.PLAYER:
-				result.append(unit)
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	for file_name in dir.get_files():
+		if not file_name.ends_with(".tres"):
+			continue
+		var path := REALTIME_UNITS_DIR.path_join(file_name)
+		var unit := load(path) as UnitData
+		if unit != null and unit.team_default == UnitInstance.Team.PLAYER:
+			result.append(unit)
 	result.sort_custom(func(a: UnitData, b: UnitData) -> bool:
 		if a.tier != b.tier:
 			return a.tier < b.tier
