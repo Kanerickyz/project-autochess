@@ -109,6 +109,26 @@ func get_candidates() -> Array[UnitData]:
 	return candidates.duplicate()
 
 
+## 若货架全空（异常池/导出资源），重抽一次并通知 UI。
+func ensure_candidates_filled() -> bool:
+	if not is_active:
+		return false
+	for unit in candidates:
+		if unit != null:
+			return false
+	var pool := _player_pool()
+	if pool.is_empty():
+		push_warning("RecruitSession.ensure_candidates_filled: player unit pool is empty")
+		return false
+	_roll_candidates()
+	for unit in candidates:
+		if unit != null:
+			session_changed.emit()
+			return true
+	push_warning("RecruitSession.ensure_candidates_filled: roll produced no candidates")
+	return false
+
+
 func get_candidate_slot_count() -> int:
 	if config != null:
 		return config.get_candidate_count()
