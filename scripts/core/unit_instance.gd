@@ -86,7 +86,7 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	if new_max > old_max:
 		unit.current_hp += new_max - old_max
 	unit.current_hp = clampi(unit.current_hp, 0, new_max)
-	var rule_no_move := entry.rule_flags.get("cannot_move", false)
+	var rule_no_move: bool = bool(entry.rule_flags.get("cannot_move", false))
 	var data_immobile := entry.unit.immobile
 	unit.cannot_move = rule_no_move or data_immobile
 	unit.armor_block = entry.get_armor_block()
