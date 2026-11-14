@@ -2,7 +2,7 @@ class_name RecruitConfig
 extends Resource
 ## 招募阶段配置：刷新费、默认单价、候选人池与进出动画时长。
 
-const DEFAULT_REFRESH_COST := 1
+const DEFAULT_REFRESH_COST := 2
 const DEFAULT_UNIT_COST := 3
 const DEFAULT_CANDIDATE_COUNT := 5
 const DEFAULT_EXIT_SECONDS := 0.5
