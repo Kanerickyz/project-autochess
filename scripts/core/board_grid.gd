@@ -114,10 +114,44 @@ func remove(cell: Vector2i) -> UnitInstance:
 
 
 func remove_unit(unit: UnitInstance) -> UnitInstance:
-	var cell := find_cell_of(unit)
-	if cell == Vector2i(-1, -1):
+	if unit == null:
 		return null
-	return remove(cell)
+	var anchor := find_cell_of(unit)
+	remove_unit_all_cells(unit)
+	return unit if anchor != Vector2i(-1, -1) else null
+
+
+## 多格占位：同一 UnitInstance 占 footprint 覆盖的全部格（技能格网 / 召兵选格）。
+func place_footprint(unit: UnitInstance, anchor: Vector2i) -> bool:
+	if unit == null:
+		return false
+	var size := unit.get_footprint_size()
+	var slots: Array[Vector2i] = []
+	for dy in size.y:
+		for dx in size.x:
+			var c := Vector2i(anchor.x + dx, anchor.y + dy)
+			if not in_bounds(c) or is_blocked(c):
+				return false
+			var occ := get_unit(c)
+			if occ != null and occ != unit and occ.is_alive():
+				return false
+			slots.append(c)
+	remove_unit_all_cells(unit)
+	for c in slots:
+		_units[c] = unit
+	unit.grid_pos = anchor
+	return true
+
+
+func remove_unit_all_cells(unit: UnitInstance) -> void:
+	if unit == null:
+		return
+	var erase_keys: Array[Vector2i] = []
+	for cell in _units:
+		if _units[cell] == unit:
+			erase_keys.append(cell)
+	for c in erase_keys:
+		_units.erase(c)
 
 
 func move_unit(from: Vector2i, to: Vector2i) -> bool:

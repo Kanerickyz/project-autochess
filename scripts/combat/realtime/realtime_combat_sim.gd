@@ -622,7 +622,8 @@ func _emit_attack_cadence(rt: RtUnit) -> void:
 	payload.source = rt.unit
 	payload.target = rt.unit
 	_bus_emit(CombatEvents.ON_ATTACK_CADENCE, payload)
-	_drain_effects_unless_deferred()
+	## 阵地节拍必须当场排空（召兵真值），不受 defer 观战队列影响。
+	_drain_effects(true)
 
 
 ## 观战 hold 时仍推进全员攻击前摇/间隔，避免卡在蓄力姿。
@@ -1434,7 +1435,7 @@ func _register_on_effect_grid(unit: UnitInstance, preferred_cell: Vector2i) -> v
 	if cell == Vector2i(-1, -1):
 		push_warning("RealtimeCombatSim: effect grid full, unit %s not registered" % unit.id)
 		return
-	_effect_grid.place(unit, cell)
+	_effect_grid.place_footprint(unit, cell)
 
 
 func _find_free_effect_cell(origin: Vector2i) -> Vector2i:
@@ -1575,7 +1576,7 @@ func _place_unit_on_effect_grid_at(unit: UnitInstance, cell: Vector2i) -> bool:
 		_effect_grid.remove(cell)
 	_effect_grid.remove_unit(unit)
 	unit.grid_pos = cell
-	return _effect_grid.place(unit, cell)
+	return _effect_grid.place_footprint(unit, cell)
 
 
 func _battle_convert_kill_target(owner: UnitInstance, target: UnitInstance) -> bool:
@@ -1626,13 +1627,11 @@ func _sync_effect_grid_from_rt_positions() -> void:
 		if unit == null or not unit.is_alive():
 			continue
 		var dest := cell
-		if not _effect_grid.can_place_at(dest):
+		if not _effect_grid.place_footprint(unit, dest):
 			dest = _find_free_effect_cell(dest)
-		if dest == Vector2i(-1, -1):
-			push_warning("RealtimeCombatSim: effect grid sync failed for %s" % unit.id)
-			continue
-		_effect_grid.place(unit, dest)
-		unit.grid_pos = dest
+			if dest == Vector2i(-1, -1) or not _effect_grid.place_footprint(unit, dest):
+				push_warning("RealtimeCombatSim: effect grid sync failed for %s" % unit.id)
+				continue
 
 
 func _sync_rt_positions_from_effect_grid() -> void:

@@ -1710,7 +1710,8 @@ func _pick_spawn_cell_toward_enemy(
 		candidates = _grid.get_empty_cells()
 	if candidates.is_empty():
 		return Vector2i(-1, -1)
-	var toward_enemy := 1 if team == UnitInstance.Team.PLAYER else -1
+	## 竖屏我下敌上：玩家朝更小 y，敌朝更大 y（见 BoardHalf）。
+	var toward_enemy := -1 if team == UnitInstance.Team.PLAYER else 1
 	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		var dy_a := (a.y - origin.y) * toward_enemy
 		var dy_b := (b.y - origin.y) * toward_enemy
