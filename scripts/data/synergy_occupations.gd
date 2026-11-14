@@ -9,8 +9,9 @@ const RANGED := "远程"
 const ARTISAN := "工匠"
 const BAND := "军乐队"
 const ARCANE := "秘术"
+const BUILDING := "建筑"
 
-## 固定展示序（六类）。
+## 固定展示序（七类）。
 const ORDER: PackedStringArray = [
 	TANK,
 	WARRIOR,
@@ -18,6 +19,7 @@ const ORDER: PackedStringArray = [
 	ARTISAN,
 	BAND,
 	ARCANE,
+	BUILDING,
 ]
 
 

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3 uid="uid://bcadence_sk_swarm"]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+[ext_resource type="Resource" uid="uid://btokenswarm001" path="res://resources/units/tokens/token_skeleton_swarm.tres" id="4_token"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 2
+spawn_unit = ExtResource("4_token")
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnAttackCadence"
+max_triggers_per_combat = 12
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "cadence_spawn_skeleton_1_10"
+display_name = "出手节拍时 生成 骷髅（1/10）"
+can_normal_attack = false
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

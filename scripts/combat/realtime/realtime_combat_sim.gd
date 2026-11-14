@@ -605,10 +605,24 @@ func _advance_all_units_parallel() -> Dictionary:
 			if _boss_try_teleport(rt2, decision2.teleport_cell):
 				rt2.boss_teleport_cooldown_left = RtUnitBrain.BOSS_TELEPORT_COOLDOWN_SECONDS
 			continue
+		if decision2.cadence_tick:
+			_emit_attack_cadence(rt2)
+			_consume_turn_refresh_armed(rt2)
+			continue
 		if decision2.fire and rt2.target != null and rt2.target.is_alive():
 			_fire(rt2)
 			_consume_turn_refresh_armed(rt2)
 	return movers
+
+
+func _emit_attack_cadence(rt: RtUnit) -> void:
+	if rt == null or rt.unit == null or not rt.is_alive():
+		return
+	var payload := CombatEventPayload.new()
+	payload.source = rt.unit
+	payload.target = rt.unit
+	_bus_emit(CombatEvents.ON_ATTACK_CADENCE, payload)
+	_drain_effects_unless_deferred()
 
 
 ## 观战 hold 时仍推进全员攻击前摇/间隔，避免卡在蓄力姿。

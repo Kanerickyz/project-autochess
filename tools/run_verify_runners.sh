@@ -17,6 +17,7 @@ runners=(
   "res://scripts/combat/combat_bus_lifecycle_test_runner.gd"
   "res://scripts/combat/realtime/realtime_combat_sim_test_runner.gd"
   "res://scripts/combat/realtime/realtime_ability_effect_test_runner.gd"
+  "res://scripts/combat/realtime/ghost_graveyard_cadence_test_runner.gd"
   "res://scripts/ui/realtime/realtime_battle_flow_test_runner.gd"
   "res://scripts/ui/realtime/recruit_arena_transition_test_runner.gd"
   "res://scripts/ui/realtime/opening_recruit_flow_test_runner.gd"

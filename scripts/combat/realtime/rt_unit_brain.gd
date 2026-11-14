@@ -41,6 +41,39 @@ class Decision:
 	var teleport_cell: Vector2i = Vector2i(-1, -1)
 	## 兼容旧一动语义（并行下恒 false）
 	var turn_done: bool = false
+	## 阵地建筑：attack_interval 到点触发节拍技能，不普攻。
+	var cadence_tick: bool = false
+
+
+static func uses_attack_cadence(unit: RtUnit) -> bool:
+	if unit == null or unit.unit == null:
+		return false
+	if not unit.unit.cannot_move:
+		return false
+	if unit.unit.can_perform_normal_attack():
+		return false
+	var ability := unit.unit.get_main_ability()
+	if ability == null:
+		return false
+	for spec in ability.effect_specs:
+		if spec != null and spec.trigger == CombatEvents.ON_ATTACK_CADENCE:
+			return true
+	return false
+
+
+static func _decide_attack_cadence(unit: RtUnit, dt: float) -> Decision:
+	var decision := Decision.new()
+	if not unit.is_alive():
+		return decision
+	if unit.state == RtUnit.State.DEPLOYING:
+		return decision
+	unit.target = null
+	unit.state = RtUnit.State.MOVING
+	unit.attack_timer -= dt
+	if unit.attack_timer <= TIME_EPSILON:
+		decision.cadence_tick = true
+		unit.attack_timer += unit.get_attack_interval()
+	return decision
 
 
 ## 兼容旧测例：一动步数预算。
@@ -79,6 +112,8 @@ static func decide(
 	## 部署剩余由 sim._tick_all_deploying 推进；此处仅等待。
 	if unit.state == RtUnit.State.DEPLOYING:
 		return decision
+	if uses_attack_cadence(unit):
+		return _decide_attack_cadence(unit, dt)
 
 	_refresh_target(unit, units)
 	if unit.target == null:

@@ -78,6 +78,7 @@
 | `kill_grant_actor_turn_refresh` | 血怒再袭 | 出手 · 条件稀有 | 否 | 自己击杀时，**重置本动步数并允许再普攻**（不触发自己回合开始技能；**每场无限次**） | **偏强** | （池内保留；狂战士已改挂） | 收割·连动；`OnActorTurnRefresh` |
 | `enemy_death_self_attack_interval_3pct` | 敌亡急攻 | 死亡 · 多次 | 否 | **敌方角色死亡**时，自身攻击间隔缩短 **3%**（本场叠乘；不走升星倍率） | **中庸** | 狂战士 | `SCALE_ATTACK_INTERVAL` |
 | `turn_start_devour_lr_allies` | 左右吞噬 | 回合 · 偶尔多次 | 否 | **自己回合开始**时，消灭**正交左右邻格**友方，自身本场获得其**全部**有效攻击与生命上限（同步抬当前生命；经死亡管线，可触发友亡）。三合一后同规则且**排除首领**；吞取值**不**套全局 ×6（`merge_value_mult=1`） | **偏强** | 吞噬 | 献祭·吞纳；`ORTHOGONAL_LEFT_RIGHT_ALLIES` + `ABSORB_STATS_AND_KILL` |
+| `cadence_spawn_skeleton_1_10` | 墓土起骨 | 节拍 · 偶尔多次 | 否 | **出手节拍时**（与 `attack_interval` 对齐；**不普攻**）生成 **1** 只 **1/10** 近战骷髅（`token_skeleton_swarm`）；落点朝敌一侧邻格；无空格本拍失败；单场 **12** 次上限 | **中庸** | 幽灵墓地 | 召唤·阵地；`OnAttackCadence` |
 | `combat_start_grant_gold_2` | 发饷入袋 | 开场 · 一场一次 | 否 | **开战时**，玩家获得 **2** 金（三合一后 **6**；`merge_value_mult=3`） | **中庸** | 饷吏 | 经济·稳饷；仅玩家友方结算；敌方镜像空转 |
 | `hurt_grant_gold_1` | 血饷入袋 | 挨打 · 高频 | 否 | 自己受伤时，玩家获得 **1** 金（三合一后 **3**；`merge_value_mult=3`） | **中庸** | 血饷 | 经济·血饷；仅玩家友方结算 |
 | `combat_start_buff_from_gold_half` | 钱袋加身 | 开场 · 一场一次 | 否 | **开战时**读取玩家当前金币 G，自身本场临时攻击与生命上限（及当前）各 **+⌊G/2⌋**；**不扣金**；读金加值**不**乘升星倍率（`merge_value_mult=1`） | **偏强** | 帑卫 | 经济·读金；开战快照锁定；仅玩家友方 |

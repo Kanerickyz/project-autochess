@@ -138,6 +138,8 @@ static func from_unit_data(data: UnitData, cell: Vector2i, team: Team) -> UnitIn
 	unit.stats = data.stats.duplicate_stats() if data.stats else UnitStats.new()
 	_clamp_ranged_attack_distance(unit.stats)
 	unit.current_hp = unit.stats.max_hp
+	if data.immobile:
+		unit.cannot_move = true
 	return unit
 
 
