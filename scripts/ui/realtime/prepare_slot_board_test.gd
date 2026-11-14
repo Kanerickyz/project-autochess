@@ -12,6 +12,7 @@ static func run_all() -> bool:
 	ok = _check("fills_half_field", _test_fills_half_field()) and ok
 	ok = _check("combat_row_bias_follows_cell", _test_combat_row_visual_bias()) and ok
 	ok = _check("bench_row_below_board", _test_bench_row_below_board()) and ok
+	ok = _check("footprint_display_center_span2", _test_footprint_display_center_span2()) and ok
 	if ok:
 		print("PrepareSlotBoardTest: all passed")
 	else:
@@ -150,3 +151,18 @@ static func _test_bench_row_below_board() -> bool:
 		if cell.y != mid:
 			return false
 	return seam.find_slot_at_cell(Vector2i(2, mid)) == 2
+
+
+static func _test_footprint_display_center_span2() -> bool:
+	var unit := load("res://resources/units/realtime/ghost_graveyard.tres") as UnitData
+	if unit == null or unit.footprint_w < 2:
+		return false
+	var board := PrepareSlotBoard.new()
+	board.configure_grid(4, 5, Vector2i(5, 8), false)
+	var indices := board.get_footprint_seat_indices(0, unit)
+	if indices.size() != 2 or indices[0] != 0 or indices[1] != 1:
+		return false
+	var c0 := board.get_display_center(0)
+	var c1 := board.get_display_center(1)
+	var mid := board.get_footprint_display_center(0, unit)
+	return is_equal_approx(mid.x, (c0.x + c1.x) * 0.5) and is_equal_approx(mid.y, (c0.y + c1.y) * 0.5)

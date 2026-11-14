@@ -242,6 +242,66 @@ static func _row_visual_y_offset(row_i: int, enemy_combat_order: bool, packed: b
 
 
 ## 绘制/开战落点用的格心（可含半格行距）；逻辑占座仍用 get_cell 整格。
+## 与 DeckState 足迹规则一致：以 anchor 为左上，横向 footprint_w、纵向 footprint_h。
+func get_footprint_seat_indices(anchor_slot: int, unit: UnitData) -> Array[int]:
+	var fw := 1
+	var fh := 1
+	if unit != null:
+		fw = maxi(1, unit.footprint_w)
+		fh = maxi(1, unit.footprint_h)
+	var cols := maxi(1, seat_cols)
+	var rows := maxi(1, seat_rows)
+	if cols <= 0 or rows <= 0:
+		cols = maxi(1, DEFAULT_SEAT_COLS)
+		rows = maxi(1, DEFAULT_SEAT_ROWS)
+	var anchor_col := anchor_slot % cols
+	var anchor_row := anchor_slot / cols
+	var out: Array[int] = []
+	for dy in fh:
+		for dx in fw:
+			var c := anchor_col + dx
+			var r := anchor_row + dy
+			if c >= cols or r >= rows:
+				return []
+			var si := r * cols + c
+			if si < 0 or si >= slot_count:
+				return []
+			out.append(si)
+	return out
+
+
+## 多格单位绘制/命中用：足迹格 display_center 的算术平均。
+func get_footprint_display_center(anchor_slot: int, unit: UnitData) -> Vector2:
+	var indices := get_footprint_seat_indices(anchor_slot, unit)
+	if indices.is_empty():
+		return get_display_center(anchor_slot)
+	var sum := Vector2.ZERO
+	for si in indices:
+		sum += get_display_center(si)
+	return sum / float(indices.size())
+
+
+## 该槽是否为单位的 anchor 座（扩展格不单独作画）。
+func is_anchor_seat(slot_index: int) -> bool:
+	var entry := get_entry(slot_index)
+	return entry != null and entry.seat_index == slot_index
+
+
+## 命中锚点或足迹扩展格时返回条目（扩展格自身 occupants 为空）。
+func get_entry_at_slot(slot_index: int) -> DeckEntry:
+	var direct := get_entry(slot_index)
+	if direct != null:
+		return direct
+	for i in slot_count:
+		var entry := get_entry(i)
+		if entry == null or entry.seat_index != i:
+			continue
+		for si in get_footprint_seat_indices(i, entry.unit):
+			if si == slot_index:
+				return entry
+	return null
+
+
 func get_display_center(slot_index: int) -> Vector2:
 	var cell := get_cell(slot_index)
 	if cell.x < 0:
@@ -431,6 +491,10 @@ func try_recall(slot_index: int) -> DeckEntry:
 
 
 func find_slot_by_entry(entry_id: int) -> int:
+	for i in occupants.size():
+		var entry: DeckEntry = occupants[i] as DeckEntry
+		if entry != null and entry.entry_id == entry_id and entry.seat_index == i:
+			return i
 	for i in occupants.size():
 		var entry: DeckEntry = occupants[i] as DeckEntry
 		if entry != null and entry.entry_id == entry_id:

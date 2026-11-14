@@ -607,11 +607,11 @@ func get_recruit_team_unit_tip(unit_id: String) -> Dictionary:
 	var enemy_off := Vector2(0.0, enemy_half_slide_y)
 	for i in recruit_team_slots.cells.size():
 		var entry := recruit_team_slots.get_entry(i)
-		if entry == null or entry.unit == null:
+		if entry == null or entry.unit == null or not recruit_team_slots.is_anchor_seat(i):
 			continue
 		if String(entry.unit.id) != unit_id:
 			continue
-		var tile := recruit_team_slots.get_display_center(i)
+		var tile := recruit_team_slots.get_footprint_display_center(i, entry.unit)
 		var center := tile_to_local(tile) + enemy_off
 		## 尖角对准纸片上沿略上方。
 		var tip := center + Vector2(0.0, -get_cell_px() * 0.55)
@@ -2565,8 +2565,8 @@ func _collect_inspectables() -> Array[Dictionary]:
 		var team_off := _prepare_slots_inspect_offset(ally_off)
 		for i in prepare_slots.cells.size():
 			var entry := prepare_slots.get_entry(i)
-			if entry != null:
-				var tile := prepare_slots.get_display_center(i)
+			if entry != null and prepare_slots.is_anchor_seat(i):
+				var tile := prepare_slots.get_footprint_display_center(i, entry.unit)
 				out.append(_info_from_entry(entry, tile_to_local(tile) + team_off))
 	for preview in enemy_previews:
 		if not (preview is Dictionary):
@@ -3052,7 +3052,7 @@ func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 	var slot_i := recruit_team_slots.find_slot_at_cell(cell)
 	if slot_i < 0:
 		return -1
-	var entry := recruit_team_slots.get_entry(slot_i)
+	var entry := recruit_team_slots.get_entry_at_slot(slot_i)
 	if entry == null:
 		return -1
 	return entry.entry_id
@@ -3061,7 +3061,13 @@ func _find_recruit_team_entry_at(cell: Vector2i) -> int:
 func _find_recruit_team_seat_at(cell: Vector2i) -> int:
 	if recruit_team_slots == null or cell == NO_CELL:
 		return -1
-	return recruit_team_slots.find_slot_at_cell(cell)
+	var slot_i := recruit_team_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := recruit_team_slots.get_entry_at_slot(slot_i)
+	if entry != null:
+		return entry.seat_index
+	return slot_i
 
 
 ## 准备阶段可拖已入座角色换座（开战 / 目录 / 其它半场模式除外）。
@@ -3111,7 +3117,7 @@ func _find_prepare_team_entry_at(cell: Vector2i) -> int:
 	var slot_i := prepare_slots.find_slot_at_cell(cell)
 	if slot_i < 0:
 		return -1
-	var entry := prepare_slots.get_entry(slot_i)
+	var entry := prepare_slots.get_entry_at_slot(slot_i)
 	if entry == null:
 		return -1
 	return entry.entry_id
@@ -3120,7 +3126,13 @@ func _find_prepare_team_entry_at(cell: Vector2i) -> int:
 func _find_prepare_team_seat_at(cell: Vector2i) -> int:
 	if prepare_slots == null or cell == NO_CELL:
 		return -1
-	return prepare_slots.find_slot_at_cell(cell)
+	var slot_i := prepare_slots.find_slot_at_cell(cell)
+	if slot_i < 0:
+		return -1
+	var entry := prepare_slots.get_entry_at_slot(slot_i)
+	if entry != null:
+		return entry.seat_index
+	return slot_i
 
 
 func _begin_prepare_team_drag(entry_id: int, from_local: Vector2 = Vector2.ZERO) -> void:
@@ -3989,16 +4001,19 @@ func _draw_recruit_team(px: float, off: Vector2) -> void:
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = recruit_team_slots.get_entry(i)
-		if entry == null:
+		if entry == null or not recruit_team_slots.is_anchor_seat(i):
 			continue
-		var center_tile := recruit_team_slots.get_display_center(i)
+		var center_tile := recruit_team_slots.get_footprint_display_center(i, entry.unit)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
 		var fp_span := 1.0
 		if entry.unit != null:
-			fp_span = maxf(1.0, float(maxi(1, entry.unit.footprint_w)))
+			fp_span = maxf(
+				1.0,
+				float(maxi(maxi(1, entry.unit.footprint_w), maxi(1, entry.unit.footprint_h)))
+			)
 		var dragging := (
 			entry.entry_id == _recruit_team_drag_id or entry.entry_id == _map_shop_team_drag_id
 		)
@@ -4416,20 +4431,26 @@ func _draw_prepare_slots(px: float) -> void:
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
 		var entry: DeckEntry = prepare_slots.get_entry(i)
-		if entry == null:
+		if entry == null or not prepare_slots.is_anchor_seat(i):
 			continue
-		var center_tile := prepare_slots.get_display_center(i)
+		var center_tile := prepare_slots.get_footprint_display_center(i, entry.unit)
 		var stats := entry.unit.stats if entry.unit != null else null
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
+		var fp_span := 1.0
+		if entry.unit != null:
+			fp_span = maxf(
+				1.0,
+				float(maxi(maxi(1, entry.unit.footprint_w), maxi(1, entry.unit.footprint_h)))
+			)
 		var dragging := (
 			entry.entry_id == _enchant_team_drag_id or entry.entry_id == _prepare_team_drag_id
 		)
 		var alpha := DRAG_SOURCE_ALPHA if dragging else 0.9
 		_draw_body(
 			center_tile, radius, vwx, vhy, PLAYER_COLOR, alpha, entry.get_display_name(), px, true, off,
-			true, entry.get_unit_id(), null, Vector2.ZERO, 1.0, _idle_seed_for(entry.get_unit_id(), i),
+			true, entry.get_unit_id(), null, Vector2.ZERO, fp_span, _idle_seed_for(entry.get_unit_id(), i),
 		)
 		var display := _entry_display_atk_hp(entry)
 		badge_jobs.append({
