@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EventData" format=3 uid="uid://eventbadgeshrine"]
+
+[ext_resource type="Script" uid="uid://ccmh5yo4jr5q4" path="res://scripts/data/event_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "badge_shrine"
+title = "徽章神龛"
+body = "神龛上陈列着三枚待选徽章，取其一或告退即可。"
+offers_badge_pick = true

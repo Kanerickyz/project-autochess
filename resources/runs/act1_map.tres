@@ -13,6 +13,7 @@
 [ext_resource type="Script" uid="uid://ccmh5yo4jr5q4" path="res://scripts/data/event_data.gd" id="18_evt"]
 [ext_resource type="Resource" uid="uid://0yr8khiraev2" path="res://resources/events/event_merchant.tres" id="19"]
 [ext_resource type="Resource" uid="uid://eventshrine" path="res://resources/events/event_shrine.tres" id="20"]
+[ext_resource type="Resource" uid="uid://eventbadgeshrine" path="res://resources/events/event_badge_shrine.tres" id="20b"]
 [ext_resource type="Script" uid="uid://c2gjlifbpdq43" path="res://scripts/data/buff_card_data.gd" id="21_buff"]
 [ext_resource type="Resource" uid="uid://e326s3xtg3b2" path="res://resources/buffs/buff_perm_atk.tres" id="22"]
 [ext_resource type="Resource" uid="uid://khyao2g7murl" path="res://resources/buffs/buff_perm_hp.tres" id="23"]
@@ -33,5 +34,5 @@ board_defaults = ExtResource("2")
 combat_pool = Array[ExtResource("15_enc")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7")])
 elite_pool = Array[ExtResource("15_enc")]([ExtResource("16")])
 boss_encounter = ExtResource("17")
-event_pool = Array[ExtResource("18_evt")]([ExtResource("19"), ExtResource("20")])
+event_pool = Array[ExtResource("18_evt")]([ExtResource("19"), ExtResource("20"), ExtResource("20b")])
 treasure_buff_pool = Array[ExtResource("21_buff")]([ExtResource("22"), ExtResource("23"), ExtResource("24")])

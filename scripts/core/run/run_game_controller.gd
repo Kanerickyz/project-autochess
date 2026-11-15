@@ -6,6 +6,7 @@ const DEFAULT_RUN_MAP := preload("res://resources/runs/act1_map.tres")
 const DEFAULT_DECK_CONFIG := preload("res://resources/deck/realtime_starter_deck.tres")
 const DEFAULT_ECONOMY := preload("res://resources/economy/default_economy.tres")
 const DEFAULT_RECRUIT_CONFIG := preload("res://resources/recruit/default_recruit_config.tres")
+const EVENT_SCREEN_SCENE := preload("res://scenes/ui/event/event_screen.tscn")
 ## 无尽招募品阶软顶：避免进度比卡死，但实际层号可超过。
 const ENDLESS_RECRUIT_SOFT_FLOOR_COUNT := 30
 
@@ -38,6 +39,10 @@ var _run_stat_ledger: RunStatLedger = RunStatLedger.new()
 var _pending_end_victory: bool = false
 var _pending_end_snapshot: RunStatsSnapshot
 var _pending_map_hint: String = ""
+var _event_screen: EventScreen
+enum BadgeAfterAction { RECRUIT, MAP_EVENT }
+var _badge_after: BadgeAfterAction = BadgeAfterAction.RECRUIT
+var _pending_map_event: EventData
 
 
 func _ready() -> void:
@@ -70,6 +75,12 @@ func _ready() -> void:
 	_placeholder_screen.continue_pressed.connect(_on_placeholder_continue)
 	_run_end_overlay.action_pressed.connect(_on_run_end_action)
 	_run_stats_overlay.continue_pressed.connect(_on_run_stats_continue)
+
+	_event_screen = EVENT_SCREEN_SCENE.instantiate() as EventScreen
+	if _event_screen != null:
+		_event_screen.visible = false
+		_event_screen.choice_selected.connect(_on_event_choice_selected)
+		add_child(_event_screen)
 
 	await _start_new_run()
 
@@ -172,6 +183,9 @@ func _on_map_node_selected(node_id: int) -> void:
 	if node_type == MapNodeType.Type.ENCHANT:
 		await _open_enchant()
 		return
+	if node_type == MapNodeType.Type.EVENT:
+		await _open_map_event(node)
+		return
 	## 非战斗节点仍留世界底图，占位 UI 叠在上面。
 	_battle_root.visible = true
 	if _battle != null:
@@ -214,10 +228,6 @@ func _on_encounter_completed(won: bool) -> void:
 		run_controller.complete_encounter()
 		return
 
-	## 普通/精英胜：先徽章三选一，再招募。
-	if _badge_session.should_offer_badge(node_type, true):
-		await _open_badge_pick()
-		return
 	await _open_recruit()
 
 
@@ -249,22 +259,26 @@ func _sync_battle_owned_badges() -> void:
 	_battle.set_owned_badge_ids(run_controller.run_state.get_owned_badge_ids())
 
 
-## 胜后徽章三选一（不花金）；结束后进招募。
-func _open_badge_pick() -> void:
+## 徽章三选一（不花金）；胜后序已移除，主路径为地图事件节点。
+func _open_badge_pick(after: BadgeAfterAction = BadgeAfterAction.RECRUIT, map_floor: int = -1) -> void:
 	if _badge_busy:
 		return
 	_badge_busy = true
+	_badge_after = after
 	_battle_root.visible = true
 	if _battle != null:
 		_battle.set_world_backdrop_mode(false)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
+	if _event_screen != null:
+		_event_screen.hide_event()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _rng.randi()
 	_badge_session.configure(run_controller.run_state, rng)
 	_badge_session.forward_tier_unlock = _is_endless()
+	var floor := map_floor if map_floor >= 0 else _recruit_map_floor()
 	_badge_session.begin(
-		_recruit_map_floor(),
+		floor,
 		_recruit_map_floor_count(),
 		_is_endless(),
 	)
@@ -277,7 +291,58 @@ func _on_badge_finished(_picked: bool) -> void:
 	_sync_battle_owned_badges()
 	if _battle != null:
 		_battle.exit_badge()
+	if _badge_after == BadgeAfterAction.MAP_EVENT:
+		_badge_after = BadgeAfterAction.RECRUIT
+		_grant_pending_node_floor_gold()
+		if _battle != null:
+			_battle.set_world_backdrop_mode(true)
+		run_controller.complete_encounter()
+		return
 	await _open_recruit()
+
+
+func _open_map_event(node: MapNodeRuntime) -> void:
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
+	_map_screen.hide_map()
+	_placeholder_screen.hide_placeholder()
+	var ev := node.get_event_data() if node != null else null
+	if BadgeSession.should_offer_badge_on_event(ev):
+		await _open_badge_pick(BadgeAfterAction.MAP_EVENT, node.get_floor())
+		return
+	if ev != null and not ev.choices.is_empty():
+		await _open_event_screen(ev)
+		return
+	_placeholder_screen.show_placeholder(MapNodeType.Type.EVENT)
+
+
+func _open_event_screen(event_data: EventData) -> void:
+	if _event_screen == null:
+		run_controller.complete_encounter()
+		return
+	_pending_map_event = event_data
+	_event_screen.show_event(event_data)
+	while _event_screen.visible:
+		await get_tree().process_frame
+
+
+func _on_event_choice_selected(index: int) -> void:
+	if _pending_map_event == null:
+		return
+	if index < 0 or index >= _pending_map_event.choices.size():
+		return
+	var choice := _pending_map_event.choices[index]
+	var pool: Array[BuffCardData] = []
+	if run_controller != null and run_controller.map_config != null:
+		pool = run_controller.map_config.treasure_buff_pool
+	var msg := EventEffectResolver.apply_choice(choice, deck_state, run_economy, pool, _rng)
+	if not msg.is_empty():
+		_pending_map_hint = msg
+	_event_screen.hide_event()
+	_pending_map_event = null
+	_grant_pending_node_floor_gold()
+	run_controller.complete_encounter()
 
 
 ## 胜后留在 BattleRoot：半场退场后同屏滑入队伍/候选人（Arena 主路径，非暗色卡片面板）。
