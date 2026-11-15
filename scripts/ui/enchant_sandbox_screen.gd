@@ -1,5 +1,5 @@
 extends Control
-## 主菜单「附魔试验场」：全招募池入队，可滚动半场 + 拖拽熔炉。
+## 主菜单「附魔试验场」：全招募池入队，可滚动半场 + 神龛点选（非主路径熔炉已废）。
 
 const MAIN_MENU_PATH := "res://scenes/main/main_menu.tscn"
 const BATTLE_SCENE := preload("res://scenes/combat/realtime/realtime_battle.tscn")

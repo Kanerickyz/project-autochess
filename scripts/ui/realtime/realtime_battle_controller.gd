@@ -249,6 +249,8 @@ func _ready() -> void:
 	_arena.recruit_item_pressed.connect(_on_recruit_item_pressed)
 	_arena.recruit_item_drop.connect(_on_recruit_item_drop)
 	_arena.enchant_forge_drop.connect(_on_enchant_forge_drop)
+	_arena.enchant_trait_pick.connect(_on_enchant_trait_pick)
+	_arena.enchant_entry_pick.connect(_on_enchant_entry_pick)
 	_arena.enchant_team_seat_drop.connect(_on_enchant_team_seat_drop)
 	_arena.map_shop_offer_drop.connect(_on_map_shop_offer_drop)
 	_arena.map_shop_team_seat_drop.connect(_on_map_shop_team_seat_drop)
@@ -748,6 +750,25 @@ func _apply_owned_badges_to_sim() -> void:
 		_sim.get_effect_resolver(),
 	)
 	_pulse_badge_fx_on_units(applied, rt_by_unit_id)
+
+
+func _apply_enchant_traits_to_sim() -> void:
+	if _sim == null or _deck_state == null:
+		return
+	var allies: Array = []
+	for item in _sim.get_units():
+		var rt := item as RtUnit
+		if rt == null or rt.unit == null or not rt.is_alive():
+			continue
+		if rt.unit.team == UnitInstance.Team.PLAYER:
+			allies.append(rt.unit)
+	if allies.is_empty():
+		return
+	EnchantTraitApplier.apply_combat_start_from_deck(
+		_deck_state,
+		allies,
+		_sim.get_effect_resolver(),
+	)
 
 
 ## 开战徽章兑现后：受影响单位攻血标放大缩小（对齐邻座 aura 提示）。
@@ -1690,13 +1711,28 @@ func get_enchant_session() -> EnchantSession:
 	return _enchant_session
 
 
-func _on_enchant_forge_drop(entry_id: int, slot: StringName) -> void:
+func _on_enchant_forge_drop(_entry_id: int, _slot: StringName) -> void:
+	pass
+
+
+func _on_enchant_trait_pick(trait_index: int) -> void:
 	if _enchant_session == null or not _enchant_session.is_active:
 		return
-	if _enchant_session.fused_this_visit:
+	if _enchant_session.confirmed_this_visit:
 		return
-	if not _enchant_session.set_slot(slot, entry_id):
-		flash_hint("无法放入该格")
+	if not _enchant_session.select_trait(trait_index):
+		flash_hint("无法选择该词条")
+		return
+	_sync_enchant_arena()
+
+
+func _on_enchant_entry_pick(entry_id: int) -> void:
+	if _enchant_session == null or not _enchant_session.is_active:
+		return
+	if _enchant_session.confirmed_this_visit:
+		return
+	if not _enchant_session.select_entry(entry_id):
+		flash_hint("请选择已入座队员")
 		return
 	_sync_enchant_arena()
 
@@ -1922,6 +1958,7 @@ func _begin_combat_from_prepare() -> void:
 	## 4–5) 锁操作（进入 COMBAT 后不可改座/刷新/出牌）+ 触发游戏开始。
 	## 徽章开战效果先于 OnCombatStart 技能入队（同源 EffectResolver；无升星倍率）。
 	_apply_owned_badges_to_sim()
+	_apply_enchant_traits_to_sim()
 	## 锁阵开战技能可短串行入队；排空后并行战斗不再 defer / 不播介绍卡。
 	_sim.defer_effect_resolve = true
 	_sim.begin_combat()
@@ -2816,6 +2853,7 @@ func _rewind_tape_to_turn(target_turns: int) -> void:
 		return
 	## 与实战一致：徽章开战效果 → defer 开战技能 → flush。
 	_apply_owned_badges_to_sim()
+	_apply_enchant_traits_to_sim()
 	## 与实战一致：开战前先 defer，开战技能入队后经 flush 排空并排行动队列。
 	## 重演循环内保持 defer，每步后瞬时排空（等价播报时长为 0），避免与实战分叉提前终局。
 	_sim.defer_effect_resolve = true
