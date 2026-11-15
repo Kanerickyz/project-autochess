@@ -13,7 +13,7 @@ const MOUNT_TABLE := {
 	"barbarian": "ally_death_self_atk_mid",
 	"archer": "deal_damage_apply_weak",
 	"goblin": "death_spawn_pack",
-	"spear_goblin": "hurt_heal_self_2",
+	"spear_goblin": "cadence_damage_random_enemy_2",
 	"skeleton": "death_heal_random_ally_2",
 	"crossbow": "ally_hurt_heal_target_small",
 	"maul": "deal_damage_adj_splash_small",
@@ -78,8 +78,8 @@ static func run_all() -> bool:
 	_check("ally_death_spawn_weak", _test_ally_death_spawn_weak())
 	_check("ally_death_spawn_merged_triple", _test_ally_death_spawn_merged_triple())
 	_check("death_heal_nearby_ally", _test_death_heal_nearby_ally())
-	_check("hurt_heal_self_2", _test_hurt_heal_self_2())
-	_check("hurt_heal_capped_to_hit", _test_hurt_heal_capped_to_hit())
+	_check("spear_cadence_damage", _test_spear_cadence_damage_random_enemy())
+	_check("spear_cadence_damage_star2", _test_spear_cadence_damage_star2())
 	_check("blood_acolyte_survive_permanent", _test_blood_acolyte_survive_permanent())
 	_check("blood_acolyte_dead_skips_permanent", _test_blood_acolyte_dead_skips_permanent())
 	_check("aftershock_attack_kill_only", _test_aftershock_attack_kill_only())
@@ -249,7 +249,7 @@ static func _test_enemy_death_self_atk_hp_small() -> bool:
 	return true
 
 
-## 散咒：其他友方击杀 → 对随机存活敌人造成 1（2★ 为 3）。自己的击杀、无来源死亡不触发。
+## 散咒：其他友方击杀 → 对随机存活敌人造成 5（2★ 为 15）。自己的击杀、无来源死亡不触发。
 static func _scatter_hex_friend_kill_dealt(level: int) -> int:
 	var data := _load_unit("res://resources/units/realtime/scatter_hex.tres")
 	if data == null or data.ability == null or data.ability.id != "friend_kill_damage_random_enemy_1":
@@ -324,16 +324,16 @@ static func _scatter_hex_friend_kill_dealt(level: int) -> int:
 
 static func _test_scatter_hex_friend_kill_damage() -> bool:
 	var dealt := _scatter_hex_friend_kill_dealt(1)
-	if dealt != 1:
-		push_error("scatter_hex: dealt %d, expected 1" % dealt)
+	if dealt != 5:
+		push_error("scatter_hex: dealt %d, expected 5" % dealt)
 		return false
 	return true
 
 
 static func _test_scatter_hex_friend_kill_damage_star2() -> bool:
 	var dealt := _scatter_hex_friend_kill_dealt(2)
-	if dealt != 3:
-		push_error("scatter_hex star2: dealt %d, expected 3" % dealt)
+	if dealt != 15:
+		push_error("scatter_hex star2: dealt %d, expected 15" % dealt)
 		return false
 	return true
 
@@ -2058,7 +2058,7 @@ static func _test_ally_death_spawn_merged_triple() -> bool:
 	return true
 
 
-## 枯骨死亡 → 随机友方回血 2。
+## 枯骨死亡 → 随机友方回血 10（2★ 为 30）。
 static func _test_death_heal_nearby_ally() -> bool:
 	var data := _load_unit("res://resources/units/realtime/skeleton.tres")
 	if data == null or data.ability == null or data.ability.id != "death_heal_random_ally_2":
@@ -2068,7 +2068,7 @@ static func _test_death_heal_nearby_ally() -> bool:
 	sim.configure(ARENA, 41)
 	var bone := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
 	var ally := sim.add_unit(
-		_dummy(UnitInstance.Team.PLAYER, 10, {"steps_per_turn": 0, "sight_range": 0.0}),
+		_dummy(UnitInstance.Team.PLAYER, 50, {"steps_per_turn": 0, "sight_range": 0.0}),
 		Vector2(10.5, 20.5),
 	)
 	ally.unit.current_hp = 3
@@ -2079,71 +2079,75 @@ static func _test_death_heal_nearby_ally() -> bool:
 		push_error("death_heal: apply_damage should kill skeleton")
 		return false
 	sim._drain_effects()
-	if ally.unit.current_hp != hp_before + 2:
+	if data.ability.merge_value_mult != 3:
+		push_error("death_heal: merge_value_mult expected 3")
+		return false
+	if ally.unit.current_hp != hp_before + 10:
 		push_error(
-			"death_heal: ally hp %d → %d, expected +2"
+			"death_heal: ally hp %d → %d, expected +10"
 			% [hp_before, ally.unit.current_hp]
 		)
 		return false
-	return true
-
-
-## 标枪受伤 → 自身恢复 1 生命（软顶；merge_value_mult=4 → 三合一后 4）。
-static func _test_hurt_heal_self_2() -> bool:
-	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
-		push_error("hurt_heal_self_2: spear_goblin ability not mounted")
-		return false
-	if data.ability.merge_value_mult != 4:
-		push_error("hurt_heal_self_2: merge_value_mult expected 4")
-		return false
-	var sim := _new_sim()
-	sim.configure(ARENA, 42)
-	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	## 抬高上限以便非致死受伤后验证回血。
-	spear.unit.stats.max_hp = 10
-	spear.unit.current_hp = 6
-	sim.begin_combat()
-	var hp_mid := spear.unit.current_hp
-	sim._pipeline.apply_damage(null, spear, 2)
-	sim._drain_effects()
-	## 扣 2 后疗回 1 → 净 −1
-	if spear.unit.current_hp != hp_mid - 2 + 1:
-		push_error(
-			"hurt_heal_self_2: hp after hurt+heal=%d, expected %d"
-			% [spear.unit.current_hp, hp_mid - 1]
-		)
+	var bone2 := _make_from_data(data, UnitInstance.Team.PLAYER)
+	bone2.level = 2
+	var sim2 := _new_sim()
+	sim2.configure(ARENA, 42)
+	var skel2 := sim2.add_unit(bone2, Vector2(9.5, 21.5))
+	var ally2 := sim2.add_unit(
+		_dummy(UnitInstance.Team.PLAYER, 50, {"steps_per_turn": 0, "sight_range": 0.0}),
+		Vector2(10.5, 21.5),
+	)
+	ally2.unit.current_hp = 1
+	sim2.begin_combat()
+	var hp2 := ally2.unit.current_hp
+	sim2._pipeline.apply_damage(null, skel2, 999)
+	sim2._drain_effects()
+	if ally2.unit.current_hp != hp2 + 30:
+		push_error("death_heal star2: expected +30 heal")
 		return false
 	return true
 
 
-## 伤 = 疗：受击疗截断为本击伤害，不能净回血。
-static func _test_hurt_heal_capped_to_hit() -> bool:
+## 标枪：每 3s 对随机敌人 2 伤（2★ 为 6）。
+static func _test_spear_cadence_damage_random_enemy() -> bool:
+	return _spear_cadence_dealt_expect(1, 2)
+
+
+static func _test_spear_cadence_damage_star2() -> bool:
+	return _spear_cadence_dealt_expect(2, 6)
+
+
+static func _spear_cadence_dealt_expect(level: int, expected: int) -> bool:
 	var data := _load_unit("res://resources/units/realtime/spear_goblin.tres")
-	if data == null or data.ability == null or data.ability.id != "hurt_heal_self_2":
-		push_error("hurt_heal_capped: spear_goblin ability not mounted")
+	if data == null or data.ability == null or data.ability.id != "cadence_damage_random_enemy_2":
+		push_error("spear_cadence: ability mount")
+		return false
+	if not is_equal_approx(data.ability.passive_cadence_seconds, 3.0):
+		push_error("spear_cadence: passive_cadence_seconds expected 3")
 		return false
 	var sim := _new_sim()
-	sim.configure(ARENA, 4201)
-	var spear := sim.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(9.5, 20.5))
-	spear.unit.stats.max_hp = 20
-	spear.unit.current_hp = 6
+	sim.configure(ARENA, 8800 + level)
+	var spear_u := _make_from_data(data, UnitInstance.Team.PLAYER)
+	spear_u.level = level
+	sim.add_unit(spear_u, Vector2(9.5, 20.5))
+	var foe := sim.add_unit(
+		_dummy(
+			UnitInstance.Team.ENEMY,
+			200,
+			{"id": "foe", "steps_per_turn": 0, "sight_range": 0.0, "attack_reach": 0.0},
+		),
+		Vector2(9.5, 8.5),
+	)
 	sim.begin_combat()
-	var hp_before := spear.unit.current_hp
-	sim._pipeline.apply_damage(null, spear, 1)
-	sim._drain_effects()
-	## 技能写 1，本次伤 1 → 回 1，净 0。
-	if spear.unit.current_hp != hp_before:
-		push_error(
-			"hurt_heal_capped: hp=%d expected %d (net 0 after 1 dmg)"
-			% [spear.unit.current_hp, hp_before]
-		)
-		return false
-	if spear.unit.combat_skill_heal_received != 1:
-		push_error(
-			"hurt_heal_capped: combat_skill_heal_received=%d expected 1"
-			% spear.unit.combat_skill_heal_received
-		)
+	sim.flush_combat_start_lock()
+	var hp0 := foe.unit.current_hp
+	## 30 步/秒；首拍 3s ≈ 90 步，勿跑太久避免第二拍。
+	for _step in 95:
+		sim.advance_fixed_step()
+		sim._drain_effects(true)
+	var dealt := hp0 - foe.unit.current_hp
+	if dealt != expected:
+		push_error("spear_cadence L%d: dealt %d expected %d" % [level, dealt, expected])
 		return false
 	return true
 
@@ -3052,11 +3056,11 @@ static func _test_deploy_shield_boon() -> bool:
 	var owner_a := sim_a.add_unit(_make_from_data(data, UnitInstance.Team.PLAYER), Vector2(2.5, 6.5))
 	var owner_hp_a0 := owner_a.unit.get_effective_max_hp()
 	if (
-		nearby_a.unit.get_effective_max_hp() != near_hp_a0 + 1
-		or nearby_a.unit.current_hp != near_cur_a0 + 1
+		nearby_a.unit.get_effective_max_hp() != near_hp_a0 + 8
+		or nearby_a.unit.current_hp != near_cur_a0 + 8
 	):
 		push_error(
-			"shield_boon (a): nearby hp %d/%d -> %d/%d expected +1/+1"
+			"shield_boon (a): nearby hp %d/%d -> %d/%d expected +8/+8"
 			% [
 				near_hp_a0,
 				near_cur_a0,
@@ -3085,11 +3089,11 @@ static func _test_deploy_shield_boon() -> bool:
 		Vector2(2.5, 8.5),
 	)
 	if (
-		nearby_b.unit.get_effective_max_hp() != near_hp_b0 + 1
-		or nearby_b.unit.current_hp != near_cur_b0 + 1
+		nearby_b.unit.get_effective_max_hp() != near_hp_b0 + 8
+		or nearby_b.unit.current_hp != near_cur_b0 + 8
 	):
 		push_error(
-			"shield_boon (b): nearby hp %d/%d -> %d/%d expected +1/+1"
+			"shield_boon (b): nearby hp %d/%d -> %d/%d expected +8/+8"
 			% [
 				near_hp_b0,
 				near_cur_b0,

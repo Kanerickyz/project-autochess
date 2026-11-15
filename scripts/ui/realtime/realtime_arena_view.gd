@@ -1040,6 +1040,8 @@ func add_feedback_popup(
 	amount: int = 0,
 	merge_key: String = "",
 	tip: String = "",
+	stat_name: StringName = &"",
+	use_stat_icon: bool = false,
 ) -> void:
 	if text.is_empty() and tip.is_empty():
 		return
@@ -1062,7 +1064,7 @@ func add_feedback_popup(
 			):
 				var merged_amount := int(fb["amount"]) + amount
 				fb["amount"] = merged_amount
-				fb["text"] = _format_merged_feedback_text(kind, merged_amount, text)
+				fb["text"] = _format_merged_feedback_text(kind, merged_amount, text, bool(fb.get("use_stat_icon", false)))
 			else:
 				fb["text"] = text if not text.is_empty() else String(fb["text"])
 			if not tip.is_empty():
@@ -1080,6 +1082,8 @@ func add_feedback_popup(
 		"unit_id": unit_id,
 		"amount": amount,
 		"merge_key": key,
+		"stat_name": stat_name,
+		"use_stat_icon": use_stat_icon,
 		"t0": _fx_clock,
 		"duration": duration,
 	})
@@ -1253,7 +1257,7 @@ func _feedback_duration_for_scale(scale: float) -> float:
 	return clampf(FEEDBACK_SECONDS / s, FEEDBACK_MIN_SECONDS, FEEDBACK_SECONDS)
 
 
-func _format_merged_feedback_text(kind: StringName, amount: int, fallback: String) -> String:
+func _format_merged_feedback_text(kind: StringName, amount: int, fallback: String, use_stat_icon: bool = false) -> String:
 	match kind:
 		RealtimeEffectFeedback.KIND_DAMAGE:
 			return "-%d" % amount
@@ -1261,7 +1265,9 @@ func _format_merged_feedback_text(kind: StringName, amount: int, fallback: Strin
 			return "+%d" % amount if amount > 0 else "%d" % amount
 		RealtimeEffectFeedback.KIND_GOLD:
 			return "+%d金" % amount
-		RealtimeEffectFeedback.KIND_STAT:
+		RealtimeEffectFeedback.KIND_STAT, RealtimeEffectFeedback.KIND_HEAL:
+			if use_stat_icon:
+				return "+%d" % amount if amount > 0 else "%d" % amount
 			## 保留原后缀（攻/生命/暴）；跳过符号与数字。
 			var suffix := ""
 			for i in fallback.length():
@@ -3722,6 +3728,8 @@ func _draw() -> void:
 		if sim != null:
 			_draw_units(px)
 			_draw_projectiles(px)
+			if sim.has_started():
+				_draw_combat_team_totals(px)
 	## 备战行：准备/战斗在友方半场下方；招募已在候选之前绘制。
 	if not recruit_active:
 		_draw_bench_row(px)
@@ -5264,7 +5272,13 @@ func _draw_feedback(px: float) -> void:
 		var tip := String(fb.get("tip", ""))
 		if not main_text.is_empty():
 			var font_size := base_size + (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0)
-			_draw_feedback_string(font, center, main_text, font_size, color)
+			if (
+				(kind == RealtimeEffectFeedback.KIND_STAT or kind == RealtimeEffectFeedback.KIND_HEAL)
+				and bool(fb.get("use_stat_icon", false))
+			):
+				_draw_feedback_stat_icon(font, center, int(fb.get("amount", 0)), fb.get("stat_name", &""), font_size, color)
+			else:
+				_draw_feedback_string(font, center, main_text, font_size, color)
 			center.y -= float(font_size) + 2.0
 		if not tip.is_empty():
 			var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
@@ -5283,6 +5297,92 @@ func _feedback_color(kind: StringName, is_player: bool) -> Color:
 			return Color(1.0, 0.84, 0.28) if is_player else Color(1.0, 0.78, 0.35)
 		_:
 			return Color(0.88, 0.94, 1.0)
+
+
+func _draw_feedback_stat_icon(
+	font: Font,
+	center: Vector2,
+	amount: int,
+	stat_name: StringName,
+	font_size: int,
+	color: Color,
+) -> void:
+	var tex := STAT_ATTACK_TEX if stat_name == &"attack" else STAT_HP_TEX
+	if tex == null:
+		_draw_feedback_string(font, center, str(amount), font_size, color)
+		return
+	var icon_h := float(font_size) * 1.15
+	var tex_size := tex.get_size()
+	var icon_w := icon_h * tex_size.x / maxf(1.0, tex_size.y)
+	var sign := "+" if amount > 0 else ""
+	var num := "%s%d" % [sign, amount]
+	var num_w := font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var gap := 3.0
+	var total_w := num_w + gap + icon_w
+	var left := center.x - total_w * 0.5
+	var baseline := center + Vector2(0.0, font.get_ascent(font_size) * 0.25)
+	draw_string(font, Vector2(left, baseline.y), num, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+	var icon_rect := Rect2(left + num_w + gap, center.y - icon_h * 0.5, icon_w, icon_h)
+	draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, color.a))
+
+
+func _draw_combat_team_totals(px: float) -> void:
+	if sim == null or not sim.has_started():
+		return
+	var enemy := sim.sum_team_live_stats(UnitInstance.Team.ENEMY)
+	var ally := sim.sum_team_live_stats(UnitInstance.Team.PLAYER)
+	var font := get_theme_default_font()
+	var badge_h := clampf(px * 0.32, 11.0, 18.0)
+	var pad := px * 0.35
+	var enemy_y := pad + badge_h * 0.5
+	var ally_y := size.y - pad - badge_h * 0.5
+	_draw_combat_team_total_row(font, Vector2(size.x * 0.5, enemy_y), enemy, badge_h, false, px)
+	_draw_combat_team_total_row(font, Vector2(size.x * 0.5, ally_y), ally, badge_h, true, px)
+
+
+func _draw_combat_team_total_row(
+	font: Font,
+	anchor: Vector2,
+	totals: Vector2i,
+	badge_h: float,
+	is_player: bool,
+	px: float,
+) -> void:
+	var atk := totals.x
+	var hp := totals.y
+	var tex_atk := STAT_ATTACK_TEX
+	var tex_hp := STAT_HP_TEX
+	var atk_w := badge_h * tex_atk.get_size().x / maxf(1.0, tex_atk.get_size().y)
+	var hp_w := badge_h * tex_hp.get_size().x / maxf(1.0, tex_hp.get_size().y)
+	var gap := maxf(4.0, px * 0.08)
+	var font_size := maxi(10, int(badge_h * 0.72))
+	var atk_text := str(atk)
+	var hp_text := str(hp)
+	var atk_num_w := font.get_string_size(atk_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var hp_num_w := font.get_string_size(hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var inner_gap := 4.0
+	var total_w := atk_num_w + inner_gap + atk_w + gap + hp_num_w + inner_gap + hp_w
+	var x := anchor.x - total_w * 0.5
+	var y := anchor.y
+	var tint := Color(0.95, 0.97, 1.0, 0.94) if is_player else Color(1.0, 0.88, 0.82, 0.92)
+	var label := "我方" if is_player else "敌方"
+	var label_size := maxi(9, font_size - 1)
+	var label_w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
+	draw_string(
+		font,
+		Vector2(anchor.x - label_w * 0.5, y - badge_h * 0.85),
+		label,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		label_size,
+		Color(tint, 0.75),
+	)
+	var baseline := y + font.get_ascent(font_size) * 0.35
+	draw_string(font, Vector2(x, baseline), atk_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, tint)
+	draw_texture_rect(tex_atk, Rect2(x + atk_num_w + inner_gap, y - badge_h * 0.5, atk_w, badge_h), false, Color(1, 1, 1, tint.a))
+	var hp_x := x + atk_num_w + inner_gap + atk_w + gap
+	draw_string(font, Vector2(hp_x, baseline), hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, tint)
+	draw_texture_rect(tex_hp, Rect2(hp_x + hp_num_w + inner_gap, y - badge_h * 0.5, hp_w, badge_h), false, Color(1, 1, 1, tint.a))
 
 
 func _draw_feedback_string(

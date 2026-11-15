@@ -86,6 +86,8 @@ static func _map_action(
 				"is_player": is_player,
 				"unit_id": unit_id,
 				"merge_key": "%d|heal" % unit_id,
+				"stat_name": &"max_hp",
+				"use_stat_icon": true,
 				"show_tip": false,
 				"tip": "",
 			}
@@ -93,17 +95,22 @@ static func _map_action(
 			var delta := _scaled_value(owner, action.value)
 			if delta == 0:
 				return {}
+			var use_icon := action.stat_name == &"attack" or action.stat_name == &"max_hp"
 			var stat_label := _stat_short_label(action.stat_name)
 			var sign := "+" if delta > 0 else ""
-			## 结果数字为主；低频也不叠技能全名，避免与 +攻 重复刷屏。
+			var text := "%s%d" % [sign, delta]
+			if not use_icon:
+				text = "%s%d%s" % [sign, delta, stat_label]
 			return {
 				"kind": KIND_STAT,
-				"text": "%s%d%s" % [sign, delta, stat_label],
+				"text": text,
 				"amount": delta,
 				"target": anchor,
 				"is_player": is_player,
 				"unit_id": unit_id,
 				"merge_key": "%d|stat|%s" % [unit_id, String(action.stat_name)],
+				"stat_name": action.stat_name,
+				"use_stat_icon": use_icon,
 				"show_tip": false,
 				"tip": "",
 			}

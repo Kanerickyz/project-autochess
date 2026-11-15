@@ -182,6 +182,8 @@ func add_unit(unit: UnitInstance, position: Vector2) -> RtUnit:
 	rt.spawn_time = elapsed_seconds
 	## 入场默认不能出手：先走满一轮 attack_interval。
 	rt.attack_timer = rt.get_attack_interval()
+	var cadence_iv := _passive_cadence_interval_seconds(rt)
+	rt.passive_cadence_remaining = cadence_iv if cadence_iv > 0.0 else 0.0
 	## 开战锁阵预置单位立刻可交战；战中补人才走 deploy_time。
 	if not _started:
 		rt.skip_deploy()
@@ -451,6 +453,7 @@ func advance_fixed_step() -> void:
 
 	_tick_all_deploying()
 	_tick_boss_cooldowns()
+	_tick_passive_skill_cadences(FIXED_DT)
 	_tick_unit_status_pulses()
 	var movers := _advance_all_units_parallel()
 	_resolve_separation(movers)
@@ -613,6 +616,51 @@ func _advance_all_units_parallel() -> Dictionary:
 			_fire(rt2)
 			_consume_turn_refresh_armed(rt2)
 	return movers
+
+
+## 上场存活单位当前攻/血合计（仅战斗已开始后有意义）。
+func sum_team_live_stats(team: UnitInstance.Team) -> Vector2i:
+	var atk := 0
+	var hp := 0
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		if rt.get_team() != team:
+			continue
+		atk += rt.get_effective_attack()
+		hp += rt.unit.current_hp
+	return Vector2i(atk, hp)
+
+
+func _passive_cadence_interval_seconds(rt: RtUnit) -> float:
+	if rt == null or rt.unit == null:
+		return 0.0
+	var ability := rt.unit.get_main_ability()
+	if ability == null or ability.passive_cadence_seconds <= 0.0:
+		return 0.0
+	for spec in ability.effect_specs:
+		if spec != null and spec.trigger == CombatEvents.ON_ATTACK_CADENCE:
+			return ability.passive_cadence_seconds
+	return 0.0
+
+
+func _tick_passive_skill_cadences(dt: float) -> void:
+	if dt <= 0.0:
+		return
+	for rt in _units:
+		if rt == null or not rt.is_alive():
+			continue
+		var interval := _passive_cadence_interval_seconds(rt)
+		if interval <= 0.0:
+			continue
+		## 建筑由 RtUnitBrain 走 attack_interval 节拍，避免双触发。
+		if RtUnitBrain.uses_attack_cadence(rt):
+			continue
+		rt.passive_cadence_remaining -= dt
+		if rt.passive_cadence_remaining > RtUnitBrain.TIME_EPSILON:
+			continue
+		rt.passive_cadence_remaining += interval
+		_emit_attack_cadence(rt)
 
 
 func _emit_attack_cadence(rt: RtUnit) -> void:
