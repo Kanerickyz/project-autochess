@@ -2,7 +2,7 @@ class_name RecruitSession
 extends RefCounted
 ## 招募阶段逻辑：进门快照、抽候选人、招募/替换、刷新、重置、跳过/完成。
 ## 不拥有 UI；只改 DeckState（队伍 As-Is）与 RunEconomy 金币。
-## 候选人默认 5 槽（RecruitConfig.candidate_count）；道具行见 RecruitShopService。
+## 候选人货架默认 5 **列**（RecruitConfig.candidate_count）；建筑占 footprint_w 列，条目数可少于 5。
 ## 每个可招募角色本局 9 份：招募成功才扣除，拿光后不再出现。
 
 signal session_changed
@@ -129,10 +129,15 @@ func ensure_candidates_filled() -> bool:
 	return false
 
 
+## 候选人货架总列宽（默认 5 格；非「最多 5 个条目」）。
 func get_candidate_slot_count() -> int:
 	if config != null:
 		return config.get_candidate_count()
 	return CANDIDATE_COUNT
+
+
+func get_candidate_column_budget() -> int:
+	return get_candidate_slot_count()
 
 
 func get_candidate(index: int) -> UnitData:
@@ -481,20 +486,11 @@ func _restore_snapshot() -> void:
 
 
 func _roll_candidates() -> void:
-	var count := get_candidate_slot_count()
 	candidates.clear()
 	candidate_locked.clear()
-	for _i in count:
-		candidates.append(null)
-		candidate_locked.append(false)
-	## 先放回跨场锁定，再抽空槽，避免锁定份数与新抽份数加起来超过库存。
+	## 先放回跨场锁定，再按剩余列宽补抽。
 	_apply_persisted_locks()
-	var preferred := get_preferred_tier()
-	for i in count:
-		if candidate_locked[i] and candidates[i] != null:
-			continue
-		candidates[i] = _pick_one(preferred)
-		candidate_locked[i] = false
+	_fill_candidates_by_column_budget(get_preferred_tier(), _candidate_columns_used())
 
 
 ## 离开招募时写入跨场锁定；下一场 begin 时套回锁定槽。
@@ -502,8 +498,8 @@ func _persist_locks_for_next_session() -> void:
 	_persisted_candidates.clear()
 	_persisted_locked.clear()
 	_ensure_lock_slots()
-	var count := get_candidate_slot_count()
-	for i in count:
+	var max_slots := CANDIDATE_COUNT
+	for i in max_slots:
 		var locked := i < candidate_locked.size() and candidate_locked[i]
 		var unit: UnitData = candidates[i] if i < candidates.size() else null
 		if locked and unit != null:
@@ -517,52 +513,81 @@ func _persist_locks_for_next_session() -> void:
 func _apply_persisted_locks() -> void:
 	if _persisted_locked.is_empty():
 		return
-	_ensure_lock_slots()
-	var count := get_candidate_slot_count()
+	var budget := get_candidate_column_budget()
 	var preferred := get_preferred_tier()
-	for i in count:
+	var min_tier := get_min_tier()
+	var col := _candidate_columns_used()
+	var max_slots := CANDIDATE_COUNT
+	for i in max_slots:
 		if i >= _persisted_locked.size() or not _persisted_locked[i]:
 			continue
 		var unit: UnitData = _persisted_candidates[i] if i < _persisted_candidates.size() else null
 		if unit == null:
 			continue
-		## 锁定单位须仍在当前解锁池内（含最低品阶），且还有库存；否则留给随后的空槽重抽。
-		var min_tier := get_min_tier()
 		if unit.tier > preferred or unit.tier < min_tier:
 			continue
 		if _copies_remaining_for_roll(unit) <= 0:
 			continue
-		candidates[i] = unit
-		candidate_locked[i] = true
+		var w := unit.get_recruit_shelf_columns()
+		if col + w > budget:
+			continue
+		candidates.append(unit)
+		candidate_locked.append(true)
+		col += w
 
 
 ## 刷新：锁定槽保留角色；未锁定槽重抽。
 func _roll_unlocked_candidates() -> void:
-	_ensure_lock_slots()
-	var count := get_candidate_slot_count()
 	var preferred := get_preferred_tier()
-	while candidates.size() < count:
-		candidates.append(null)
-		candidate_locked.append(false)
-	## 先把未锁定槽退回卡池，再重抽，这样同一刷新不会把即将换掉的份数再占一次。
-	for i in count:
-		if candidate_locked[i] and candidates[i] != null:
-			continue
-		candidates[i] = null
-		candidate_locked[i] = false
-	for i in count:
-		if candidate_locked[i] and candidates[i] != null:
-			continue
-		candidates[i] = _pick_one(preferred)
-		candidate_locked[i] = false
+	var budget := get_candidate_column_budget()
+	var kept_units: Array[UnitData] = []
+	var kept_locked: Array[bool] = []
+	var col := 0
+	for i in candidates.size():
+		var unit := candidates[i]
+		var locked := i < candidate_locked.size() and candidate_locked[i]
+		if locked and unit != null:
+			var w := unit.get_recruit_shelf_columns()
+			if col + w <= budget:
+				kept_units.append(unit)
+				kept_locked.append(true)
+				col += w
+	candidates = kept_units
+	candidate_locked = kept_locked
+	_fill_candidates_by_column_budget(preferred, col)
 
 
 func _ensure_lock_slots() -> void:
-	var count := maxi(candidates.size(), get_candidate_slot_count())
-	while candidate_locked.size() < count:
+	while candidate_locked.size() < candidates.size():
 		candidate_locked.append(false)
 	while candidate_locked.size() > candidates.size() and candidate_locked.size() > 0:
 		candidate_locked.pop_back()
+
+
+func _candidate_columns_used() -> int:
+	var col := 0
+	for unit in candidates:
+		if unit != null:
+			col += unit.get_recruit_shelf_columns()
+	return col
+
+
+## 在已有 col_start 列占用下，用剩余货架列宽补抽候选人（建筑占 2 列则少占一个条目位）。
+func _fill_candidates_by_column_budget(preferred_tier: int, col_start: int = 0) -> void:
+	var budget := get_candidate_column_budget()
+	var col := col_start
+	var tries := 0
+	while col < budget and tries < 96:
+		tries += 1
+		var unit := _pick_one(preferred_tier)
+		if unit == null:
+			break
+		var w := unit.get_recruit_shelf_columns()
+		if col + w > budget:
+			continue
+		candidates.append(unit)
+		candidate_locked.append(false)
+		col += w
 
 
 func _set_candidate_locked(index: int, locked: bool) -> void:

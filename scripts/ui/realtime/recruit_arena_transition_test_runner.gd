@@ -112,7 +112,11 @@ func _test_recruit_arena_transition() -> void:
 	cfg.phase_seconds = 0.0
 	session.configure(cfg, deck, economy, rng)
 	session.begin(0.2)
-	_expect(session.get_candidates().size() == RecruitSession.CANDIDATE_COUNT, "3 candidates rolled")
+	var shelf_cols := 0
+	for u in session.get_candidates():
+		if u != null:
+			shelf_cols += u.get_recruit_shelf_columns()
+	_expect(shelf_cols > 0 and shelf_cols <= RecruitSession.CANDIDATE_COUNT, "candidates within column budget")
 
 	await battle.enter_recruit(session, 0.0)
 	await process_frame
@@ -122,12 +126,16 @@ func _test_recruit_arena_transition() -> void:
 	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "ally half slid in to 0")
 	_expect(arena.recruit_team_slots != null, "team slots set")
 	_expect(arena.recruit_team_slots.occupied_count() == deck.size(), "team units on upper half")
-	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "3 candidate cells")
+	var preview_cols := 0
 	var alive_cands := 0
 	for info in arena.recruit_candidates:
 		if info is Dictionary and info.get("unit") != null:
 			alive_cands += 1
-	_expect(alive_cands == RecruitSession.CANDIDATE_COUNT, "3 candidate unit bodies")
+			var pu: UnitData = info.get("unit") as UnitData
+			if pu != null:
+				preview_cols += pu.get_recruit_shelf_columns()
+	_expect(preview_cols == shelf_cols, "arena previews match session column span")
+	_expect(alive_cands == session.get_candidates().filter(func(u): return u != null).size(), "each live session candidate has preview")
 	## 招募时 Dock 按 RecruitHud 收缩；Arena 应收得更多垂直空间。
 	var recruit_dock := battle.get_node_or_null("Layout/Dock") as Control
 	_expect(recruit_dock != null and recruit_dock.visible, "dock stays visible in recruit")
