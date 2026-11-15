@@ -1608,7 +1608,7 @@ func _spawn_unit(
 	for i in spawn_total:
 		var cell := Vector2i(-1, -1)
 		if cadence_self_spawn:
-			cell = _pick_spawn_cell_toward_enemy(origin, team, prefer_player_half)
+			cell = _pick_spawn_cell_toward_enemy(origin, team, prefer_player_half, summon_context)
 		else:
 			cell = _pick_spawn_cell(origin, i == 0, prefer_player_half)
 		if cell == Vector2i(-1, -1):
@@ -1698,11 +1698,12 @@ func _pick_spawn_cell(origin: Vector2i, prefer_origin: bool, prefer_player_half:
 	return candidates[0]
 
 
-## 节拍阵地召兵：优先己方半场朝敌方向最近空格。
+## 节拍阵地召兵（幽灵墓地等）：优先建筑**朝敌一侧邻格**，而非半场最前线。
 func _pick_spawn_cell_toward_enemy(
 	origin: Vector2i,
 	team: UnitInstance.Team,
 	prefer_player_half: bool,
+	source: UnitInstance = null,
 ) -> Vector2i:
 	var height := _grid.get_size().y
 	var candidates := BoardHalf.filter_cells(_grid.get_empty_cells(), height, prefer_player_half)
@@ -1712,22 +1713,76 @@ func _pick_spawn_cell_toward_enemy(
 		return Vector2i(-1, -1)
 	## 竖屏我下敌上：玩家朝更小 y，敌朝更大 y（见 BoardHalf）。
 	var toward_enemy := -1 if team == UnitInstance.Team.PLAYER else 1
-	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+	var footprint := _footprint_cells_for_spawn(origin, source)
+	var adjacent_toward := _filter_spawn_neighbors_toward_enemy(candidates, footprint, toward_enemy)
+	var pool: Array[Vector2i] = adjacent_toward if not adjacent_toward.is_empty() else candidates
+	pool.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var cost_a := _grid.path_cost(origin, a)
+		var cost_b := _grid.path_cost(origin, b)
+		if cost_a != cost_b:
+			return cost_a < cost_b
 		var dy_a := (a.y - origin.y) * toward_enemy
 		var dy_b := (b.y - origin.y) * toward_enemy
 		if dy_a != dy_b:
 			return dy_a > dy_b
-		return _grid.path_cost(origin, a) < _grid.path_cost(origin, b)
+		return a.x < b.x
 	)
-	if _rng != null and candidates.size() > 1:
-		var best_y := (candidates[0].y - origin.y) * toward_enemy
-		var close: Array[Vector2i] = []
-		for cell in candidates:
-			if (cell.y - origin.y) * toward_enemy == best_y:
-				close.append(cell)
-		if close.size() > 1:
-			return close[_rng.randi_range(0, close.size() - 1)]
-	return candidates[0]
+	return _pick_tied_spawn_cells(pool, origin)
+
+
+func _footprint_cells_for_spawn(anchor: Vector2i, source: UnitInstance) -> Array[Vector2i]:
+	var size := Vector2i(1, 1)
+	if source != null:
+		size = source.get_footprint_size()
+	var cells: Array[Vector2i] = []
+	for dy in size.y:
+		for dx in size.x:
+			cells.append(Vector2i(anchor.x + dx, anchor.y + dy))
+	return cells
+
+
+func _filter_spawn_neighbors_toward_enemy(
+	candidates: Array[Vector2i],
+	footprint_cells: Array[Vector2i],
+	toward_enemy: int,
+) -> Array[Vector2i]:
+	var cand_set: Dictionary = {}
+	for c in candidates:
+		cand_set[c] = true
+	var out: Array[Vector2i] = []
+	var seen: Dictionary = {}
+	for fc in footprint_cells:
+		for ox in [-1, 0, 1]:
+			for oy in [-1, 0, 1]:
+				if ox == 0 and oy == 0:
+					continue
+				var n := Vector2i(fc.x + ox, fc.y + oy)
+				if not cand_set.has(n):
+					continue
+				if (n.y - fc.y) * toward_enemy <= 0:
+					continue
+				if seen.has(n):
+					continue
+				seen[n] = true
+				out.append(n)
+	return out
+
+
+func _pick_tied_spawn_cells(sorted_pool: Array[Vector2i], origin: Vector2i) -> Vector2i:
+	if sorted_pool.is_empty():
+		return Vector2i(-1, -1)
+	if _rng == null or sorted_pool.size() == 1:
+		return sorted_pool[0]
+	var best_cost := _grid.path_cost(origin, sorted_pool[0])
+	var close: Array[Vector2i] = []
+	for cell in sorted_pool:
+		if _grid.path_cost(origin, cell) == best_cost:
+			close.append(cell)
+		else:
+			break
+	if close.size() > 1:
+		return close[_rng.randi_range(0, close.size() - 1)]
+	return close[0]
 
 
 func _apply_cell_effect(

@@ -3,6 +3,7 @@ extends RefCounted
 
 const _BuildingAbility := preload("res://resources/abilities/cadence_spawn_skeleton_1_10.tres")
 const _BuildingData := preload("res://resources/units/realtime/ghost_graveyard.tres")
+const _EnemySkeleton := preload("res://resources/units/enemies/enemy_skeleton.tres")
 const _EffectResolver := preload("res://scripts/combat/effects/effect_resolver.gd")
 
 
@@ -60,7 +61,8 @@ static func _test_brain_cadence_tick() -> void:
 	var unit := UnitInstance.from_unit_data(data, Vector2i(2, 2), UnitInstance.Team.PLAYER)
 	unit.cannot_move = true
 	var rt := RtUnit.new(unit, RtUnit.cell_center(Vector2i(2, 2)))
-	rt.attack_timer = 0.01
+	rt.state = RtUnit.State.MOVING
+	rt.attack_timer = 0.0
 	var decision := RtUnitBrain.decide(rt, [], 0.02)
 	_assert(decision.cadence_tick, "cadence_tick when timer expires")
 	_assert(not decision.fire, "no normal attack fire")
@@ -87,7 +89,11 @@ static func _test_cadence_spawn_toward_enemy() -> void:
 		if u.id == "token_skeleton_swarm":
 			spawned = true
 			var cell := grid.find_cell_of(u)
-			_assert(cell.y < anchor.y, "spawn toward enemy (-y on player half 5x8)")
+			_assert(cell.y == anchor.y - 1, "spawn on enemy-facing row beside building")
+			_assert(
+				grid.path_cost(anchor, cell) <= 2,
+				"spawn near graveyard (manhattan<=2), not frontline",
+			)
 	_assert(spawned, "skeleton spawned on cadence")
 
 
@@ -103,11 +109,16 @@ static func _test_realtime_sim_cadence_spawn() -> void:
 	var before := _count_skeletons(sim)
 	var rt := sim.add_unit(building, RtUnit.cell_center(Vector2i(0, 6)))
 	_assert(rt != null, "building added to realtime sim")
+	var foe := UnitInstance.from_unit_data(_EnemySkeleton, Vector2i(2, 2), UnitInstance.Team.ENEMY)
+	sim.add_unit(foe, RtUnit.cell_center(Vector2i(2, 2)))
 	sim.begin_combat()
 	sim.flush_combat_start_lock()
-	var result := sim.run_until_finished(500)
+	var steps := 0
+	while not sim.is_finished() and steps < 800:
+		sim.advance_fixed_step()
+		steps += 1
 	var after := _count_skeletons(sim)
-	_assert(after > before, "realtime sim: cadence spawned at least one skeleton (steps=%d)" % int(result.get("steps", -1)))
+	_assert(after > before, "realtime sim: cadence spawned at least one skeleton (steps=%d)" % steps)
 
 
 static func _count_skeletons(sim: RealtimeCombatSim) -> int:
