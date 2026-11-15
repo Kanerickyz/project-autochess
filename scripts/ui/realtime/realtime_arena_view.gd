@@ -1266,10 +1266,12 @@ func _format_merged_feedback_text(kind: StringName, amount: int, fallback: Strin
 		RealtimeEffectFeedback.KIND_DAMAGE:
 			return "-%d" % amount
 		RealtimeEffectFeedback.KIND_HEAL:
+			if use_stat_icon:
+				return "+%d" % amount if amount > 0 else "%d" % amount
 			return "+%d" % amount if amount > 0 else "%d" % amount
 		RealtimeEffectFeedback.KIND_GOLD:
 			return "+%d金" % amount
-		RealtimeEffectFeedback.KIND_STAT, RealtimeEffectFeedback.KIND_HEAL:
+		RealtimeEffectFeedback.KIND_STAT:
 			if use_stat_icon:
 				return "+%d" % amount if amount > 0 else "%d" % amount
 			## 保留原后缀（攻/生命/暴）；跳过符号与数字。
@@ -4264,7 +4266,7 @@ func _draw_merge_fx(px: float, off: Vector2) -> void:
 			continue
 		_draw_body(
 			tile, 0.7, 0.0, 0.0, PLAYER_COLOR, ghost_alpha, "", px, true, off,
-			true, _merge_unit_id, null, Vector2.ZERO, 1.0, -1,
+			true, _merge_unit_id, null, Vector2.ZERO, 1.0, -1.0, -1.0, -1,
 		)
 	if _merge_survivor_seat < 0 or _merge_survivor_seat >= recruit_team_slots.cells.size():
 		return
@@ -4657,6 +4659,8 @@ func _draw_bench_row(px: float) -> void:
 			null,
 			Vector2.ZERO,
 			1.0,
+			-1.0,
+			-1.0,
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
 		badge_jobs.append({
