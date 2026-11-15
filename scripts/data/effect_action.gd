@@ -64,6 +64,8 @@ const STAT_NAMES: Array[StringName] = [
 @export_range(0, 200, 1) var percent: int = 100
 @export var spawn_unit: UnitData
 @export var spawn_hp_override: int = 0
+## >0 时覆盖生成体攻击（与 spawn_hp_override 配合；武器唤骨等）。
+@export_range(0, 99, 1) var spawn_attack_override: int = 0
 @export_range(1, 8, 1) var spawn_count: int = 1
 ## >0 时按事件目标（死者）基础身体攻/血百分比生成，忽略本场临时层；0 = 用 spawn_unit 原值。
 @export_range(0, 100, 5) var spawn_owner_base_percent: int = 0

@@ -658,6 +658,8 @@ func _spec_condition_met(
 			return _unit_below_max_hp(payload.target if payload != null else null)
 		EffectSpec.Condition.KILL_FROM_ATTACK:
 			return payload != null and payload.from_attack
+		EffectSpec.Condition.DEAL_FROM_ATTACK:
+			return payload != null and payload.from_attack
 		EffectSpec.Condition.OWNER_HAS_BANKED_TURN_REFRESH_CHARGE:
 			return owner != null and owner.banked_turn_refresh_charges > 0
 		EffectSpec.Condition.EVENT_TARGET_HAS_COMBAT_STATUS:
@@ -1647,6 +1649,11 @@ func _spawn_unit(
 			spawned.current_hp = action.spawn_hp_override
 			if spawned.stats != null:
 				spawned.stats.max_hp = maxi(spawned.stats.max_hp, action.spawn_hp_override)
+		if action.spawn_attack_override > 0 and spawned.stats != null:
+			spawned.stats.attack = action.spawn_attack_override
+		if action.spawn_hp_override > 0 and spawned.stats != null:
+			spawned.stats.max_hp = action.spawn_hp_override
+			spawned.current_hp = action.spawn_hp_override
 		if not _grid.place(spawned, cell):
 			continue
 		spawned_any = true
