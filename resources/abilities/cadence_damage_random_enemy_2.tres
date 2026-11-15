@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3]
+
+[ext_resource type="Script" uid="uid://crxnpxb4fci0f" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 3
+value = 2
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnAttackCadence"
+target_selector = 4
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "cadence_damage_random_enemy_2"
+display_name = "每 3 秒对随机敌人造成 2 点伤害"
+merge_value_mult = 3
+passive_cadence_seconds = 3.0
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])

@@ -4095,6 +4095,8 @@ func _present_effect_result(payload: CombatEventPayload, with_callout: bool = fa
 			amount,
 			String(pop.get("merge_key", "")),
 			tip,
+			pop.get("stat_name", StringName()),
+			bool(pop.get("use_stat_icon", false)),
 		)
 		if pop["kind"] == RealtimeEffectFeedback.KIND_GOLD and amount > 0:
 			_arena.spawn_gold_coin_burst(center, amount)

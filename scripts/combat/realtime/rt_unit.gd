@@ -49,6 +49,8 @@ var boss_teleport_cooldown_left: float = 0.0
 var boss_summons_spawned_total: int = 0
 ## 自身周期脉冲累计（中毒 tick + ON_ROUND_START；默认每 1.0s）。
 var status_pulse_accum: float = 0.0
+## 墙钟被动节拍（AbilityData.passive_cadence_seconds + OnAttackCadence）。
+var passive_cadence_remaining: float = 0.0
 
 
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:

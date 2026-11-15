@@ -12,3 +12,5 @@ extends Resource
 @export var effect_specs: Array[EffectSpec] = []
 ## 每次三合一的技能数值倍率；0 = 用全局 ×6（1★×1 / 2★×6 / 3★×36）。
 @export_range(0, 99, 1) var merge_value_mult: int = 0
+## >0 且技能含 OnAttackCadence 时：按墙钟周期触发（可移动单位）；建筑仍走 attack_interval 节拍。
+@export_range(0.0, 60.0, 0.1) var passive_cadence_seconds: float = 0.0
