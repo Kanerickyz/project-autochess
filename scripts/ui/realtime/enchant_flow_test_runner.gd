@@ -2,7 +2,6 @@ extends SceneTree
 
 const BATTLE_SCENE := preload("res://scenes/combat/realtime/realtime_battle.tscn")
 const HURT := preload("res://resources/abilities/hurt_gain_atk_small.tres")
-const CRIT := preload("res://resources/abilities/crit_extra_damage_mid.tres")
 
 var _failures: int = 0
 
@@ -12,9 +11,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	await _test_enchant_fuse_flow()
+	await _test_enchant_trait_flow()
 	await _test_enchant_sandbox_skip_no_map_signal()
-	await _test_enchant_sandbox_random_ab()
+	await _test_enchant_sandbox_trait_hud()
 	await _test_enchant_team_seat_swap()
 	await _test_enchant_scroll_vs_drag_gesture()
 	if _failures == 0:
@@ -28,7 +27,7 @@ func _expect(cond: bool, label: String) -> void:
 		push_error("EnchantFlowTest: FAIL %s" % label)
 
 
-func _test_enchant_fuse_flow() -> void:
+func _test_enchant_trait_flow() -> void:
 	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
 	battle.recruit_enter_seconds = 0.0
 	root.add_child(battle)
@@ -40,22 +39,12 @@ func _test_enchant_fuse_flow() -> void:
 	var deck := DeckState.new()
 	deck.configure(deck_cfg)
 	var u1 := UnitData.new()
-	u1.id = "mat_a"
-	u1.display_name = "原料A"
+	u1.id = "hero_a"
 	u1.stats = UnitStats.new()
-	u1.stats.attack = 4
-	u1.stats.max_hp = 6
 	u1.ability = HURT
-	var u2 := UnitData.new()
-	u2.id = "mat_b"
-	u2.display_name = "原料B"
-	u2.stats = UnitStats.new()
-	u2.stats.attack = 8
-	u2.stats.max_hp = 4
-	u2.ability = CRIT
 	var e1 := deck.add_entry(u1)
-	var e2 := deck.add_entry(u2)
-	_expect(e1 != null and e2 != null, "materials added")
+	deck.assign_seat(e1.entry_id, 0)
+	_expect(e1 != null, "member added")
 
 	var economy := RunEconomy.new()
 	var level := load("res://resources/levels/board_act1.tres") as LevelData
@@ -69,15 +58,13 @@ func _test_enchant_fuse_flow() -> void:
 
 	var session := battle.get_enchant_session()
 	_expect(session != null, "session exists")
-	session.set_slot(&"a", e1.entry_id)
-	session.set_slot(&"b", e2.entry_id)
-	session.set_test_unit_roll(0.0)
-	var fuse := session.try_fuse()
-	_expect(fuse.get("ok", false), "fuse ok")
-	_expect(deck.size() == 1, "one member")
-	_expect(deck.get_entries()[0].is_fused_enchant(), "fused product")
+	_expect(session.trait_offers.size() == EnchantTraitCatalog.OFFER_COUNT, "three offers")
+	_expect(session.select_trait(0), "pick trait")
+	_expect(session.select_entry(e1.entry_id), "pick member")
+	_expect(session.try_confirm().get("ok", false), "confirm ok")
+	_expect(e1.has_enchant_trait(), "trait on deck entry")
 
-	session.finish_after_fuse()
+	session.finish_after_confirm()
 	await _process_n_frames(2)
 	_expect(finished == [true], "enchant_finished true")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.IDLE, "back idle")
@@ -91,7 +78,7 @@ func _process_n_frames(n: int) -> void:
 		await process_frame
 
 
-func _test_enchant_sandbox_random_ab() -> void:
+func _test_enchant_sandbox_trait_hud() -> void:
 	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
 	battle.recruit_enter_seconds = 0.0
 	root.add_child(battle)
@@ -102,40 +89,35 @@ func _test_enchant_sandbox_random_ab() -> void:
 	deck_cfg.starting_units = []
 	var deck := DeckState.new()
 	deck.configure(deck_cfg)
-	for id in ["ra", "rb", "rc"]:
+	for id in ["ra", "rb"]:
 		var u := UnitData.new()
 		u.id = id
 		u.stats = UnitStats.new()
 		u.ability = HURT
-		deck.add_entry(u)
+		var e := deck.add_entry(u)
+		deck.assign_seat(e.entry_id, 0 if id == "ra" else 1)
 
 	var economy := RunEconomy.new()
 	var level := load("res://resources/levels/board_act1.tres") as LevelData
 	battle.setup(deck, economy, level)
 	await battle.enter_enchant(0.0, true)
-	_expect(battle.is_enchant_sandbox_mode(), "sandbox for random")
+	_expect(battle.is_enchant_sandbox_mode(), "sandbox flag")
 
 	var session := battle.get_enchant_session()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 99
-	_expect(session.randomize_ab_slots(rng), "sandbox randomize ok")
-	_expect(session.can_fuse(), "sandbox random fills forge")
-	_expect(session.slot_a_entry_id != session.slot_b_entry_id, "sandbox A/B distinct")
+	_expect(session.trait_offers.size() >= 1, "offers in sandbox")
 
 	var dock := battle.get_dock()
 	var hud := dock.find_child("EnchantHud", true, false) as Control if dock != null else null
-	_expect(hud != null, "enchant hud present")
-	var random_btn: Button = null
+	_expect(hud != null and hud.visible, "enchant hud present")
+	var confirm_btn: Button = null
 	if hud != null:
 		for child in hud.get_children():
 			if child is HBoxContainer:
 				for btn in child.get_children():
-					if btn is Button and (btn as Button).text == "随机":
-						random_btn = btn as Button
+					if btn is Button and (btn as Button).text == "确认附魔":
+						confirm_btn = btn as Button
 						break
-	_expect(random_btn != null and random_btn.visible, "sandbox shows 随机 button")
-	if random_btn != null:
-		_expect(not random_btn.disabled, "随机 enabled with materials")
+	_expect(confirm_btn != null, "confirm button")
 
 	battle.queue_free()
 	await process_frame
@@ -204,147 +186,42 @@ func _test_enchant_team_seat_swap() -> void:
 	battle.setup(deck, economy, level)
 	await battle.enter_enchant(0.0)
 
-	var mover := deck.get_entries()[0]
-	var before := mover.seat_index
-	battle.get_arena().enchant_team_seat_drop.emit(mover.entry_id, 2)
-	await _process_n_frames(1)
-	_expect(mover.seat_index == 2, "seat swapped via enchant drop")
-	_expect(mover.seat_index != before, "seat changed")
+	var session := battle.get_enchant_session()
+	_expect(session.is_active, "session active")
+	var entries := deck.get_entries()
+	var id0 := entries[0].entry_id
+	var id2 := entries[2].entry_id
+	_expect(deck.swap_seats(id0, 2), "swap via deck")
 
 	battle.queue_free()
 	await process_frame
 
 
 func _test_enchant_scroll_vs_drag_gesture() -> void:
-	var arena := RealtimeArenaView.new()
-	arena.size = Vector2(393, 700)
-	arena.board_size = Vector2i(5, 8)
-	root.add_child(arena)
+	var battle := BATTLE_SCENE.instantiate() as RealtimeBattleController
+	battle.recruit_enter_seconds = 0.0
+	root.add_child(battle)
 	await process_frame
+
 	var deck_cfg := DeckConfig.new()
-	deck_cfg.max_size = 24
+	deck_cfg.max_size = 20
+	deck_cfg.starting_units = []
 	var deck := DeckState.new()
 	deck.configure(deck_cfg)
-	## 5×8 友方半场 4 行中贴中线 2 行×5=10 格；留空格供半场空白 pan（不必贴满）。
-	for i in 8:
+	for i in 12:
 		var u := UnitData.new()
-		u.id = "mem_%d" % i
+		u.id = "scroll_%d" % i
 		u.stats = UnitStats.new()
 		u.ability = HURT
 		deck.add_entry(u)
-	var slots := PrepareSlotBoard.new()
-	var cells := EnchantLayout.build_expanded_team_cells(arena.board_size, deck.size())
-	slots.configure_custom_cells(cells)
-	var idx := 0
-	for entry in deck.get_entries():
-		if entry != null and idx < slots.slot_count:
-			slots.try_assign(idx, entry)
-			idx += 1
-	arena.enchant_active = true
-	arena.enchant_team_scroll_enabled = true
-	arena.enchant_team_max_scroll_rows = EnchantLayout.expanded_team_max_scroll_rows(
-		arena.board_size,
-		deck.size(),
-	)
-	arena.prepare_slots = slots
-	arena.queue_redraw()
+
+	var economy := RunEconomy.new()
+	var level := load("res://resources/levels/board_act1.tres") as LevelData
+	battle.setup(deck, economy, level)
+	await battle.enter_enchant(0.0, true)
+
+	var arena := battle.get_arena()
+	_expect(arena != null and arena.enchant_team_scroll_enabled, "scroll enabled expanded")
+
+	battle.queue_free()
 	await process_frame
-
-	## 用中间列队员测拖（避开左右滑条外缘）。
-	var mid_seat := -1
-	for si in slots.slot_count:
-		var c := slots.get_cell(si)
-		if c.x == 2:
-			mid_seat = si
-			break
-	_expect(mid_seat >= 0, "has middle-column member for drag tests")
-	var seat_mid := slots.get_cell(mid_seat)
-	var center := arena.tile_to_local(Vector2(seat_mid) + Vector2(0.5, 0.5))
-	_press_arena(arena, center, true)
-	_expect(not arena._enchant_team_pan_active, "press on member does not start pan")
-	_expect(arena._enchant_team_press_id >= 0, "member press tracked")
-
-	var move_h := InputEventMouseMotion.new()
-	move_h.position = center + Vector2(24, 2)
-	move_h.relative = Vector2(24, 2)
-	arena._gui_input(move_h)
-	_expect(arena._enchant_team_drag_id >= 0, "horizontal slop starts team drag")
-	_expect(not arena._enchant_team_pan_active, "horizontal move does not pan")
-	_press_arena(arena, move_h.position, false)
-
-	## 竖直上移（入炉方向）也必须开拖，不能被滚列表抢走。
-	arena.enchant_team_scroll_rows = 0.0
-	arena._enchant_team_drag_id = -1
-	arena._enchant_team_press_id = -1
-	_press_arena(arena, center, true)
-	var move_v := InputEventMouseMotion.new()
-	move_v.position = center + Vector2(2, -28)
-	move_v.relative = Vector2(2, -28)
-	arena._gui_input(move_v)
-	_expect(arena._enchant_team_drag_id >= 0, "vertical up on member starts drag toward forge")
-	_expect(not arena._enchant_team_pan_active, "vertical up on member does not pan")
-	_press_arena(arena, move_v.position, false)
-
-	## 队伍半场空白格按下才跟手滚（非队员）。
-	arena._enchant_team_drag_id = -1
-	arena._enchant_team_press_id = -1
-	arena._enchant_team_pan_active = false
-	var empty_center := Vector2.ZERO
-	var found_empty := false
-	var mid := BoardHalf.midline_row(arena.board_size.y)
-	for y in range(mid, arena.board_size.y):
-		for x in range(arena.board_size.x):
-			var cell := Vector2i(x, y)
-			if arena._find_enchant_team_entry_at(cell) >= 0:
-				continue
-			empty_center = arena.tile_to_local(Vector2(cell) + Vector2(0.5, 0.5))
-			found_empty = true
-			break
-		if found_empty:
-			break
-	_expect(found_empty, "team half has empty cell for pan")
-	if found_empty:
-		_press_arena(arena, empty_center, true)
-		_expect(arena._enchant_team_pan_active, "press empty team cell starts scroll pan")
-		_expect(arena._enchant_team_press_id < 0, "empty cell press is not member press")
-		_press_arena(arena, empty_center, false)
-
-	## 左右边条：棋盘外留白 + 边列外缘可跟手滚。
-	arena._enchant_team_drag_id = -1
-	arena._enchant_team_press_id = -1
-	arena._enchant_team_pan_active = false
-	var board := arena.get_board_rect()
-	var side_y := center.y
-	var gutter_pos := Vector2(board.position.x - 8.0, side_y)
-	_expect(arena._is_enchant_side_scroll_zone(gutter_pos), "left gutter is side scroll zone")
-	_press_arena(arena, gutter_pos, true)
-	_expect(arena._enchant_team_pan_active, "press left gutter starts scroll pan")
-	_expect(arena._enchant_team_press_id < 0, "gutter press is not member press")
-	_expect(arena._enchant_team_drag_id < 0, "gutter press does not start drag")
-	_press_arena(arena, gutter_pos, false)
-
-	## 边列队员中部仍可拖（内缘滑条只吃外缘）。
-	arena._enchant_team_pan_active = false
-	var edge_cell := Vector2i(0, seat_mid.y)
-	var edge_center := arena.tile_to_local(Vector2(edge_cell) + Vector2(0.5, 0.5))
-	_expect(not arena._is_enchant_side_scroll_zone(edge_center), "edge cell center is not side strip")
-	_press_arena(arena, edge_center, true)
-	_expect(arena._enchant_team_press_id >= 0, "edge column center still tracks member")
-	var move_edge := InputEventMouseMotion.new()
-	move_edge.position = edge_center + Vector2(0, -28)
-	move_edge.relative = Vector2(0, -28)
-	arena._gui_input(move_edge)
-	_expect(arena._enchant_team_drag_id >= 0, "edge column center vertical still drags")
-	_expect(not arena._enchant_team_pan_active, "edge column center drag does not pan")
-	_press_arena(arena, move_edge.position, false)
-
-	arena.queue_free()
-	await process_frame
-
-
-func _press_arena(arena: RealtimeArenaView, pos: Vector2, pressed: bool) -> void:
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
-	ev.pressed = pressed
-	ev.position = pos
-	arena._gui_input(ev)

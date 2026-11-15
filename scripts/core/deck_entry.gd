@@ -24,6 +24,10 @@ var bench_slot_index: int = -1
 var seat_assign_seq: int = 0
 ## 附魔熔印者等 runtime 主技能；优先于 unit.ability。
 var runtime_main_ability: AbilityData = null
+## Run 持久附魔：下场开战施加的战斗状态 id（空 = 无）。
+var enchant_combat_status_id: StringName = &""
+## 开战施加层数。
+var enchant_status_stacks: int = 0
 
 
 func get_unit_id() -> String:
@@ -181,3 +185,29 @@ func refill_equipment_armor() -> void:
 	if equipment_armor_max <= 0:
 		equipment_armor_max = equipment.get_armor_block()
 	equipment.armor_block = equipment_armor_max
+
+
+func get_enchant_combat_status_id() -> StringName:
+	return enchant_combat_status_id
+
+
+func get_enchant_status_stacks() -> int:
+	return maxi(0, enchant_status_stacks)
+
+
+func set_enchant_trait(status_id: StringName, stacks: int) -> void:
+	if not EnchantTraitCatalog.is_allowed(status_id):
+		enchant_combat_status_id = &""
+		enchant_status_stacks = 0
+		return
+	enchant_combat_status_id = status_id
+	enchant_status_stacks = maxi(1, stacks)
+
+
+func clear_enchant_trait() -> void:
+	enchant_combat_status_id = &""
+	enchant_status_stacks = 0
+
+
+func has_enchant_trait() -> bool:
+	return enchant_combat_status_id != StringName() and enchant_status_stacks > 0

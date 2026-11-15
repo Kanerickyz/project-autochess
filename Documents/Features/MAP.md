@@ -250,7 +250,7 @@ flowchart TD
 | 战斗 / 精英 / Boss | 功能已存在 | 进入 2D 实时战斗关卡（`scenes/combat/realtime/`） |
 | 商店 / 事件 / 附魔 | **本版占位** | `scenes/ui/placeholder/`；旧商店与事件界面不接入 Run 主路径 |
 | 未知（?） | 生成 + 进房解析已接 | `MYSTERY` → `finalize_mystery_node`；解析池无宝箱 |
-| 附魔规则 | **规格已定 · 未实装** | 见 [附魔](./ENCHANT.md)；占位进房 |
+| 附魔规则 | **轻量实装** | 见 [附魔](./ENCHANT.md)；神龛 UI + 开战施加 |
 | 休息 / 宝箱 / 献祭 | 生成器不产出 | 枚举与旧界面文件仍在，不进主循环 |
 | 生成只产出本篇节点表 | 功能已存在 | `map_generator_test` 覆盖 |
 

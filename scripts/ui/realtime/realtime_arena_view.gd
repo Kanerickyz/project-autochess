@@ -24,8 +24,12 @@ signal recruit_empty_seat_pressed(seat_index: int)
 signal recruit_item_pressed(item_slot: int)
 ## 招募道具行：药水拖到上区队伍成员。
 signal recruit_item_drop(item_slot: int, entry_id: int)
-## 附魔：队伍成员拖到时机格 A / 效果格 B。
+## 附魔：队伍成员拖到时机格 A / 效果格 B（熔炉退役；主路径不再发射）。
 signal enchant_forge_drop(entry_id: int, slot: StringName)
+## 附魔神龛：点选词条索引（0..2）。
+signal enchant_trait_pick(trait_index: int)
+## 附魔神龛：点选已入座队员。
+signal enchant_entry_pick(entry_id: int)
 ## 附魔：下半场队伍换座（与招募上区同规则）。
 signal enchant_team_seat_drop(entry_id: int, target_seat: int)
 ## 地图商店：货架拖到上半场角色；kind = consumable | equipment。
@@ -1697,6 +1701,16 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			_enchant_team_pan_active = false
 			accept_event()
 			return
+		var trait_tapped := false
+		if _enchant_forge_press:
+			var forge_hit := _inspect_enchant_forge_at(mb.position)
+			if not forge_hit.is_empty():
+				var key := String(forge_hit.get("inspect_key", ""))
+				if key.begins_with("enchant_forge:"):
+					enchant_trait_pick.emit(int(key.get_slice(":", 1)))
+					trait_tapped = true
+		if not trait_tapped and _enchant_team_press_id >= 0:
+			enchant_entry_pick.emit(_enchant_team_press_id)
 		_enchant_team_press_id = -1
 		_enchant_forge_press = false
 
@@ -1719,16 +1733,25 @@ func _inspect_enchant_forge_at(local_pos: Vector2) -> Dictionary:
 			continue
 		var forge_entry: DeckEntry = (item as Dictionary).get("entry", null)
 		var forge_cell: Vector2i = (item as Dictionary).get("cell", NO_CELL)
-		if forge_entry == null or forge_cell == NO_CELL:
+		if forge_cell == NO_CELL:
 			continue
 		var cell_rect := Rect2(rect.position + Vector2(forge_cell) * px + off, Vector2(px, px))
 		if not cell_rect.has_point(local_pos):
 			continue
-		var center := cell_rect.position + cell_rect.size * 0.5
+		var center := cell_rect.position + Vector2(forge_cell) * px + off + Vector2(px, px) * 0.5
 		var d := local_pos.distance_squared_to(center)
 		if d < best_d:
 			best_d = d
-			best = _info_from_entry(forge_entry, center, "enchant_forge:%d" % fi)
+			if forge_entry != null:
+				best = _info_from_entry(forge_entry, center, "enchant_forge:%d" % fi)
+			else:
+				var label: String = (item as Dictionary).get("label", "词条")
+				best = {
+					"inspect_key": "enchant_forge:%d" % fi,
+					"title": label,
+					"body": label,
+					"center": center,
+				}
 	return best
 
 
@@ -1828,13 +1851,6 @@ func _finish_enchant_team_drag(hover: Vector2i) -> void:
 	_drag_active = false
 	_finish_drag_visual(hover)
 	if entry_id < 0:
-		queue_redraw()
-		return
-	var mid := BoardHalf.midline_row(board_size.y)
-	if hover != NO_CELL and hover.y < mid:
-		var slot := EnchantLayout.forge_slot_name_at(hover, board_size)
-		if not slot.is_empty():
-			enchant_forge_drop.emit(entry_id, slot)
 		queue_redraw()
 		return
 	var seat_i := _find_enchant_team_seat_at(hover)
@@ -3748,7 +3764,7 @@ func _draw_enchant_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var font_size := clampi(int(px * 0.55), 11, 18)
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, float(mid) * px + px * 0.7)
-	draw_string(font, top_pos, "附魔台", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.75, 0.90, 1.0, 0.9))
+	draw_string(font, top_pos, "词条", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.75, 0.90, 1.0, 0.9))
 	draw_string(font, bot_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
 
 

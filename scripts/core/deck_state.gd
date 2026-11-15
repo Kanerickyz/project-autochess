@@ -814,6 +814,15 @@ func _apply_triple_merge(group: Array[DeckEntry]) -> DeckEntry:
 	_merge_occupation_emblems(product, [a, b, c])
 	_merge_attached_buffs(product, [a, b, c])
 	_merge_attached_abilities(product, [a, b, c])
+	var enchant_src := earliest if earliest != null and earliest.has_enchant_trait() else null
+	if enchant_src == null:
+		for src in [a, b, c]:
+			if src != null and src.has_enchant_trait():
+				enchant_src = src
+				break
+	if enchant_src != null:
+		product.enchant_combat_status_id = enchant_src.enchant_combat_status_id
+		product.enchant_status_stacks = enchant_src.enchant_status_stacks
 	_remove_entries_by_ids([a.entry_id, b.entry_id, c.entry_id])
 	_entries.append(product)
 	triple_merged.emit(product, consumed_seats)
@@ -980,6 +989,8 @@ func _clone_entry(source: DeckEntry) -> DeckEntry:
 	entry.seat_assign_seq = source.seat_assign_seq
 	if source.runtime_main_ability != null:
 		entry.runtime_main_ability = source.runtime_main_ability.duplicate(true) as AbilityData
+	entry.enchant_combat_status_id = source.enchant_combat_status_id
+	entry.enchant_status_stacks = source.enchant_status_stacks
 	return entry
 
 

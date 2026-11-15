@@ -1,17 +1,14 @@
 class_name EnchantBattleExtension
 extends RefCounted
-## 附魔阶段：Arena 拖拽 + 底栏（重置 / 随机 / 融合 / 跳过 / 继续）。
+## 附魔神龛：选人 + 词条；底栏确认 / 跳过。
 
 
 var _battle: RealtimeBattleController
 var _session: EnchantSession
 var _hud: Control
 var _stats_label: Label
-var _btn_reset: Button
-var _btn_random: Button
-var _btn_fuse: Button
+var _btn_confirm: Button
 var _btn_skip: Button
-var _btn_continue: Button
 var _expanded_team: bool = false
 
 
@@ -56,7 +53,7 @@ func sync_arena(arena: RealtimeArenaView, deck: DeckState, slots: PrepareSlotBoa
 		return
 	arena.clear_recruit_mode()
 	arena.enchant_active = true
-	arena.enchant_forge_previews = _build_forge_previews()
+	arena.enchant_forge_previews = _build_trait_previews()
 	arena.prepare_slots = slots
 	arena.enemy_slots = null
 	arena.enemy_previews = []
@@ -86,7 +83,7 @@ func rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 	_rebuild_team_slots(slots, deck)
 
 
-func _build_forge_previews() -> Array:
+func _build_trait_previews() -> Array:
 	var out: Array = []
 	if _session == null:
 		return out
@@ -94,26 +91,21 @@ func _build_forge_previews() -> Array:
 	if _battle != null:
 		board_size = _battle.get_board_size()
 	var slot_cells := EnchantLayout.forge_slot_cells(board_size)
-	var labels := ["时机 A", "效果 B", "产出 C"]
-	var ids := [_session.slot_a_entry_id, _session.slot_b_entry_id, -1]
-	for i in mini(3, slot_cells.size()):
-		var entry: DeckEntry = null
-		if i < 2 and ids[i] >= 0 and _session.deck != null:
-			entry = _session.deck.get_entry(ids[i])
-		elif i == 2:
-			entry = _session.build_preview_fused_entry()
+	for i in mini(EnchantTraitCatalog.OFFER_COUNT, slot_cells.size()):
+		var label := "—"
+		if i < _session.trait_offers.size():
+			var row: Dictionary = _session.trait_offers[i]
+			label = str(row.get("name", "?"))
+		var selected := _session.selected_trait_index == i
+		if selected:
+			label = "✓ " + label
 		out.append({
 			"cell": slot_cells[i],
-			"label": labels[i],
-			"entry": entry,
+			"label": label,
+			"entry": null,
+			"trait_index": i,
 		})
 	return out
-
-
-func _entry_on_forge(entry_id: int) -> bool:
-	if _session == null or entry_id < 0:
-		return false
-	return entry_id == _session.slot_a_entry_id or entry_id == _session.slot_b_entry_id
 
 
 func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
@@ -125,7 +117,7 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 		slots.configure_custom_cells(cells)
 		var i := 0
 		for entry in deck.get_entries():
-			if entry == null or _entry_on_forge(entry.entry_id):
+			if entry == null:
 				continue
 			if i < slots.slot_count:
 				slots.try_assign_with_seq(i, entry, entry.seat_assign_seq)
@@ -140,7 +132,7 @@ func _rebuild_team_slots(slots: PrepareSlotBoard, deck: DeckState) -> void:
 			seat_cols = config.get_seat_cols()
 	slots.configure_grid(seat_rows, seat_cols, board_size, false, false)
 	for entry in deck.get_entries():
-		if entry == null or _entry_on_forge(entry.entry_id):
+		if entry == null:
 			continue
 		var seat_i := entry.seat_index
 		if seat_i < 0 or seat_i >= slots.slot_count:
@@ -168,51 +160,27 @@ func _ensure_hud() -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hud.add_child(row)
-	_btn_reset = Button.new()
-	_btn_reset.text = "重置"
-	_btn_reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_reset.pressed.connect(_on_reset)
-	row.add_child(_btn_reset)
-	_btn_random = Button.new()
-	_btn_random.text = "随机"
-	_btn_random.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_random.pressed.connect(_on_random)
-	row.add_child(_btn_random)
-	_btn_fuse = Button.new()
-	_btn_fuse.text = "融合"
-	_btn_fuse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_fuse.pressed.connect(_on_fuse)
-	row.add_child(_btn_fuse)
+	_btn_confirm = Button.new()
+	_btn_confirm.text = "确认附魔"
+	_btn_confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_confirm.pressed.connect(_on_confirm)
+	row.add_child(_btn_confirm)
 	_btn_skip = Button.new()
 	_btn_skip.text = "跳过"
 	_btn_skip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_skip.pressed.connect(_on_skip)
 	row.add_child(_btn_skip)
-	_btn_continue = Button.new()
-	_btn_continue.text = "继续"
-	_btn_continue.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_continue.pressed.connect(_on_continue)
-	row.add_child(_btn_continue)
 
 
 func _refresh() -> void:
 	if _session == null:
 		return
-	_btn_fuse.disabled = not _session.can_fuse()
-	_btn_reset.disabled = _session.fused_this_visit
-	## 随机仅试验场：满池滚列表时快速试配方。
-	if _btn_random != null:
-		_btn_random.visible = _expanded_team
-		_btn_random.disabled = (
-			_session.fused_this_visit
-			or _session.get_material_entry_ids().size() < 2
-		)
-	_btn_skip.disabled = _session.fused_this_visit
-	_btn_continue.disabled = not _session.fused_this_visit
+	_btn_confirm.disabled = not _session.can_confirm()
+	_btn_skip.disabled = _session.confirmed_this_visit
 	_stats_label.text = _format_stats_line()
 	if _battle != null and _battle.get_arena() != null:
 		var arena := _battle.get_arena()
-		arena.enchant_forge_previews = _build_forge_previews()
+		arena.enchant_forge_previews = _build_trait_previews()
 		if _expanded_team and _session.deck != null:
 			arena.enchant_team_max_scroll_rows = EnchantLayout.expanded_team_max_scroll_rows(
 				arena.board_size,
@@ -224,57 +192,35 @@ func _refresh() -> void:
 func _format_stats_line() -> String:
 	if _session == null:
 		return ""
-	var rate := _session.get_success_percent()
-	if not _session.can_fuse():
-		return "放入 A/B 后可融合 · 成功率 %.0f%%" % rate
-	return "成功率 %.0f%% · 点融合检定（失败失去 A/B）" % rate
+	if _session.confirmed_this_visit:
+		return "已附魔 · 点确认附魔后结束（或等待自动）"
+	var parts: PackedStringArray = []
+	parts.append("上：点词条 · 下：点队员")
+	if _session.selected_trait_index >= 0:
+		parts.append("已选词条")
+	if _session.selected_entry_id >= 0:
+		parts.append("已选队员")
+	return " · ".join(parts)
 
 
-func _on_reset() -> void:
+func _on_confirm() -> void:
 	if _session == null:
 		return
-	_session.reset_forge()
-	if _battle != null:
-		_battle.on_enchant_forge_changed()
-	_refresh()
-
-
-func _on_random() -> void:
-	if _session == null or not _expanded_team:
-		return
-	if not _session.randomize_ab_slots():
+	if not _session.confirmed_this_visit:
+		var result := _session.try_confirm()
+		if not result.get("ok", false):
+			if _battle != null:
+				_battle.flash_hint("请选择队员与词条")
+			return
 		if _battle != null:
-			_battle.flash_hint("可用原料不足两人")
-		return
-	if _battle != null:
-		_battle.on_enchant_forge_changed()
+			_battle.flash_hint("附魔已写入")
+	_session.finish_after_confirm()
 	_refresh()
-
-
-func _on_fuse() -> void:
-	if _session == null:
-		return
-	var result := _session.try_fuse()
-	if not result.get("ok", false):
-		_battle.flash_hint("无法融合")
-		return
-	if result.get("success", false):
-		_battle.flash_hint("熔合成功")
-	else:
-		_battle.flash_hint("熔合失败")
-	_refresh()
-	if _battle != null:
-		_battle.on_enchant_forge_changed()
 
 
 func _on_skip() -> void:
 	if _session != null:
 		_session.skip()
-
-
-func _on_continue() -> void:
-	if _session != null:
-		_session.finish_after_fuse()
 
 
 func _on_session_changed() -> void:
