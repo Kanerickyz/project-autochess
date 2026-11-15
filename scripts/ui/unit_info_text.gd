@@ -179,6 +179,9 @@ static func format_equipment(equipment: EquipmentData, with_stat_icons: bool = f
 		return "【转职】%s — 附加职业：%s（零护甲）" % [
 			title, equipment.get_granted_occupation()
 		]
+	if equipment.is_weapon():
+		var desc := equipment.get_weapon_description()
+		return "【武器】%s — %s" % [title, desc if not desc.is_empty() else "普攻触发"]
 	var block := equipment.get_armor_block()
 	if with_stat_icons:
 		return "【装备】%s — 受伤时抵挡 %d 点伤害" % [title, block]
@@ -195,6 +198,8 @@ static func get_equipment_attachment_skills_block(
 		return ""
 	if equipment.is_occupation_emblem():
 		return "附加职业：%s。不替换本职；零护甲；不改技能。" % equipment.get_granted_occupation()
+	if equipment.is_weapon():
+		return equipment.get_weapon_description() + "（仅普攻）"
 	var block := equipment.get_armor_block()
 	var lines: PackedStringArray = []
 	if with_stat_icons:
@@ -222,6 +227,23 @@ static func build_equipment_attachment_info(
 			"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
 			"equipment_id": equipment.id,
 			"attachment_kind_label": "转职",
+			"name": equipment.get_display_name(),
+			"side_player": true,
+			"tier": 0,
+			"attack": 0,
+			"hp": 0,
+			"armor": 0,
+			"skills": get_equipment_attachment_skills_block(
+				equipment, 0, 0, with_stat_icons
+			),
+			"recruit_cost": -1,
+		}
+	if equipment.is_weapon():
+		return {
+			"is_attachment": true,
+			"attachment_kind": INFO_ATTACHMENT_KIND_EQUIPMENT,
+			"equipment_id": equipment.id,
+			"attachment_kind_label": "武器",
 			"name": equipment.get_display_name(),
 			"side_player": true,
 			"tier": 0,

@@ -42,6 +42,8 @@ var armor_block: int = 0
 var combat_temp_armor: int = 0
 ## 本场远程投射普攻命中加伤（徽章等；护甲前；遭遇结束随实例销毁）。
 var combat_ranged_hit_bonus: int = 0
+## 本场普攻额外伤害（地图商店武器；护甲前；遭遇结束随实例销毁）。
+var combat_attack_flat_bonus: int = 0
 ## 本场攻击间隔倍率（1=原速；叠乘缩短；遭遇结束随实例销毁）。
 var combat_attack_interval_factor: float = 1.0
 ## 自上次暴击后连续未暴击普攻次数（保底用；玩家不可见；遭遇内）。
@@ -90,6 +92,14 @@ static func sync_from_deck_entry(unit: UnitInstance, entry: DeckEntry) -> void:
 	var data_immobile := entry.unit.immobile
 	unit.cannot_move = rule_no_move or data_immobile
 	unit.armor_block = entry.get_armor_block()
+	unit.combat_attack_flat_bonus = 0
+	unit.combat_attack_interval_factor = 1.0
+	var main_eq := entry.equipment
+	if main_eq != null and main_eq.is_weapon():
+		unit.combat_attack_flat_bonus = maxi(0, main_eq.weapon_attack_bonus)
+		var haste := maxi(0, main_eq.weapon_haste_percent)
+		if haste > 0:
+			unit.scale_combat_attack_interval(haste)
 	unit._deck_entry_ref = weakref(entry)
 	unit.attached_abilities = entry.attached_abilities.duplicate()
 	if entry.runtime_main_ability != null:
@@ -353,4 +363,7 @@ func get_all_effect_specs() -> Array[EffectSpec]:
 	for attached in attached_abilities:
 		if attached != null:
 			specs.append_array(attached.effect_specs)
+	var entry := get_linked_deck_entry()
+	if entry != null and entry.equipment != null and entry.equipment.is_weapon():
+		specs.append_array(entry.equipment.build_weapon_effect_specs())
 	return specs

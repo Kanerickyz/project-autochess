@@ -40,12 +40,14 @@ func resolve_hit(
 		victims = collect_splash_victims(primary, splash_radius, units)
 	## 远程投射普攻：徽章命中加伤叠进基础伤害（护甲前，与狂暴/虚弱同段）。
 	var hit_damage := damage
+	if source_instance != null and source_instance.combat_attack_flat_bonus > 0:
+		hit_damage += source_instance.combat_attack_flat_bonus
 	if (
 		source_instance != null
 		and source_instance.combat_ranged_hit_bonus > 0
 		and BadgeCombatApplier.is_ranged_projectile_unit(source_instance)
 	):
-		hit_damage = damage + source_instance.combat_ranged_hit_bonus
+		hit_damage = hit_damage + source_instance.combat_ranged_hit_bonus
 
 	for victim in victims:
 		pending.append({
@@ -55,7 +57,7 @@ func resolve_hit(
 		})
 
 	## 整次出手只掷一次暴击（溅射共享），避免多目标重复推进保底。
-	var attack_roll := _roll_attack_crit(source_instance, damage)
+	var attack_roll := _roll_attack_crit(source_instance, hit_damage)
 	var death_pending: Array[Dictionary] = []
 	for strike in pending:
 		var tgt: RtUnit = strike["target"]
@@ -79,7 +81,7 @@ func resolve_hit(
 		if tgt.unit.is_alive():
 			_emit(CombatEvents.ON_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before, false, is_crit)
 			_emit(CombatEvents.ON_FRIEND_DAMAGE_TAKEN, src, tgt.unit, final_amount, hp_before, false, is_crit)
-		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before, false, is_crit)
+		_emit(CombatEvents.ON_DEAL_DAMAGE, src, tgt.unit, final_amount, hp_before, true, is_crit)
 		if not tgt.unit.is_alive() and tgt.state != RtUnit.State.DEAD:
 
 			death_pending.append({

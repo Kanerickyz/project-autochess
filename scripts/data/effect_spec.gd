@@ -63,6 +63,8 @@ enum Condition {
 	EVENT_TARGET_HAS_COMBAT_STATUS,
 	## 事件目标与持有者同队、非同一实例，且切比雪夫格距 ≤ NEARBY_ALLY_RADIUS；须追加在枚举末尾。
 	EVENT_TARGET_ADJACENT_TO_OWNER,
+	## 本次伤害来自普攻（OnDealDamage payload.from_attack）；须追加在枚举末尾。
+	DEAL_FROM_ATTACK,
 }
 
 ## Combat + shop trigger names (CombatEvents / ShopEvents).
