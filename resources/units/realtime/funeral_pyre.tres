@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="UnitData" format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
 [ext_resource type="Resource" uid="uid://bdeathdmgall02" path="res://resources/abilities/death_damage_all_2.tres" id="3_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/passive_volatile_innate.tres" id="5_passive"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_funeral_pyre_blue.png" id="4_icon"]
 
 [sub_resource type="Resource" id="UnitStats_pyre"]
@@ -30,4 +31,5 @@ tier = 2
 command_cost = 3
 stats = SubResource("UnitStats_pyre")
 ability = ExtResource("3_ability")
+passives = [ExtResource("5_passive")]
 icon = ExtResource("4_icon")

@@ -5,11 +5,12 @@ const ID_WEAK := &"weak"
 const ID_BERSERK := &"berserk"
 const ID_POISON := &"poison"
 const ID_BURN := &"burn"
+const ID_VOLATILE := &"volatile"
 const ID_REVIVE := &"revive"
 const MAX_STACKS := 15
 
 const DISPLAY_ORDER: Array[StringName] = [
-	ID_WEAK, ID_BERSERK, ID_POISON, ID_BURN, ID_REVIVE,
+	ID_WEAK, ID_BERSERK, ID_POISON, ID_BURN, ID_VOLATILE, ID_REVIVE,
 ]
 
 var _stacks: Dictionary = {}
@@ -21,6 +22,7 @@ static func is_valid_id(status_id: StringName) -> bool:
 		or status_id == ID_BERSERK
 		or status_id == ID_POISON
 		or status_id == ID_BURN
+		or status_id == ID_VOLATILE
 		or status_id == ID_REVIVE
 	)
 
@@ -35,6 +37,8 @@ static func get_display_name(status_id: StringName) -> String:
 			return "中毒"
 		ID_BURN:
 			return "燃烧"
+		ID_VOLATILE:
+			return "易燃易爆"
 		ID_REVIVE:
 			return "复活"
 		_:
@@ -51,6 +55,8 @@ static func get_rule_summary(status_id: StringName) -> String:
 			return "你的周期开始时失去生命（每层 1 点，先于回合开始技能；不走护甲）。"
 		ID_BURN:
 			return "你的周期开始时失去生命（每层 1 点，在中毒 tick 之后；不走护甲）。"
+		ID_VOLATILE:
+			return "身上有着火时，燃烧周期伤害翻倍（特质，最多 1 层）。"
 		ID_REVIVE:
 			return "阵亡时在本格生成无技能复制体；复制体攻击等于层数、生命等于五倍层数（触发后清空）。"
 		_:
@@ -78,8 +84,11 @@ func get_stacks(status_id: StringName) -> int:
 func add_stacks(status_id: StringName, delta: int) -> int:
 	if not is_valid_id(status_id) or delta == 0:
 		return get_stacks(status_id)
+	var cap := MAX_STACKS
+	if status_id == ID_VOLATILE:
+		cap = 1
 	var next := get_stacks(status_id) + delta
-	next = clampi(next, 0, MAX_STACKS)
+	next = clampi(next, 0, cap)
 	if next <= 0:
 		_stacks.erase(status_id)
 	else:

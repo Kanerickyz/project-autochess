@@ -4,21 +4,34 @@
 [ext_resource type="Script" uid="uid://bgp64ty0hqbey" path="res://scripts/data/effect_spec.gd" id="2_spec"]
 [ext_resource type="Script" uid="uid://bhmtkvq6m1e37" path="res://scripts/data/effect_action.gd" id="3_act"]
 
-[sub_resource type="Resource" id="Resource_act"]
+[sub_resource type="Resource" id="Resource_act_dmg"]
 script = ExtResource("3_act")
 action_type = 3
 value = 2
 
-[sub_resource type="Resource" id="Resource_spec"]
+[sub_resource type="Resource" id="Resource_spec_dmg"]
 script = ExtResource("2_spec")
 trigger = &"OnDeath"
 target_selector = 3
 exclude_owner = true
-actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act_dmg")])
+
+[sub_resource type="Resource" id="Resource_act_burn"]
+script = ExtResource("3_act")
+action_type = 21
+stat_name = &"burn"
+value = 2
+
+[sub_resource type="Resource" id="Resource_spec_burn"]
+script = ExtResource("2_spec")
+trigger = &"OnDeath"
+target_selector = 3
+exclude_owner = true
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act_burn")])
 
 [resource]
 script = ExtResource("1_ab")
 id = "death_damage_all_2"
-display_name = "死亡时 对全场造成2伤害"
+display_name = "死亡时 对全场造成2伤害并燃烧2层"
 merge_value_mult = 3
-effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec_dmg"), SubResource("Resource_spec_burn")])

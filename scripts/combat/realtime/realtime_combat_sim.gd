@@ -570,7 +570,10 @@ func _apply_dot_ticks_before_round_start(actor: RtUnit) -> bool:
 			return false
 	var burn_stacks := actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BURN)
 	if burn_stacks > 0:
-		_pipeline.apply_direct_hp_loss(null, actor, burn_stacks)
+		var burn_tick := burn_stacks
+		if actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_VOLATILE) > 0:
+			burn_tick *= 2
+		_pipeline.apply_direct_hp_loss(null, actor, burn_tick)
 		_sync_deaths_from_hp()
 		if not actor.is_alive():
 			return false
