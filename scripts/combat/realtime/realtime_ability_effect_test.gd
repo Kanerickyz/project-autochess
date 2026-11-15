@@ -2275,6 +2275,17 @@ static func _boomling_kill_aoe_expect(star_level: int, expected_dmg: int) -> boo
 	if bystander.unit.current_hp != by_hp0 - expected_dmg:
 		push_error("boomling: bystander expected -%d dmg" % expected_dmg)
 		return false
+	var ally_burn := ally.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BURN)
+	var by_burn := bystander.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BURN)
+	if ally_burn != expected_dmg or by_burn != expected_dmg:
+		push_error(
+			"boomling: expected burn %d on allies/enemies, got ally=%d by=%d"
+			% [expected_dmg, ally_burn, by_burn]
+		)
+		return false
+	if boom.unit.combat_statuses.get_stacks(CombatStatusStack.ID_VOLATILE) < 1:
+		push_error("boomling: innate volatile missing after combat start")
+		return false
 	return true
 
 
