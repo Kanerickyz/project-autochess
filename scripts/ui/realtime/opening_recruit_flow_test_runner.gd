@@ -34,6 +34,34 @@ func _expect(condition: bool, label: String) -> void:
 		push_error("OpeningRecruitFlowTest: FAIL %s" % label)
 
 
+func _recruit_session_fills_column_budget(session: RecruitSession) -> bool:
+	var col := 0
+	for unit in session.get_candidates():
+		if unit != null:
+			col += unit.get_recruit_shelf_columns()
+	return col > 0 and col <= session.get_candidate_column_budget()
+
+
+func _arena_recruit_shelf_valid(arena: RealtimeArenaView) -> bool:
+	var occupied: Dictionary = {}
+	var col_used := 0
+	for info in arena.recruit_candidates:
+		if not (info is Dictionary):
+			continue
+		var unit: UnitData = info.get("unit") as UnitData
+		var cell: Vector2i = info.get("cell", Vector2i(-1, -1))
+		if unit == null or cell.x < 0:
+			continue
+		var w := unit.get_recruit_shelf_columns()
+		col_used += w
+		for dx in w:
+			var key := "%d,%d" % [cell.x + dx, cell.y]
+			if occupied.has(key):
+				return false
+			occupied[key] = true
+	return col_used > 0 and col_used <= RecruitSession.CANDIDATE_COUNT
+
+
 func _make_empty_deck_config() -> DeckConfig:
 	var config := DeckConfig.new()
 	config.starting_units = []
@@ -68,7 +96,10 @@ func _test_empty_starter_deck_and_session_gate() -> void:
 	_expect(session.get_candidates().any(func(u): return u != null), "opening: at least one candidate unit")
 	_expect(not session.can_skip(), "opening: can_skip false")
 	_expect(not session.can_finish(), "opening: can_finish false while empty")
-	_expect(session.get_candidates().size() == RecruitSession.CANDIDATE_COUNT, "opening: 3 candidates")
+	_expect(
+		_recruit_session_fills_column_budget(session),
+		"opening: candidates use full column budget when pool allows"
+	)
 
 
 func _test_opening_enter_recruit_ui() -> void:
@@ -123,7 +154,7 @@ func _test_opening_enter_recruit_ui() -> void:
 	var expected_cand_y := seat_rows + 3
 	var expected_action_y := seat_rows + 4
 	_expect(not arena.recruit_candidates.is_empty(), "candidates present")
-	_expect(arena.recruit_candidates.size() == RecruitSession.CANDIDATE_COUNT, "candidate row has 5 slots")
+	_expect(_arena_recruit_shelf_valid(arena), "candidate shelf respects footprint columns")
 	if arena.recruit_team_slots != null:
 		_expect(arena.recruit_team_slots.seat_rows == 4, "recruit team 4 rows")
 		_expect(arena.recruit_team_slots.seat_cols == 5, "recruit team 5 cols")
@@ -134,16 +165,12 @@ func _test_opening_enter_recruit_ui() -> void:
 	if not arena.recruit_candidates.is_empty():
 		var cell: Vector2i = arena.recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		_expect(cell.y == expected_cand_y, "candidate y == seat_rows+3")
-		## 一行五格：x 互不重叠（5 宽棋盘 gap=0 → x=0..4）。
-		var xs: Dictionary = {}
 		var same_y := true
 		for info in arena.recruit_candidates:
 			var c: Vector2i = info.get("cell", Vector2i(-1, -1))
-			xs[c.x] = true
 			if c.y != expected_cand_y:
 				same_y = false
 		_expect(same_y, "all candidates share one row")
-		_expect(xs.size() == arena.recruit_candidates.size(), "candidate cells unique x in one row")
 
 	_expect(not arena.recruit_items.is_empty(), "item row present")
 	if not arena.recruit_items.is_empty():

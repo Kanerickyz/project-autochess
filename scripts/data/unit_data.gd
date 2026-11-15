@@ -76,3 +76,8 @@ func get_roster_population() -> int:
 	if occupation == SynergyOccupations.BUILDING:
 		return 2
 	return 1
+
+
+## 招募候选人货架横向占格（与 footprint_w 一致；2×1 建筑占 2 列）。
+func get_recruit_shelf_columns() -> int:
+	return maxi(1, footprint_w)

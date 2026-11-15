@@ -7,6 +7,7 @@ const BARBARIAN := preload("res://resources/units/realtime/barbarian.tres")
 const MUSKETEER := preload("res://resources/units/realtime/musketeer.tres")
 const VALKYRIE := preload("res://resources/units/realtime/valkyrie.tres")
 const MINI_PEKKA := preload("res://resources/units/realtime/mini_pekka.tres")
+const GHOST_GRAVEYARD := preload("res://resources/units/realtime/ghost_graveyard.tres")
 
 
 static func run_all() -> bool:
@@ -31,6 +32,7 @@ static func run_all() -> bool:
 	passed = _test_seat_prefer_then_bench() and passed
 	passed = _test_seat_to_bench_and_full_fails() and passed
 	passed = _test_nine_copies_leave_the_pool() and passed
+	passed = _test_recruit_shelf_building_column_budget() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -1119,6 +1121,59 @@ static func _count_candidate(session: RecruitSession, unit_id: String) -> int:
 		if unit != null and unit.id == unit_id:
 			count += 1
 	return count
+
+
+static func _candidate_shelf_columns_used(session: RecruitSession) -> int:
+	var col := 0
+	for unit in session.get_candidates():
+		if unit != null:
+			col += unit.get_recruit_shelf_columns()
+	return col
+
+
+static func _test_recruit_shelf_building_column_budget() -> bool:
+	if GHOST_GRAVEYARD == null or GHOST_GRAVEYARD.get_recruit_shelf_columns() < 2:
+		push_error("RecruitSessionTest: ghost_graveyard must occupy 2 recruit columns")
+		return false
+	var pool: Array[UnitData] = []
+	pool.append(GHOST_GRAVEYARD)
+	for _i in 8:
+		pool.append(KNIGHT)
+	var deck := _make_deck([], 5)
+	var found_ghost := false
+	for seed in 200:
+		var config := RecruitConfig.new()
+		config.refresh_cost = 1
+		config.default_unit_cost = 2
+		config.candidate_count = 5
+		config.unit_pool = pool
+		var session := RecruitSession.new()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		session.configure(config, deck, _make_economy(40), rng)
+		## 须解锁 T2，否则幽灵墓地不在抽池内。
+		session.begin(0.0, 4, 15)
+		var cols := _candidate_shelf_columns_used(session)
+		if cols > session.get_candidate_column_budget():
+			push_error("RecruitSessionTest: shelf columns %d exceed budget" % cols)
+			return false
+		for unit in session.get_candidates():
+			if unit != null and unit.id == GHOST_GRAVEYARD.id:
+				found_ghost = true
+				if session.get_candidates().size() > 4:
+					push_error(
+						"RecruitSessionTest: 2-wide building should leave at most 4 entries, got %d"
+						% session.get_candidates().size()
+					)
+					return false
+				if cols != 5:
+					push_error("RecruitSessionTest: ghost roll should still fill 5 columns, got %d" % cols)
+					return false
+				break
+	if not found_ghost:
+		push_error("RecruitSessionTest: could not roll ghost_graveyard in 200 seeds")
+		return false
+	return true
 
 
 static func _buy_unit(session: RecruitSession, deck: DeckState, unit_id: String, times: int) -> bool:

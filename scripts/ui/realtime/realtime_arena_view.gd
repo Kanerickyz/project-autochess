@@ -3046,8 +3046,13 @@ func _find_recruit_candidate_at(cell: Vector2i) -> int:
 	for info in recruit_candidates:
 		if not (info is Dictionary):
 			continue
+		var unit: UnitData = info.get("unit") as UnitData
 		var c: Vector2i = info.get("cell", NO_CELL)
-		if c == cell:
+		if unit == null or c == NO_CELL:
+			continue
+		var fw := maxi(1, unit.footprint_w)
+		var fh := maxi(1, unit.footprint_h)
+		if cell.x >= c.x and cell.x < c.x + fw and cell.y >= c.y and cell.y < c.y + fh:
 			return int(info.get("index", -1))
 	return -1
 
