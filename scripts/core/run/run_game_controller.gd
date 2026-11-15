@@ -79,8 +79,13 @@ func _ready() -> void:
 	_event_screen = EVENT_SCREEN_SCENE.instantiate() as EventScreen
 	if _event_screen != null:
 		_event_screen.visible = false
+		_event_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 		_event_screen.choice_selected.connect(_on_event_choice_selected)
-		add_child(_event_screen)
+		var ui_layer := get_node_or_null("UI") as CanvasLayer
+		if ui_layer != null:
+			ui_layer.add_child(_event_screen)
+		else:
+			add_child(_event_screen)
 
 	await _start_new_run()
 
@@ -262,6 +267,8 @@ func _sync_battle_owned_badges() -> void:
 ## 徽章三选一（不花金）；胜后序已移除，主路径为地图事件节点。
 func _open_badge_pick(after: BadgeAfterAction = BadgeAfterAction.RECRUIT, map_floor: int = -1) -> void:
 	if _badge_busy:
+		push_warning("RunGameController: badge pick already active; completing event node")
+		run_controller.complete_encounter()
 		return
 	_badge_busy = true
 	_badge_after = after
@@ -302,11 +309,10 @@ func _on_badge_finished(_picked: bool) -> void:
 
 
 func _open_map_event(node: MapNodeRuntime) -> void:
-	_battle_root.visible = true
-	if _battle != null:
-		_battle.set_world_backdrop_mode(true)
 	_map_screen.hide_map()
 	_placeholder_screen.hide_placeholder()
+	if _event_screen != null:
+		_event_screen.hide_event()
 	var ev := node.get_event_data() if node != null else null
 	if BadgeSession.should_offer_badge_on_event(ev):
 		await _open_badge_pick(BadgeAfterAction.MAP_EVENT, node.get_floor())
@@ -314,6 +320,9 @@ func _open_map_event(node: MapNodeRuntime) -> void:
 	if ev != null and not ev.choices.is_empty():
 		await _open_event_screen(ev)
 		return
+	_battle_root.visible = true
+	if _battle != null:
+		_battle.set_world_backdrop_mode(true)
 	_placeholder_screen.show_placeholder(MapNodeType.Type.EVENT)
 
 
@@ -321,6 +330,8 @@ func _open_event_screen(event_data: EventData) -> void:
 	if _event_screen == null:
 		run_controller.complete_encounter()
 		return
+	## 文字事件叠在 UI 层；勿留 BattleLayer 全屏底色盖住面板。
+	_battle_root.visible = false
 	_pending_map_event = event_data
 	_event_screen.show_event(event_data)
 	while _event_screen.visible:
