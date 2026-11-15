@@ -1265,7 +1265,7 @@ func _format_merged_feedback_text(kind: StringName, amount: int, fallback: Strin
 			return "+%d" % amount if amount > 0 else "%d" % amount
 		RealtimeEffectFeedback.KIND_GOLD:
 			return "+%d金" % amount
-		RealtimeEffectFeedback.KIND_STAT:
+		RealtimeEffectFeedback.KIND_STAT, RealtimeEffectFeedback.KIND_HEAL:
 			if use_stat_icon:
 				return "+%d" % amount if amount > 0 else "%d" % amount
 			## 保留原后缀（攻/生命/暴）；跳过符号与数字。
