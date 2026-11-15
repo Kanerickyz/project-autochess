@@ -31,7 +31,7 @@
 | [Features/MAIN_MENU.md](./Features/MAIN_MENU.md) | **主菜单**（局外 Hub；动态营地远景视差 + 指针跟手） |
 | [Features/GAME_LOOP.md](./Features/GAME_LOOP.md) | **游戏基础循环**（局外 / 一整局地图 / 节点内自走棋；主模式 vs 线性工具环） |
 | [Features/MAP.md](./Features/MAP.md) | **地图与节点**（选路结构；起点/战斗/精英/Boss/商店/事件/附魔） |
-| [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（熔炉）**（双献祭熔合熔印者；runtime 技能；无星、不三合一） |
+| [Features/ENCHANT.md](./Features/ENCHANT.md) | **附魔（神龛）**（选人授予 Run 持久战斗词条；开战写入战斗状态） |
 | [Features/SANDBOX.md](./Features/SANDBOX.md) | **沙盒 / 阵容分享 / 观战录音机**（剪贴板载荷、主菜单试验场、暂停·下一动·真倒带；非远征） |
 | [Features/ENDLESS.md](./Features/ENDLESS.md) | **无尽模式**（线性普通爬层、无通关/精英/Boss、稀疏商店、成绩＝地图层深） |
 | [Features/COMBAT.md](./Features/COMBAT.md) | **战斗**（准备站位 → 回合制依次自动战斗观战 → 结算；胜后衔接招募） |
