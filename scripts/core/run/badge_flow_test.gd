@@ -18,17 +18,19 @@ static func run_all() -> bool:
 
 static func _test_should_offer_badge() -> bool:
 	var session := BadgeSession.new()
-	if not session.should_offer_badge(MapNodeType.Type.COMBAT, true):
-		push_error("badge offer: combat win should offer")
+	if session.should_offer_badge_after_combat(MapNodeType.Type.COMBAT, true):
+		push_error("badge offer: combat win must not auto-offer after battle")
 		return false
-	if not session.should_offer_badge(MapNodeType.Type.ELITE, true):
-		push_error("badge offer: elite win should offer")
+	if session.should_offer_badge_after_combat(MapNodeType.Type.ELITE, true):
+		push_error("badge offer: elite win must not auto-offer after battle")
 		return false
-	if session.should_offer_badge(MapNodeType.Type.BOSS, true):
-		push_error("badge offer: boss win must not offer")
+	var ev := EventData.new()
+	ev.offers_badge_pick = true
+	if not BadgeSession.should_offer_badge_on_event(ev):
+		push_error("badge offer: event with offers_badge_pick should offer")
 		return false
-	if session.should_offer_badge(MapNodeType.Type.COMBAT, false):
-		push_error("badge offer: loss must not offer")
+	if BadgeSession.should_offer_badge_on_event(null):
+		push_error("badge offer: null event must not offer")
 		return false
 	return true
 

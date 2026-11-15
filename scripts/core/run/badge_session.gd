@@ -104,13 +104,18 @@ func skip() -> void:
 	session_finished.emit(false)
 
 
-## 普通/精英胜后进徽章；Boss / 失败不进。
+## 胜后不再自动进徽章（改由地图事件节点提供）；保留 API 供测试与旧调用方。
 func should_offer_badge(node_type: MapNodeType.Type, won: bool) -> bool:
-	if not won:
-		return false
-	if node_type == MapNodeType.Type.BOSS:
-		return false
-	return node_type == MapNodeType.Type.COMBAT or node_type == MapNodeType.Type.ELITE
+	return should_offer_badge_after_combat(node_type, won)
+
+
+## 普通/精英胜后 **不再** 提供徽章（招募前序已移除）。
+func should_offer_badge_after_combat(_node_type: MapNodeType.Type, _won: bool) -> bool:
+	return false
+
+
+static func should_offer_badge_on_event(event_data: EventData) -> bool:
+	return event_data != null and event_data.offers_badge_pick
 
 
 func _roll_candidates() -> void:
