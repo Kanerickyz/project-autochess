@@ -102,12 +102,16 @@ func get_consumable_pool() -> Array[MapShopConsumableData]:
 
 
 func get_equipment_pool() -> Array[EquipmentData]:
-	if equipment_pool.is_empty():
-		return make_code_defaults().equipment_pool
 	var out: Array[EquipmentData] = []
-	for item in equipment_pool:
-		if item != null:
-			out.append(item)
+	if equipment_pool.is_empty():
+		out.assign(make_code_defaults().equipment_pool)
+	else:
+		for item in equipment_pool:
+			if item != null:
+				out.append(item)
+	for weapon in EquipmentWeaponCatalog.get_all():
+		if weapon != null:
+			out.append(weapon)
 	return out
 
 

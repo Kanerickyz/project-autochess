@@ -544,7 +544,7 @@ func _tick_unit_status_pulses() -> void:
 		rt.status_pulse_accum += FIXED_DT
 		while rt.is_alive() and rt.status_pulse_accum + STEP_EPSILON >= UNIT_PULSE_SECONDS:
 			rt.status_pulse_accum -= UNIT_PULSE_SECONDS
-			if not _apply_poison_tick_before_round_start(rt):
+			if not _apply_dot_ticks_before_round_start(rt):
 				break
 			_sync_effect_grid_from_rt_positions()
 			var payload := CombatEventPayload.new()
@@ -556,17 +556,24 @@ func _tick_unit_status_pulses() -> void:
 				return
 
 
-## 中毒在 ON_ROUND_START 之前；致死则本拍不进入回合开始技能。
-func _apply_poison_tick_before_round_start(actor: RtUnit) -> bool:
+## 中毒/燃烧在 ON_ROUND_START 之前；致死则本拍不进入回合开始技能。
+func _apply_dot_ticks_before_round_start(actor: RtUnit) -> bool:
 	if actor == null or actor.unit == null or not actor.is_alive():
 		return false
-	var poison_stacks := actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
-	if poison_stacks <= 0:
-		return true
 	if _pipeline == null:
 		return actor.is_alive()
-	_pipeline.apply_direct_hp_loss(null, actor, poison_stacks)
-	_sync_deaths_from_hp()
+	var poison_stacks := actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_POISON)
+	if poison_stacks > 0:
+		_pipeline.apply_direct_hp_loss(null, actor, poison_stacks)
+		_sync_deaths_from_hp()
+		if not actor.is_alive():
+			return false
+	var burn_stacks := actor.unit.combat_statuses.get_stacks(CombatStatusStack.ID_BURN)
+	if burn_stacks > 0:
+		_pipeline.apply_direct_hp_loss(null, actor, burn_stacks)
+		_sync_deaths_from_hp()
+		if not actor.is_alive():
+			return false
 	return actor.is_alive()
 
 

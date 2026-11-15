@@ -10,6 +10,7 @@ static func run_all() -> bool:
 	_check("weak_before_armor", _test_weak_before_armor())
 	_check("berserk_attack_only", _test_berserk_attack_only())
 	_check("poison_tick_lethal", _test_poison_tick_lethal())
+	_check("burn_tick_lethal", _test_burn_tick_lethal())
 	_check("apply_status_via_resolver", _test_apply_via_resolver())
 	_check("weak_skip_dead_on_deal_damage", _test_weak_skip_dead_on_deal_damage())
 	_check("status_attachments_ui", _test_status_attachments())
@@ -83,7 +84,23 @@ static func _test_poison_tick_lethal() -> bool:
 	var rt := sim.add_unit(unit, Vector2(2.5, 6.5))
 	if rt == null:
 		return false
-	var still_alive := sim._apply_poison_tick_before_round_start(rt)
+	var still_alive := sim._apply_dot_ticks_before_round_start(rt)
+	sim.dispose()
+	return not still_alive and not unit.is_alive()
+
+
+static func _test_burn_tick_lethal() -> bool:
+	var sim := RealtimeCombatSim.new()
+	sim.configure(Vector2i(18, 32), 991)
+	var unit := UnitInstance.new("b", Vector2i(0, 0), UnitInstance.Team.PLAYER)
+	unit.stats = UnitStats.new()
+	unit.stats.max_hp = 2
+	unit.current_hp = 2
+	unit.combat_statuses.add_stacks(CombatStatusStack.ID_BURN, 2)
+	var rt := sim.add_unit(unit, Vector2(2.5, 6.5))
+	if rt == null:
+		return false
+	var still_alive := sim._apply_dot_ticks_before_round_start(rt)
 	sim.dispose()
 	return not still_alive and not unit.is_alive()
 
