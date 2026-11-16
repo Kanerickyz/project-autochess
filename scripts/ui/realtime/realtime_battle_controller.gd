@@ -3266,11 +3266,32 @@ func _build_recruit_item_previews() -> Array:
 		var cost := _recruit_shop.get_item_cost(item) if item != null else 0
 		result.append({
 			"index": i,
+			"kind": &"prepare",
 			"item": item,
 			"cell": cell,
 			"cost": cost,
 			"affordable": _recruit_shop.can_afford_item(i) if item != null else false,
 			"label": item.get_display_name() if item != null else "",
+		})
+	var equipment := _recruit_shop.get_equipment_offers()
+	if equipment.is_empty():
+		return result
+	var equip_cells := _build_recruit_equipment_cells(equipment.size())
+	var base := items.size()
+	for i in equipment.size():
+		var eq: EquipmentData = equipment[i]
+		var cell := equip_cells[i] if i < equip_cells.size() else NO_CELL
+		var cost := eq.cost if eq != null else 0
+		result.append({
+			"index": base + i,
+			"kind": &"equipment",
+			"equip_slot": i,
+			"item": eq,
+			"cell": cell,
+			"cost": cost,
+			"affordable": _recruit_shop.can_afford_equipment(i) if eq != null else false,
+			"label": eq.get_display_name() if eq != null else "",
+			"icon": eq.get_icon() if eq != null else null,
 		})
 	return result
 
@@ -3332,6 +3353,25 @@ func _recruit_action_row_y() -> int:
 	return _recruit_layout_action_y()
 
 
+func _build_recruit_equipment_cells(count: int) -> Array[Vector2i]:
+	var n := maxi(0, count)
+	var cells: Array[Vector2i] = []
+	if n <= 0:
+		return cells
+	var y := _recruit_action_row_y() + 1
+	var gap := 1
+	var block_w := n + maxi(0, n - 1) * gap
+	if block_w > _board_size.x:
+		gap = 0
+		block_w = n
+	var start_x := (_board_size.x - block_w) / 2
+	start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
+	for i in n:
+		var x := clampi(start_x + i * (1 + gap), 0, maxi(0, _board_size.x - 1))
+		cells.append(Vector2i(x, y))
+	return cells
+
+
 func _build_recruit_item_cells(count: int) -> Array[Vector2i]:
 	var n := maxi(0, count)
 	if n <= 0:
@@ -3389,7 +3429,7 @@ func _refresh_recruit_hud() -> void:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
 		elif _recruit_subphase == RecruitSubPhase.ITEMS:
-			_recruit_hint.text = "招募商店：买药水或旗帜；点「去选人」进入候选人"
+			_recruit_hint.text = "招募商店：药水/旗帜/装备（拖角色使用）；点「去选人」进入候选人"
 		elif _recruit_session.require_nonempty_roster and roster_n < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
@@ -3543,6 +3583,9 @@ func _on_recruit_team_pressed(entry_id: int) -> void:
 func _on_recruit_item_pressed(item_slot: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_shop == null or not _recruit_shop.is_open():
 		return
+	if _recruit_shop.is_equipment_preview_index(item_slot):
+		_show_recruit_item_hint("拖装备到上区队伍角色购买")
+		return
 	var item := _recruit_shop.get_item_offer(item_slot)
 	if item == null:
 		return
@@ -3572,6 +3615,9 @@ func _on_recruit_item_pressed(item_slot: int) -> void:
 func _on_recruit_item_drop(item_slot: int, entry_id: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating:
 		return
+	if _recruit_shop != null and _recruit_shop.is_equipment_preview_index(item_slot):
+		_try_apply_recruit_equipment(item_slot, entry_id)
+		return
 	_try_apply_recruit_potion(item_slot, entry_id)
 
 
@@ -3596,6 +3642,30 @@ func _try_apply_recruit_potion(item_slot: int, entry_id: int) -> void:
 	_refresh_recruit_hud()
 
 
+func _try_apply_recruit_equipment(item_slot: int, entry_id: int) -> void:
+	if _recruit_shop == null or not _recruit_shop.is_open() or _deck_state == null:
+		return
+	var equip_slot := item_slot - _recruit_shop.get_item_offers().size()
+	var result := _recruit_shop.try_buy_equipment_on_entry(equip_slot, _deck_state, entry_id)
+	_recruit_pending_item_slot = -1
+	if int(result.get("result", RecruitShopService.BuyResult.FAILED)) != RecruitShopService.BuyResult.OK:
+		var reason := String(result.get("reason", ""))
+		match reason:
+			"cant_afford":
+				_show_recruit_item_hint("金币不足")
+			"occupation_conflict":
+				_show_recruit_item_hint("无法装备（职业冲突或已满）")
+			"no_target":
+				_show_recruit_item_hint("无效目标")
+			_:
+				_show_recruit_item_hint("无法购买装备")
+		_sync_recruit_arena()
+		return
+	_show_recruit_item_hint("装备已生效")
+	_sync_recruit_arena()
+	_refresh_recruit_hud()
+
+
 func _show_recruit_item_hint(text: String) -> void:
 	if _recruit_hint != null:
 		_recruit_hint.text = text
@@ -3614,7 +3684,7 @@ func _open_recruit_shop() -> void:
 	var deck := _deck_state
 	if _recruit_session != null and _recruit_session.deck != null:
 		deck = _recruit_session.deck
-	_recruit_shop.configure(_get_recruit_shop_config(), _economy)
+	_recruit_shop.configure(_get_recruit_shop_config(), _economy, deck, _encounter_rng)
 	_recruit_shop.open_shop(deck)
 	if not _recruit_shop.shop_changed.is_connected(_on_recruit_shop_changed):
 		_recruit_shop.shop_changed.connect(_on_recruit_shop_changed)
