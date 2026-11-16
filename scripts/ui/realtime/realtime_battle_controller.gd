@@ -3235,13 +3235,11 @@ func _build_recruit_candidate_previews() -> Array:
 		return result
 	var list := _recruit_session.get_candidates()
 	var cells := _build_recruit_candidate_cells(list)
-	var layout_i := 0
 	for i in list.size():
 		var unit: UnitData = list[i]
 		if unit == null:
 			continue
-		var cell := cells[layout_i] if layout_i < cells.size() else NO_CELL
-		layout_i += 1
+		var cell := cells[i] if i < cells.size() else NO_CELL
 		var cost := _recruit_session.get_recruit_cost(unit) if unit != null else 0
 		result.append({
 			"index": i,
@@ -3330,23 +3328,23 @@ func _recruit_layout_action_y() -> int:
 	return _recruit_layout_seat_rows() + 4
 
 
-## 候选人一行：按 footprint_w 占列，总宽不超过棋盘列数（默认 5 列预算）。
+## 候选人一行：按槽位索引固定锚点；买走后空槽仍占列宽，余者不重排。
 func _build_recruit_candidate_cells(candidates: Array) -> Array[Vector2i]:
 	var y := _recruit_layout_candidate_y()
-	var units: Array = []
-	for u in candidates:
-		var unit := u as UnitData
-		if unit != null:
-			units.append(unit)
-	if units.is_empty():
+	if candidates.is_empty():
 		return []
 	var col := 0
-	var start_x := 0
 	var cells: Array[Vector2i] = []
-	for unit in units:
-		var w := (unit as UnitData).get_recruit_shelf_columns()
-		cells.append(Vector2i(clampi(start_x + col, 0, maxi(0, _board_size.x - 1)), y))
-		col += w
+	for i in candidates.size():
+		var span := 1
+		if _recruit_session != null:
+			span = _recruit_session.get_candidate_column_span(i)
+		else:
+			var unit := candidates[i] as UnitData
+			if unit != null:
+				span = unit.get_recruit_shelf_columns()
+		cells.append(Vector2i(clampi(col, 0, maxi(0, _board_size.x - 1)), y))
+		col += span
 	return cells
 
 
