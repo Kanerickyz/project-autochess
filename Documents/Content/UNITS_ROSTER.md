@@ -240,6 +240,7 @@
 | 花鼓 | `flower_drum.tres` | `flower_drum` |
 | 木鼓 | `wood_drum.tres` | `wood_drum` |
 | 幽灵墓地 | `ghost_graveyard.tres` | `ghost_graveyard` |
+| 投石机 | `siege_catapult.tres` | `siege_catapult` |
 
 敌方遭遇复用友方模板：`resources/units/enemies/enemy_{友方id}.tres`（`team_default = ENEMY`，显示名 **敌·** 前缀；数值与主技能同友方；贴图为同键红布变体）。经济四人已写入 `act1_enemy_pool`、`default_spawn_budget`、`board_act1` 与招募池。Boss 资源 `giant_knight.tres`（召唤统领）；机制见 [BOSS_ROSTER.md](./BOSS_ROSTER.md)。
 
@@ -312,6 +313,7 @@
 | 花鼓 | 花鼓福点 | `ally_hurt_random_ally_atk_hp_1` | 同伴·抽签惠队 | **其他友方受伤**时，**随机一名友方**本场 +1/+1（三合一 +3/+3；**含自己**；T2 **4/4**，花 3） |
 | 木鼓 | 木鼓振锋 | `ally_hurt_random_ally_atk_1` | 同伴·抽签惠攻 | **其他友方受伤**时，**随机一名友方**本场攻击 **+1**（三合一 **+3**；**含自己**；T1 **2/2**，花 2） |
 | 幽灵墓地 | 墓土起骨 | `cadence_spawn_skeleton_1_10` | 召唤·节拍 | **出手节拍时**（每 **5s**）朝敌一侧邻格生成 **1/10** 骷髅；无空格本拍失败；单场最多 **12** 次（`max_triggers_per_combat=12`）；**不普攻**、**禁移**、**2×1** 足迹 |
+| 投石机 | 投石轰击 | `cadence_damage_random_enemy_5` | 节奏·点伤 | 每 **5s** 对**随机一名敌人** **5** 伤（三合一后 **15**）；**无触发上限**；**不普攻**、**禁移**、**T2**、**占 2 人口**、**2×1** 足迹；立绘暂复用墓地占位 |
 
 
 ### 6.1 生成代理（挂载侧自检）

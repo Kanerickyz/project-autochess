@@ -150,6 +150,9 @@ var _pending_merge_fx: Array = []
 var _recruit_shop: RecruitShopService = RecruitShopService.new()
 var _recruit_shop_config: RecruitShopConfig = null
 var _recruit_pending_item_slot: int = -1
+## 胜后招募：先道具行（商店），再候选人；开局招募仍同屏。
+enum RecruitSubPhase { ITEMS, ROSTER }
+var _recruit_subphase: RecruitSubPhase = RecruitSubPhase.ROSTER
 var _enchant_session: EnchantSession = EnchantSession.new()
 var _enchant_ui: EnchantBattleExtension = EnchantBattleExtension.new()
 var _enchant_slots: PrepareSlotBoard = PrepareSlotBoard.new()
@@ -1635,6 +1638,10 @@ func enter_recruit(session: RecruitSession, enter_seconds: float = -1.0) -> void
 	await get_tree().process_frame
 	_bind_recruit_session()
 	_open_recruit_shop()
+	if session.require_nonempty_roster:
+		_recruit_subphase = RecruitSubPhase.ROSTER
+	else:
+		_recruit_subphase = RecruitSubPhase.ITEMS
 	## 无滑入动画时保持 slide=0，避免候选人先被推到屏外（Web 上 Tween 失败会整屏空白）。
 	if _arena != null:
 		if seconds <= 0.001:
@@ -1907,6 +1914,7 @@ func exit_recruit() -> void:
 	_recruit_selected_replace_id = -1
 	_recruit_pending_item_slot = -1
 	_recruit_animating = false
+	_recruit_subphase = RecruitSubPhase.ROSTER
 	_recruit_team_slots.clear()
 	if _arena != null:
 		_arena.clear_recruit_mode()
@@ -3155,7 +3163,11 @@ func _sync_recruit_arena() -> void:
 	_rebuild_recruit_team_slots()
 	_arena.recruit_active = true
 	_arena.recruit_team_slots = _recruit_team_slots
-	_arena.recruit_candidates = _build_recruit_candidate_previews()
+	var roster_visible := _recruit_subphase == RecruitSubPhase.ROSTER
+	_arena.recruit_roster_visible = roster_visible
+	_arena.recruit_candidates = (
+		_build_recruit_candidate_previews() if roster_visible else []
+	)
 	_arena.recruit_items = _build_recruit_item_previews()
 	_arena.recruit_selected_candidate = _recruit_selected_candidate
 	_arena.recruit_selected_replace_id = _recruit_selected_replace_id
@@ -3378,6 +3390,8 @@ func _refresh_recruit_hud() -> void:
 	if _recruit_hint != null:
 		if _recruit_pending_item_slot >= 0:
 			_recruit_hint.text = "点上区队伍角色使用药水，或拖到角色上"
+		elif _recruit_subphase == RecruitSubPhase.ITEMS:
+			_recruit_hint.text = "招募商店：买药水或旗帜；点「去选人」进入候选人"
 		elif _recruit_session.require_nonempty_roster and roster_n < 1:
 			_recruit_hint.text = "开局招募：至少招募 1 名单位后才能继续"
 		elif _recruit_session.needs_replace():
@@ -3385,6 +3399,7 @@ func _refresh_recruit_hud() -> void:
 		else:
 			_recruit_hint.text = "点买优先上场；备战可拖空座/点按自动上阵；座位可拖回备战"
 	if _recruit_refresh_btn != null:
+		_recruit_refresh_btn.visible = _recruit_subphase == RecruitSubPhase.ROSTER
 		_recruit_refresh_btn.disabled = _recruit_animating or not _recruit_session.can_refresh()
 		_recruit_refresh_btn.text = "刷新（%d 金）" % _recruit_session.get_refresh_cost()
 	if _recruit_skip_btn != null:
@@ -3392,7 +3407,12 @@ func _refresh_recruit_hud() -> void:
 		_recruit_skip_btn.visible = not _recruit_session.require_nonempty_roster
 		_recruit_skip_btn.disabled = _recruit_animating or not _recruit_session.can_skip()
 	if _recruit_finish_btn != null:
-		_recruit_finish_btn.disabled = _recruit_animating or not _recruit_session.can_finish()
+		if _recruit_subphase == RecruitSubPhase.ITEMS:
+			_recruit_finish_btn.text = "去选人"
+			_recruit_finish_btn.disabled = _recruit_animating
+		else:
+			_recruit_finish_btn.text = "完成"
+			_recruit_finish_btn.disabled = _recruit_animating or not _recruit_session.can_finish()
 	if _recruit_timer_bar != null:
 		if _recruit_timer_active and _recruit_timer_remaining >= 0.0 and _recruit_timer_duration > 0.0:
 			_recruit_timer_bar.visible = true
@@ -3415,6 +3435,8 @@ func _refresh_recruit_hud() -> void:
 
 func _on_recruit_drop(candidate_index: int, replace_entry_id: int, seat_index: int = -1) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
+		return
+	if _recruit_subphase != RecruitSubPhase.ROSTER:
 		return
 	## 拖放路径禁止盖到已上场：即便信号误带 replace_id 也不替换。
 	if replace_entry_id >= 0:
@@ -3497,6 +3519,8 @@ func _on_recruit_sell(entry_id: int) -> void:
 
 func _on_recruit_candidate_pressed(candidate_index: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
+		return
+	if _recruit_subphase != RecruitSubPhase.ROSTER:
 		return
 	_recruit_selected_candidate = candidate_index
 	## 点买：优先上场空座 / 上场满则备战；都满则失败（替换仅拖到已占座）。
@@ -3661,6 +3685,8 @@ func _try_show_party_bark_after_recruit() -> void:
 func _on_recruit_refresh_pressed() -> void:
 	if _recruit_animating or _recruit_session == null:
 		return
+	if _recruit_subphase != RecruitSubPhase.ROSTER:
+		return
 	if not _recruit_session.try_refresh():
 		if _recruit_hint != null:
 			_recruit_hint.text = "金币不足，无法刷新"
@@ -3668,6 +3694,8 @@ func _on_recruit_refresh_pressed() -> void:
 
 func _on_recruit_candidate_lock(candidate_index: int) -> void:
 	if _phase != Phase.RECRUIT or _recruit_animating or _recruit_session == null:
+		return
+	if _recruit_subphase != RecruitSubPhase.ROSTER:
 		return
 	var unit := _recruit_session.get_candidate(candidate_index)
 	if unit == null:
@@ -3698,11 +3726,23 @@ func _on_recruit_skip_pressed() -> void:
 func _on_recruit_finish_pressed() -> void:
 	if _recruit_animating or _recruit_session == null:
 		return
+	if _recruit_subphase == RecruitSubPhase.ITEMS:
+		_advance_recruit_to_roster()
+		return
 	if not _recruit_session.can_finish():
 		return
 	_recruit_session.finish()
 	exit_recruit()
 	recruit_finished.emit(true)
+
+
+func _advance_recruit_to_roster() -> void:
+	_recruit_subphase = RecruitSubPhase.ROSTER
+	_recruit_selected_candidate = -1
+	_recruit_selected_replace_id = -1
+	_recruit_pending_item_slot = -1
+	_sync_recruit_arena()
+	_refresh_recruit_hud()
 
 
 func _start_recruit_phase_timer() -> void:

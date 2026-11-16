@@ -216,6 +216,8 @@ var catalog_visual_scale_override: float = -1.0
 var recruit_team_slots: PrepareSlotBoard
 ## Array[Dictionary]：{index, unit, cell, cost?, affordable?}
 var recruit_candidates: Array = []
+## 胜后两段招募：false 时只显示道具行（商店段）。
+var recruit_roster_visible: bool = true
 ## Array[Dictionary]：{index, item, cell, cost?, affordable?, label?}
 var recruit_items: Array = []
 ## Array[Dictionary]：{unit: UnitData, cell: Vector2i}
@@ -3527,6 +3529,7 @@ func clear_recruit_mode() -> void:
 	if not map_shop_active:
 		recruit_team_slots = null
 	recruit_candidates.clear()
+	recruit_roster_visible = true
 	recruit_items.clear()
 	recruit_selected_candidate = -1
 	recruit_selected_replace_id = -1
@@ -3714,10 +3717,12 @@ func _draw() -> void:
 		_draw_recruit_team(px, enemy_off)
 		## 备战在中缝、候选在下半场：先画备战再画候选，避免纸片盖住招募席。
 		_draw_bench_row(px)
-		_draw_recruit_candidates(px, ally_off)
+		if recruit_roster_visible:
+			_draw_recruit_candidates(px, ally_off)
 		_draw_recruit_items(px, ally_off)
 		_draw_recruit_sell_slot(px, ally_off)
-		_draw_recruit_lock_slot(px, ally_off)
+		if recruit_roster_visible:
+			_draw_recruit_lock_slot(px, ally_off)
 		if _recruit_drag_index >= 0 and _hover_cell != NO_CELL:
 			_draw_recruit_drop_hint(px, mid)
 		elif _recruit_item_drag_index >= 0 and _hover_cell != NO_CELL:
@@ -3855,13 +3860,18 @@ func _draw_recruit_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off
 	var top_pos := rect.position + enemy_off + Vector2(px * 0.25, px * 0.7)
 	## 标签贴候选人行（可虚拟）；无候选人时回退 mid。
 	var shop_y := float(mid)
-	if not recruit_candidates.is_empty():
+	if recruit_roster_visible and not recruit_candidates.is_empty():
 		var c0: Vector2i = recruit_candidates[0].get("cell", Vector2i(-1, -1))
 		if c0.y >= 0:
 			shop_y = float(c0.y)
+	elif not recruit_roster_visible and recruit_items.size() > 0:
+		var i0: Vector2i = recruit_items[0].get("cell", Vector2i(-1, -1))
+		if i0.y >= 0:
+			shop_y = float(i0.y)
+	var bot_label := "招募商店" if not recruit_roster_visible else "招募"
 	var bot_pos := rect.position + ally_off + Vector2(px * 0.25, shop_y * px + px * 0.7)
 	draw_string(font, top_pos, "队伍", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.92, 0.96, 1.0, 0.9))
-	draw_string(font, bot_pos, "招募商店", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
+	draw_string(font, bot_pos, bot_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 0.95, 0.75, 0.9))
 
 
 func _draw_map_shop_zone_labels(px: float, mid: int, enemy_off: Vector2, ally_off: Vector2) -> void:

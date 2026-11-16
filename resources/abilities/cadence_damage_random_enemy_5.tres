@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AbilityData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ability_data.gd" id="1_ab"]
+[ext_resource type="Script" path="res://scripts/data/effect_spec.gd" id="2_spec"]
+[ext_resource type="Script" path="res://scripts/data/effect_action.gd" id="3_act"]
+
+[sub_resource type="Resource" id="Resource_act"]
+script = ExtResource("3_act")
+action_type = 3
+value = 5
+
+[sub_resource type="Resource" id="Resource_spec"]
+script = ExtResource("2_spec")
+trigger = &"OnAttackCadence"
+target_selector = 4
+max_triggers_per_combat = 0
+actions = Array[ExtResource("3_act")]([SubResource("Resource_act")])
+
+[resource]
+script = ExtResource("1_ab")
+id = "cadence_damage_random_enemy_5"
+display_name = "投石轰击：每 5 秒对随机敌人造成 5 点伤害"
+merge_value_mult = 3
+passive_cadence_seconds = 5.0
+can_normal_attack = false
+effect_specs = Array[ExtResource("2_spec")]([SubResource("Resource_spec")])
