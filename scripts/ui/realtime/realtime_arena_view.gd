@@ -598,7 +598,7 @@ func find_bench_entry_at_local(local_pos: Vector2) -> int:
 	var slot_i := find_bench_slot_at_local(local_pos)
 	if slot_i < 0 or bench_slots == null:
 		return -1
-	var entry := bench_slots.get_entry(slot_i)
+	var entry := bench_slots.get_bench_entry_at_slot(slot_i)
 	if entry == null:
 		return -1
 	return entry.entry_id
@@ -1687,6 +1687,8 @@ func _gui_input_enchant(event: InputEvent) -> void:
 				_enchant_team_pan_last_y = mb.position.y
 				accept_event()
 			return
+		var saved_forge_press := _enchant_forge_press
+		var saved_team_press_id := _enchant_team_press_id
 		if _info_shown:
 			_enchant_team_press_id = -1
 			_enchant_forge_press = false
@@ -1704,15 +1706,15 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			accept_event()
 			return
 		var trait_tapped := false
-		if _enchant_forge_press:
+		if saved_forge_press:
 			var forge_hit := _inspect_enchant_forge_at(mb.position)
 			if not forge_hit.is_empty():
 				var key := String(forge_hit.get("inspect_key", ""))
 				if key.begins_with("enchant_forge:"):
 					enchant_trait_pick.emit(int(key.get_slice(":", 1)))
 					trait_tapped = true
-		if not trait_tapped and _enchant_team_press_id >= 0:
-			enchant_entry_pick.emit(_enchant_team_press_id)
+		if not trait_tapped and saved_team_press_id >= 0:
+			enchant_entry_pick.emit(saved_team_press_id)
 		_enchant_team_press_id = -1
 		_enchant_forge_press = false
 
@@ -3043,8 +3045,16 @@ func _finish_recruit_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		recruit_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		var bench_i := find_bench_slot_at_local(release_pos)
-		recruit_team_bench_drop.emit(entry_id, bench_i)
+		var drag_entry := _find_deck_entry_on_board_or_bench(entry_id)
+		var unit := drag_entry.unit if drag_entry != null else null
+		var hit := find_bench_slot_at_local(release_pos)
+		var bench_i := (
+			bench_slots.resolve_bench_drop_anchor(hit, unit)
+			if bench_slots != null
+			else hit
+		)
+		if bench_i >= 0:
+			recruit_team_bench_drop.emit(entry_id, bench_i)
 	elif recruit_team_slots != null:
 		seat_i = recruit_team_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
@@ -3222,8 +3232,16 @@ func _finish_prepare_team_drag(cell: Vector2i, release_local: Vector2 = Vector2.
 	if seat_i >= 0:
 		prepare_team_seat_drop.emit(entry_id, seat_i)
 	elif is_pointer_over_bench(release_pos):
-		var bench_i := find_bench_slot_at_local(release_pos)
-		prepare_team_bench_drop.emit(entry_id, bench_i)
+		var drag_entry := _find_deck_entry_on_board_or_bench(entry_id)
+		var unit := drag_entry.unit if drag_entry != null else null
+		var hit := find_bench_slot_at_local(release_pos)
+		var bench_i := (
+			bench_slots.resolve_bench_drop_anchor(hit, unit)
+			if bench_slots != null
+			else hit
+		)
+		if bench_i >= 0:
+			prepare_team_bench_drop.emit(entry_id, bench_i)
 	elif prepare_slots != null:
 		seat_i = prepare_slots.find_nearest_empty_slot(cell)
 		if seat_i >= 0:
@@ -4607,7 +4625,7 @@ func _draw_bench_row(px: float) -> void:
 	var font_size := clampi(int(px * 0.32), 9, 13)
 	var occupied_indices: Array[int] = []
 	for i in bench_slots.cells.size():
-		if bench_slots.get_entry(i) != null:
+		if bench_slots.is_anchor_bench_slot(i):
 			occupied_indices.append(i)
 	occupied_indices.sort_custom(func(a: int, b: int) -> bool:
 		var ca := bench_slots.cells[a]
@@ -4617,9 +4635,9 @@ func _draw_bench_row(px: float) -> void:
 		return ca.x < cb.x
 	)
 	_bring_inspect_slot_to_front(occupied_indices, bench_slots, Vector2(0.0, bench_slide_y))
-	## 空格淡底；已占按 y/x 排序后绘制（与准备席同口径）。
+	## 空格淡底；足迹扩展格不单独画空框。
 	for i in bench_slots.cells.size():
-		if bench_slots.get_entry(i) != null:
+		if bench_slots.get_bench_entry_at_slot(i) != null:
 			continue
 		var center := bench_slot_center_local(i)
 		var cell_rect := Rect2(center - Vector2(px, px) * 0.5, Vector2(px, px))
@@ -4627,22 +4645,24 @@ func _draw_bench_row(px: float) -> void:
 		draw_rect(cell_rect, Color(0.85, 0.90, 1.0, 0.22), false, 1.0)
 	var badge_jobs: Array[Dictionary] = []
 	for i in occupied_indices:
-		var center := bench_slot_center_local(i)
 		var entry: DeckEntry = bench_slots.get_entry(i)
-		if entry == null:
+		if entry == null or entry.unit == null:
 			continue
+		var anchor_cell: Vector2i = bench_slots.cells[i]
+		var center_tile := footprint_center_tile(anchor_cell, entry.unit)
+		var center := tile_to_local(center_tile) + Vector2(0.0, bench_slide_y)
 		if bench_triple_merge_hint_entry_ids.get(entry.entry_id, false):
 			_draw_bench_triple_merge_hint(center, px)
 		var dragging := (
 			entry.entry_id == _prepare_team_drag_id or entry.entry_id == _recruit_team_drag_id
 		)
 		var alpha := DRAG_SOURCE_ALPHA if dragging else (0.78 if not bench_interactive else 0.9)
-		var stats := entry.unit.stats if entry.unit != null else null
+		var stats := entry.unit.stats
 		var radius := stats.body_radius if stats != null else 0.7
 		var vwx := stats.get_visual_half_width() if stats != null else 0.0
 		var vhy := stats.get_visual_half_height() if stats != null else 0.0
-		## 用本地中心换算成虚拟 tile，复用 _draw_body / 徽章口径。
-		var center_tile := local_to_tile(center)
+		var fw := float(maxi(1, entry.unit.footprint_w))
+		var fh := float(maxi(1, entry.unit.footprint_h))
 		_draw_body(
 			center_tile,
 			radius,
@@ -4658,9 +4678,9 @@ func _draw_bench_row(px: float) -> void:
 			entry.get_unit_id(),
 			null,
 			Vector2.ZERO,
-			1.0,
-			-1.0,
-			-1.0,
+			maxf(fw, fh),
+			fw,
+			fh,
 			_idle_seed_for(entry.get_unit_id(), 100 + i),
 		)
 		badge_jobs.append({

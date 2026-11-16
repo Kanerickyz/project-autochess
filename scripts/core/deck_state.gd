@@ -556,12 +556,14 @@ func try_place_on_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 		return false
 	_ensure_bench_slot_layout()
 	if target_bench_slot < 0 or target_bench_slot >= BENCH_CAPACITY:
-		target_bench_slot = _find_first_empty_bench_slot()
+		target_bench_slot = _find_first_empty_bench_anchor_for(entry.unit)
 		if target_bench_slot < 0:
 			return false
 	var occupant := get_entry_at_bench_slot(target_bench_slot)
 	if entry.seat_index >= 0:
 		if occupant == null:
+			if not is_bench_free_for_unit(target_bench_slot, entry.unit, entry_id):
+				return false
 			if not can_bench_more():
 				return false
 			var seat := entry.seat_index
@@ -583,14 +585,25 @@ func try_place_on_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 	if from_slot == target_bench_slot:
 		return true
 	if occupant == null:
+		if not is_bench_free_for_unit(target_bench_slot, entry.unit, entry_id):
+			return false
 		entry.bench_slot_index = target_bench_slot
 		deck_changed.emit()
 		return true
 	if occupant.entry_id == entry_id:
 		return true
+	## 点在建筑足迹延伸格上：不与锚上另一人自动互换。
+	if occupant.bench_slot_index != target_bench_slot:
+		return false
 	var other_slot := from_slot
 	if other_slot < 0:
-		other_slot = _find_first_empty_bench_slot_excluding(entry_id)
+		other_slot = _find_first_empty_bench_anchor_for(occupant.unit, occupant.entry_id)
+		if other_slot < 0:
+			return false
+	if not is_bench_free_for_unit(target_bench_slot, entry.unit, entry_id, occupant.entry_id):
+		return false
+	if not is_bench_free_for_unit(other_slot, occupant.unit, occupant.entry_id, entry_id):
+		return false
 	entry.bench_slot_index = target_bench_slot
 	occupant.bench_slot_index = other_slot
 	deck_changed.emit()
@@ -609,12 +622,47 @@ func try_move_seat_to_bench(entry_id: int, target_bench_slot: int = -1) -> bool:
 	return try_place_on_bench(entry_id, target_bench_slot)
 
 
+func get_footprint_bench_indices(anchor_bench: int, unit: UnitData) -> Array[int]:
+	var fw := 1
+	if unit != null:
+		fw = maxi(1, unit.footprint_w)
+	var out: Array[int] = []
+	for dx in fw:
+		var bi := anchor_bench + dx
+		if bi < 0 or bi >= BENCH_CAPACITY:
+			return []
+		out.append(bi)
+	return out
+
+
+func is_bench_free_for_unit(
+	anchor_bench: int,
+	unit: UnitData,
+	exclude_entry_id: int = -1,
+	exclude_entry_id_2: int = -1,
+) -> bool:
+	var indices := get_footprint_bench_indices(anchor_bench, unit)
+	if indices.is_empty():
+		return false
+	for bi in indices:
+		var occ := get_entry_at_bench_slot(bi)
+		if occ == null:
+			continue
+		if occ.entry_id == exclude_entry_id or occ.entry_id == exclude_entry_id_2:
+			continue
+		return false
+	return true
+
+
 func get_entry_at_bench_slot(bench_slot: int) -> DeckEntry:
 	if bench_slot < 0 or bench_slot >= BENCH_CAPACITY:
 		return null
 	for entry in _entries:
-		if entry != null and entry.seat_index < 0 and entry.bench_slot_index == bench_slot:
-			return entry
+		if entry == null or entry.seat_index >= 0 or entry.bench_slot_index < 0:
+			continue
+		for bi in get_footprint_bench_indices(entry.bench_slot_index, entry.unit):
+			if bi == bench_slot:
+				return entry
 	return null
 
 
@@ -1037,11 +1085,24 @@ func _ensure_bench_slot_layout() -> void:
 			if entry != null:
 				entry.bench_slot_index = -1
 			continue
-		var slot := entry.bench_slot_index
-		if slot >= 0 and slot < BENCH_CAPACITY and not taken.has(slot):
-			taken[slot] = entry.entry_id
-		else:
+		var anchor := entry.bench_slot_index
+		if anchor < 0 or anchor >= BENCH_CAPACITY:
 			entry.bench_slot_index = -1
+			continue
+		var indices := get_footprint_bench_indices(anchor, entry.unit)
+		if indices.is_empty():
+			entry.bench_slot_index = -1
+			continue
+		var clash := false
+		for bi in indices:
+			if taken.has(bi) and int(taken[bi]) != entry.entry_id:
+				clash = true
+				break
+		if clash:
+			entry.bench_slot_index = -1
+			continue
+		for bi in indices:
+			taken[bi] = entry.entry_id
 	var unassigned: Array[DeckEntry] = []
 	for entry in _entries:
 		if entry == null or entry.seat_index >= 0:
@@ -1053,26 +1114,29 @@ func _ensure_bench_slot_layout() -> void:
 	)
 	for entry in unassigned:
 		for i in BENCH_CAPACITY:
-			if not taken.has(i):
-				entry.bench_slot_index = i
-				taken[i] = entry.entry_id
-				break
+			if not is_bench_free_for_unit(i, entry.unit):
+				continue
+			entry.bench_slot_index = i
+			for bi in get_footprint_bench_indices(i, entry.unit):
+				taken[bi] = entry.entry_id
+			break
 
 
 func _find_first_empty_bench_slot() -> int:
-	_ensure_bench_slot_layout()
+	return _find_first_empty_bench_anchor_for(null)
+
+
+func _find_first_empty_bench_anchor_for(unit: UnitData, exclude_entry_id: int = -1) -> int:
 	for i in BENCH_CAPACITY:
-		if get_entry_at_bench_slot(i) == null:
+		if is_bench_free_for_unit(i, unit, exclude_entry_id):
 			return i
 	return -1
 
 
 func _find_first_empty_bench_slot_excluding(entry_id: int) -> int:
-	for i in BENCH_CAPACITY:
-		var occ := get_entry_at_bench_slot(i)
-		if occ == null or occ.entry_id == entry_id:
-			return i
-	return -1
+	var entry := get_entry(entry_id)
+	var unit: UnitData = entry.unit if entry != null else null
+	return _find_first_empty_bench_anchor_for(unit, entry_id)
 
 
 func _claim_first_empty_bench_slot(entry: DeckEntry) -> void:

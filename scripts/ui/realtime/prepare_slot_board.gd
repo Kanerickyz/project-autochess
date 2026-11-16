@@ -287,6 +287,55 @@ func is_anchor_seat(slot_index: int) -> bool:
 	return entry != null and entry.seat_index == slot_index
 
 
+## 备战行：按 bench 锚格 + footprint_w 命中（扩展格 occupants 为空）。
+func get_bench_entry_at_slot(slot_index: int) -> DeckEntry:
+	if slot_index < 0 or slot_index >= slot_count:
+		return null
+	for i in slot_count:
+		var entry := get_entry(i)
+		if entry == null:
+			continue
+		var anchor := entry.bench_slot_index if entry.seat_index < 0 else -1
+		if anchor < 0 or anchor != i:
+			continue
+		for bi in get_footprint_seat_indices(anchor, entry.unit):
+			if bi == slot_index:
+				return entry
+	return null
+
+
+func is_anchor_bench_slot(slot_index: int) -> bool:
+	var entry := get_entry(slot_index)
+	return entry != null and entry.seat_index < 0 and entry.bench_slot_index == slot_index
+
+
+func is_bench_anchor_clear(anchor: int, unit: UnitData) -> bool:
+	var indices := get_footprint_seat_indices(anchor, unit)
+	if indices.is_empty():
+		return false
+	for bi in indices:
+		if get_bench_entry_at_slot(bi) != null:
+			return false
+	return true
+
+
+## 拖放命中格 → 以该单位为锚的备战座下标（建筑 2 格取含命中格的最左可行锚）。
+func resolve_bench_drop_anchor(hit_slot: int, unit: UnitData) -> int:
+	if hit_slot < 0 or hit_slot >= slot_count:
+		return -1
+	var fw := maxi(1, unit.footprint_w if unit != null else 1)
+	var anchor_min := maxi(0, hit_slot - fw + 1)
+	var anchor_max := mini(slot_count - 1, hit_slot)
+	var chosen := -1
+	for anchor in range(anchor_min, anchor_max + 1):
+		var indices := get_footprint_seat_indices(anchor, unit)
+		if not hit_slot in indices:
+			continue
+		if is_bench_anchor_clear(anchor, unit):
+			chosen = anchor
+	return chosen
+
+
 ## 命中锚点或足迹扩展格时返回条目（扩展格自身 occupants 为空）。
 func get_entry_at_slot(slot_index: int) -> DeckEntry:
 	var direct := get_entry(slot_index)
