@@ -10,6 +10,7 @@ static func run_all() -> bool:
 	_test_seat_to_bench_target_slot()
 	_test_seat_bench_swap()
 	_test_bench_swap()
+	_test_bench_building_footprint()
 	if _failures == 0:
 		print("DeckBenchSlotTest: all tests passed")
 	else:
@@ -50,6 +51,10 @@ static func _assert_true(value: bool, message: String) -> void:
 	if not value:
 		_failures += 1
 		push_error("DeckBenchSlotTest FAIL: %s" % message)
+
+
+static func _assert_false(value: bool, message: String) -> void:
+	_assert_true(not value, message)
 
 
 static func _test_bench_slots_persist_order() -> void:
@@ -94,3 +99,19 @@ static func _test_bench_swap() -> void:
 	_assert_true(deck.try_place_on_bench(a.entry_id, 4), "swap a to 4")
 	_assert_eq(a.bench_slot_index, 4, "a moved to 4")
 	_assert_eq(b.bench_slot_index, 0, "b moved to 0")
+
+
+static func _test_bench_building_footprint() -> void:
+	var deck := _deck()
+	var wide := _unit("grave")
+	wide.footprint_w = 2
+	var narrow := _unit("k1")
+	var e_wide := deck.add_entry(wide)
+	var e_narrow := deck.add_entry(narrow)
+	_assert_true(e_wide != null and e_narrow != null, "entries")
+	_assert_true(deck.try_place_on_bench(e_wide.entry_id, 0), "2-wide at anchor 0")
+	_assert_eq(deck.get_entry_at_bench_slot(0), e_wide, "slot 0 building")
+	_assert_eq(deck.get_entry_at_bench_slot(1), e_wide, "slot 1 extension")
+	_assert_true(deck.try_place_on_bench(e_narrow.entry_id, 2), "1-wide at 2")
+	_assert_false(deck.try_place_on_bench(e_narrow.entry_id, 1), "cannot steal extension cell")
+	_assert_false(deck.try_place_on_bench(e_wide.entry_id, 4), "2-wide does not fit at 4")

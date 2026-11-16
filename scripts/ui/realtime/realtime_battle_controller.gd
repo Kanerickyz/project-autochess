@@ -3307,13 +3307,8 @@ func _build_recruit_candidate_cells(candidates: Array) -> Array[Vector2i]:
 			units.append(unit)
 	if units.is_empty():
 		return []
-	var total_w := 0
-	for unit in units:
-		total_w += (unit as UnitData).get_recruit_shelf_columns()
-	total_w = mini(total_w, _board_size.x)
-	var start_x := (_board_size.x - total_w) / 2
-	start_x = clampi(start_x, 0, maxi(0, _board_size.x - 1))
 	var col := 0
+	var start_x := 0
 	var cells: Array[Vector2i] = []
 	for unit in units:
 		var w := (unit as UnitData).get_recruit_shelf_columns()
@@ -4437,10 +4432,12 @@ func _rebuild_bench_slots() -> void:
 	if _deck_state == null:
 		return
 	_deck_state.get_bench_entries()
-	for i in _bench_slots.slot_count:
-		var entry := _deck_state.get_entry_at_bench_slot(i)
-		if entry != null:
-			_bench_slots.try_assign(i, entry)
+	for entry in _deck_state.get_bench_entries():
+		if entry == null:
+			continue
+		var anchor := entry.bench_slot_index
+		if anchor >= 0 and anchor < _bench_slots.slot_count:
+			_bench_slots.try_assign(anchor, entry)
 
 
 func _sync_arena_bench() -> void:
