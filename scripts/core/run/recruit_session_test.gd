@@ -33,6 +33,7 @@ static func run_all() -> bool:
 	passed = _test_seat_to_bench_and_full_fails() and passed
 	passed = _test_nine_copies_leave_the_pool() and passed
 	passed = _test_recruit_shelf_building_column_budget() and passed
+	passed = _test_candidate_shelf_anchor_after_buy() and passed
 	if passed:
 		print("RecruitSessionTest: all passed")
 	else:
@@ -1125,10 +1126,50 @@ static func _count_candidate(session: RecruitSession, unit_id: String) -> int:
 
 static func _candidate_shelf_columns_used(session: RecruitSession) -> int:
 	var col := 0
-	for unit in session.get_candidates():
-		if unit != null:
-			col += unit.get_recruit_shelf_columns()
+	var list := session.get_candidates()
+	for i in list.size():
+		col += session.get_candidate_column_span(i)
 	return col
+
+
+static func _shelf_anchor_col(session: RecruitSession, index: int) -> int:
+	var col := 0
+	for i in index:
+		col += session.get_candidate_column_span(i)
+	return col
+
+
+static func _test_candidate_shelf_anchor_after_buy() -> bool:
+	var pool: Array[UnitData] = [ARCHER, BARBARIAN, KNIGHT, MUSKETEER, VALKYRIE]
+	var deck := _make_deck([], 5)
+	var session := _make_custom_session(deck, _make_economy(50), pool, 5, 4242)
+	if session.get_candidates().size() < 3:
+		push_error("RecruitSessionTest: need >=3 candidates for anchor test")
+		return false
+	var anchor1_before := _shelf_anchor_col(session, 1)
+	var anchor2_before := _shelf_anchor_col(session, 2)
+	if anchor1_before != 1 or anchor2_before != 2:
+		push_error("RecruitSessionTest: unexpected initial shelf anchors %d %d" % [anchor1_before, anchor2_before])
+		return false
+	if not session.try_recruit(0, -1).get("ok", false):
+		push_error("RecruitSessionTest: buy candidate 0 failed")
+		return false
+	if session.get_candidate(0) != null:
+		push_error("RecruitSessionTest: slot 0 should be empty after buy")
+		return false
+	var anchor1_after := _shelf_anchor_col(session, 1)
+	var anchor2_after := _shelf_anchor_col(session, 2)
+	if anchor1_after != anchor1_before:
+		push_error(
+			"RecruitSessionTest: shelf reflow after buy (idx1 %d -> %d)" % [anchor1_before, anchor1_after]
+		)
+		return false
+	if anchor2_after != anchor2_before:
+		push_error(
+			"RecruitSessionTest: shelf reflow after buy (idx2 %d -> %d)" % [anchor2_before, anchor2_after]
+		)
+		return false
+	return true
 
 
 static func _test_recruit_shelf_building_column_budget() -> bool:
