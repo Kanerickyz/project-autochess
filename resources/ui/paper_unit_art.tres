@@ -27,6 +27,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_blue.png" id="b_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_blue.png" id="b_gravewright"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ghost_graveyard_blue.png" id="b_ghost_graveyard"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_siege_catapult_blue.png" id="b_siege_catapult"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_blue.png" id="b_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_blue.png" id="b_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_blue.png" id="b_slime"]
@@ -64,6 +65,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_goblin_red.png" id="r_goblin"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_gravewright_red.png" id="r_gravewright"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ghost_graveyard_red.png" id="r_ghost_graveyard"]
+[ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_siege_catapult_red.png" id="r_siege_catapult"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_soulcaller_red.png" id="r_soulcaller"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_ram_red.png" id="r_ram"]
 [ext_resource type="Texture2D" path="res://assets/sprites/paper_cutout/units/unit_slime_red.png" id="r_slime"]
@@ -162,7 +164,7 @@ archetype_by_unit_id = {
 "flower_drum": &"flower_drum",
 "wood_drum": &"wood_drum",
 "ghost_graveyard": &"ghost_graveyard",
-"siege_catapult": &"ghost_graveyard",
+"siege_catapult": &"siege_catapult",
 "gravewright": &"gravewright",
 "horsebow": &"horsebow",
 "hunter": &"hunter",
@@ -233,7 +235,7 @@ player_textures = {
 &"flower_drum": ExtResource("b_flower_drum"),
 &"wood_drum": ExtResource("b_wood_drum"),
 &"ghost_graveyard": ExtResource("b_ghost_graveyard"),
-&"siege_catapult": ExtResource("b_ghost_graveyard"),
+&"siege_catapult": ExtResource("b_siege_catapult"),
 &"gravewright": ExtResource("b_gravewright"),
 &"horsebow": ExtResource("b_horsebow"),
 &"hunter": ExtResource("b_hunter"),
@@ -298,7 +300,7 @@ enemy_textures = {
 &"flower_drum": ExtResource("r_flower_drum"),
 &"wood_drum": ExtResource("r_wood_drum"),
 &"ghost_graveyard": ExtResource("r_ghost_graveyard"),
-&"siege_catapult": ExtResource("r_ghost_graveyard"),
+&"siege_catapult": ExtResource("r_siege_catapult"),
 &"gravewright": ExtResource("r_gravewright"),
 &"horsebow": ExtResource("r_horsebow"),
 &"hunter": ExtResource("r_hunter"),
