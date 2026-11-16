@@ -24,6 +24,8 @@ extends Resource
 @export_group("Body")
 ## 战斗内不能移动（开战后不走位；节拍类建筑常用）。
 @export var immobile: bool = false
+## 禁移单位：每 attack_interval 以**普攻**对随机一名存活敌人出手（无视 attack_reach）。
+@export var bombard_random_enemy: bool = false
 
 @export_group("Boss")
 ## Boss 遭遇首领标记：斩首胜负、足迹策略机。
