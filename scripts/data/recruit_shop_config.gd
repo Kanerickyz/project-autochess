@@ -5,9 +5,11 @@ extends Resource
 const DEFAULT_PATH := "res://resources/recruit_shop/default_recruit_shop.tres"
 const DEFAULT_POTION_COST := 1
 const DEFAULT_BANNER_COST := 5
+const DEFAULT_EQUIPMENT_SLOTS := 5
 
 ## 道具池（生命药水 / 力量药水 / 旗帜）；空则用代码默认三件。
 @export var item_pool: Array[PrepareItemData] = []
+@export_range(0, 8, 1) var equipment_slot_count: int = DEFAULT_EQUIPMENT_SLOTS
 @export_range(0, 99, 1) var default_potion_cost: int = DEFAULT_POTION_COST
 @export_range(0, 99, 1) var default_banner_cost: int = DEFAULT_BANNER_COST
 
@@ -70,3 +72,12 @@ func resolve_item_cost(item: PrepareItemData) -> int:
 	if item.item_type == PrepareItemData.ItemType.BANNER:
 		return maxi(0, default_banner_cost)
 	return maxi(0, default_potion_cost)
+
+
+## 与地图商店共用装备池（护甲 / 纹章 + 武器代码池）。
+func get_equipment_pool() -> Array[EquipmentData]:
+	return MapShopConfig.load_or_default().get_equipment_pool()
+
+
+func get_equipment_slot_count() -> int:
+	return maxi(0, equipment_slot_count)

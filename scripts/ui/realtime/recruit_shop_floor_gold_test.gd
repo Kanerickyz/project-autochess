@@ -15,6 +15,8 @@ static func run_all() -> bool:
 	ok = _check("banner_excluded_at_cap10", _test_banner_excluded_at_cap10()) and ok
 	ok = _check("banner_cost_steps", _test_banner_cost_steps()) and ok
 	ok = _check("recruit_candidate_count_default_5", _test_recruit_candidate_count_default_5()) and ok
+	ok = _check("recruit_equipment_pool_all_catalog", _test_recruit_equipment_pool_all_catalog()) and ok
+	ok = _check("recruit_shop_rolls_equipment", _test_recruit_shop_rolls_equipment()) and ok
 	if ok:
 		print("RecruitShopFloorGoldTest: all passed")
 	else:
@@ -247,3 +249,45 @@ static func _test_recruit_candidate_count_default_5() -> bool:
 	session.configure(cfg, deck, econ, rng)
 	session.begin(0.0)
 	return session.get_candidates().size() == 5
+
+
+static func _test_recruit_equipment_pool_all_catalog() -> bool:
+	var pool := RecruitShopConfig.make_code_defaults().get_equipment_pool()
+	if pool.is_empty():
+		return false
+	var pool_ids: Dictionary = {}
+	for item in pool:
+		var eq := item as EquipmentData
+		if eq != null and not eq.id.is_empty():
+			pool_ids[eq.id] = true
+	for weapon in EquipmentWeaponCatalog.get_all():
+		if weapon == null:
+			continue
+		if not pool_ids.has(weapon.id):
+			return false
+	var map_pool := MapShopConfig.make_code_defaults().get_equipment_pool()
+	for base in map_pool:
+		var eq := base as EquipmentData
+		if eq == null or eq.is_weapon():
+			continue
+		if not pool_ids.has(eq.id):
+			return false
+	return true
+
+
+static func _test_recruit_shop_rolls_equipment() -> bool:
+	var deck := _make_deck(5)
+	var cfg := RecruitShopConfig.make_code_defaults()
+	var econ := _make_economy(50)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var shop := RecruitShopService.new()
+	shop.configure(cfg, econ, deck, rng)
+	shop.open_shop(deck)
+	var offers := shop.get_equipment_offers()
+	if offers.size() != cfg.get_equipment_slot_count():
+		return false
+	for eq in offers:
+		if eq != null:
+			return true
+	return false

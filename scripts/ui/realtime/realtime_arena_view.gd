@@ -2743,6 +2743,9 @@ func _info_from_recruit_item_index(index: int, half_off: Vector2) -> Dictionary:
 	if not (dict is Dictionary):
 		return {}
 	var offer := dict as Dictionary
+	var kind: StringName = offer.get("kind", &"prepare")
+	if kind == &"equipment":
+		return _info_from_recruit_equipment_offer(offer, index, half_off)
 	var item: PrepareItemData = offer.get("item") as PrepareItemData
 	if item == null:
 		return {}
@@ -2784,6 +2787,46 @@ func _info_from_recruit_item_index(index: int, half_off: Vector2) -> Dictionary:
 		"hp": 0,
 		"skills": skills,
 		"texture": _recruit_prop_texture(item.id),
+	}
+
+
+func _info_from_recruit_equipment_offer(offer: Dictionary, index: int, half_off: Vector2) -> Dictionary:
+	var eq := offer.get("item") as EquipmentData
+	if eq == null:
+		return {}
+	var cell: Vector2i = offer.get("cell", NO_CELL)
+	if cell == NO_CELL:
+		return {}
+	var center := tile_to_local(Vector2(cell) + Vector2(0.5, 0.5)) + half_off
+	var skills := ""
+	var armor := 0
+	if eq.is_occupation_emblem():
+		skills = (
+			"转职纹章：附加职业「%s」。不替换本职；零护甲；同职拒装；可与护甲同挂。"
+			% eq.get_granted_occupation()
+		)
+	elif eq.is_weapon():
+		skills = "武器：拖到上区队伍角色购买；效果跨节点保留。"
+	else:
+		armor = eq.get_armor_block()
+		skills = (
+			"护甲 %d：有护甲时不扣血（伤害大于护甲时护甲归零、溢出也不扣血）。\n拖到上区队伍角色购买。"
+			% armor
+		)
+	return {
+		"inspect_key": "recruit_item:%d" % index,
+		"center": center,
+		"name": eq.get_display_name(),
+		"side_player": true,
+		"tier": 0,
+		"is_item": true,
+		"kind_label": "装备",
+		"cost": int(offer.get("cost", eq.cost)),
+		"attack": 0,
+		"hp": 0,
+		"armor": armor,
+		"skills": skills,
+		"texture": offer.get("icon") as Texture2D,
 	}
 
 
@@ -2918,24 +2961,45 @@ func _begin_recruit_item_drag(index: int, from_local: Vector2 = Vector2.ZERO) ->
 	if index < 0 or index >= recruit_items.size():
 		return
 	var info: Dictionary = recruit_items[index]
-	var item: PrepareItemData = info.get("item") as PrepareItemData
-	if item == null or not item.needs_target():
-		## 旗帜不拖，走点击购买。
+	var kind: StringName = info.get("kind", &"prepare")
+	if kind == &"equipment":
+		if info.get("item") == null:
+			return
+		_recruit_item_drag_index = index
+		_recruit_item_press_index = -1
+		_recruit_drag_index = -1
+		_recruit_press_index = -1
+		_recruit_team_drag_id = -1
+		_recruit_team_press_id = -1
+		recruit_pending_item_slot = index
+		_drag_active = true
+		_drag_radius = 0.55
+		_drag_visual_half_width = 0.0
+		_drag_visual_half_height = 0.0
+		_drag_label = String(info.get("label", ""))
+		_drag_unit_id = ""
+		_drag_texture = info.get("icon") as Texture2D
+	elif kind == &"prepare":
+		var item: PrepareItemData = info.get("item") as PrepareItemData
+		if item == null or not item.needs_target():
+			## 旗帜不拖，走点击购买。
+			return
+		_recruit_item_drag_index = index
+		_recruit_item_press_index = -1
+		_recruit_drag_index = -1
+		_recruit_press_index = -1
+		_recruit_team_drag_id = -1
+		_recruit_team_press_id = -1
+		recruit_pending_item_slot = index
+		_drag_active = true
+		_drag_radius = 0.7
+		_drag_visual_half_width = 0.0
+		_drag_visual_half_height = 0.0
+		_drag_label = String(info.get("label", item.get_display_name()))
+		_drag_unit_id = ""
+		_drag_texture = _recruit_prop_texture(item.id)
+	else:
 		return
-	_recruit_item_drag_index = index
-	_recruit_item_press_index = -1
-	_recruit_drag_index = -1
-	_recruit_press_index = -1
-	_recruit_team_drag_id = -1
-	_recruit_team_press_id = -1
-	recruit_pending_item_slot = index
-	_drag_active = true
-	_drag_radius = 0.7
-	_drag_visual_half_width = 0.0
-	_drag_visual_half_height = 0.0
-	_drag_label = String(info.get("label", item.get_display_name()))
-	_drag_unit_id = ""
-	_drag_texture = _recruit_prop_texture(item.id)
 	var origin := from_local if from_local != Vector2.ZERO else _press_pos
 	_start_drag_visual(origin)
 	queue_redraw()
@@ -4465,6 +4529,39 @@ func _draw_recruit_items(px: float, off: Vector2) -> void:
 		if cell == NO_CELL:
 			continue
 		var index := int(info.get("index", -1))
+		var kind: StringName = info.get("kind", &"prepare")
+		if kind == &"equipment":
+			if info.get("item") == null:
+				continue
+			var alpha_eq := 0.4 if index == _recruit_item_drag_index else 1.0
+			var center_eq := Vector2(cell) + Vector2(0.5, 0.5)
+			var icon: Texture2D = info.get("icon") as Texture2D
+			var label := String(info.get("label", ""))
+			_draw_body(
+				center_eq,
+				0.55,
+				0.0,
+				0.0,
+				PLAYER_COLOR,
+				alpha_eq,
+				label,
+				px,
+				true,
+				off,
+				true,
+				"",
+				null,
+				Vector2.ZERO,
+				1.0,
+				-1.0,
+				-1.0,
+				_idle_seed_for("recruit_eq:%d" % index, index),
+				icon,
+			)
+			var cost_eq := int(info.get("cost", 0))
+			var affordable_eq := bool(info.get("affordable", true))
+			_draw_recruit_cost_tag(tile_to_local(center_eq) + off, cost_eq, affordable_eq, px)
+			continue
 		var item: PrepareItemData = info.get("item") as PrepareItemData
 		if item == null:
 			continue
