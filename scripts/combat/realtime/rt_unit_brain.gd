@@ -45,6 +45,12 @@ class Decision:
 	var cadence_tick: bool = false
 
 
+static func uses_immobile_bombard(unit: RtUnit) -> bool:
+	if unit == null or unit.unit == null or unit.unit.unit_data == null:
+		return false
+	return unit.unit.cannot_move and unit.unit.unit_data.bombard_random_enemy
+
+
 static func uses_attack_cadence(unit: RtUnit) -> bool:
 	if unit == null or unit.unit == null:
 		return false
@@ -59,6 +65,42 @@ static func uses_attack_cadence(unit: RtUnit) -> bool:
 		if spec != null and spec.trigger == CombatEvents.ON_ATTACK_CADENCE:
 			return true
 	return false
+
+
+static func _decide_immobile_bombard(unit: RtUnit, units: Array, dt: float) -> Decision:
+	var decision := Decision.new()
+	if not unit.is_alive():
+		return decision
+	if unit.state == RtUnit.State.DEPLOYING:
+		return decision
+	unit.state = RtUnit.State.ATTACKING
+	unit.attack_timer -= dt
+	if unit.attack_timer > TIME_EPSILON:
+		return decision
+	unit.target = acquire_random_enemy(unit, units)
+	if unit.target != null and unit.target.is_alive():
+		decision.fire = true
+		unit.bombard_attack_index += 1
+	unit.attack_timer += unit.get_attack_interval()
+	return decision
+
+
+static func acquire_random_enemy(unit: RtUnit, units: Array) -> RtUnit:
+	var candidates: Array[RtUnit] = []
+	for item in units:
+		var other := item as RtUnit
+		if other == null or other == unit or not other.is_alive():
+			continue
+		if other.get_team() == unit.get_team():
+			continue
+		candidates.append(other)
+	if candidates.is_empty():
+		return null
+	candidates.sort_custom(func(a: RtUnit, b: RtUnit) -> bool:
+		return a.get_id() < b.get_id()
+	)
+	var idx := absi(unit.bombard_attack_index) % candidates.size()
+	return candidates[idx]
 
 
 static func _decide_attack_cadence(unit: RtUnit, dt: float) -> Decision:
@@ -113,6 +155,8 @@ static func decide(
 	if unit.state == RtUnit.State.DEPLOYING:
 		return decision
 	if unit.unit != null and unit.unit.cannot_move:
+		if uses_immobile_bombard(unit):
+			return _decide_immobile_bombard(unit, units, dt)
 		if uses_attack_cadence(unit):
 			return _decide_attack_cadence(unit, dt)
 		unit.target = null

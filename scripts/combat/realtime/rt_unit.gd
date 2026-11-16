@@ -51,6 +51,8 @@ var boss_summons_spawned_total: int = 0
 var status_pulse_accum: float = 0.0
 ## 墙钟被动节拍（AbilityData.passive_cadence_seconds + OnAttackCadence）。
 var passive_cadence_remaining: float = 0.0
+## 随机轰炸普攻序次（bombard_random_enemy 用）。
+var bombard_attack_index: int = 0
 
 
 func _init(p_unit: UnitInstance, p_position: Vector2) -> void:

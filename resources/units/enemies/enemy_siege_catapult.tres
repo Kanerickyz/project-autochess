@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://fpxuvgsjb6i1" path="res://scripts/data/unit_data.gd" id="1_unit"]
 [ext_resource type="Script" uid="uid://i87fc7wk5tbg" path="res://scripts/data/unit_stats.gd" id="2_stats"]
-[ext_resource type="Resource" path="res://resources/abilities/cadence_damage_random_enemy_5.tres" id="3_ability"]
 
 [sub_resource type="Resource" id="UnitStats_enemy_siege_catapult"]
 script = ExtResource("2_stats")
@@ -11,13 +10,13 @@ attack = 5
 steps_per_turn = 1
 attack_interval = 5.0
 attack_windup = 0.0
-attack_reach = 0.5
-sight_range = 6.0
+attack_reach = 32.0
+sight_range = 32.0
 body_radius = 0.55
 visual_half_width = 1.05
 visual_half_height = 0.55
 mass = 2.5
-projectile_speed = 0.0
+projectile_speed = 12.0
 splash_radius = 0.0
 deploy_time = 1.2
 
@@ -31,7 +30,7 @@ tier = 2
 team_default = 1
 command_cost = 3
 immobile = true
+bombard_random_enemy = true
 footprint_w = 2
 footprint_h = 1
 stats = SubResource("UnitStats_enemy_siege_catapult")
-ability = ExtResource("3_ability")
