@@ -32,6 +32,7 @@ static func _test_ability_mount() -> void:
 	_assert(data != null and data.tier == 2, "siege_catapult tier 2")
 	_assert(data.get_roster_population() == 2, "building population 2")
 	_assert(data.footprint_w >= 2, "footprint 2-wide")
+	_assert(data.stats != null and data.stats.attack == 5, "siege_catapult attack 5 (panel / cadence hit)")
 	var ab: AbilityData = data.ability
 	_assert(ab != null and ab.id == "cadence_damage_random_enemy_5", "ability id")
 	_assert(is_equal_approx(ab.passive_cadence_seconds, 5.0), "cadence 5s")
