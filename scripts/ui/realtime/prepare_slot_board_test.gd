@@ -13,6 +13,7 @@ static func run_all() -> bool:
 	ok = _check("combat_row_bias_follows_cell", _test_combat_row_visual_bias()) and ok
 	ok = _check("bench_row_below_board", _test_bench_row_below_board()) and ok
 	ok = _check("footprint_display_center_span2", _test_footprint_display_center_span2()) and ok
+	ok = _check("bench_span2_pointer_hit", _test_bench_span2_pointer_hit()) and ok
 	if ok:
 		print("PrepareSlotBoardTest: all passed")
 	else:
@@ -170,3 +171,38 @@ static func _test_footprint_display_center_span2() -> bool:
 	var c1 := board.get_display_center(1)
 	var mid := board.get_footprint_display_center(0, unit)
 	return is_equal_approx(mid.x, (c0.x + c1.x) * 0.5) and is_equal_approx(mid.y, (c0.y + c1.y) * 0.5)
+
+
+static func _test_bench_span2_pointer_hit() -> bool:
+	var tree := Engine.get_main_loop()
+	if not (tree is SceneTree):
+		return true
+	var unit := load("res://resources/units/realtime/ghost_graveyard.tres") as UnitData
+	if unit == null or unit.footprint_w < 2:
+		return true
+	var bench := PrepareSlotBoard.new()
+	bench.configure_bench_row(Vector2i(5, 8), 5)
+	var entry := DeckEntry.new()
+	entry.entry_id = 9001
+	entry.unit = unit
+	entry.bench_slot_index = 0
+	entry.seat_index = -1
+	if not bench.try_assign(0, entry):
+		return false
+	var arena := RealtimeArenaView.new()
+	arena.board_size = Vector2i(5, 8)
+	arena.bench_visible = true
+	arena.bench_interactive = true
+	arena.bench_slots = bench
+	arena.size = Vector2(500, 800)
+	var root := (tree as SceneTree).root
+	root.add_child(arena)
+	arena.queue_redraw()
+	var center := arena._bench_entry_center_local(0)
+	var hit_i := arena.find_bench_slot_at_local(center)
+	var info := arena.inspect_at(center)
+	root.remove_child(arena)
+	arena.queue_free()
+	if hit_i != 0:
+		return false
+	return not info.is_empty() and String(info.get("inspect_key", "")) == "bench:9001"
