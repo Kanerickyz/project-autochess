@@ -555,13 +555,9 @@ func bench_slot_center_local(slot_index: int) -> Vector2:
 	## 棋盘内备战（招募栈）：与座位同口径的格心。
 	if cell.y < board_size.y:
 		return tile_to_local(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)) + Vector2(0.0, bench_slide_y)
-	var gap := BENCH_GAP_TILES * px if bench_visible else 0.0
-	return (
-		get_board_rect().position
-		+ Vector2(float(cell.x) + 0.5, float(board_size.y)) * px
-		+ Vector2(0.0, gap + px * 0.5)
-		+ Vector2(0.0, bench_slide_y)
-	)
+	## 与 _draw_bench_row / tile_to_local 同口径（虚拟行 y=board_size.y）。
+	var center_tile := Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)
+	return tile_to_local(center_tile) + Vector2(0.0, bench_slide_y)
 
 
 func local_to_tile(local_pos: Vector2) -> Vector2:
@@ -573,13 +569,68 @@ func tile_to_local(tile_pos: Vector2) -> Vector2:
 	return get_board_rect().position + tile_pos * get_cell_px()
 
 
+func _bench_anchor_slot_indices() -> Array[int]:
+	var out: Array[int] = []
+	if bench_slots == null:
+		return out
+	for i in bench_slots.cells.size():
+		if bench_slots.is_anchor_bench_slot(i):
+			out.append(i)
+	return out
+
+
+## 备战纸片绘制/长按命中中心（含足迹偏移；与 _draw_bench_row 一致）。
+func _bench_entry_center_local(anchor_slot: int) -> Vector2:
+	if bench_slots == null or anchor_slot < 0 or anchor_slot >= bench_slots.cells.size():
+		return Vector2.ZERO
+	var entry := bench_slots.get_entry(anchor_slot)
+	if entry == null or entry.unit == null:
+		return bench_slot_center_local(anchor_slot)
+	var anchor_cell: Vector2i = bench_slots.cells[anchor_slot]
+	var center_tile := footprint_center_tile(anchor_cell, entry.unit)
+	return tile_to_local(center_tile) + Vector2(0.0, bench_slide_y)
+
+
+func _bench_entry_inspect_hit_rect(anchor_slot: int) -> Rect2:
+	var px := get_cell_px()
+	if bench_slots == null or anchor_slot < 0:
+		return Rect2()
+	var entry := bench_slots.get_entry(anchor_slot)
+	if entry == null or entry.unit == null:
+		return Rect2()
+	var center := _bench_entry_center_local(anchor_slot)
+	var fw := float(maxi(1, entry.unit.footprint_w))
+	var stats := entry.unit.stats
+	var vwx := stats.get_visual_half_width() if stats != null else 0.0
+	var hit_half_w := maxf(px * 0.55, px * 0.5 * fw)
+	if vwx > 0.0:
+		hit_half_w = maxf(hit_half_w, vwx * px)
+	var feet_y := center.y + px * 0.38
+	var badge_h := get_fitted_stat_badge_size(px, 2).y
+	var hit_w := hit_half_w * 2.0
+	return Rect2(center.x - hit_half_w, feet_y - px * 1.6, hit_w, px * 1.6 + badge_h * 2.35)
+
+
 func find_bench_slot_at_local(local_pos: Vector2) -> int:
 	if not bench_visible or bench_slots == null:
 		return -1
 	var px := get_cell_px()
 	var best := -1
 	var best_d := INF
+	for anchor in _bench_anchor_slot_indices():
+		var hit := _bench_entry_inspect_hit_rect(anchor)
+		if hit.size == Vector2.ZERO or not hit.has_point(local_pos):
+			continue
+		var center := _bench_entry_center_local(anchor)
+		var d := local_pos.distance_squared_to(center)
+		if d < best_d:
+			best_d = d
+			best = anchor
+	if best >= 0:
+		return best
 	for i in bench_slots.cells.size():
+		if bench_slots.get_bench_entry_at_slot(i) != null:
+			continue
 		var center := bench_slot_center_local(i)
 		var hit := Rect2(center.x - px * 0.5, center.y - px * 0.5, px, px)
 		if not hit.has_point(local_pos):
@@ -1358,7 +1409,10 @@ func _gui_input(event: InputEvent) -> void:
 				var bench_tap := (
 					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
 				)
-				_begin_press(mb.position, info, bench_tap)
+				var press_info := info
+				if press_info.is_empty():
+					press_info = _bench_info_for_entry_id(bench_entry)
+				_begin_press(mb.position, press_info, bench_tap)
 			elif (
 				bench_interactive
 				and bench_slot >= 0
@@ -1449,7 +1503,10 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				var bench_tap := (
 					bench_pressed.emit.bind(bench_entry) if bench_interactive else Callable()
 				)
-				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
+				var press_info := inspect_at(mb.position)
+				if press_info.is_empty():
+					press_info = _bench_info_for_entry_id(bench_entry)
+				_begin_press(mb.position, press_info, bench_tap)
 				accept_event()
 				return
 			var cand := _find_recruit_candidate_at(cell) if recruit_roster_visible else -1
@@ -2634,15 +2691,34 @@ func _collect_inspectables() -> Array[Dictionary]:
 func _append_bench_inspectables(out: Array[Dictionary]) -> void:
 	if not bench_visible or bench_slots == null:
 		return
-	for i in bench_slots.cells.size():
-		var entry := bench_slots.get_entry(i)
+	var px := get_cell_px()
+	for anchor in _bench_anchor_slot_indices():
+		var entry := bench_slots.get_entry(anchor)
 		if entry == null:
 			continue
-		out.append(_info_from_entry(
-			entry,
-			bench_slot_center_local(i),
-			"bench:%d" % entry.entry_id,
-		))
+		var center := _bench_entry_center_local(anchor)
+		var fw := float(maxi(1, entry.unit.footprint_w if entry.unit != null else 1))
+		var packed := _info_from_entry(entry, center, "bench:%d" % entry.entry_id)
+		packed["inspect_hit_half_w"] = maxf(px * 0.55, px * 0.5 * fw)
+		out.append(packed)
+
+
+func _bench_info_for_entry_id(entry_id: int) -> Dictionary:
+	if bench_slots == null or entry_id < 0:
+		return {}
+	for anchor in _bench_anchor_slot_indices():
+		var entry := bench_slots.get_entry(anchor)
+		if entry != null and entry.entry_id == entry_id:
+			var px := get_cell_px()
+			var fw := float(maxi(1, entry.unit.footprint_w if entry.unit != null else 1))
+			var packed := _info_from_entry(
+				entry,
+				_bench_entry_center_local(anchor),
+				"bench:%d" % entry_id,
+			)
+			packed["inspect_hit_half_w"] = maxf(px * 0.55, px * 0.5 * fw)
+			return packed
+	return {}
 
 
 func _prepare_slots_inspect_offset(ally_off: Vector2) -> Vector2:
