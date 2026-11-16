@@ -1452,7 +1452,7 @@ func _gui_input_recruit(event: InputEvent) -> void:
 				_begin_press(mb.position, inspect_at(mb.position), bench_tap)
 				accept_event()
 				return
-			var cand := _find_recruit_candidate_at(cell)
+			var cand := _find_recruit_candidate_at(cell) if recruit_roster_visible else -1
 			if cand >= 0:
 				_recruit_press_index = cand
 				_recruit_item_press_index = -1

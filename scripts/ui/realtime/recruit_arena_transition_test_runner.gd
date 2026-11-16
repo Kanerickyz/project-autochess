@@ -121,6 +121,14 @@ func _test_recruit_arena_transition() -> void:
 	await battle.enter_recruit(session, 0.0)
 	await process_frame
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "phase RECRUIT")
+	_expect(not session.require_nonempty_roster, "post-victory: two-stage recruit")
+	_expect(not arena.recruit_roster_visible, "arena items phase hides roster")
+	_expect(arena.recruit_candidates.is_empty(), "items phase: no candidate previews")
+	_expect(not arena.recruit_items.is_empty(), "items phase: item row visible")
+	battle._on_recruit_finish_pressed()
+	await process_frame
+	_expect(arena.recruit_roster_visible, "roster phase after 去选人")
+	_expect(not arena.recruit_candidates.is_empty(), "roster phase: candidate previews")
 	_expect(arena.recruit_active, "arena recruit_active")
 	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "enemy half slid in to 0")
 	_expect(is_equal_approx(arena.ally_half_slide_y, 0.0), "ally half slid in to 0")
@@ -202,13 +210,15 @@ func _test_recruit_arena_transition() -> void:
 	_expect(not arena.recruit_active, "recruit cleared")
 	_expect(is_equal_approx(arena.enemy_half_slide_y, 0.0), "slide reset after exit")
 
-	## 再进一轮：finish 按钮路径
+	## 再进一轮：两段 → 完成
 	session.begin(0.5)
 	await battle.enter_recruit(session, 0.0)
+	await process_frame
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.RECRUIT, "re-enter RECRUIT")
-	## 模拟完成按钮：走 controller 内部 finish
 	battle._on_recruit_finish_pressed()
-	_expect(finished == [true], "recruit_finished(true) from finish button")
+	await process_frame
+	battle._on_recruit_finish_pressed()
+	_expect(finished == [true], "recruit_finished(true) from finish button after roster")
 	_expect(battle.get_phase() == RealtimeBattleController.Phase.IDLE, "IDLE after finish button")
 
 	battle.queue_free()
