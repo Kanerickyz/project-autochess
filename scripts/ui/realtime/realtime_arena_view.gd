@@ -1687,6 +1687,8 @@ func _gui_input_enchant(event: InputEvent) -> void:
 				_enchant_team_pan_last_y = mb.position.y
 				accept_event()
 			return
+		var saved_forge_press := _enchant_forge_press
+		var saved_team_press_id := _enchant_team_press_id
 		if _info_shown:
 			_enchant_team_press_id = -1
 			_enchant_forge_press = false
@@ -1704,15 +1706,15 @@ func _gui_input_enchant(event: InputEvent) -> void:
 			accept_event()
 			return
 		var trait_tapped := false
-		if _enchant_forge_press:
+		if saved_forge_press:
 			var forge_hit := _inspect_enchant_forge_at(mb.position)
 			if not forge_hit.is_empty():
 				var key := String(forge_hit.get("inspect_key", ""))
 				if key.begins_with("enchant_forge:"):
 					enchant_trait_pick.emit(int(key.get_slice(":", 1)))
 					trait_tapped = true
-		if not trait_tapped and _enchant_team_press_id >= 0:
-			enchant_entry_pick.emit(_enchant_team_press_id)
+		if not trait_tapped and saved_team_press_id >= 0:
+			enchant_entry_pick.emit(saved_team_press_id)
 		_enchant_team_press_id = -1
 		_enchant_forge_press = false
 
