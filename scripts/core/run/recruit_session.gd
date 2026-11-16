@@ -18,6 +18,8 @@ var economy: RunEconomy
 var _rng: RandomNumberGenerator
 
 var candidates: Array[UnitData] = []
+## 与 candidates 同长：货架锚格列宽（买走后空槽仍占位，避免邻格左移）。
+var candidate_column_spans: Array[int] = []
 ## 与 candidates 同长：锁定槽刷新时保留角色。
 var candidate_locked: Array[bool] = []
 var is_active: bool = false
@@ -35,6 +37,7 @@ var _snapshot_gold: int = 0
 var _snapshot_entries: Array[DeckEntry] = []
 var _snapshot_next_entry_id: int = 0
 var _snapshot_candidates: Array[UnitData] = []
+var _snapshot_column_spans: Array[int] = []
 var _snapshot_locked: Array[bool] = []
 ## 跨场招募保留：上一场结束时仍锁定的候选人（按槽）。
 var _persisted_candidates: Array[UnitData] = []
@@ -144,6 +147,38 @@ func get_candidate(index: int) -> UnitData:
 	if index < 0 or index >= candidates.size():
 		return null
 	return candidates[index]
+
+
+## 货架第 index 槽锚点占用的列宽（买走后空槽仍用原宽度，布局不左移）。
+func get_candidate_column_span(index: int) -> int:
+	_ensure_column_spans()
+	if index < 0 or index >= candidates.size():
+		return 1
+	if index < candidate_column_spans.size() and candidate_column_spans[index] > 0:
+		return candidate_column_spans[index]
+	var unit := candidates[index]
+	if unit != null:
+		return unit.get_recruit_shelf_columns()
+	return 1
+
+
+func _ensure_column_spans() -> void:
+	while candidate_column_spans.size() < candidates.size():
+		var i := candidate_column_spans.size()
+		var unit: UnitData = candidates[i]
+		candidate_column_spans.append(
+			unit.get_recruit_shelf_columns() if unit != null else 1
+		)
+
+
+func _pin_column_span(index: int) -> void:
+	if index < 0 or index >= candidates.size():
+		return
+	_ensure_column_spans()
+	var unit := candidates[index]
+	if unit == null:
+		return
+	candidate_column_spans[index] = unit.get_recruit_shelf_columns()
 
 
 func is_candidate_locked(index: int) -> bool:
@@ -299,6 +334,7 @@ func try_recruit(
 			result["reason"] = "replace_failed"
 			return result
 		_note_copy_taken(unit)
+		_pin_column_span(candidate_index)
 		candidates[candidate_index] = null
 		_set_candidate_locked(candidate_index, false)
 		result["ok"] = true
@@ -335,6 +371,7 @@ func try_recruit(
 		result["reason"] = "add_failed"
 		return result
 	_note_copy_taken(unit)
+	_pin_column_span(candidate_index)
 	candidates[candidate_index] = null
 	_set_candidate_locked(candidate_index, false)
 	result["ok"] = true
@@ -463,6 +500,7 @@ func _capture_snapshot() -> void:
 				_snapshot_entries.append(item as DeckEntry)
 		_snapshot_next_entry_id = int(roster.get("next_entry_id", 0))
 	_snapshot_candidates = candidates.duplicate()
+	_snapshot_column_spans = candidate_column_spans.duplicate()
 	_snapshot_locked = candidate_locked.duplicate()
 	_snapshot_taken_copies = _taken_copies.duplicate()
 
@@ -480,6 +518,7 @@ func _restore_snapshot() -> void:
 			"next_entry_id": _snapshot_next_entry_id,
 		})
 	candidates = _snapshot_candidates.duplicate()
+	candidate_column_spans = _snapshot_column_spans.duplicate()
 	candidate_locked = _snapshot_locked.duplicate()
 	_taken_copies = _snapshot_taken_copies.duplicate()
 	_ensure_lock_slots()
@@ -487,6 +526,7 @@ func _restore_snapshot() -> void:
 
 func _roll_candidates() -> void:
 	candidates.clear()
+	candidate_column_spans.clear()
 	candidate_locked.clear()
 	## 先放回跨场锁定，再按剩余列宽补抽。
 	_apply_persisted_locks()
@@ -532,6 +572,7 @@ func _apply_persisted_locks() -> void:
 		if col + w > budget:
 			continue
 		candidates.append(unit)
+		candidate_column_spans.append(w)
 		candidate_locked.append(true)
 		col += w
 
@@ -541,18 +582,21 @@ func _roll_unlocked_candidates() -> void:
 	var preferred := get_preferred_tier()
 	var budget := get_candidate_column_budget()
 	var kept_units: Array[UnitData] = []
+	var kept_spans: Array[int] = []
 	var kept_locked: Array[bool] = []
 	var col := 0
 	for i in candidates.size():
 		var unit := candidates[i]
 		var locked := i < candidate_locked.size() and candidate_locked[i]
 		if locked and unit != null:
-			var w := unit.get_recruit_shelf_columns()
+			var w := get_candidate_column_span(i)
 			if col + w <= budget:
 				kept_units.append(unit)
+				kept_spans.append(w)
 				kept_locked.append(true)
 				col += w
 	candidates = kept_units
+	candidate_column_spans = kept_spans
 	candidate_locked = kept_locked
 	_fill_candidates_by_column_budget(preferred, col)
 
@@ -566,9 +610,8 @@ func _ensure_lock_slots() -> void:
 
 func _candidate_columns_used() -> int:
 	var col := 0
-	for unit in candidates:
-		if unit != null:
-			col += unit.get_recruit_shelf_columns()
+	for i in candidates.size():
+		col += get_candidate_column_span(i)
 	return col
 
 
@@ -586,6 +629,7 @@ func _fill_candidates_by_column_budget(preferred_tier: int, col_start: int = 0) 
 		if col + w > budget:
 			continue
 		candidates.append(unit)
+		candidate_column_spans.append(w)
 		candidate_locked.append(false)
 		col += w
 
