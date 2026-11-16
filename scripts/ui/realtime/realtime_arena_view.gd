@@ -88,6 +88,7 @@ const FEEDBACK_MIN_SECONDS := 0.35
 const FEEDBACK_MERGE_WINDOW := 0.28
 const FEEDBACK_MAX_PER_UNIT := 3
 const FEEDBACK_FLOAT_TILES := 0.55
+const COMBAT_FEEDBACK_FONT := preload("res://resources/ui/combat_feedback_font.tres")
 const CALLOUT_SECONDS := 0.45
 ## 单位下方攻/血标（左攻右血；深色/红色色块 + 白描边白字）。
 const STAT_ATTACK_TEX := preload("res://assets/sprites/paper_cutout/ui/stat_attack.png")
@@ -5293,36 +5294,52 @@ func _draw_fx(px: float) -> void:
 func _draw_feedback(px: float) -> void:
 	if _feedback.is_empty():
 		return
-	var font := get_theme_default_font()
+	var font := _feedback_popup_font()
 	for fb in _feedback:
 		var life := float(fb["duration"])
 		if life <= 0.0:
 			continue
 		var t := clampf((_fx_clock - float(fb["t0"])) / life, 0.0, 1.0)
 		var is_player := bool(fb["player"])
-		## 友方优先可读：字号更大、更不透明；敌方保下限。
-		var base_size := 16 if is_player else 13
-		var alpha := (1.0 - t * 0.85) * (1.0 if is_player else 0.78)
+		var alpha := (1.0 - t * 0.85) * (1.0 if is_player else 0.82)
 		var float_y := -FEEDBACK_FLOAT_TILES * px * t
 		var center := tile_to_local(fb["center"]) + Vector2(0.0, float_y - px * 0.35)
 		var kind: StringName = fb["kind"]
-		var color := _feedback_color(kind, is_player)
-		color.a = alpha
+		var pop_colors := _feedback_popup_colors(kind, alpha)
 		var main_text := String(fb["text"])
 		var tip := String(fb.get("tip", ""))
+		var font_size := _feedback_popup_font_size(kind, is_player)
 		if not main_text.is_empty():
-			var font_size := base_size + (2 if kind == RealtimeEffectFeedback.KIND_STAT else 0)
 			if (
 				(kind == RealtimeEffectFeedback.KIND_STAT or kind == RealtimeEffectFeedback.KIND_HEAL)
 				and bool(fb.get("use_stat_icon", false))
 			):
-				_draw_feedback_stat_icon(font, center, int(fb.get("amount", 0)), fb.get("stat_name", &""), font_size, color)
+				_draw_feedback_stat_icon(
+					font,
+					center,
+					int(fb.get("amount", 0)),
+					fb.get("stat_name", &""),
+					font_size,
+					pop_colors,
+				)
+			elif _use_feedback_popup_style(kind):
+				_draw_feedback_popup_string(
+					font, center, main_text, font_size, pop_colors["fill"], pop_colors["outline"],
+				)
 			else:
+				var color := _feedback_color(kind, is_player)
+				color.a = alpha
 				_draw_feedback_string(font, center, main_text, font_size, color)
 			center.y -= float(font_size) + 2.0
 		if not tip.is_empty():
-			var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
-			_draw_feedback_string(font, center, tip, maxi(10, base_size - 3), tip_color)
+			var tip_size := maxi(14, font_size - 6)
+			if _use_feedback_popup_style(kind):
+				_draw_feedback_popup_string(
+					font, center, tip, tip_size, pop_colors["fill"], pop_colors["outline"],
+				)
+			else:
+				var tip_color := Color(0.92, 0.95, 1.0, alpha * 0.9)
+				_draw_feedback_string(font, center, tip, tip_size, tip_color)
 
 
 func _feedback_color(kind: StringName, is_player: bool) -> Color:
@@ -5339,17 +5356,68 @@ func _feedback_color(kind: StringName, is_player: bool) -> Color:
 			return Color(0.88, 0.94, 1.0)
 
 
+func _feedback_popup_font() -> Font:
+	if COMBAT_FEEDBACK_FONT != null:
+		return COMBAT_FEEDBACK_FONT
+	return get_theme_default_font()
+
+
+func _use_feedback_popup_style(kind: StringName) -> bool:
+	return (
+		kind == RealtimeEffectFeedback.KIND_DAMAGE
+		or kind == RealtimeEffectFeedback.KIND_HEAL
+		or kind == RealtimeEffectFeedback.KIND_STAT
+	)
+
+
+func _feedback_popup_font_size(kind: StringName, is_player: bool) -> int:
+	var base := 24 if is_player else 19
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return base + 4
+		RealtimeEffectFeedback.KIND_HEAL:
+			return base + 2
+		RealtimeEffectFeedback.KIND_STAT:
+			return base + 1
+		_:
+			return base - 4
+
+
+func _feedback_popup_colors(kind: StringName, alpha: float) -> Dictionary:
+	match kind:
+		RealtimeEffectFeedback.KIND_DAMAGE:
+			return {
+				"fill": Color(1.0, 1.0, 1.0, alpha),
+				"outline": Color(0.50, 0.07, 0.06, alpha),
+			}
+		RealtimeEffectFeedback.KIND_HEAL:
+			return {
+				"fill": Color(0.94, 1.0, 0.94, alpha),
+				"outline": Color(0.05, 0.36, 0.12, alpha),
+			}
+		RealtimeEffectFeedback.KIND_STAT:
+			return {
+				"fill": Color(1.0, 0.98, 0.90, alpha),
+				"outline": Color(0.44, 0.20, 0.04, alpha),
+			}
+		_:
+			return {
+				"fill": Color(0.95, 0.97, 1.0, alpha),
+				"outline": Color(0.08, 0.10, 0.14, alpha * 0.92),
+			}
+
+
 func _draw_feedback_stat_icon(
 	font: Font,
 	center: Vector2,
 	amount: int,
 	stat_name: StringName,
 	font_size: int,
-	color: Color,
+	colors: Dictionary,
 ) -> void:
 	var tex := STAT_ATTACK_TEX if stat_name == &"attack" else STAT_HP_TEX
 	if tex == null:
-		_draw_feedback_string(font, center, str(amount), font_size, color)
+		_draw_feedback_popup_string(font, center, str(amount), font_size, colors["fill"], colors["outline"])
 		return
 	var icon_h := float(font_size) * 1.15
 	var tex_size := tex.get_size()
@@ -5360,10 +5428,12 @@ func _draw_feedback_stat_icon(
 	var gap := 3.0
 	var total_w := num_w + gap + icon_w
 	var left := center.x - total_w * 0.5
-	var baseline := center + Vector2(0.0, font.get_ascent(font_size) * 0.25)
-	draw_string(font, Vector2(left, baseline.y), num, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+	_draw_feedback_popup_string(
+		font, Vector2(left + num_w * 0.5, center.y), num, font_size, colors["fill"], colors["outline"],
+	)
 	var icon_rect := Rect2(left + num_w + gap, center.y - icon_h * 0.5, icon_w, icon_h)
-	draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, color.a))
+	var fill: Color = colors["fill"]
+	draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, fill.a))
 
 
 func _draw_combat_team_totals(px: float) -> void:
@@ -5425,6 +5495,39 @@ func _draw_combat_team_total_row(
 	draw_texture_rect(tex_hp, Rect2(hp_x + hp_num_w + inner_gap, y - badge_h * 0.5, hp_w, badge_h), false, Color(1, 1, 1, tint.a))
 
 
+func _feedback_baseline(font: Font, center: Vector2, text: String, font_size: int) -> Dictionary:
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var baseline := center + Vector2(
+		-text_size.x * 0.5,
+		font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25,
+	)
+	return {"baseline": baseline, "text_size": text_size}
+
+
+func _draw_feedback_popup_string(
+	font: Font,
+	center: Vector2,
+	text: String,
+	font_size: int,
+	fill: Color,
+	outline: Color,
+) -> void:
+	var layout := _feedback_baseline(font, center, text, font_size)
+	var baseline: Vector2 = layout["baseline"]
+	for radius in [2.0, 1.0]:
+		for ox in [-radius, 0.0, radius]:
+			for oy in [-radius, 0.0, radius]:
+				if is_zero_approx(ox) and is_zero_approx(oy):
+					continue
+				if absf(ox) + absf(oy) > radius + 0.01:
+					continue
+				draw_string(
+					font, baseline + Vector2(ox, oy), text,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline,
+				)
+	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill)
+
+
 func _draw_feedback_string(
 	font: Font,
 	center: Vector2,
@@ -5432,11 +5535,8 @@ func _draw_feedback_string(
 	font_size: int,
 	color: Color,
 ) -> void:
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var baseline := center + Vector2(
-		-text_size.x * 0.5,
-		font.get_ascent(font_size) * 0.5 - font.get_descent(font_size) * 0.25,
-	)
+	var layout := _feedback_baseline(font, center, text, font_size)
+	var baseline: Vector2 = layout["baseline"]
 	## 描边：形/字双通道，不完全靠颜色。
 	var outline := Color(0.05, 0.05, 0.08, color.a * 0.85)
 	for ox in [-1.0, 0.0, 1.0]:
